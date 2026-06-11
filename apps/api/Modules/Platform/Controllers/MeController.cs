@@ -163,6 +163,10 @@ public class MeController : ControllerBase
             .Select(f => new
             {
                 f.Name,
+                f.GstNumber,
+                f.PanNumber,
+                f.City,
+                f.State,
                 f.EnabledModules,
                 f.PlanCode,
                 f.UserLimit,

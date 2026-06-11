@@ -366,15 +366,59 @@ body.theme-neon app-shell header {
 }
 
 /* ============================================================
-   MOBILE FIT — phone par padding kam + tables horizontal scroll
+   MOBILE FIT — phone responsiveness (enhanced)
    ============================================================ */
 @media (max-width: 640px) {
-  main { padding: 10px !important; }
-  table { font-size: 12px; }
-  /* card ke andar wali tables phone par scroll ho jayein, layout na toote */
-  .card, .overflow-x-auto { -webkit-overflow-scrolling: touch; }
-  /* fixed multi-column grids phone par 2 column me wrap (common pattern) */
-  .grid-cols-3, .grid-cols-4, .grid-cols-5, .grid-cols-6 {
+  /* thoda top space taaki dashboard ka pehla row topbar ke neeche na chhupe */
+  main { padding: 18px 10px 12px !important; }
+
+  /* Tables: poori width par horizontal scroll, layout na toote */
+  table {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    white-space: nowrap;
+    font-size: 12px;
+  }
+  .table-wrap, .overflow-x-auto, .card {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    max-width: 100%;
+  }
+
+  /* Multi-column grids → phone par 2 column */
+  .kpi-grid, .stat-grid, .stats-grid, .cards-grid,
+  .grid-cols-3, .grid-cols-4, .grid-cols-5, .grid-cols-6, .grid-cols-7,
+  .grid-cols-8, .grid-cols-9, .grid-cols-10, .grid-cols-11, .grid-cols-12 {
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
   }
+
+  /* Cards: padding kam */
+  .card { padding: 12px !important; }
+
+  /* Modals/dialogs: screen me fit */
+  [class*="modal"], [class*="dialog"], [role="dialog"] {
+    max-width: 100% !important;
+    width: auto !important;
+  }
+  .modal-overlay, .overlay { padding: 8px !important; }
+
+  /* Inputs kabhi overflow na karein */
+  input, select, textarea, .m-input { max-width: 100% !important; }
+
+  /* Bade fixed-width boxes phone par full-width */
+  [style*="width: 340px"], [style*="width:340px"],
+  [style*="width: 280px"], [style*="width:280px"] { width: 100% !important; }
+}
+
+/* Bahut chhoti screen (≤460px): cards + 2-col forms single column */
+@media (max-width: 460px) {
+  .kpi-grid, .stat-grid, .stats-grid, .cards-grid,
+  .grid-cols-2, .grid-cols-3, .grid-cols-4, .grid-cols-5, .grid-cols-6 {
+    grid-template-columns: 1fr !important;
+  }
+  h1 { font-size: 20px !important; }
+  main { padding: 8px !important; }
 }

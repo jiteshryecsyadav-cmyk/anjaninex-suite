@@ -59,9 +59,11 @@ CREATE POLICY firm_isolation_departments ON core.departments
 
 CREATE POLICY firm_isolation_users ON core.users
     USING       (firm_id = core.current_firm_id()
-                 OR current_setting('app.is_platform_admin', true) = 'true')
+                 OR current_setting('app.is_platform_admin', true) = 'true'
+                 OR core.current_firm_id() IS NULL)   -- no-context (login/auth bootstrap)
     WITH CHECK  (firm_id = core.current_firm_id()
-                 OR current_setting('app.is_platform_admin', true) = 'true');
+                 OR current_setting('app.is_platform_admin', true) = 'true'
+                 OR core.current_firm_id() IS NULL);
 
 CREATE POLICY firm_isolation_contacts ON core.contacts
     USING       (firm_id = core.current_firm_id())

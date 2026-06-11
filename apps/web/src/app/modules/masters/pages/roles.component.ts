@@ -158,6 +158,15 @@ import { PaginatorComponent } from '../../../shared/paginator.component';
       display:flex; justify-content:flex-end; gap:8px; }
     .x-btn { border:0; background:transparent; font-size:26px; cursor:pointer; color:#6B7280; line-height:1; padding:0 6px; }
     .x-btn:hover { color:#DC2626; }
+
+    @media (max-width: 640px) {
+      /* Wide table: scroll the card instead of clipping */
+      .card { overflow-x:auto !important; -webkit-overflow-scrolling:touch; }
+      /* Modal full width + tighter padding */
+      .modal-overlay { padding:12px !important; align-items:flex-start; }
+      .modal-paper { width:100% !important; max-width:100% !important; }
+      .modal-header, .modal-body, .modal-footer { padding-left:14px; padding-right:14px; }
+    }
   `]
 })
 export class RolesComponent {

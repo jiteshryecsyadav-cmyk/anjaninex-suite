@@ -497,6 +497,23 @@ import { PaginatorComponent } from '../../../shared/paginator.component';
       box-shadow: 0 2px 6px rgba(249,115,22,0.3);
     }
     .btn-orange:hover { background: #EA580C; }
+
+    @media (max-width: 640px) {
+      :host { padding: 8px 0; }
+      .comm-header { flex-wrap: wrap; gap: 8px; padding: 12px 14px; }
+      .section-card { padding: 12px 12px; }
+      /* All filter / stats / chart grids → single column */
+      .grid-cols-2, .grid-cols-3, .grid-cols-4, .grid-cols-5 { grid-template-columns: 1fr !important; }
+      .ip { width: 100% !important; }
+      .stat-value { font-size: 18px; }
+      .tab-strip { flex-wrap: wrap; }
+      .tab-btn { flex: 1 1 100%; }
+      .legend-row { flex-wrap: wrap; }
+      /* Tables horizontally scrollable (wrapper already overflow-x but enforce block) */
+      .bill-table-wrap { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+      .bill-table { white-space: nowrap; }
+      .bottom-actions { flex-wrap: wrap; }
+    }
   `]
 })
 export class CommissionComponent {

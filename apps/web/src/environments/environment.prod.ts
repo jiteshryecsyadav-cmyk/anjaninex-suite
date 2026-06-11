@@ -1,6 +1,6 @@
 export const environment = {
   production: true,
-  apiUrl: 'https://api.namokara.com',
+  apiUrl: '',
   appName: 'Namokara Suite',
   poweredBy: 'Anjaninex',
   anjaninexUrl: 'https://anjaninex.com',

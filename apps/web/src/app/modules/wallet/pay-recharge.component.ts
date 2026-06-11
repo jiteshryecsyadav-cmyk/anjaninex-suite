@@ -127,6 +127,13 @@ interface MyReq {
     .docbtns{display:inline-flex;gap:4px;margin-left:6px}
     .doc{font-size:10px;font-weight:700;border:1px solid #c9b3ec;background:#faf5ff;color:#5c1a8b;border-radius:6px;padding:2px 7px;cursor:pointer}
     .doc:hover{background:#f0e6ff}
+
+    @media(max-width:640px){
+      .req{flex-wrap:wrap;gap:6px}
+      .docbtns{margin-left:0;flex-wrap:wrap}
+      .bank div{flex-wrap:wrap}
+      .ip{width:100% !important}
+    }
   `]
 })
 export class PayRechargeComponent {

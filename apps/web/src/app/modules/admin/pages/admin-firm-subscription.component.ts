@@ -244,6 +244,12 @@ const MODULE_LIST: Array<{ key: string; label: string; icon: string; description
     .slider:before { content: ""; position: absolute; height: 20px; width: 20px; left: 3px; bottom: 3px; background: #fff; border-radius: 50%; transition: .25s; }
     .switch input:checked + .slider { background: #16a34a; }
     .switch input:checked + .slider:before { transform: translateX(24px); }
+
+    /* ===== MOBILE (<=640px) ===== */
+    @media (max-width: 640px) {
+      .card { padding: 12px; }
+      .grid-cols-2, .grid-cols-3 { grid-template-columns: 1fr !important; }
+    }
   `]
 })
 export class AdminFirmSubscriptionComponent implements OnInit {

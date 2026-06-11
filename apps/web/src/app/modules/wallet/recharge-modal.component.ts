@@ -631,6 +631,24 @@ type Tab = 'recharge' | 'history' | 'pricing' | 'auto';
       .amt-grid{grid-template-columns:repeat(3,1fr)}
       .pay-methods{grid-template-columns:1fr}
     }
+
+    @media(max-width:640px){
+      .modal-backdrop{padding:0}
+      .modal{width:auto !important;max-width:100% !important;max-height:100vh;border-radius:0}
+      .modal-body{padding:14px}
+      .modal-head{padding:14px 16px}
+      .modal-foot{padding:12px 14px;flex-wrap:wrap;gap:10px}
+      .modal-tabs{flex-wrap:wrap}
+      .modal-grid{grid-template-columns:1fr !important}
+      .amt-grid{grid-template-columns:repeat(2,1fr) !important}
+      .pay-methods{grid-template-columns:1fr !important}
+      .bal-card{flex-wrap:wrap;gap:10px;padding:14px}
+      .bal-card .right{text-align:left}
+      .cap-grid{grid-template-columns:1fr !important}
+      .pricing-grid{grid-template-columns:1fr !important}
+      .txn-table{white-space:nowrap}
+      .qr-pop{max-width:100% !important}
+    }
   `]
 })
 export class RechargeModalComponent {

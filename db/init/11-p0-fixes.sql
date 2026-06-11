@@ -285,7 +285,7 @@ CREATE TABLE IF NOT EXISTS audit.admin_actions (
     target_type  TEXT NOT NULL,             -- 'firm', 'user'
     target_id    UUID,
     payload      JSONB,
-    ip_address   INET,
+    ip_address   TEXT,
     user_agent   TEXT,
     occurred_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );

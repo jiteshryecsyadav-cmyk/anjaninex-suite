@@ -269,6 +269,25 @@ import { IndiaPincodeService } from '../../../shared/india-pincode.service';
     .btn-save { padding: 9px 24px; background: #DC2626; color: #fff; border: 0; border-radius: 8px; font-weight: 800; cursor: pointer; box-shadow: 0 2px 6px rgba(220,38,38,0.3); }
     .btn-save:hover:not(:disabled) { background: #B91C1C; }
     .btn-save:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    @media (max-width: 640px) {
+      :host { padding: 12px; }
+      /* Header stacks; search goes full width */
+      .bm-header { flex-direction: column; align-items: stretch; gap: 12px; padding: 14px 16px; }
+      .bmh-right { flex-wrap: wrap; gap: 8px; }
+      .search-wrap { width: 100%; }
+      .btn-add { width: 100%; }
+      /* KPIs: single column */
+      .kpi-row { grid-template-columns: 1fr 1fr; }
+      /* Wide table: scroll instead of clip */
+      .card-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+      .br-table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; white-space: nowrap; }
+      /* Modal full width + form single column */
+      .modal-backdrop { padding: 12px; align-items: flex-start; }
+      .modal-box { max-width: 100%; width: 100%; }
+      .modal-body form { grid-template-columns: 1fr !important; }
+      .col-span-2 { grid-column: span 1; }
+    }
   `]
 })
 export class BranchesComponent {

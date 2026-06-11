@@ -72,7 +72,7 @@ CREATE TABLE core.sessions (
     user_id         UUID NOT NULL REFERENCES core.users(id) ON DELETE CASCADE,
     refresh_token_hash TEXT NOT NULL,
     device_info     JSONB,
-    ip_address      INET,
+    ip_address      TEXT,
     user_agent      TEXT,
     last_seen_at    TIMESTAMPTZ DEFAULT now(),
     expires_at      TIMESTAMPTZ NOT NULL,
@@ -100,6 +100,7 @@ INSERT INTO core.modules VALUES
 ('hr',         'HR',         'users',         4),
 ('reports',    'Reports',    'chart-bar',     5),
 ('settings',   'Settings',   'cog',           6),
+('ai',         'AI',         'sparkles',      7),
 ('platform',   'Platform',   'shield',        99);
 
 CREATE TABLE core.permissions (

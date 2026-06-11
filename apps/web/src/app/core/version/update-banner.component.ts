@@ -25,7 +25,7 @@ import { UpdateService } from './update.service';
         </div>
         <button
           (click)="svc.applyUpdate()"
-          class="px-4 py-1.5 bg-white text-current rounded font-bold text-sm hover:opacity-90">
+          class="px-4 py-1.5 bg-white text-gray-900 rounded font-bold text-sm hover:opacity-90 shadow">
           {{ svc.forceUpdate() ? 'Updating in 5s...' : 'Update Now' }}
         </button>
         @if (!svc.forceUpdate()) {

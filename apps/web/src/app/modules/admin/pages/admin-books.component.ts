@@ -227,6 +227,20 @@ interface VLine { ledgerId: string | null; drCr: 'Dr' | 'Cr'; amount: number | n
     .input { width:100%; padding:8px 10px; border:1.5px solid #ddc8f5; border-radius:8px; font-size:13px; outline:none; background:#faf5ff; }
     .btn-primary { padding:9px 18px; background:linear-gradient(135deg,#4a1080,#5c1a8b); color:#fff; border:none; border-radius:8px; font-size:13px; font-weight:700; cursor:pointer; }
     .btn-primary:disabled { opacity:.5; }
+
+    /* ===== MOBILE (<=640px) ===== */
+    @media (max-width: 640px) {
+      .card { padding: 12px; }
+      .grid-cols-2 { grid-template-columns: 1fr !important; }
+      .col-span-2, .col-span-3 { grid-column: span 1 !important; }
+      /* voucher line: ledger full, then dr/cr + amount + remove on one wrap row */
+      .grid-cols-12 { grid-template-columns: 1fr 1fr !important; }
+      .grid-cols-12 .col-span-6 { grid-column: span 2 !important; }
+      .grid-cols-12 .col-span-3 { grid-column: span 1 !important; }
+      .grid-cols-12 .col-span-2 { grid-column: span 1 !important; }
+      .grid-cols-12 .col-span-1 { grid-column: span 2 !important; text-align: right; }
+      table { white-space: nowrap; }
+    }
   `]
 })
 export class AdminBooksComponent {

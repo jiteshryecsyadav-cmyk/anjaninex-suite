@@ -630,6 +630,34 @@ import { IndiaPincodeService } from '../../../shared/india-pincode.service';
       background: #FFFBEB; border: 1px solid #FCD34D; color: #92400E;
       padding: 12px 14px; border-radius: 8px; font-size: 12px; margin-top: 10px;
     }
+
+    @media (max-width: 640px) {
+      :host { padding: 8px 12px; }
+      .pm-header { flex-wrap: wrap; gap: 8px; padding: 12px 14px; }
+      .pmh-right { flex-wrap: wrap; }
+      /* KPI cards → single column */
+      .kpi-row { grid-template-columns: 1fr !important; }
+      /* Chart / form / type-card grids → single column */
+      .grid-cols-2, .grid-cols-3, .grid-cols-5 { grid-template-columns: 1fr !important; }
+      .col-span-2, .col-span-3, .col-span-5 { grid-column: span 1 !important; }
+      .widget[style*="grid-column"] { grid-column: span 1 !important; }
+      .type-cards { grid-template-columns: 1fr !important; }
+      /* Search + filter row stacks */
+      .search-row { flex-wrap: wrap; }
+      .search-wrap { flex: 1 1 100%; }
+      .search-input { width: 100% !important; }
+      .filter-tabs { flex-wrap: wrap; }
+      .btn-add { width: 100%; }
+      /* Table scrollable */
+      .card { overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
+      .party-table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; white-space: nowrap; width: 100%; }
+      /* Modal full width */
+      .modal-backdrop { padding: 8px; }
+      .modal-box { width: auto !important; max-width: 100% !important; }
+      .modal-header { padding: 12px 14px; }
+      .modal-body { padding: 14px 14px; }
+      .modal-footer { padding: 12px 14px; }
+    }
   `]
 })
 export class PartiesComponent {

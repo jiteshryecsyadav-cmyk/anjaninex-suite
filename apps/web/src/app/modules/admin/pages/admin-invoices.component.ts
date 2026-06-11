@@ -88,6 +88,13 @@ interface InvoiceRow {
     .input { padding:8px 10px; border:1.5px solid #ddc8f5; border-radius:8px; font-size:13px; outline:none; background:#faf5ff; }
     .doc { font-size:11px; font-weight:700; border:1px solid #c9b3ec; background:#faf5ff; color:#5c1a8b; border-radius:6px; padding:3px 8px; cursor:pointer; margin:0 2px; }
     .doc:hover { background:#f0e6ff; }
+
+    /* ===== MOBILE (<=640px) ===== */
+    @media (max-width: 640px) {
+      .card { padding: 10px; }
+      .input { width: 100% !important; flex: 1; }
+      table { white-space: nowrap; }
+    }
   `]
 })
 export class AdminInvoicesComponent {

@@ -142,6 +142,13 @@ import { amountInWords } from '../../../shared/amount-in-words.util';
     .cs-words { font-size:10px; color:#6b7280; font-style:italic; margin-top:4px; line-height:1.3; }
     .profit .cs-val { color:#15803d; }
     .loss .cs-val { color:#b91c1c; }
+
+    /* ===== MOBILE (<=640px) ===== */
+    @media (max-width: 640px) {
+      table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; white-space: nowrap; }
+      .ip { width: 100% !important; }
+      .grid-cols-2 { grid-template-columns: 1fr !important; }
+    }
   `]
 })
 export class AdminRoiCalculatorComponent {

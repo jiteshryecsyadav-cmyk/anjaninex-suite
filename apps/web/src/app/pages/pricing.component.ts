@@ -363,6 +363,14 @@ const FAQS = [
       background: linear-gradient(135deg, #4a1080, #5c1a8b); color: #fff;
     }
     .plan-cta-popular:hover { background: linear-gradient(135deg, #3a0a64, #4a1080); transform: translateY(-2px); }
+
+    /* ===== MOBILE (<=640px) ===== */
+    @media (max-width: 640px) {
+      .plan-card { padding: 22px 16px; }
+      .plan-popular { transform: none; }
+      .plan-popular:hover { transform: translateY(-4px); }
+      table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; white-space: nowrap; }
+    }
   `]
 })
 export class PricingPageComponent {

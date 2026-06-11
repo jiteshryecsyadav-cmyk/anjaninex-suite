@@ -93,6 +93,11 @@ import { WalletIconComponent } from '../../shared/wallet-icon.component';
     .flag.ok{background:#DCFCE7;color:#16A34A}
 
     .warn-banner{margin:10px 14px 14px;padding:8px 10px;background:#FEF3C7;border:1px solid #D97706;border-radius:6px;font-size:10px;color:#92400E;font-weight:600}
+
+    @media(max-width:640px){
+      .ww-head{flex-wrap:wrap;gap:8px}
+      .info-row{flex-wrap:wrap;gap:4px}
+    }
   `]
 })
 export class WalletWidgetComponent {

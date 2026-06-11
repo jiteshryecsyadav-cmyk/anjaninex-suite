@@ -193,6 +193,12 @@ const subNav = `
     .fl { font-size: 10px; font-weight: 800; color: #6b3fa0; text-transform: uppercase; display:block; margin-bottom:3px; }
     .fi { width: 100%; padding: 8px 10px; border: 1.5px solid #ddc8f5; border-radius: 8px; font-size: 13px; outline: none; }
     .fi:focus { border-color: #5c1a8b; }
+
+    /* ===== MOBILE (<=640px) ===== */
+    @media (max-width: 640px) {
+      .grid-cols-2, .grid-cols-3 { grid-template-columns: 1fr !important; }
+      .col-span-2 { grid-column: span 1 !important; }
+    }
   `]
 })
 export class AdminFirmsComponent {

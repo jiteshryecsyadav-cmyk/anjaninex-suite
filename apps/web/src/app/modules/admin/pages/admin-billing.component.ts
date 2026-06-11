@@ -237,6 +237,14 @@ import { AdminService, BillingSettings, AdminPaymentReq, FirmListItem, AddonServ
   styles: [`
     .card{ background:#fff; border:1px solid #eee; border-radius:14px; padding:16px; }
     .lbl{ display:block; font-size:10px; font-weight:800; color:#6b3fa0; text-transform:uppercase; letter-spacing:.5px; margin-bottom:4px; }
+
+    /* ===== MOBILE (<=640px) ===== */
+    @media (max-width: 640px) {
+      .card { padding: 12px; }
+      .grid-cols-2 { grid-template-columns: 1fr !important; }
+      .col-span-2 { grid-column: span 1 !important; }
+      table { white-space: nowrap; }
+    }
   `]
 })
 export class AdminBillingComponent {

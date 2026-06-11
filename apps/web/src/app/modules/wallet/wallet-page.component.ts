@@ -445,6 +445,26 @@ type TxFilter = 'all' | 'recharge' | 'debit' | 'subscription' | 'refund';
       .page-grid{grid-template-columns:1fr}
       .bd-row{grid-template-columns:110px 1fr 70px}
     }
+
+    @media(max-width:640px){
+      .wrap{padding:14px}
+      .page-head{flex-direction:column;align-items:flex-start;gap:10px}
+      .page-head .btn-primary{width:100%}
+      .hero{grid-template-columns:1fr !important;gap:12px}
+      .hero-bal{padding:18px}
+      .hb-val{font-size:32px}
+      .hb-actions{flex-wrap:wrap}
+      .page-grid{grid-template-columns:1fr !important}
+      .bd-row{grid-template-columns:1fr !important;gap:6px}
+      .card-head{flex-wrap:wrap;gap:8px}
+      .filters{flex-wrap:wrap;width:100%}
+      .filters .search{width:100% !important}
+      .filters select{width:100%}
+      .filters input[type=date]{width:100%}
+      .quick-grid{grid-template-columns:1fr 1fr}
+      .table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+      .txn-table{white-space:nowrap}
+    }
   `]
 })
 export class WalletPageComponent {

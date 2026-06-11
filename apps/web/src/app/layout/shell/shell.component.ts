@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, signal, HostListener } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
@@ -433,11 +433,11 @@ import { environment } from '../../../environments/environment';
     .sidebar-backdrop { display: none; }
     @media (max-width: 767px) {
       .app-sidebar {
-        position: fixed; top: 0; left: 0; bottom: 0; z-index: 40;
+        position: fixed; top: 0; left: 0; bottom: 0; z-index: 60;
         box-shadow: 4px 0 24px rgba(0,0,0,.35);
       }
       .sidebar-backdrop {
-        display: block; position: fixed; inset: 0; z-index: 35;
+        display: block; position: fixed; inset: 0; z-index: 55;
         background: rgba(0,0,0,.45);
       }
     }
@@ -452,6 +452,12 @@ export class ShellComponent {
   menuOpen = signal(false);
   // Mobile par sidebar default band (overlay), desktop par khula
   sidebarOpen = signal(window.innerWidth >= 768);
+
+  /** Width badalne par sidebar sync: desktop(≥768) khula, mobile band */
+  @HostListener('window:resize')
+  onResize() {
+    this.sidebarOpen.set(window.innerWidth >= 768);
+  }
 
   /** Mobile: nav link/button dabate hi sidebar band (overlay UX) */
   onNavClick(e: Event) {

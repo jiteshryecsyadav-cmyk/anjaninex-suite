@@ -126,6 +126,12 @@ import { RouterLink, RouterLinkActive, Router } from '@angular/router';
     .trading-sub-nav .tn-menu .tn-divider {
       height: 1px; background: #D6DDEA; margin: 6px 4px;
     }
+
+    @media (max-width: 640px) {
+      .trading-sub-nav { flex-wrap: wrap; }
+      .trading-sub-nav .tn-btn { padding: 8px 10px; font-size: 12px; }
+      .trading-sub-nav .tn-menu { min-width: 160px; max-width: calc(100vw - 24px); }
+    }
   `]
 })
 export class TradingSubNavComponent {

@@ -512,6 +512,17 @@ interface CommRow {
       #invoicePaper { position:absolute; left:0; top:0; width:100%; padding:20px; }
       .modal-actions, .modal-overlay { display:none !important; }
     }
+
+    @media (max-width: 640px) {
+      /* All grids → single column */
+      .grid-cols-4, .grid-cols-5 { grid-template-columns: 1fr !important; }
+      .summary-card { width: 100% !important; max-width: 100% !important; }
+      /* Invoice preview modal fits screen */
+      .modal-overlay { padding: 8px; }
+      .modal-paper { width: auto !important; max-width: 100% !important; }
+      .inv-table { margin: 12px 8px 0; width: calc(100% - 16px); display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; white-space: nowrap; }
+      .modal-actions { flex-wrap: wrap; }
+    }
   `]
 })
 export class CommissionGenerateComponent {

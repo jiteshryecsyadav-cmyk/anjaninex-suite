@@ -85,6 +85,13 @@ import autoTable from 'jspdf-autotable';
     .kc { background:#fff; border:1px solid #eee; border-radius:12px; padding:12px; text-align:center; }
     .kn { font-size:24px; font-weight:900; }
     .kl { font-size:10px; color:#888; text-transform:uppercase; font-weight:700; letter-spacing:.5px; }
+
+    /* ===== MOBILE (<=640px) ===== */
+    @media (max-width: 640px) {
+      .kc { padding: 8px; }
+      .kn { font-size: 18px; }
+      table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; white-space: nowrap; }
+    }
   `]
 })
 export class AdminFirmReportComponent {

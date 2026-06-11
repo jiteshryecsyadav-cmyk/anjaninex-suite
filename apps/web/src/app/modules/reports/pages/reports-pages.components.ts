@@ -335,6 +335,19 @@ const subNav = `
     .b-danger { background: #fde8e8; color: #c62828; }
     .b-warn { background: #fff8e1; color: #b45309; }
     .b-acc { background: #fff3e0; color: #f57c00; }
+
+    @media (max-width: 640px) {
+      .rpt-header-card { padding: 12px 14px; }
+      .rh-top { flex-wrap: wrap; }
+      .rh-actions { flex-wrap: wrap; width: 100%; }
+      .filters { gap: 8px; }
+      .fl { flex-wrap: wrap; }
+      .fl input[type=date], .fl select { width: 100% !important; }
+      .sum-row { gap: 8px; }
+      .sum-card { min-width: 100% !important; width: 100% !important; }
+      .t-card { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+      .t-card table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; white-space: nowrap; }
+    }
   `]
 })
 export class SalesRegisterComponent {
@@ -760,6 +773,22 @@ export class SalesRegisterComponent {
       border-radius: 3px; overflow: hidden;
     }
     .bar-fill { height: 100%; border-radius: 3px; }
+
+    @media (max-width: 640px) {
+      .rpt-header-card { padding: 12px 14px; }
+      .rh-top { flex-wrap: wrap; }
+      .rh-actions { flex-wrap: wrap; width: 100%; }
+      .filters { gap: 8px; }
+      .fl { flex-wrap: wrap; }
+      .fl input[type=date], .fl select { width: 100% !important; }
+      .sum-row { gap: 8px; }
+      .sum-card { min-width: 100% !important; width: 100% !important; }
+      .t-toolbar { flex-wrap: wrap; }
+      .t-search { width: 100%; }
+      .t-search input { width: 100%; }
+      .t-card { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+      .o-table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; white-space: nowrap; }
+    }
   `]
 })
 export class OutstandingReportComponent {
@@ -1433,6 +1462,22 @@ export class TopItemsComponent {
     .b-ok { background: #dcfce7; color: #16a34a; }
     .b-danger { background: #fde8e8; color: #c62828; }
     .b-warn { background: #fff8e1; color: #b45309; }
+
+    @media (max-width: 640px) {
+      .rpt-header-card { padding: 12px 14px; }
+      .rh-top { flex-wrap: wrap; }
+      .rh-actions { flex-wrap: wrap; width: 100%; }
+      .filters { gap: 8px; }
+      .fl { flex-wrap: wrap; }
+      .fl input[type=date], .fl select { width: 100% !important; }
+      .sum-row { gap: 8px; }
+      .sum-card { min-width: 100% !important; width: 100% !important; }
+      .t-toolbar { flex-wrap: wrap; }
+      .t-search { width: 100%; }
+      .t-search input { width: 100%; }
+      .t-card { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+      .g-table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; white-space: nowrap; }
+    }
   `]
 })
 export class GstSummaryComponent {
@@ -1889,6 +1934,22 @@ export class PaymentModeComponent {
     .b-danger { background: #fde8e8; color: #c62828; }
     .b-warn { background: #fff8e1; color: #b45309; }
     .b-acc { background: #fff3e0; color: #f57c00; }
+
+    @media (max-width: 640px) {
+      .rpt-header-card { padding: 12px 14px; }
+      .rh-top { flex-wrap: wrap; }
+      .rh-actions { flex-wrap: wrap; width: 100%; }
+      .filters { gap: 8px; }
+      .fl { flex-wrap: wrap; }
+      .fl input[type=date], .fl select { width: 100% !important; }
+      .sum-row { gap: 8px; }
+      .sum-card { min-width: 100% !important; width: 100% !important; }
+      .t-toolbar { flex-wrap: wrap; }
+      .t-search { width: 100%; }
+      .t-search input { width: 100%; }
+      .t-card { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+      .g-table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; white-space: nowrap; }
+    }
   `]
 })
 export class GrReportComponent {
@@ -2399,6 +2460,24 @@ interface SupplierCommRow {
     .hbar-value {
       width: 80px; text-align: right; font-size: 11px; font-weight: 700;
       color: #5c1a8b; font-family: monospace; flex-shrink: 0;
+    }
+
+    @media (max-width: 640px) {
+      .rpt-header-card { padding: 12px 14px; }
+      .rh-top { flex-wrap: wrap; }
+      .rh-actions { flex-wrap: wrap; width: 100%; }
+      .filters { gap: 8px; }
+      .fl { flex-wrap: wrap; }
+      .fl input[type=date], .fl select { width: 100% !important; }
+      .sum-row { gap: 8px; }
+      .sum-card { min-width: 100% !important; width: 100% !important; }
+      .t-toolbar { flex-wrap: wrap; }
+      .t-search { width: 100%; }
+      .t-search input { width: 100%; }
+      .t-card { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+      .c-table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; white-space: nowrap; }
+      .analytics-grid { grid-template-columns: 1fr !important; }
+      .donut-wrap { flex-wrap: wrap; }
     }
   `]
 })
@@ -2951,6 +3030,20 @@ interface OnTimeRow {
     .d-cell.hl { background: #fff3e0; border-color: #f57c00; }
     .dc-label { font-size: 9px; font-weight: 800; color: #6b3fa0; text-transform: uppercase; letter-spacing: .6px; margin-bottom: 3px; }
     .dc-val { font-size: 13px; font-weight: 800; color: #5c1a8b; font-family: monospace; }
+
+    @media (max-width: 640px) {
+      .rpt-header-card { padding: 12px 14px; }
+      .rh-top { flex-wrap: wrap; }
+      .rh-actions { flex-wrap: wrap; width: 100%; }
+      .filters { gap: 8px; }
+      .fl { width: 100%; }
+      .fl input, .fl select { width: 100% !important; }
+      .sum-row { grid-template-columns: 1fr !important; }
+      .t-card { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+      .o-table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; white-space: nowrap; }
+      .d-grid { grid-template-columns: 1fr !important; }
+      .detail-card { margin: 8px; padding: 12px; }
+    }
   `]
 })
 export class OnTimeLateEarlyComponent {
@@ -3630,6 +3723,19 @@ interface OrderRow {
     }
     .diff-pill.diff-ok { background: #dcfce7; color: #16a34a; }
     .diff-pill.diff-bad { background: #fde8e8; color: #c62828; }
+
+    @media (max-width: 640px) {
+      .ovb-header { flex-wrap: wrap; gap: 12px; padding: 14px 16px; }
+      .ovb-h-right { text-align: left; }
+      .ovb-filters { padding: 10px; }
+      .filt-sel, .filt-search { width: 100% !important; min-width: 0 !important; }
+      .ovb-actions { flex-wrap: wrap; gap: 8px; }
+      .act-buttons { flex-wrap: wrap; }
+      .ovb-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+      .ovb-table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; white-space: nowrap; }
+      .rate-table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; white-space: nowrap; }
+      .rate-banner { flex-wrap: wrap; }
+    }
   `]
 })
 export class OrderVsBillReportComponent {
@@ -4210,6 +4316,20 @@ interface PendingOrderRow {
     .days-vis { display: flex; align-items: center; gap: 6px; justify-content: center; }
     .days-bar { height: 6px; min-width: 8px; border-radius: 3px; }
     .days-num { font-family: monospace; font-weight: 700; font-size: 12px; min-width: 30px; }
+
+    @media (max-width: 640px) {
+      .rpt-header-card { padding: 12px 14px; }
+      .rh-top { flex-wrap: wrap; }
+      .rh-actions { flex-wrap: wrap; width: 100%; }
+      .filters { gap: 8px; }
+      .fl { flex-wrap: wrap; }
+      .fl input[type=date], .fl select { width: 100% !important; }
+      .sum-row { grid-template-columns: 1fr !important; }
+      .tab-strip { width: 100%; flex-wrap: wrap; }
+      .search-row { max-width: 100%; }
+      .t-card { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+      .p-table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; white-space: nowrap; }
+    }
   `]
 })
 export class PendingOrdersReportComponent {
@@ -4799,6 +4919,22 @@ interface PartyGroupRow {
     .pw-apply:hover { background: #4a1570; }
     .pw-reset { background: #fff; color: #6b7280; border: 1px solid #d1d5db; border-radius: 8px;
       padding: 8px 14px; font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit; }
+
+    @media (max-width: 640px) {
+      .pw-header { flex-wrap: wrap; gap: 10px; padding: 14px 16px; }
+      .pw-body { flex-direction: column; }
+      .pw-sidebar { width: 100% !important; max-width: 100% !important; }
+      .pw-main { min-width: 0; width: 100%; }
+      .sec-head { flex-wrap: wrap; gap: 8px; }
+      .sec-actions { flex-wrap: wrap; }
+      .kpi-grid { grid-template-columns: 1fr !important; }
+      .search-bar { flex-wrap: wrap; }
+      .srch { width: 100%; }
+      .srch-sel { width: 100%; }
+      .pw-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+      .pw-table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; white-space: nowrap; }
+      .inner-table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; white-space: nowrap; }
+    }
   `]
 })
 export class PartyWiseReportComponent {

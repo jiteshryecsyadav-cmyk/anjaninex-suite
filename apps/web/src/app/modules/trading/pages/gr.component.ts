@@ -108,6 +108,11 @@ import { PaginatorComponent } from '../../../shared/paginator.component';
     .ai-btn { display:inline-block; width:28px; height:28px; border:0; background:transparent;
       border-radius:6px; cursor:pointer; font-size:13px; transition:background 0.15s; margin:0 1px; }
     .ai-btn:hover { background:#FAF7F0; }
+
+    @media (max-width: 640px) {
+      .card { overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
+      table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; white-space: nowrap; width: 100%; }
+    }
   `]
 })
 export class GrComponent {

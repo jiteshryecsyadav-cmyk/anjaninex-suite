@@ -501,7 +501,7 @@ public class PlatformAdminService : IPlatformAdminService
             };
             _db.Branches.Add(branch);
 
-            SeedChartOfAccounts(firm.Id, now);
+            await SeedChartOfAccounts(firm.Id, now);
             await _db.SaveChangesAsync();
             await tx.CommitAsync();
         }
@@ -564,10 +564,11 @@ public class PlatformAdminService : IPlatformAdminService
 
             var role = new Role
             {
-                Id = Guid.NewGuid(), FirmId = firm.Id, Code = "owner", Name = "Owner",
+                Id = Guid.NewGuid(), FirmId = firm.Id, Code = "firm_owner", Name = "Firm Owner",
                 IsSystem = true, CreatedAt = now
             };
             _db.Roles.Add(role);
+            await _db.SaveChangesAsync();   // FK order: branch + role pehle persist
 
             // Owner ko saari permissions do (full access)
             var permIds = await _db.Permissions.Select(p => p.Id).ToListAsync();
@@ -584,11 +585,12 @@ public class PlatformAdminService : IPlatformAdminService
                 CreatedAt = now, UpdatedAt = now
             };
             _db.Users.Add(user);
+            await _db.SaveChangesAsync();   // FK order: user pehle persist (role_permissions+user)
             _db.UserRoles.Add(new UserRole { UserId = user.Id, RoleId = role.Id, AssignedAt = now });
             _db.UserBranchAccess.Add(new UserBranchAccess { UserId = user.Id, BranchId = branch.Id, IsDefault = true });
 
             // Standard Indian chart of accounts — nayi firm accounting-ready mile
-            SeedChartOfAccounts(firm.Id, now);
+            await SeedChartOfAccounts(firm.Id, now);
 
             await _db.SaveChangesAsync();
             await tx.CommitAsync();
@@ -605,7 +607,7 @@ public class PlatformAdminService : IPlatformAdminService
     // Default chart of accounts (Tally-style Indian structure) — CreateFirm se call hota hai.
     // 5 heads (Assets/Liabilities/Capital/Income/Expenses) + groups + sub-groups + basic ledgers.
     // -------------------------------------------------------------------------
-    private void SeedChartOfAccounts(Guid firmId, DateTimeOffset now)
+    private async Task SeedChartOfAccounts(Guid firmId, DateTimeOffset now)
     {
         Namokara.Api.Modules.Accounting.Entities.AccountHead Head(string code, string name, string nature, string sign, int sort) =>
             new() { Id = Guid.NewGuid(), FirmId = firmId, Code = code, Name = name, Nature = nature, Sign = sign, SortOrder = sort, IsSystem = true, CreatedAt = now };
@@ -616,6 +618,7 @@ public class PlatformAdminService : IPlatformAdminService
         var inc    = Head("I", "Income", "income", "Cr", 3);
         var exp    = Head("E", "Expenses", "expenses", "Dr", 4);
         _db.AccountHeads.AddRange(assets, liab, inc, exp);
+        await _db.SaveChangesAsync();   // FK order: heads pehle
 
         Namokara.Api.Modules.Accounting.Entities.AccountGroup Grp(Guid headId, string name) =>
             new() { Id = Guid.NewGuid(), FirmId = firmId, HeadId = headId, Name = name, IsSystem = true, CreatedAt = now };
@@ -632,6 +635,7 @@ public class PlatformAdminService : IPlatformAdminService
         var gDirExp    = Grp(exp.Id, "Direct Expenses");
         var gIndExp    = Grp(exp.Id, "Indirect Expenses");
         _db.AccountGroups.AddRange(gCurAssets, gFixAssets, gInvest, gCurLiab, gLoans, gCapital, gReserves, gSales, gOtherInc, gDirExp, gIndExp);
+        await _db.SaveChangesAsync();   // FK order: groups pehle
 
         Namokara.Api.Modules.Accounting.Entities.SubGroup Sub(Guid groupId, string name) =>
             new() { Id = Guid.NewGuid(), FirmId = firmId, GroupId = groupId, Name = name, IsSystem = true, CreatedAt = now };
@@ -653,6 +657,7 @@ public class PlatformAdminService : IPlatformAdminService
         var sCommRecv = Sub(gSales.Id, "Commission Received");
         _db.SubGroups.AddRange(sBank, sCash, sDebtors, sStock, sCreditors, sDuties, sOwnerCap,
             sPurchase, sFreight, sOffice, sTravel, sSalary, sBankChg, sSales, sCommRecv);
+        await _db.SaveChangesAsync();   // FK order: sub-groups pehle (ledgers inke FK par)
 
         Namokara.Api.Modules.Accounting.Entities.Ledger Led(Guid subGroupId, string name, string type) =>
             new() { Id = Guid.NewGuid(), FirmId = firmId, SubGroupId = subGroupId, Name = name, OpeningBalance = 0, OpeningType = type, CreatedAt = now };

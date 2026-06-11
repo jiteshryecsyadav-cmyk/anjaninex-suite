@@ -295,6 +295,21 @@ interface CreditRow {
     .status-yellow { background:#FEF3C7; color:#92400E; }
     .status-red { background:#FEE2E2; color:#991B1B; }
     .status-grey { background:#E5E7EB; color:#4B5563; }
+
+    @media (max-width: 640px) {
+      /* Table head bar stacks; search + filter go full width */
+      .table-head-bar { flex-direction:column; align-items:stretch; gap:10px; padding:10px 12px; }
+      .thb-right { flex-wrap:wrap; gap:8px; }
+      .search-wrap { flex:1 1 100%; }
+      .search-input { width:100% !important; }
+      .filter-sel { flex:1 1 100%; width:100%; }
+      /* Make the table horizontally scrollable instead of clipped */
+      .card { overflow-x:auto !important; -webkit-overflow-scrolling:touch; }
+      .cl-table { display:block; overflow-x:auto; -webkit-overflow-scrolling:touch; white-space:nowrap; }
+      .cl-table .t-limit { width:auto; min-width:240px; }
+      .cl-table td, .cl-table th { padding:8px; }
+      .preset-row { flex-wrap:wrap; }
+    }
   `]
 })
 export class CreditLimitsComponent {

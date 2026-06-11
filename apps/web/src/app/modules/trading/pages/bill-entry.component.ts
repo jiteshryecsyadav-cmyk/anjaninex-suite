@@ -1373,6 +1373,31 @@ interface LineRow {
     }
     .btn-save:hover:not(:disabled) { background: #B91C1C; transform: translateY(-1px); }
     .btn-save:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    @media (max-width: 640px) {
+      :host { padding: 8px 0; }
+      .bill-header { flex-wrap: wrap; gap: 8px; padding: 12px 14px; }
+      .bh-right { flex-wrap: wrap; width: 100%; }
+      .section-card { padding: 12px 12px; }
+      /* All form grids → single column */
+      .grid-cols-2, .grid-cols-3, .grid-cols-4 { grid-template-columns: 1fr !important; }
+      .col-span-2, .col-span-3 { grid-column: span 1 !important; }
+      .ip { width: 100% !important; }
+      /* Item table horizontally scrollable */
+      .item-table-wrap { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+      .item-table { white-space: nowrap; }
+      /* Summary card full width (was 1/3 column) */
+      .summary-card { width: 100% !important; max-width: 100% !important; }
+      /* Bottom action bar stacks */
+      .bottom-bar { flex-wrap: wrap; gap: 10px; }
+      .bottom-bar .flex { flex-wrap: wrap; }
+      /* Modals fit small screens */
+      .dup-overlay, .doc-modal-overlay, .olp-overlay { padding: 8px; }
+      .dup-modal, .doc-modal, .olp-modal { width: auto !important; max-width: 100% !important; }
+      .doc-modal-body { padding: 8px; }
+      .olp-table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; white-space: nowrap; }
+      .dup-actions { flex-wrap: wrap; }
+    }
   `]
 })
 export class BillEntryComponent {

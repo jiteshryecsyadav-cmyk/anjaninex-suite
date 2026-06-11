@@ -560,6 +560,20 @@ import { PaginatorComponent } from '../../../shared/paginator.component';
     .btn-action:hover { background:#FAF7F0; }
     .btn-action.btn-danger { color:#DC2626; }
     .btn-action.btn-danger:hover { background:#FEE2E2; }
+
+    @media (max-width: 640px) {
+      /* Wide tables: let the card scroll horizontally instead of clipping */
+      .card { overflow-x:auto !important; -webkit-overflow-scrolling:touch; }
+      /* Modal: full-width on phone, smaller padding */
+      .modal-overlay { padding:12px !important; align-items:flex-start; }
+      .modal-paper { width:100% !important; max-width:100% !important; }
+      .modal-header, .modal-body, .modal-footer { padding-left:14px; padding-right:14px; }
+      .step-bar { padding:12px 14px; gap:4px; flex-wrap:wrap; }
+      .review-grid { grid-template-columns:1fr !important; }
+      /* Slide-over detail panel: full-width */
+      .slide-panel { width:100% !important; max-width:100% !important; }
+      .action-icons { flex-wrap:wrap; }
+    }
   `]
 })
 export class UsersComponent {

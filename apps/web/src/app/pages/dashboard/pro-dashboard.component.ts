@@ -1061,6 +1061,34 @@ interface DonutSeg { label: string; color: string; value: number; pct: number; d
     .ad-row:hover { background: #FAF7F0; }
     .ad-row strong { display: block; font-size: 12px; color: #1B2E5C; }
     .ad-row small { display: block; font-size: 10px; color: #6B7280; margin-top: 2px; }
+
+    /* ===== MOBILE (<=640px) ===== */
+    @media (max-width: 640px) {
+      :host { padding: 12px 12px; }
+      .pd-header { flex-direction: column; align-items: flex-start; gap: 10px; padding: 14px 16px; }
+      .ph-right { width: 100%; justify-content: space-between; }
+      .ph-title { font-size: 18px; }
+      .tab-bar { flex-direction: column; align-items: stretch; gap: 6px; }
+      .tab-strip { flex-wrap: wrap; }
+      .tab-btn { padding: 8px 14px; }
+      .filter-row { flex-direction: column; align-items: stretch; gap: 10px; }
+      .period-tabs { flex-wrap: wrap; }
+      .branch-select { width: 100% !important; }
+      .kpi-grid { grid-template-columns: 1fr 1fr !important; }
+      .kpi-value { font-size: 22px; }
+      .grid-cols-3, .grid-cols-2 { grid-template-columns: 1fr !important; }
+      .col-span-2, .col-span-3 { grid-column: span 1 !important; }
+      .trend-stats { grid-template-columns: 1fr !important; }
+      .widget-head { flex-wrap: wrap; gap: 6px; }
+      .seg-toggle { flex-wrap: wrap; }
+      .supplier-row { grid-template-columns: auto 1fr; }
+      .supplier-row .sup-pct { grid-column: 1 / -1; text-align: left; }
+      .behav-top { grid-template-columns: auto 1fr; }
+      .alert-row { grid-template-columns: auto 1fr; }
+      .al-time { grid-column: 1 / -1; }
+      .trend-table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; white-space: nowrap; }
+      .alerts-dropdown { width: auto !important; max-width: calc(100vw - 24px); left: 12px; right: 12px; }
+    }
   `]
 })
 export class ProDashboardComponent {

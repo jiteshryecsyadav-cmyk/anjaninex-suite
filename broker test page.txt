@@ -1,0 +1,10 @@
+8 bug fixes + AI scan timeout/JSON/GST fixes
+URP party, Hinglish errors, success toasts
+Core Master (Phase 1-3: dup-check, edit, link)
+Buyer detailed (Phase 4)
+Appointments + branch-staff filter (Phase 5)
+Match (Phase 6)
+Search (Phase 7)
+
+
+old date delete G:\Indian B2B SaaS platform\db\init\RESET-business-data.sql

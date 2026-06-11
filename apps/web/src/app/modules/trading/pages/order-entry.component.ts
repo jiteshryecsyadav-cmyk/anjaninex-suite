@@ -1,0 +1,1615 @@
+import { Component, inject, signal, computed } from '@angular/core';
+import { CommonModule, DecimalPipe } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { ActivatedRoute, Router, RouterLink, RouterLinkActive } from '@angular/router';
+import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
+import { TradingService, Party, Item, OrderLine, Transporter } from '../services/trading.service';
+import { BackButtonComponent } from '../../../shared/back-button.component';
+import { PartyQuickAddComponent } from '../../../shared/party-quick-add.component';
+import { TransporterQuickAddComponent } from '../../../shared/transporter-quick-add.component';
+import { BillScanModalComponent } from '../../ai/components/bill-scan-modal.component';
+import { ExtractedBill, AiService } from '../../ai/services/ai.service';
+import { amountInWords } from '../../../shared/amount-in-words.util';
+import { todayLocal } from '../../../shared/date.util';
+import { ToastService } from '../../../shared/toast.service';
+import { AuthService } from '../../../core/auth/auth.service';
+
+interface LineRow {
+  itemId: string | null;
+  itemName: string;
+  description: string;
+  hsnSac: string;
+  qty: number;
+  unit: string;
+  rate: number;
+  rd: number;
+  sgstPct: number;
+  cgstPct: number;
+  photoFile: File | null;
+  photoPreview: string | null;
+}
+
+@Component({
+  selector: 'app-order-entry',
+  standalone: true,
+  imports: [CommonModule, FormsModule, RouterLink, RouterLinkActive, DecimalPipe, BackButtonComponent, PartyQuickAddComponent, BillScanModalComponent, TransporterQuickAddComponent],
+  template: `
+    <div class="max-w-7xl mx-auto">
+      <div class="page-top-bar"><app-back-button></app-back-button></div>
+
+
+      <!-- ============ HEADER (Anjaninex solid navy, NO gradient) ============ -->
+      <div class="ord-header">
+        <div class="oh-left">
+          <img src="anjaninex-logo.jpeg" alt="Anjaninex" class="oh-logo">
+          <div>
+            <h2 class="oh-title">{{ editMode ? 'Edit Order' : 'Order Add' }}</h2>
+            <p class="oh-sub">@if (tempOrderNo) { Order No: <strong>{{ tempOrderNo }}</strong> · } ✍️ Prepared by: <strong>{{ auth.user()?.fullName }}</strong></p>
+          </div>
+        </div>
+        <div class="oh-right">
+          <button type="button" (click)="showScan.set(true)" class="oh-btn oh-btn-ai" title="Scan order/PO document">
+            🤖 Scan Order
+            @if (scanUse(); as u) {
+              <span style="background:rgba(255,255,255,.25);border-radius:10px;padding:1px 8px;font-size:10px;margin-left:6px">
+                {{ u.usedThisMonth }}{{ u.quotaMonthly ? '/' + u.quotaMonthly : '' }} is month
+                @if (u.lastScanAt) { · last: {{ u.lastScanAt }} }
+              </span>
+            }
+          </button>
+          <button type="button" (click)="preview()" class="oh-btn oh-btn-light">👁 Preview</button>
+          <button type="button" (click)="downloadPdf()" class="oh-btn oh-btn-light">📄 PDF</button>
+          <button type="button" (click)="sendWhatsApp()" class="oh-btn oh-btn-wa">💬 WhatsApp</button>
+          <a routerLink="/trading/orders" class="oh-btn oh-btn-close">✕ Close</a>
+        </div>
+      </div>
+
+      <!-- AI Scan modal -->
+      @if (showScan()) {
+        <app-bill-scan-modal
+          [source]="'order'"
+          (closed)="showScan.set(false)"
+          (dataReady)="applyAiExtraction($event)">
+        </app-bill-scan-modal>
+      }
+
+      <!-- AI-extracted info banner -->
+      @if (lastAiFill()) {
+        <div class="ai-banner">
+          <div>✨ <strong>Auto-filled this order</strong> ({{ (lastAiFill()!.confidence * 100).toFixed(0) }}% confidence)</div>
+          <button type="button" (click)="lastAiFill.set(null)" class="ai-banner-close">✕</button>
+        </div>
+      }
+
+
+      <!-- ============ SECTION 1: COMPANY & ORDER DETAILS ============ -->
+      <div class="section-card">
+        <div class="section-head">
+          <span class="sec-ico">📋</span> COMPANY & ORDER DETAILS
+        </div>
+        <div class="grid grid-cols-3 gap-4 mt-3">
+          <div>
+            <label class="lbl">COMPANY *</label>
+            <select [(ngModel)]="company" class="ip">
+              <option value="namokara">Namokara Agencies-24AAMPV0025C1Z3</option>
+            </select>
+          </div>
+          <div>
+            <label class="lbl">ORDER DATE *</label>
+            <input [(ngModel)]="orderDate" type="date" class="ip">
+          </div>
+          <div>
+            <label class="lbl">ORDER NO</label>
+            <input type="text" disabled [value]="tempOrderNo" placeholder="Auto — save par milega" class="ip ip-auto">
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ SECTION 2: SUPPLIER DETAILS ============ -->
+      <div class="section-card">
+        <div class="section-head">
+          <span class="sec-ico">🏢</span> SUPPLIER DETAILS
+        </div>
+        <div class="grid grid-cols-2 gap-4 mt-3">
+          <div>
+            <label class="lbl">SUPPLIER *</label>
+            <div class="combo-wrap">
+              <div class="flex gap-1">
+                <input type="text" [ngModel]="supplierFilter()" (ngModelChange)="supplierFilter.set($event); supplierDropdownOpen.set(true)"
+                       (focus)="supplierDropdownOpen.set(true)"
+                       (blur)="closeSupplierDropdownSoon()"
+                       placeholder="🔍 Name ya GST No se search..." class="ip flex-1">
+                <button type="button" (click)="showAddSupplier.set(true)" class="qa-add-btn" title="Add new supplier to Party Master">+ New</button>
+              </div>
+              @if (supplierDropdownOpen() && filteredSuppliers().length > 0) {
+                <div class="combo-dropdown">
+                  @for (p of filteredSuppliers(); track p.id) {
+                    <div class="combo-option" (mousedown)="selectSupplierFromCombo(p)">
+                      <div class="combo-name">{{ p.displayName }}</div>
+                      <div class="combo-sub">GST: {{ p.gst || '—' }} {{ p.partyCode ? '· ' + p.partyCode : '' }}</div>
+                    </div>
+                  }
+                </div>
+              }
+              @if (supplierDropdownOpen() && supplierFilter() && filteredSuppliers().length === 0) {
+                <div class="combo-dropdown combo-empty">
+                  ⚠️ No supplier found. Click <b class="text-green-600">+ New</b> to add "<i>{{ supplierFilter() }}</i>"
+                </div>
+              }
+            </div>
+          </div>
+          <div>
+            <label class="lbl">GSTIN *</label>
+            <input type="text" [value]="supplierGstin" disabled placeholder="GSTIN" class="ip ip-auto">
+          </div>
+          <div>
+            <label class="lbl">PAN</label>
+            <input type="text" [value]="supplierPan" disabled placeholder="Auto fill" class="ip ip-auto">
+          </div>
+          <div>
+            <label class="lbl">ADDRESS</label>
+            <input type="text" [value]="supplierAddress" disabled placeholder="Auto fill" class="ip ip-auto">
+          </div>
+          <div class="grid grid-cols-3 gap-3">
+            <div>
+              <label class="lbl">MOBILE</label>
+              <input type="text" [value]="supplierMobile" disabled placeholder="Auto fill" class="ip ip-auto">
+            </div>
+            <div>
+              <label class="lbl">WHATSAPP</label>
+              <div class="flex gap-1">
+                <input type="text" [value]="supplierWhatsapp" disabled placeholder="Auto fill" class="ip ip-auto flex-1">
+                <button type="button" class="wa-btn" [disabled]="!supplierWhatsapp && !supplierMobile"
+                        (click)="openWhatsApp(supplierWhatsapp || supplierMobile)" title="WhatsApp karo">💬</button>
+              </div>
+            </div>
+            <div>
+              <label class="lbl">PARTY MASTER</label>
+              @if (supplierId) {
+                <div class="pm-status pm-saved">✓ Party Master me save hai</div>
+              } @else if (supplierFilter()) {
+                <button type="button" class="pm-status pm-missing" (click)="showAddSupplier.set(true)">
+                  ✗ Party Master me save nahi hai
+                </button>
+              } @else {
+                <div class="pm-status pm-idle">— Pehle search karo</div>
+              }
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ SECTION 3: BUYER DETAILS ============ -->
+      <div class="section-card">
+        <div class="section-head">
+          <span class="sec-ico">🛒</span> BUYER DETAILS
+        </div>
+        <div class="grid grid-cols-2 gap-4 mt-3">
+          <div>
+            <label class="lbl">BUYER *</label>
+            <div class="combo-wrap">
+              <div class="flex gap-1">
+                <input type="text" [ngModel]="buyerFilter()" (ngModelChange)="buyerFilter.set($event); buyerDropdownOpen.set(true)"
+                       (focus)="buyerDropdownOpen.set(true)"
+                       (blur)="closeBuyerDropdownSoon()"
+                       placeholder="🔍 Name ya GST No se search..." class="ip flex-1">
+                <button type="button" (click)="showAddBuyer.set(true)" class="qa-add-btn" title="Add new buyer to Party Master">+ New</button>
+              </div>
+              @if (buyerDropdownOpen() && filteredBuyers().length > 0) {
+                <div class="combo-dropdown">
+                  @for (p of filteredBuyers(); track p.id) {
+                    <div class="combo-option" (mousedown)="selectBuyerFromCombo(p)">
+                      <div class="combo-name">{{ p.displayName }}</div>
+                      <div class="combo-sub">GST: {{ p.gst || '—' }} {{ p.partyCode ? '· ' + p.partyCode : '' }}</div>
+                    </div>
+                  }
+                </div>
+              }
+              @if (buyerDropdownOpen() && buyerFilter() && filteredBuyers().length === 0) {
+                <div class="combo-dropdown combo-empty">
+                  ⚠️ No buyer found. Click <b class="text-green-600">+ New</b> to add "<i>{{ buyerFilter() }}</i>"
+                </div>
+              }
+            </div>
+          </div>
+          <div>
+            <label class="lbl">BUYER GSTIN</label>
+            <input type="text" [value]="buyerGstin" disabled placeholder="Buyer GSTIN" class="ip ip-auto">
+          </div>
+          <div>
+            <label class="lbl">BUYER PAN</label>
+            <input type="text" [value]="buyerPan" disabled placeholder="Auto fill" class="ip ip-auto">
+          </div>
+          <div>
+            <label class="lbl">BUYER ADDRESS</label>
+            <input type="text" [value]="buyerAddress" disabled placeholder="Auto fill" class="ip ip-auto">
+          </div>
+          <div class="grid grid-cols-3 gap-3">
+            <div>
+              <label class="lbl">BUYER MOBILE</label>
+              <input type="text" [value]="buyerMobile" disabled placeholder="Auto fill" class="ip ip-auto">
+            </div>
+            <div>
+              <label class="lbl">BUYER WHATSAPP</label>
+              <div class="flex gap-1">
+                <input type="text" [value]="buyerWhatsapp" disabled placeholder="Auto fill" class="ip ip-auto flex-1">
+                <button type="button" class="wa-btn" [disabled]="!buyerWhatsapp && !buyerMobile"
+                        (click)="openWhatsApp(buyerWhatsapp || buyerMobile)" title="WhatsApp karo">💬</button>
+              </div>
+            </div>
+            <div>
+              <label class="lbl">PARTY MASTER</label>
+              @if (buyerId) {
+                <div class="pm-status pm-saved">✓ Party Master me save hai</div>
+              } @else if (buyerFilter()) {
+                <button type="button" class="pm-status pm-missing" (click)="showAddBuyer.set(true)">
+                  ✗ Party Master me save nahi hai
+                </button>
+              } @else {
+                <div class="pm-status pm-idle">— Pehle search karo</div>
+              }
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ SECTION 4: ITEM DETAILS ============ -->
+      <div class="section-card">
+        <div class="flex items-center justify-between">
+          <div class="section-head no-border">
+            <span class="sec-ico">📦</span> ITEM DETAILS
+          </div>
+          <button type="button" (click)="addLine()" class="btn-add-item">+ Add Item</button>
+        </div>
+
+        <div class="item-table-wrap mt-2">
+          <table class="item-table">
+            <thead>
+              <tr>
+                <th class="w-10">SNO.</th>
+                <th>ITEM NAME</th>
+                <th>DESCRIPTION</th>
+                <th class="w-16">QTY.</th>
+                <th class="w-20">UNIT</th>
+                <th class="w-20">PRICE</th>
+                <th class="w-16">RD</th>
+                <th class="w-20">HSN</th>
+                <th class="w-16">SGST%</th>
+                <th class="w-16">CGST%</th>
+                <th class="w-24">TAXABLE AMT</th>
+                <th class="w-20">TAX AMT</th>
+                <th class="w-24">TOTAL</th>
+                <th class="w-10">DEL</th>
+                <th class="w-16">PHOTO</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (line of lines(); track $index) {
+                <tr>
+                  <td class="text-center">{{ $index + 1 }}</td>
+                  <td>
+                    <input [ngModel]="line.itemName"
+                           (ngModelChange)="updateLine($index, 'itemName', $event)"
+                           list="items-list" class="tip" placeholder="Item name"
+                           (change)="autoFillFromItem($index, $event)">
+                  </td>
+                  <td>
+                    <select [ngModel]="line.description"
+                            (ngModelChange)="updateLine($index, 'description', $event)"
+                            (change)="onDescPick($index, $event)"
+                            class="tip">
+                      <option value="">— Select —</option>
+                      @for (it of items(); track it.id) {
+                        <option [value]="it.name">{{ it.name }}</option>
+                      }
+                      <option value="Other">Other</option>
+                    </select>
+                  </td>
+                  <td>
+                    <input [ngModel]="line.qty"
+                           (ngModelChange)="updateLine($index, 'qty', +$event)"
+                           type="number" step="0.01" class="tip text-right">
+                  </td>
+                  <td>
+                    <select [ngModel]="line.unit"
+                            (ngModelChange)="updateLine($index, 'unit', $event)"
+                            class="tip">
+                      <option value="MTR">MTR</option>
+                      <option value="PCS">PCS</option>
+                      <option value="KG">KG</option>
+                      <option value="DOZ">DOZ</option>
+                      <option value="BOX">BOX</option>
+                      <option value="LTR">LTR</option>
+                    </select>
+                  </td>
+                  <td>
+                    <input [ngModel]="line.rate"
+                           (ngModelChange)="updateLine($index, 'rate', +$event)"
+                           type="number" step="0.01" class="tip text-right">
+                  </td>
+                  <td>
+                    <input [ngModel]="line.rd"
+                           (ngModelChange)="updateLine($index, 'rd', +$event)"
+                           type="number" step="0.01" class="tip text-right">
+                  </td>
+                  <td>
+                    <input [ngModel]="line.hsnSac"
+                           (ngModelChange)="updateLine($index, 'hsnSac', $event)"
+                           type="text" class="tip text-center" placeholder="HSN">
+                  </td>
+                  <td>
+                    <input [ngModel]="line.sgstPct"
+                           (ngModelChange)="updateLine($index, 'sgstPct', +$event)"
+                           type="number" step="0.01" class="tip text-right">
+                  </td>
+                  <td>
+                    <input [ngModel]="line.cgstPct"
+                           (ngModelChange)="updateLine($index, 'cgstPct', +$event)"
+                           type="number" step="0.01" class="tip text-right">
+                  </td>
+                  <td class="text-right font-mono">{{ lineTaxable($index) | number:'1.2-2' }}</td>
+                  <td class="text-right font-mono">{{ lineTax($index) | number:'1.2-2' }}</td>
+                  <td class="text-right font-mono total-cell">{{ lineTotal($index) | number:'1.2-2' }}</td>
+                  <td class="text-center">
+                    @if (lines().length > 1) {
+                      <button type="button" (click)="removeLine($index)" class="btn-del">🗑</button>
+                    }
+                  </td>
+                  <td class="text-center">
+                    <label class="photo-upload">
+                      @if (line.photoPreview) {
+                        <img [src]="line.photoPreview" alt="item">
+                      } @else {
+                        <span class="cam-ico">📷</span>
+                      }
+                      <input type="file" accept="image/*" hidden
+                             (change)="onItemPhoto($index, $event)">
+                    </label>
+                  </td>
+                </tr>
+              }
+            </tbody>
+            <tfoot>
+              <tr>
+                <td colspan="3" class="text-right">TOTALS →</td>
+                <td class="text-center font-mono font-bold">{{ totalQty() | number:'1.0-3' }}</td>
+                <td colspan="6"></td>
+                <td class="text-right font-mono">{{ totalTaxable() | number:'1.2-2' }}</td>
+                <td class="text-right font-mono">{{ totalTax() | number:'1.2-2' }}</td>
+                <td class="text-right font-mono">{{ totalAmount() | number:'1.2-2' }}</td>
+                <td colspan="2"></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+
+        <datalist id="items-list">
+          @for (i of items(); track i.id) {
+            <option [value]="i.name"></option>
+          }
+        </datalist>
+      </div>
+
+      <!-- ============ SECTION 5: ADJUSTMENTS + ORDER SUMMARY ============ -->
+      <div class="grid grid-cols-3 gap-4 mt-4">
+
+        <!-- LEFT: Adjustments (2/3 width) -->
+        <div class="section-card col-span-2">
+          <div class="section-head">
+            <span class="sec-ico">⚙️</span> ADJUSTMENTS
+          </div>
+
+          <!-- CD Toggle -->
+          <div class="cd-block mt-3">
+            <div class="cd-head">
+              <span>$ CD (Cash Discount)</span>
+              <button type="button" class="toggle" [class.on]="cdEnabled()" (click)="toggleCd()">
+                <span class="dot"></span>
+                <span class="toggle-text">{{ cdEnabled() ? 'ON' : 'OFF' }}</span>
+              </button>
+            </div>
+            @if (cdEnabled()) {
+              <!-- CD Type: Before GST = discount pehle, GST kam base par | After GST = GST poore par, discount total par -->
+              <div class="flex gap-2 mt-2">
+                <button type="button" (click)="setCdType('before')"
+                        [class]="cdType() === 'before'
+                          ? 'px-3 py-1.5 rounded-lg text-xs font-bold bg-[#1B2E5C] text-white'
+                          : 'px-3 py-1.5 rounded-lg text-xs font-semibold bg-white border border-gray-300 text-gray-600'">
+                  Before GST
+                </button>
+                <button type="button" (click)="setCdType('after')"
+                        [class]="cdType() === 'after'
+                          ? 'px-3 py-1.5 rounded-lg text-xs font-bold bg-[#1B2E5C] text-white'
+                          : 'px-3 py-1.5 rounded-lg text-xs font-semibold bg-white border border-gray-300 text-gray-600'">
+                  After GST
+                </button>
+                <span class="text-[11px] text-gray-400 self-center">
+                  {{ cdType() === 'before' ? 'Discount pehle — GST kam amount par lagega' : 'GST poore par — discount bill total par' }}
+                </span>
+              </div>
+              <div class="grid grid-cols-2 gap-3 mt-2">
+                <div>
+                  <label class="lbl">CD %</label>
+                  <input [ngModel]="cdPct()" (ngModelChange)="onCdPctChange($event)"
+                         type="number" step="0.01" min="0" class="ip">
+                </div>
+                <div>
+                  <label class="lbl">CD AMOUNT (₹) — editable</label>
+                  <input [ngModel]="cdAmount()" (ngModelChange)="onCdAmountChange($event)"
+                         type="number" step="0.01" min="0" class="ip">
+                </div>
+              </div>
+            }
+          </div>
+
+          <div class="grid grid-cols-2 gap-4 mt-4">
+            <div>
+              <label class="lbl">SUPPLIER ORDER NO.</label>
+              <input [(ngModel)]="supplierOrderNo" type="text" placeholder="Supplier's order ref" class="ip">
+            </div>
+            <div>
+              <label class="lbl">TRANSPORTER</label>
+              <div class="flex gap-2">
+                <select [(ngModel)]="transporterId" class="ip" style="flex:1">
+                  <option value="">— Select Transporter —</option>
+                  @for (t of transporters(); track t.id) {
+                    <option [value]="t.id">{{ t.firmName }}{{ t.city ? ' (' + t.city + ')' : '' }}</option>
+                  }
+                </select>
+                <button type="button" (click)="quickAddTransporter()"
+                        class="px-3 rounded-lg text-xs font-bold bg-[#1B2E5C] text-white hover:bg-[#2a4178] whitespace-nowrap"
+                        title="Naya transporter add karo">+ New</button>
+              </div>
+            </div>
+            <div>
+              <label class="lbl">TRANSPORTER GST</label>
+              <input type="text" [value]="selTransporter()?.gstNo || ''" disabled placeholder="Auto fill" class="ip ip-auto">
+            </div>
+            <div>
+              <label class="lbl">TRANSPORTER MOBILE</label>
+              <input type="text" [value]="selTransporter()?.mobile || ''" disabled placeholder="Auto fill" class="ip ip-auto">
+            </div>
+            <div>
+              <label class="lbl">PAYMENT TERMS *</label>
+              <select [(ngModel)]="paymentTerms" class="ip">
+                <option value="">Select...</option>
+                <option value="advance">Advance Payment</option>
+                <option value="net15">Net 15 Days</option>
+                <option value="net30">Net 30 Days</option>
+                <option value="net45">Net 45 Days</option>
+                <option value="net60">Net 60 Days</option>
+                <option value="net90">Net 90 Days</option>
+                <option value="cod">COD (Cash on Delivery)</option>
+                <option value="loa">LOA (Letter of Authorization)</option>
+              </select>
+            </div>
+            <div>
+              <label class="lbl">ORDER STATUS</label>
+              <select [(ngModel)]="orderStatus" class="ip">
+                <option value="pending">Pending</option>
+                <option value="confirmed">Confirmed</option>
+                <option value="partial">Partial</option>
+                <option value="billed">Billed</option>
+                <option value="completed">Completed</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+            </div>
+            <div>
+              <label class="lbl">REMARK</label>
+              <input [(ngModel)]="remark" type="text" placeholder="Optional remark" class="ip">
+            </div>
+          </div>
+        </div>
+
+        <!-- RIGHT: Order Summary (1/3 width) -->
+        <div class="section-card summary-card">
+          <div class="section-head">
+            <span class="sec-ico">🧾</span> ORDER SUMMARY
+          </div>
+          <div class="sum-rows mt-3">
+            <div class="sum-row">
+              <span>Gross Amount</span>
+              <span class="font-mono">₹ {{ totalTaxable() | number:'1.2-2' }}</span>
+            </div>
+            <div class="sum-row">
+              <span>Total Tax {{ cdType() === 'before' && cdAmount() > 0 ? '(CD ke baad)' : '' }}</span>
+              <span class="font-mono">₹ {{ effTax() | number:'1.2-2' }}</span>
+            </div>
+            <div class="sum-row">
+              <span>Taxable Amount</span>
+              <span class="font-mono">₹ {{ totalTaxable() | number:'1.2-2' }}</span>
+            </div>
+            <div class="sum-row">
+              <span>💵 CD Discount ({{ cdType() === 'before' ? 'Before GST' : 'After GST' }})</span>
+              <span class="font-mono text-red-600">- ₹ {{ cdAmount() | number:'1.2-2' }}</span>
+            </div>
+            <div class="sum-divider"></div>
+            <div class="sum-row">
+              <span>Net Total</span>
+              <span class="font-mono">₹ {{ netTotal() | number:'1.2-2' }}</span>
+            </div>
+            @if (roundOff() !== 0) {
+              <div class="sum-row" [style.color]="roundOff() >= 0 ? '#15803d' : '#dc2626'">
+                <span>R/Off</span>
+                <span class="font-mono">{{ roundOff() >= 0 ? '+' : '-' }} ₹ {{ (roundOff() < 0 ? -roundOff() : roundOff()) | number:'1.2-2' }}</span>
+              </div>
+            }
+            <div class="sum-grand">
+              <span>🪙 NET AMOUNT</span>
+              <span class="font-mono">₹ {{ netAmountRounded() | number:'1.0-0' }}</span>
+            </div>
+            @if (netAmountRounded() > 0) {
+              <div class="sum-words">📝 {{ words(netAmountRounded()) }}</div>
+            }
+
+            <div class="sum-tax-head">TAX BREAKDOWN</div>
+            <div class="sum-row sm">
+              <span>SGST Total</span>
+              <span class="font-mono">₹ {{ effSgst() | number:'1.2-2' }}</span>
+            </div>
+            <div class="sum-row sm">
+              <span>CGST Total</span>
+              <span class="font-mono">₹ {{ effCgst() | number:'1.2-2' }}</span>
+            </div>
+            <div class="sum-row sm">
+              <span>Total Items</span>
+              <span class="font-mono">{{ lines().length }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Error -->
+      @if (error()) {
+        <div class="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded text-sm mt-3">
+          {{ error() }}
+        </div>
+      }
+
+      <!-- ============ SECTION 6: ORDER DOCUMENT UPLOAD ============ -->
+      <div class="section-card mt-4">
+        <div class="section-head">
+          <span class="sec-ico">📎</span> ORDER DOCUMENT UPLOAD
+          @if (uploadedDocName()) {
+            <button type="button" (click)="previewDoc()" class="doc-eye-btn" title="Preview uploaded order doc">
+              👁 View
+            </button>
+          }
+        </div>
+        <div class="mt-3">
+          <label class="doc-upload">
+            <input type="file" accept="image/*,application/pdf" hidden (change)="onDocUpload($event)">
+            @if (uploadedDocName()) {
+              <div class="doc-uploaded">
+                <span class="doc-ico">✓</span>
+                <div class="flex-1">
+                  <div class="doc-name">{{ uploadedDocName() }}</div>
+                  <div class="doc-hint">Click to replace · Use 🤖 Scan Order to auto-fill from this document</div>
+                </div>
+              </div>
+            } @else {
+              <div class="doc-empty">
+                <span class="doc-ico-big">📄</span>
+                <div>
+                  <div class="doc-cta">📤 UPLOAD ORDER / PO</div>
+                  <div class="doc-hint">JPG, PNG, PDF SUPPORTED</div>
+                </div>
+              </div>
+            }
+          </label>
+        </div>
+      </div>
+
+      <!-- DOC PREVIEW MODAL -->
+      @if (docPreviewUrl()) {
+        <div class="doc-modal-overlay" (click)="closeDocPreview()">
+          <div class="doc-modal" (click)="$event.stopPropagation()">
+            <div class="doc-modal-head">
+              <strong>📎 Order Document — {{ uploadedDocName() }}</strong>
+              <button type="button" (click)="closeDocPreview()" class="doc-modal-close">✕</button>
+            </div>
+            <div class="doc-modal-body">
+              @if (docPreviewType() === 'image') {
+                <img [src]="docPreviewUrl()" alt="Order doc preview" class="doc-preview-img">
+              } @else if (docPreviewType() === 'pdf') {
+                <iframe [src]="docPreviewUrl()" class="doc-preview-pdf"></iframe>
+              }
+            </div>
+          </div>
+        </div>
+      }
+
+      <!-- ============ BOTTOM BAR ============ -->
+      <div class="bottom-bar">
+        <a routerLink="/trading/orders" class="btn-back">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 14 4 9 9 4"></polyline><path d="M20 20v-7a4 4 0 0 0-4-4H4"></path></svg>
+          Back
+        </a>
+        <div class="flex gap-3 items-center">
+          @if (error()) {
+            <span class="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded text-sm font-semibold">
+              ⚠️ {{ error() }}
+            </span>
+          }
+          <button type="button" (click)="preview()" class="btn-preview" title="Preview">👁</button>
+          <button type="button" (click)="save()" [disabled]="saving()" class="btn-save">
+            {{ saving() ? (editMode ? 'Updating…' : 'Submitting…') : (editMode ? '✓ Update Order' : '✓ Submit Order') }}
+          </button>
+        </div>
+      </div>
+
+      <!-- Quick-Add Transporter modal (pura form) -->
+      @if (showAddTransporter()) {
+        <app-transporter-quick-add
+          (created)="onTransporterCreated($event)"
+          (close)="showAddTransporter.set(false)">
+        </app-transporter-quick-add>
+      }
+
+      <!-- Quick-Add Party modals (pre-filled from current search input + auto-fill fields) -->
+      @if (showAddSupplier()) {
+        <app-party-quick-add partyType="supplier"
+                             [prefill]="supplierPrefill()"
+                             (created)="onPartyCreated($event, 'supplier')"
+                             (close)="showAddSupplier.set(false)"></app-party-quick-add>
+      }
+      @if (showAddBuyer()) {
+        <app-party-quick-add partyType="buyer"
+                             [prefill]="buyerPrefill()"
+                             (created)="onPartyCreated($event, 'buyer')"
+                             (close)="showAddBuyer.set(false)"></app-party-quick-add>
+      }
+
+    </div>
+  `,
+  styles: [`
+    /* WhatsApp button — phone field ke side me */
+    .wa-btn { width: 38px; border: 1px solid #86efac; background: #dcfce7; border-radius: 8px;
+      cursor: pointer; font-size: 15px; flex: none; }
+    .wa-btn:hover:not(:disabled) { background: #bbf7d0; }
+    .wa-btn:disabled { opacity: .4; cursor: not-allowed; }
+
+    /* Party Master status chip — saved / missing / idle */
+    .pm-status { width: 100%; padding: 9px 10px; border-radius: 8px; font-size: 12px; font-weight: 800;
+      text-align: center; font-family: inherit; }
+    .pm-saved { background: #dcfce7; color: #15803d; border: 1px solid #86efac; }
+    .pm-missing { background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; cursor: pointer; }
+    .pm-missing:hover { background: #fecaca; }
+    .pm-idle { background: #f3f4f6; color: #9ca3af; border: 1px solid #e5e7eb; }
+
+    /* ============ Anjaninex BRAND COLORS — NO gradient ============ */
+    :host {
+      display: block; background: #FAF7F0; min-height: 100vh; padding: 16px 0;
+    }
+
+    /* HEADER */
+    .ord-header {
+      background: #1B2E5C; color: #fff; padding: 14px 22px; border-radius: 12px 12px 0 0;
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 16px; box-shadow: 0 2px 8px rgba(27,46,92,0.12);
+    }
+    .oh-left { display: flex; align-items: center; gap: 12px; }
+    .oh-logo {
+      width: 44px; height: 44px; object-fit: contain;
+      background: #fff; border-radius: 8px; padding: 4px;
+    }
+    .oh-title { font-size: 19px; font-weight: 800; margin: 0; letter-spacing: 0.3px; }
+    .oh-sub { font-size: 12px; opacity: 0.85; margin: 0; }
+    .oh-sub strong { color: #FCD34D; }
+    .oh-right { display: flex; gap: 8px; }
+    .oh-btn {
+      padding: 8px 14px; border-radius: 8px; font-weight: 700; font-size: 12.5px;
+      cursor: pointer; border: 0; font-family: inherit; text-decoration: none;
+      transition: transform 0.1s, background 0.15s; display: inline-flex; align-items: center; gap: 4px;
+    }
+    .oh-btn-light { background: rgba(255,255,255,0.15); color: #fff; }
+    .oh-btn-light:hover { background: rgba(255,255,255,0.25); }
+    .oh-btn-wa { background: #25D366; color: #fff; }
+    .oh-btn-wa:hover { background: #1FB957; }
+    .oh-btn-close { background: #DC2626; color: #fff; }
+    .oh-btn-close:hover { background: #B91C1C; }
+
+    /* SECTION CARDS */
+    .section-card {
+      background: #fff; border: 1px solid #D6DDEA; border-radius: 10px;
+      padding: 14px 18px; margin-bottom: 14px;
+      box-shadow: 0 1px 3px rgba(27,46,92,0.04);
+    }
+    .section-head {
+      font-size: 13px; font-weight: 800; color: #DC2626; letter-spacing: 0.5px;
+      padding-bottom: 8px; border-bottom: 1px solid #F5EFE3;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .section-head.no-border { border-bottom: 0; padding-bottom: 0; }
+    .sec-ico { font-size: 15px; }
+
+    /* INPUTS */
+    .lbl {
+      display: block; font-size: 10px; font-weight: 700; color: #4A5878;
+      letter-spacing: 0.5px; margin-bottom: 4px; text-transform: uppercase;
+    }
+    .ip {
+      width: 100%; padding: 8px 10px; border: 1px solid #D6DDEA; border-radius: 6px;
+      font-size: 13px; color: #1B2E5C; background: #fff; font-family: inherit;
+      transition: border 0.15s, box-shadow 0.15s;
+    }
+    .ip:focus {
+      outline: none; border-color: #DC2626; box-shadow: 0 0 0 2px rgba(220,38,38,0.1);
+    }
+    .ip-auto {
+      background: #ECFDF5; color: #047857; border-color: #A7F3D0; font-weight: 600;
+    }
+    select.ip { cursor: pointer; }
+
+    /* ITEM TABLE */
+    .btn-add-item {
+      background: #1B2E5C; color: #fff; padding: 8px 16px; border-radius: 8px;
+      font-size: 13px; font-weight: 700; border: 0; cursor: pointer; font-family: inherit;
+    }
+    .btn-add-item:hover { background: #142347; }
+
+    .item-table-wrap { overflow-x: auto; border: 1px solid #D6DDEA; border-radius: 8px; }
+    .item-table { width: 100%; font-size: 11.5px; border-collapse: collapse; background: #fff; }
+    .item-table thead { background: #1B2E5C; color: #fff; }
+    .item-table th {
+      padding: 8px 6px; text-align: left; font-weight: 700; font-size: 10px;
+      letter-spacing: 0.3px; text-transform: uppercase; white-space: nowrap;
+    }
+    .item-table td {
+      padding: 4px 4px; border-bottom: 1px solid #F5EFE3; vertical-align: middle;
+    }
+    .item-table tbody tr:hover { background: #FAF7F0; }
+    .item-table tfoot { background: #F5EFE3; font-weight: 800; color: #1B2E5C; }
+    .item-table tfoot td { padding: 8px 6px; border-top: 2px solid #1B2E5C; }
+    .total-cell { color: #DC2626; font-weight: 800; }
+
+    .tip {
+      width: 100%; padding: 5px 6px; border: 1px solid #E5E9F2; border-radius: 4px;
+      font-size: 11.5px; color: #1B2E5C; background: #fff; font-family: inherit;
+    }
+    .tip:focus { outline: none; border-color: #DC2626; }
+    .text-right { text-align: right; }
+    .text-center { text-align: center; }
+    .font-mono { font-family: 'JetBrains Mono', monospace; }
+    .btn-del {
+      background: transparent; border: 0; color: #DC2626; font-size: 14px;
+      cursor: pointer; padding: 2px 6px;
+    }
+
+    /* PHOTO UPLOAD */
+    .photo-upload {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 36px; height: 36px; border: 1px dashed #D6DDEA; border-radius: 6px;
+      cursor: pointer; transition: border 0.15s, background 0.15s; background: #FAF7F0;
+    }
+    .photo-upload:hover { border-color: #DC2626; background: #FEF2F2; }
+    .photo-upload img { width: 32px; height: 32px; object-fit: cover; border-radius: 4px; }
+    .cam-ico { font-size: 16px; opacity: 0.6; }
+
+    /* CD TOGGLE */
+    .cd-block {
+      background: #F5EFE3; padding: 12px 14px; border-radius: 8px; border: 1px solid #D6DDEA;
+    }
+    .cd-head {
+      display: flex; justify-content: space-between; align-items: center;
+      font-size: 13px; font-weight: 700; color: #1B2E5C;
+    }
+    .toggle {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: #E5E9F2; border: 0; border-radius: 999px; padding: 4px 12px 4px 4px;
+      cursor: pointer; font-family: inherit; font-size: 11px; font-weight: 700;
+      color: #4A5878; transition: background 0.15s;
+    }
+    .toggle .dot {
+      width: 18px; height: 18px; background: #fff; border-radius: 50%;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.2); transition: transform 0.2s;
+    }
+    .toggle.on { background: #10B981; color: #fff; }
+    .toggle-text { letter-spacing: 0.5px; }
+
+    /* SUMMARY CARD */
+    .summary-card { background: #fff; }
+    .sum-rows { font-size: 13px; }
+    .sum-row {
+      display: flex; justify-content: space-between; padding: 6px 0;
+      border-bottom: 1px dashed #F5EFE3; color: #4A5878;
+    }
+    .sum-row.sm { font-size: 11.5px; padding: 4px 0; }
+    .sum-row:last-of-type { border-bottom: 0; }
+    .sum-divider { height: 1px; background: #D6DDEA; margin: 8px 0; }
+    .sum-grand {
+      display: flex; justify-content: space-between; padding: 10px 14px;
+      background: #1B2E5C; color: #fff; border-radius: 8px; margin: 8px 0;
+      font-size: 14px; font-weight: 800;
+    }
+    .sum-words {
+      font-size: 11.5px; color: #065f46;
+      background: #ecfdf5; border-left: 3px solid #10b981;
+      padding: 6px 10px; border-radius: 4px; margin: -4px 0 8px;
+      font-style: italic; font-weight: 600; line-height: 1.4;
+    }
+    .sum-tax-head {
+      font-size: 10px; font-weight: 800; color: #4A5878; letter-spacing: 0.5px;
+      margin-top: 14px; padding-top: 8px; border-top: 1px solid #D6DDEA; text-transform: uppercase;
+    }
+
+    /* BOTTOM BAR */
+    .bottom-bar {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 16px 0 8px; margin-top: 16px; border-top: 1px solid #D6DDEA;
+    }
+    .btn-back {
+      padding: 9px 18px; background: #fff; border: 1px solid #D6DDEA; border-radius: 8px;
+      font-size: 13px; font-weight: 700; color: #4A5878; text-decoration: none;
+      display: inline-flex; align-items: center; gap: 6px; transition: all 0.15s;
+    }
+    .btn-back:hover { background: #F5EFE3; border-color: #1B2E5C; color: #DC2626; }
+    .btn-back svg { width: 14px; height: 14px; }
+    .btn-preview {
+      width: 38px; height: 38px; background: #fff; border: 1px solid #D6DDEA; border-radius: 8px;
+      cursor: pointer; font-size: 16px;
+    }
+    .btn-preview:hover { background: #F5EFE3; }
+    .qa-add-btn {
+      padding: 6px 12px; background: linear-gradient(135deg, #16a34a, #15803d);
+      color: #fff; border: none; border-radius: 6px; font-size: 11px; font-weight: 700;
+      cursor: pointer; white-space: nowrap; font-family: inherit;
+    }
+    .qa-add-btn:hover { background: linear-gradient(135deg, #15803d, #166534); }
+
+    /* AI Scan button in header */
+    .oh-btn-ai {
+      background: linear-gradient(135deg, #7c3aed, #5c1a8b); color: #fff;
+      display: inline-flex; align-items: center; gap: 4px;
+    }
+    .oh-btn-ai:hover { background: linear-gradient(135deg, #5c1a8b, #4a1080); }
+
+    /* AI info banner */
+    .ai-banner {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 10px 16px; margin: 10px 0; border-radius: 10px; font-size: 13px;
+      background: linear-gradient(90deg, #f0e6ff, #ddc8f5); color: #4a1080;
+      border-left: 4px solid #7c3aed;
+    }
+    .ai-banner-close {
+      background: rgba(0,0,0,.1); border: none; width: 24px; height: 24px; border-radius: 6px;
+      cursor: pointer; font-weight: 800; color: inherit;
+    }
+    .ai-banner-close:hover { background: rgba(0,0,0,.2); }
+
+    /* DOCUMENT UPLOAD section (matches bill-entry style) */
+    .doc-upload {
+      display: block; cursor: pointer; border: 2px dashed #D6DDEA; border-radius: 10px;
+      padding: 24px; background: #FAF7F0; transition: border 0.15s, background 0.15s;
+    }
+    .doc-upload:hover { border-color: #DC2626; background: #FEF2F2; }
+    .doc-empty { display: flex; align-items: center; gap: 16px; }
+    .doc-uploaded { display: flex; align-items: center; gap: 14px; }
+    .doc-ico-big { font-size: 38px; }
+    .doc-ico {
+      width: 36px; height: 36px; background: #10B981; color: #fff; border-radius: 50%;
+      display: inline-flex; align-items: center; justify-content: center; font-weight: 800;
+    }
+    .doc-cta { font-size: 14px; font-weight: 800; color: #1B2E5C; }
+    .doc-hint { font-size: 11px; color: #4A5878; margin-top: 2px; }
+    .doc-name { font-size: 13px; font-weight: 700; color: #1B2E5C; }
+
+    /* 👁 Eye/View button in section head */
+    .doc-eye-btn {
+      margin-left: auto; padding: 4px 10px; font-size: 11.5px; font-weight: 700;
+      background: linear-gradient(135deg, #5c1a8b, #7c3aed); color: #fff;
+      border: 0; border-radius: 6px; cursor: pointer;
+    }
+    .doc-eye-btn:hover { background: linear-gradient(135deg, #4a1370, #6b21a8); }
+
+    /* Document preview modal */
+    .doc-modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+      z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 30px;
+    }
+    .doc-modal {
+      background: #fff; border-radius: 12px; max-width: 900px; width: 100%;
+      max-height: 90vh; display: flex; flex-direction: column; overflow: hidden;
+      box-shadow: 0 25px 50px rgba(0,0,0,0.5);
+    }
+    .doc-modal-head {
+      padding: 14px 20px; background: linear-gradient(135deg, #5c1a8b, #7c3aed); color: #fff;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .doc-modal-close {
+      background: rgba(255,255,255,0.2); border: 0; color: #fff; width: 32px; height: 32px;
+      border-radius: 50%; cursor: pointer; font-size: 18px; font-weight: 700;
+    }
+    .doc-modal-close:hover { background: rgba(255,255,255,0.35); }
+    .doc-modal-body {
+      flex: 1; overflow: auto; padding: 16px; background: #f8fafc;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .doc-preview-img { max-width: 100%; max-height: 75vh; object-fit: contain; border-radius: 6px; }
+    .doc-preview-pdf { width: 100%; height: 75vh; border: 0; border-radius: 6px; }
+
+    .hint-empty {
+      margin-top: 6px; padding: 7px 12px;
+      background: #fff8e1; border-left: 3px solid #f9a825; border-radius: 4px;
+      font-size: 11.5px; color: #92400e;
+    }
+    /* COMBOBOX — single-field autocomplete (legacy-style) */
+    .combo-wrap { position: relative; }
+    .combo-dropdown {
+      position: absolute; top: 100%; left: 0; right: 0; z-index: 50;
+      background: #fff; border: 1px solid #D6DDEA; border-top: 0;
+      border-radius: 0 0 8px 8px; max-height: 280px; overflow-y: auto;
+      box-shadow: 0 8px 20px rgba(27,46,92,.12);
+    }
+    .combo-option {
+      padding: 10px 14px; cursor: pointer; border-bottom: 1px solid #f1f5f9;
+      transition: background 0.12s;
+    }
+    .combo-option:last-child { border-bottom: 0; }
+    .combo-option:hover { background: #f5efe3; }
+    .combo-name { font-size: 13.5px; font-weight: 700; color: #1B2E5C; }
+    .combo-sub  { font-size: 11px; color: #6b7280; margin-top: 2px; font-family: 'JetBrains Mono', monospace; }
+    .combo-empty {
+      padding: 12px 14px; font-size: 12px; color: #92400e;
+      background: #fff8e1; border-left: 3px solid #f9a825;
+    }
+
+    .btn-save {
+      padding: 11px 28px; background: #DC2626; color: #fff; border-radius: 8px;
+      font-size: 14px; font-weight: 800; border: 0; cursor: pointer; font-family: inherit;
+      box-shadow: 0 2px 6px rgba(220,38,38,0.3);
+      transition: background 0.15s, transform 0.1s;
+    }
+    .btn-save:hover:not(:disabled) { background: #B91C1C; transform: translateY(-1px); }
+    .btn-save:disabled { opacity: 0.5; cursor: not-allowed; }
+  `]
+})
+export class OrderEntryComponent {
+  private svc = inject(TradingService);
+  private router = inject(Router);
+  private toast = inject(ToastService);
+  private route = inject(ActivatedRoute);
+  private sanitizer = inject(DomSanitizer);
+  private aiSvc = inject(AiService);
+  auth = inject(AuthService);
+  scanUse = signal<{ usedThisMonth: number; total: number; quotaMonthly: number; lastScanAt: string | null } | null>(null);
+
+  loadScanUse() {
+    this.aiSvc.usage().subscribe({ next: u => this.scanUse.set(u), error: () => {} });
+  }
+
+  // Document preview modal state
+  docPreviewUrl   = signal<string | SafeResourceUrl | null>(null);
+  docPreviewType  = signal<'image' | 'pdf' | null>(null);
+
+  previewDoc() {
+    if (!this.uploadedDocFile) return;
+    const file = this.uploadedDocFile;
+    const name = this.uploadedDocName();
+    const isPdf = file.type === 'application/pdf' || name.toLowerCase().endsWith('.pdf');
+    const rawUrl = URL.createObjectURL(file);
+    const safeUrl = isPdf ? this.sanitizer.bypassSecurityTrustResourceUrl(rawUrl) : rawUrl;
+    this.docPreviewUrl.set(safeUrl);
+    this.docPreviewType.set(isPdf ? 'pdf' : 'image');
+  }
+  closeDocPreview() {
+    const url = this.docPreviewUrl();
+    if (typeof url === 'string' && url.startsWith('blob:')) URL.revokeObjectURL(url);
+    this.docPreviewUrl.set(null);
+    this.docPreviewType.set(null);
+  }
+
+  // Data
+  parties = signal<Party[]>([]);
+  items = signal<Item[]>([]);
+  saving = signal(false);
+  error = signal('');
+
+  // Edit-mode state
+  editId: string | null = null;
+  editMode = false;
+
+  // Quick-Add Party modal state
+  showAddSupplier = signal(false);
+  showAddBuyer = signal(false);
+
+  // AI Scan + Upload state
+  showScan = signal(false);
+  lastAiFill = signal<ExtractedBill | null>(null);
+  uploadedDocName = signal('');
+  uploadedDocFile: File | null = null;
+
+  // AI-extracted party cache (for prefilling Quick Add)
+  aiSupplier: Partial<{ displayName: string; gst: string; phone: string; address: string; city: string }> | null = null;
+  aiBuyer: Partial<{ displayName: string; gst: string; phone: string; address: string; city: string }> | null = null;
+
+  // GST/Name/Code filter signals (live-filter the supplier/buyer selects)
+  supplierFilter = signal('');
+  buyerFilter = signal('');
+  filteredSuppliers = computed(() => this.matchParties(this.supplierFilter()).slice(0, 8));
+  filteredBuyers = computed(() => this.matchParties(this.buyerFilter()).slice(0, 8));
+
+  // Combobox state (single-field autocomplete UX — like legacy)
+  supplierDropdownOpen = signal(false);
+  buyerDropdownOpen = signal(false);
+
+  closeSupplierDropdownSoon() { setTimeout(() => this.supplierDropdownOpen.set(false), 200); }
+  closeBuyerDropdownSoon()    { setTimeout(() => this.buyerDropdownOpen.set(false), 200); }
+
+  selectSupplierFromCombo(p: Party) {
+    this.supplierId = p.id;
+    this.supplierFilter.set(p.displayName);
+    this.supplierDropdownOpen.set(false);
+    this.onSupplierChange(p.id);
+  }
+  selectBuyerFromCombo(p: Party) {
+    this.buyerId = p.id;
+    this.buyerFilter.set(p.displayName);
+    this.buyerDropdownOpen.set(false);
+    this.onBuyerChange(p.id);
+  }
+  private matchParties(q: string): Party[] {
+    const t = q.toLowerCase().trim();
+    if (!t) return this.parties();
+    return this.parties().filter(p =>
+      (p.displayName || '').toLowerCase().includes(t) ||
+      (p.gst || '').toLowerCase().includes(t) ||
+      (p.partyCode || '').toLowerCase().includes(t) ||
+      (p.city || '').toLowerCase().includes(t) ||
+      (p.phone || '').toLowerCase().includes(t)
+    );
+  }
+
+  /** Pre-fill the Quick Add modal — prefers AI cache, falls back to current form fields. */
+  supplierPrefill() {
+    return {
+      displayName: this.aiSupplier?.displayName || this.supplierFilter() || '',
+      gst: this.aiSupplier?.gst || this.supplierGstin || '',
+      phone: this.aiSupplier?.phone || this.supplierMobile || '',
+      address: this.aiSupplier?.address || this.supplierAddress || '',
+      city: this.aiSupplier?.city || ''
+    };
+  }
+  buyerPrefill() {
+    return {
+      displayName: this.aiBuyer?.displayName || this.buyerFilter() || '',
+      gst: this.aiBuyer?.gst || this.buyerGstin || '',
+      phone: this.aiBuyer?.phone || this.buyerMobile || '',
+      address: this.aiBuyer?.address || this.buyerAddress || '',
+      city: this.aiBuyer?.city || ''
+    };
+  }
+
+  // Quick-Add: newly created party appended + auto-selected, clear AI cache
+  onPartyCreated(p: Party, side: 'supplier' | 'buyer') {
+    this.parties.update(arr => [p, ...arr]);
+    if (side === 'supplier') {
+      this.supplierId = p.id;
+      this.onSupplierChange(p.id);
+      this.supplierFilter.set('');
+      this.aiSupplier = null;
+    } else {
+      this.buyerId = p.id;
+      this.onBuyerChange(p.id);
+      this.buyerFilter.set('');
+      this.aiBuyer = null;
+    }
+  }
+
+  /** Document upload — store file locally (order DTO doesn't have attachment field yet). */
+  onDocUpload(event: any) {
+    const file: File = event.target.files?.[0];
+    if (!file) return;
+    this.uploadedDocFile = file;
+    this.uploadedDocName.set(file.name);
+    alert(`📎 "${file.name}" attached. File will be uploaded when order is saved.\n\nTip: Click "🤖 Scan Order" to auto-fill from this document.`);
+  }
+
+  /** AI extraction handler — same logic as bill-entry, mapped to order fields. */
+  applyAiExtraction(data: ExtractedBill) {
+    this.lastAiFill.set(data);
+    this.loadScanUse();   // scan count + time turant refresh
+
+    if (data.invoice?.date) this.orderDate = data.invoice.date;
+    if (data.invoice?.poNumber) this.supplierOrderNo = data.invoice.poNumber;
+
+    // Match supplier in master
+    if (data.supplier?.name) {
+      const match = this.parties().find(p =>
+        p.displayName.toLowerCase() === data.supplier.name.toLowerCase()
+        || p.gst === data.supplier.gst
+      );
+      if (match) {
+        this.supplierId = match.id;
+        this.onSupplierChange(match.id);
+        this.aiSupplier = null;
+      } else {
+        // No match → cache + fill search + auto-fill fields
+        this.aiSupplier = {
+          displayName: data.supplier.name,
+          gst: data.supplier.gst ?? '',
+          phone: data.supplier.phone ?? '',
+          address: data.supplier.address ?? '',
+          city: data.supplier.city ?? ''
+        };
+        this.supplierFilter.set(data.supplier.name);
+        this.supplierGstin = data.supplier.gst ?? '';
+        this.supplierAddress = data.supplier.address ?? data.supplier.city ?? '';
+        this.supplierMobile = data.supplier.phone ?? '';
+        this.supplierWhatsapp = data.supplier.phone ?? '';
+        // REMARK ko mat chhedo — user jo khud type kare wahi save ho
+      }
+    }
+
+    // Match buyer
+    if (data.buyer?.name) {
+      const match = this.parties().find(p =>
+        p.displayName.toLowerCase() === data.buyer.name.toLowerCase()
+        || p.gst === data.buyer.gst
+      );
+      if (match) {
+        this.buyerId = match.id;
+        this.onBuyerChange(match.id);
+        this.aiBuyer = null;
+      } else {
+        this.aiBuyer = {
+          displayName: data.buyer.name,
+          gst: data.buyer.gst ?? '',
+          phone: data.buyer.phone ?? '',
+          address: data.buyer.address ?? '',
+          city: data.buyer.city ?? ''
+        };
+        this.buyerFilter.set(data.buyer.name);
+        this.buyerGstin = data.buyer.gst ?? '';
+        this.buyerAddress = data.buyer.address ?? '';
+        this.buyerMobile = data.buyer.phone ?? '';
+        this.buyerWhatsapp = data.buyer.phone ?? '';
+      }
+    }
+
+    // Items → order lines
+    if (data.items?.length) {
+      this.lines.set(data.items.map(item => {
+        const half = (item.taxRate || 5) / 2;
+        return {
+          itemId: null,
+          itemName: item.name,
+          description: '',
+          hsnSac: item.hsnSac,
+          qty: item.qty,
+          unit: item.unit || 'MTR',
+          rate: item.rate,
+          rd: 0,
+          sgstPct: half,
+          cgstPct: half,
+          photoFile: null,
+          photoPreview: null
+        };
+      }));
+    }
+  }
+
+  // Section 1
+  company = 'namokara';
+  orderDate = todayLocal();   // LOCAL date — UTC se ek din pichhe nahi jayegi
+  tempOrderNo = '';  // New order me blank — save par backend real no dega (JPR-O5...)
+
+  // Section 2 — Supplier
+  supplierId = '';
+  supplierGstin = '';
+  supplierAddress = '';
+  supplierMobile = '';
+  supplierWhatsapp = '';
+  supplierPan = '';
+
+  // Section 3 — Buyer
+  buyerId = '';
+  buyerGstin = '';
+  buyerAddress = '';
+  buyerMobile = '';
+  buyerWhatsapp = '';
+  buyerPan = '';
+
+  // Section 5 — Adjustments
+  cdEnabled = signal(true);
+  cdPct = signal(0);
+  cdType = signal<'before' | 'after'>('before');    // before = GST se pehle discount | after = GST ke baad
+  cdAmountOverride = signal<number | null>(null);   // null = use auto-computed; number = manual override
+  setCdType(t: 'before' | 'after') {
+    this.cdType.set(t);
+    this.cdAmountOverride.set(null);   // type badla → amount dobara auto-compute
+  }
+  supplierOrderNo = '';
+  paymentTerms = '';
+  orderStatus = 'pending';
+  remark = '';
+  transporterId = '';
+  transporters = signal<Transporter[]>([]);
+
+  /** WhatsApp kholo — number ke last 10 digit par (91 ke saath) */
+  openWhatsApp(phone: string | null | undefined) {
+    const digits = (phone || '').replace(/\D/g, '');
+    if (!digits) return;
+    const ten = digits.length > 10 ? digits.slice(-10) : digits;
+    window.open('https://wa.me/91' + ten, '_blank');
+  }
+
+  /** Selected transporter — GST/Mobile display ke liye. */
+  selTransporter(): Transporter | undefined {
+    return this.transporters().find(t => t.id === this.transporterId);
+  }
+
+  /** + New — pura transporter form modal kholo. */
+  showAddTransporter = signal(false);
+  quickAddTransporter() { this.showAddTransporter.set(true); }
+  onTransporterCreated(t: any) {
+    this.transporters.update(arr => [t, ...arr]);
+    this.transporterId = t.id;
+  }
+
+  // Item lines
+  lines = signal<LineRow[]>([this.newLine()]);
+
+  newLine(): LineRow {
+    return {
+      itemId: null, itemName: '', description: '',
+      hsnSac: '', qty: 0, unit: 'MTR', rate: 0, rd: 0,
+      sgstPct: 2.5, cgstPct: 2.5,
+      photoFile: null, photoPreview: null
+    };
+  }
+
+  // ============ COMPUTED ============
+  lineTaxable(idx: number): number {
+    const l = this.lines()[idx];
+    const gross = l.qty * l.rate;
+    const afterRd = gross - (l.qty * l.rd);
+    return Math.max(0, afterRd);
+  }
+  lineTax(idx: number): number {
+    const taxable = this.lineTaxable(idx);
+    const l = this.lines()[idx];
+    return taxable * (l.sgstPct + l.cgstPct) / 100;
+  }
+  lineTotal(idx: number): number {
+    return this.lineTaxable(idx) + this.lineTax(idx);
+  }
+
+  totalQty = computed(() => this.lines().reduce((s, l) => s + (+l.qty || 0), 0));
+  totalTaxable = computed(() => this.lines().reduce((s, _, i) => s + this.lineTaxable(i), 0));
+  sgstTotal = computed(() => this.lines().reduce((s, _, i) => {
+    const l = this.lines()[i];
+    return s + this.lineTaxable(i) * (l.sgstPct / 100);
+  }, 0));
+  cgstTotal = computed(() => this.lines().reduce((s, _, i) => {
+    const l = this.lines()[i];
+    return s + this.lineTaxable(i) * (l.cgstPct / 100);
+  }, 0));
+  totalTax = computed(() => this.sgstTotal() + this.cgstTotal());
+  totalAmount = computed(() => this.totalTaxable() + this.totalTax());
+
+  // CD Amount: manual override > auto from %.
+  // Before GST → % taxable par | After GST → % (taxable + tax) par.
+  cdAmount = computed(() => {
+    if (!this.cdEnabled()) return 0;
+    const override = this.cdAmountOverride();
+    if (override !== null) return override;
+    const base = this.cdType() === 'after' ? this.totalAmount() : this.totalTaxable();
+    return +(base * (this.cdPct() / 100)).toFixed(2);
+  });
+
+  /** Before-GST me tax discounted base par lagta hai — proportional factor. */
+  private cdTaxFactor = computed(() => {
+    if (!this.cdEnabled() || this.cdType() !== 'before') return 1;
+    const taxable = this.totalTaxable();
+    if (taxable <= 0) return 1;
+    return Math.max(0, (taxable - this.cdAmount()) / taxable);
+  });
+  effSgst = computed(() => +(this.sgstTotal() * this.cdTaxFactor()).toFixed(2));
+  effCgst = computed(() => +(this.cgstTotal() * this.cdTaxFactor()).toFixed(2));
+  effTax = computed(() => this.effSgst() + this.effCgst());
+
+  netTotal = computed(() => {
+    if (this.cdType() === 'before') {
+      // (taxable − CD) + tax-on-discounted
+      return (this.totalTaxable() - this.cdAmount()) + this.effTax();
+    }
+    // After GST: poora tax, discount total par
+    return this.totalAmount() - this.cdAmount();
+  });
+
+  /** Net amount = Net Total rounded to nearest whole rupee. */
+  netAmountRounded = computed(() => Math.round(this.netTotal()));
+
+  /** Round-off difference (can be -0.49 to +0.50). Shown as separate line. */
+  roundOff = computed(() => +(this.netAmountRounded() - this.netTotal()).toFixed(2));
+
+  /** Indian number-to-words for display in totals + summary. */
+  words = amountInWords;
+
+  // Handlers for CD section
+  toggleCd() {
+    this.cdEnabled.set(!this.cdEnabled());
+    this.cdAmountOverride.set(null);  // reset on toggle
+  }
+  onCdPctChange(val: number) {
+    this.cdPct.set(+val || 0);
+    this.cdAmountOverride.set(null);  // % change clears manual override → re-auto-compute
+  }
+  onCdAmountChange(val: number) {
+    this.cdAmountOverride.set(+val || 0);   // user manually edited → lock to this value
+  }
+
+  canSave = computed(() => {
+    return !!this.supplierId
+        && !!this.buyerId
+        && !!this.paymentTerms
+        && this.netTotal() > 0
+        && this.lines().some(l => l.itemName && l.qty > 0 && l.rate > 0);
+  });
+
+  // ============ LIFECYCLE ============
+  ngOnInit() {
+    this.loadScanUse();
+    this.svc.listItems().subscribe(i => this.items.set(i));
+    this.svc.listTransporters().subscribe({
+      next: t => this.transporters.set(t.filter(x => x.isActive !== false)),
+      error: () => this.transporters.set([])
+    });
+
+    // Check for edit mode via :id route param
+    const idParam = this.route.snapshot.paramMap.get('id');
+
+    // In edit mode: load parties FIRST, then order — so the <select> options exist
+    // when we set supplierId/buyerId, and onSupplierChange/onBuyerChange can find the party.
+    if (idParam) {
+      this.editId = idParam;
+      this.editMode = true;
+      this.svc.listParties().subscribe(p => {
+        this.parties.set(p);
+        this.loadOrderForEdit(idParam);
+      });
+    } else {
+      // Create mode: parallel load is fine
+      this.svc.listParties().subscribe(p => this.parties.set(p));
+    }
+  }
+
+  private loadOrderForEdit(id: string) {
+    this.svc.getOrder(id).subscribe({
+      next: (o) => {
+        // Header
+        this.tempOrderNo = o.orderNo;
+        this.orderDate = o.orderDate;
+        // Supplier (partyId) + Buyer (buyerPartyId)
+        this.supplierId = o.partyId;
+        this.buyerId = o.buyerPartyId || '';
+        // Section 5
+        this.cdPct.set(Number(o.cdPercent) || 0);
+        this.cdEnabled.set(this.cdPct() > 0);
+        this.cdType.set(o.cdType === 'after' ? 'after' : 'before');
+        this.cdAmountOverride.set(null);
+        this.supplierOrderNo = o.supplierOrderNo || '';
+        this.paymentTerms = o.paymentTerms || '';
+        this.orderStatus = o.status || 'pending';
+        this.remark = o.notes || '';
+        // Lines
+        if (o.lines && o.lines.length > 0) {
+          this.lines.set(o.lines.map(l => ({
+            itemId: l.itemId || null,
+            itemName: l.itemName,
+            description: l.description || '',
+            hsnSac: l.hsnSac || '',
+            qty: l.qty,
+            unit: l.unit || 'MTR',
+            rate: l.rate,
+            rd: l.rd || 0,
+            sgstPct: l.sgstPct || 2.5,
+            cgstPct: l.cgstPct || 2.5,
+            photoFile: null,
+            photoPreview: null
+          })));
+        }
+        // Auto-fill party detail fields from loaded supplier/buyer
+        if (this.supplierId) this.onSupplierChange(this.supplierId);
+        if (this.buyerId) this.onBuyerChange(this.buyerId);
+        // If the saved CD amount diverges from the auto-computed value
+        // (e.g. a manual override at save time), restore it as an override
+        // so the loaded total matches the saved total. Done after lines/party
+        // are set so cdAmount() auto-compute is accurate for comparison.
+        if (this.cdEnabled() && o.cdAmount != null) {
+          const saved = +o.cdAmount;
+          if (Math.abs(saved - this.cdAmount()) > 0.01) {
+            this.cdAmountOverride.set(saved);
+          }
+        }
+      },
+      error: () => alert('❌ Failed to load order for editing')
+    });
+  }
+
+  // ============ LINE OPERATIONS ============
+  updateLine(idx: number, field: keyof LineRow, value: any) {
+    this.lines.update(arr => arr.map((l, i) => i === idx ? { ...l, [field]: value } : l));
+  }
+  addLine() { this.lines.update(arr => [...arr, this.newLine()]); }
+  removeLine(idx: number) { this.lines.update(arr => arr.filter((_, i) => i !== idx)); }
+  autoFillFromItem(idx: number, event: any) {
+    const name = event.target.value;
+    const item = this.items().find(i => i.name === name);
+    if (item) {
+      this.updateLine(idx, 'itemId', item.id);
+      this.updateLine(idx, 'hsnSac', item.hsnSac ?? '');
+      this.updateLine(idx, 'unit', item.unit);
+      this.updateLine(idx, 'rate', item.defaultRate);
+      const half = (item.taxRate || 5) / 2;
+      this.updateLine(idx, 'sgstPct', half);
+      this.updateLine(idx, 'cgstPct', half);
+    }
+  }
+  // Description (master) pick → HSN + Unit auto-fill
+  onDescPick(idx: number, event: any) {
+    const name = event.target.value;
+    const item = this.items().find(i => i.name === name);
+    if (item) {
+      this.updateLine(idx, 'itemId', item.id);
+      if (item.hsnSac) this.updateLine(idx, 'hsnSac', item.hsnSac);
+      if (item.unit) this.updateLine(idx, 'unit', item.unit);
+    }
+  }
+  onItemPhoto(idx: number, event: any) {
+    const file: File = event.target.files?.[0];
+    if (!file) return;
+    this.updateLine(idx, 'photoFile', file);
+    const reader = new FileReader();
+    reader.onload = () => this.updateLine(idx, 'photoPreview', reader.result as string);
+    reader.readAsDataURL(file);
+  }
+
+  // ============ PARTY AUTO-FILL ============
+  onSupplierChange(id: string) {
+    const p = this.parties().find(x => x.id === id);
+    if (p) {
+      this.supplierFilter.set(p.displayName);   // sync combobox input
+      this.supplierGstin = p.gst ?? '';
+      this.supplierPan = p.pan ?? '';
+      this.supplierAddress = p.city ?? '';
+      this.supplierMobile = p.phone ?? '';
+      this.supplierWhatsapp = p.phone ?? '';
+    } else {
+      this.supplierGstin = ''; this.supplierPan = ''; this.supplierAddress = '';
+      this.supplierMobile = ''; this.supplierWhatsapp = '';
+    }
+  }
+  onBuyerChange(id: string) {
+    const p = this.parties().find(x => x.id === id);
+    if (p) {
+      this.buyerFilter.set(p.displayName);       // sync combobox input
+      this.buyerGstin = p.gst ?? '';
+      this.buyerPan = p.pan ?? '';
+      this.buyerAddress = p.city ?? '';
+      this.buyerMobile = p.phone ?? '';
+      this.buyerWhatsapp = p.phone ?? '';
+    } else {
+      this.buyerGstin = ''; this.buyerPan = ''; this.buyerAddress = '';
+      this.buyerMobile = ''; this.buyerWhatsapp = '';
+    }
+  }
+
+  // ============ ACTIONS ============
+  preview() {
+    const sup = this.parties().find(p => p.id === this.supplierId)?.displayName ?? '—';
+    const buy = this.parties().find(p => p.id === this.buyerId)?.displayName ?? '—';
+    alert(`📄 Order Preview\n\n` +
+          `Supplier: ${sup}\n` +
+          `Buyer: ${buy}\n` +
+          `Items: ${this.lines().filter(l => l.itemName).length}\n` +
+          `Gross: ₹${this.totalTaxable().toFixed(2)}\n` +
+          `Tax: ₹${this.totalTax().toFixed(2)}\n` +
+          `CD: -₹${this.cdAmount().toFixed(2)}\n` +
+          `Net Total: ₹${this.netTotal().toFixed(2)}\n\n` +
+          `(Full PDF preview coming soon)`);
+  }
+  downloadPdf() {
+    alert('📄 PDF download will be enabled after Submit. Save the order first to generate PDF.');
+  }
+  sendWhatsApp() {
+    const phone = this.buyerWhatsapp || this.supplierWhatsapp;
+    if (!phone) {
+      alert('No WhatsApp number — select Supplier/Buyer first.');
+      return;
+    }
+    const sup = this.parties().find(p => p.id === this.supplierId)?.displayName ?? '';
+    const buy = this.parties().find(p => p.id === this.buyerId)?.displayName ?? '';
+    const msg = encodeURIComponent(
+      `Order ${this.tempOrderNo || '(new)'}\n` +
+      `Supplier: ${sup}\nBuyer: ${buy}\n` +
+      `Items: ${this.lines().filter(l => l.itemName).length}\n` +
+      `Net Total: ₹${this.netTotal().toFixed(2)}\n` +
+      `— Namokara Agencies`);
+    const clean = phone.replace(/[^0-9]/g, '');
+    window.open(`https://wa.me/${clean}?text=${msg}`, '_blank');
+  }
+
+  // ============ SAVE ============
+  save() {
+    // Detailed validation — show exactly what's missing
+    const missing: string[] = [];
+    if (!this.supplierId) missing.push('SUPPLIER (top)');
+    if (!this.buyerId) missing.push('BUYER (top)');
+    if (!this.paymentTerms) missing.push('PAYMENT TERMS');
+    if (this.netTotal() <= 0) missing.push('NET TOTAL must be > 0');
+    if (!this.lines().some(l => l.itemName && l.qty > 0 && l.rate > 0)) {
+      missing.push('AT LEAST ONE ITEM (with name, qty > 0, rate > 0)');
+    }
+    if (missing.length > 0) {
+      const msg = '⚠️ Please fill the following:\n\n• ' + missing.join('\n• ');
+      this.error.set(msg);
+      alert(msg);
+      return;
+    }
+    this.saving.set(true);
+    this.error.set('');
+
+    const validLines: OrderLine[] = this.lines()
+      .filter(l => l.itemName && l.qty > 0 && l.rate > 0)
+      .map((l, idx) => ({
+        itemId: l.itemId,
+        itemName: l.itemName,
+        description: l.description || null,
+        hsnSac: l.hsnSac || null,
+        qty: l.qty,
+        unit: l.unit,
+        rate: l.rate,
+        rd: l.rd || 0,
+        sgstPct: l.sgstPct,
+        cgstPct: l.cgstPct,
+        taxableAmount: this.lineTaxable(idx),
+        taxAmount: this.lineTax(idx),
+        totalAmount: this.lineTotal(idx)
+      }));
+
+    const payload = {
+      orderType: 'sales',
+      orderDate: this.orderDate,
+      partyId: this.supplierId,
+      buyerPartyId: this.buyerId || null,
+      cdPercent: this.cdEnabled() ? this.cdPct() : 0,
+      cdType: this.cdType(),
+      cdAmount: this.cdEnabled() ? this.cdAmount() : 0,
+      supplierOrderNo: this.supplierOrderNo || undefined,
+      transporterId: this.transporterId || null,
+      paymentTerms: this.paymentTerms || undefined,
+      status: this.orderStatus,
+      notes: this.remark || undefined,
+      lines: validLines
+    };
+
+    // EDIT MODE → in-place update (order number + id same rehte hain, renumber nahi)
+    if (this.editMode && this.editId) {
+      this.svc.updateOrder(this.editId, payload as any).subscribe({
+        next: (o) => {
+          this.toast.success(`Order ${o.orderNo} update ho gaya — Net Total ₹${o.total.toFixed(2)}`);
+          this.router.navigate(['/trading/orders']);
+        },
+        error: (e) => {
+          this.error.set(e?.error?.error ?? 'Failed to update order.');
+          this.saving.set(false);
+        }
+      });
+      return;
+    }
+
+    // CREATE MODE
+    this.svc.createOrder(payload).subscribe({
+      next: (o) => {
+        this.toast.success(`Order ${o.orderNo} successfully submit ho gaya — Net Total ₹${o.total.toFixed(2)}`);
+        this.router.navigate(['/trading/orders']);     // was '/trading/bills' (bug — wrong redirect)
+      },
+      error: (e) => {
+        this.error.set(e?.error?.error ?? 'Failed to save order. Please check all required fields.');
+        this.saving.set(false);
+      }
+    });
+  }
+}

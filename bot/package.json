@@ -1,0 +1,20 @@
+{
+  "name": "namokara-whatsapp-bot",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Namokara WhatsApp bot — supplier photo + rate (regex, no AI) + watermark + auto-broadcast to matching buyers + order flow. Talks to the Suite's PostgreSQL.",
+  "type": "commonjs",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "@whiskeysockets/baileys": "^6.7.9",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.1",
+    "pg": "^8.13.1",
+    "pino": "^9.5.0",
+    "qrcode-terminal": "^0.12.0",
+    "sharp": "^0.33.5"
+  }
+}

@@ -1,0 +1,74 @@
+# ============================================
+# Namokara Suite — Git Ignore
+# ============================================
+
+# .NET
+bin/
+obj/
+*.user
+*.suo
+*.cache
+*.tmp
+artifacts/
+publish-api/
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm
+.yarn
+dist/
+.angular/cache/
+
+# Environments & secrets — NEVER commit
+.env
+.env.local
+.env.*.local
+appsettings.Development.json
+appsettings.Local.json
+secrets.json
+*.key
+*.pem
+*.pfx
+
+# IDEs
+.vs/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.example.json
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Docker
+.docker-data/
+
+# Build outputs
+build/
+out/
+coverage/
+.nyc_output/
+
+# Logs
+*.log
+logs/
+
+# Temporary
+*.tmp
+*.bak
+~$*
+
+# Database backups
+*.dump
+*.sql.gz
+*.backup
+
+# Uploads (local dev)
+uploads/

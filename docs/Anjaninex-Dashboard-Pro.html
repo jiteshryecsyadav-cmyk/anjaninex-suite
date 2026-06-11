@@ -1,0 +1,2307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Anjaninex Dashboard Pro — Namokara Suite</title>
+<style>
+/* ════════════════════════════════════════════════════════════════════
+   ANJANINEX BRAND THEME — solid colors, NO gradient blends
+   ════════════════════════════════════════════════════════════════════ */
+:root {
+  --ax-red:        #DC2626;
+  --ax-red-dark:   #B91C1C;
+  --ax-red-soft:   #FEE2E2;
+  --ax-navy:       #1B2E5C;
+  --ax-navy-dark:  #0F1E40;
+  --ax-navy-soft:  #E5E9F2;
+  --ax-cream:      #FAF7F0;
+  --ax-cream-2:    #F5EFE3;
+
+  --bg:    var(--ax-cream);
+  --card:  #FFFFFF;
+  --border:#D6DDEA;
+  --text:  var(--ax-navy-dark);
+  --soft:  #4A5878;
+  --xs:    #8893AC;
+
+  --ok:    #16A34A; --ol: #DCFCE7;
+  --warn:  #D97706; --wl: #FEF3C7;
+  --danger:var(--ax-red); --dl: var(--ax-red-soft);
+
+  --shadow: 0 2px 14px rgba(27,46,92,0.10);
+  --shadow-lg: 0 8px 28px rgba(27,46,92,0.16);
+  --r: 12px; --rs: 8px;
+}
+
+[data-theme="dark"] {
+  --bg:    #0A1226;
+  --card:  #15203D;
+  --border:#2A3A5C;
+  --text:  #F0F3FA;
+  --soft:  #B0BCD4;
+  --xs:    #7C8AAA;
+  --ax-cream:      #15203D;
+  --ax-cream-2:    #1B2A4F;
+  --ax-navy-soft:  #1F2F55;
+  --shadow:        0 2px 14px rgba(0,0,0,0.40);
+  --shadow-lg:     0 8px 28px rgba(0,0,0,0.55);
+}
+
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'DM Sans',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:13px;transition:background 0.25s,color 0.25s}
+.mono{font-family:'DM Mono','SF Mono',monospace}
+
+/* ═══════════════ TOP BAR ═══════════════ */
+.top-bar{background:var(--ax-navy);color:#fff;padding:0 22px;height:58px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:300;border-bottom:3px solid var(--ax-red)}
+.tb-brand{display:flex;align-items:center;gap:10px}
+.tb-brand img{width:38px;height:38px;object-fit:contain;background:#fff;border-radius:6px;padding:2px}
+.tb-brand h1{font-size:16px;font-weight:800;letter-spacing:-0.3px}
+.tb-brand h1 .nex{color:#FCA5A5}
+.tb-brand .sub{font-size:10px;opacity:0.75;font-weight:500;margin-top:1px}
+.tb-right{display:flex;align-items:center;gap:10px}
+.tb-chip{background:rgba(255,255,255,0.10);border:1px solid rgba(255,255,255,0.15);border-radius:6px;padding:5px 12px;font-size:11px;font-weight:600;display:flex;align-items:center;gap:6px;cursor:pointer;transition:background 0.15s}
+.tb-chip:hover{background:rgba(255,255,255,0.20)}
+.tb-chip.wallet{background:var(--ax-red);border-color:var(--ax-red-dark)}
+.tb-chip.wallet:hover{background:var(--ax-red-dark)}
+.tb-icon{background:transparent;border:0;color:#fff;width:34px;height:34px;border-radius:50%;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;position:relative;transition:background 0.15s}
+.tb-icon:hover{background:rgba(255,255,255,0.15)}
+.tb-icon .dot{position:absolute;top:4px;right:6px;width:8px;height:8px;background:var(--ax-red);border-radius:50%;border:1.5px solid var(--ax-navy)}
+
+/* ═══════════════ TABS BAR ═══════════════ */
+.tabs-bar{background:var(--card);border-bottom:1px solid var(--border);padding:0 22px;display:flex;align-items:center;gap:0;position:sticky;top:58px;z-index:200;box-shadow:var(--shadow);overflow-x:auto;scrollbar-width:none}
+.tabs-bar::-webkit-scrollbar{display:none}
+.tab-btn{padding:14px 18px;font-size:13px;font-weight:600;color:var(--soft);border:0;background:transparent;cursor:pointer;border-bottom:3px solid transparent;transition:color 0.15s,border-color 0.15s;display:flex;align-items:center;gap:7px;font-family:inherit;white-space:nowrap}
+.tab-btn:hover{color:var(--ax-navy)}
+.tab-btn.active{color:var(--ax-red);border-bottom-color:var(--ax-red);font-weight:700}
+[data-theme="dark"] .tab-btn.active{color:#FCA5A5;border-bottom-color:#FCA5A5}
+.tab-spacer{flex:1}
+.tab-action{margin:9px 4px;padding:6px 12px;border-radius:6px;border:1.5px solid var(--border);background:var(--card);color:var(--soft);font-size:11px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:5px;transition:all 0.15s;font-family:inherit;white-space:nowrap}
+.tab-action:hover{background:var(--ax-navy-soft);color:var(--ax-navy);border-color:var(--ax-navy)}
+.tab-action.active{background:var(--ax-red);color:#fff;border-color:var(--ax-red)}
+
+/* ═══════════════ CONTENT ═══════════════ */
+.content{padding:18px 22px 80px;max-width:1600px;margin:0 auto}
+
+/* PERIOD BAR */
+.period-bar{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap;align-items:center}
+.prbtn{padding:5px 12px;border-radius:6px;border:1.5px solid var(--border);background:var(--card);color:var(--soft);font-size:11px;font-weight:600;cursor:pointer;transition:all 0.15s;font-family:inherit}
+.prbtn:hover{border-color:var(--ax-navy);color:var(--ax-navy)}
+.prbtn.active{background:var(--ax-navy);color:#fff;border-color:var(--ax-navy)}
+.period-bar select,.period-bar input[type="date"]{padding:5px 10px;border-radius:6px;border:1.5px solid var(--border);background:var(--card);color:var(--text);font-size:11px;font-weight:600;outline:none;cursor:pointer;font-family:inherit}
+.period-bar select:focus,.period-bar input:focus{border-color:var(--ax-navy)}
+.period-bar .compare-toggle{margin-left:8px;display:flex;align-items:center;gap:6px;font-size:11px;color:var(--soft);font-weight:600}
+
+/* KPI GRID */
+.kpi-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:16px}
+.kpi-card{background:var(--card);border-radius:var(--r);border:1px solid var(--border);padding:14px 16px;box-shadow:var(--shadow);position:relative;overflow:hidden;transition:transform 0.15s,box-shadow 0.15s;cursor:pointer}
+.kpi-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-lg)}
+.kpi-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}
+.kpi-card.red::before{background:var(--ax-red)}
+.kpi-card.navy::before{background:var(--ax-navy)}
+.kpi-card.green::before{background:var(--ok)}
+.kpi-card.amber::before{background:var(--warn)}
+.kpi-card.purple::before{background:#7C3AED}
+.kpi-icon{font-size:18px;margin-bottom:6px;display:block}
+.kpi-val{font-size:22px;font-weight:800;line-height:1.1;margin-bottom:3px;font-family:'DM Mono',monospace}
+.kpi-card.red .kpi-val{color:var(--ax-red)}
+.kpi-card.navy .kpi-val{color:var(--ax-navy)}
+[data-theme="dark"] .kpi-card.navy .kpi-val{color:#FCA5A5}
+.kpi-card.green .kpi-val{color:var(--ok)}
+.kpi-card.amber .kpi-val{color:var(--warn)}
+.kpi-card.purple .kpi-val{color:#7C3AED}
+.kpi-label{font-size:10px;color:var(--soft);font-weight:600;text-transform:uppercase;letter-spacing:0.5px}
+.kpi-change{position:absolute;top:10px;right:10px;font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px}
+.kpi-change.up{background:var(--ol);color:var(--ok)}
+.kpi-change.dn{background:var(--dl);color:var(--ax-red-dark)}
+.kpi-compare{font-size:9px;color:var(--xs);margin-top:4px;font-weight:600}
+
+/* WIDGET GRID */
+.widget-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:14px}
+.widget-grid.col2{grid-template-columns:repeat(2,1fr)}
+.widget-grid.col4{grid-template-columns:repeat(4,1fr)}
+
+/* WIDGET CARD */
+.widget{background:var(--card);border-radius:var(--r);border:1px solid var(--border);box-shadow:var(--shadow);overflow:hidden;transition:transform 0.15s,box-shadow 0.15s,border-color 0.15s;position:relative}
+.widget:hover{box-shadow:var(--shadow-lg)}
+.widget.hidden{display:none}
+.widget.dragging{opacity:0.45;transform:rotate(-1deg)}
+.widget.drag-over{border:2px dashed var(--ax-red);border-radius:var(--r);transform:scale(1.02)}
+.widget.customize-mode{border:2px dashed var(--ax-navy);cursor:move}
+.widget.customize-mode:hover{background:var(--ax-navy-soft)}
+.widget.off{opacity:0.40;border:2px dashed var(--border)}
+.widget.off .w-body{pointer-events:none;filter:grayscale(1)}
+.widget.span2{grid-column:span 2}
+.widget.span3{grid-column:span 3}
+
+.w-head{display:flex;justify-content:space-between;align-items:center;padding:11px 14px 9px;border-bottom:1px solid var(--border);background:var(--card)}
+.w-head .left{display:flex;align-items:center;gap:8px;min-width:0}
+.w-drag{cursor:grab;color:var(--xs);font-size:11px;opacity:0;transition:opacity 0.15s}
+.widget.customize-mode .w-drag,.widget:hover .w-drag{opacity:0.7}
+.w-drag:active{cursor:grabbing}
+.w-title{font-size:11px;font-weight:800;color:var(--ax-navy);text-transform:uppercase;letter-spacing:0.6px}
+[data-theme="dark"] .w-title{color:#FCA5A5}
+.w-sub{font-size:9px;color:var(--xs);margin-top:2px;font-weight:500}
+.w-body{padding:14px}
+.w-actions{display:flex;gap:4px;align-items:center}
+.w-action{background:transparent;border:0;color:var(--xs);width:24px;height:24px;border-radius:5px;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;transition:all 0.15s}
+.w-action:hover{background:var(--ax-navy-soft);color:var(--ax-navy)}
+.w-toggle{width:24px;height:24px;border-radius:50%;border:0;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;transition:all 0.15s;flex-shrink:0}
+.w-on{background:var(--ol);color:var(--ok)}
+.w-off{background:var(--dl);color:var(--ax-red)}
+
+/* SIDE PANELS (customize / export / notif) */
+.side-panel{display:none;position:fixed;top:0;right:0;width:340px;height:100vh;background:var(--card);border-left:1px solid var(--border);z-index:500;box-shadow:-4px 0 24px rgba(0,0,0,0.18);overflow-y:auto;animation:slideIn 0.2s ease}
+.side-panel.open{display:block}
+@keyframes slideIn{from{transform:translateX(100%)}to{transform:translateX(0)}}
+.sp-head{background:var(--ax-navy);color:#fff;padding:16px 20px;display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid var(--ax-red)}
+.sp-head h3{font-size:15px;font-weight:800}
+.sp-close{background:rgba(255,255,255,0.15);border:0;color:#fff;width:30px;height:30px;border-radius:50%;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center}
+.sp-close:hover{background:rgba(255,255,255,0.30)}
+.sp-section{padding:16px 18px;border-bottom:1px solid var(--border)}
+.sp-section-title{font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:1.2px;color:var(--xs);margin-bottom:12px}
+.sp-item{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-radius:var(--rs);margin-bottom:7px;background:var(--bg);border:1px solid var(--border);cursor:pointer;transition:all 0.15s}
+.sp-item:hover{border-color:var(--ax-navy);background:var(--ax-navy-soft)}
+.sp-item-name{font-size:12px;font-weight:600;color:var(--text)}
+.sp-item-sub{font-size:10px;color:var(--xs);margin-top:1px}
+.toggle-switch{width:38px;height:22px;background:#CCC;border-radius:11px;position:relative;transition:background 0.2s;flex-shrink:0}
+.toggle-switch.on{background:var(--ax-red)}
+.toggle-switch::after{content:'';position:absolute;top:2px;left:2px;width:18px;height:18px;background:#fff;border-radius:50%;transition:transform 0.2s;box-shadow:0 1px 3px rgba(0,0,0,0.2)}
+.toggle-switch.on::after{transform:translateX(16px)}
+.sp-footer{padding:16px 18px;display:flex;flex-direction:column;gap:8px}
+.btn-block{width:100%;padding:10px;border-radius:var(--rs);border:1.5px solid var(--border);background:var(--card);color:var(--soft);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;transition:all 0.15s;display:flex;align-items:center;justify-content:center;gap:6px}
+.btn-block:hover{background:var(--ax-navy-soft);color:var(--ax-navy);border-color:var(--ax-navy)}
+.btn-block.danger:hover{background:var(--dl);color:var(--ax-red);border-color:var(--ax-red)}
+.btn-block.primary{background:var(--ax-red);color:#fff;border-color:var(--ax-red)}
+.btn-block.primary:hover{background:var(--ax-red-dark);color:#fff}
+
+/* TAB PAGES */
+.tab-page{display:none}
+.tab-page.active{display:block;animation:fadeIn 0.25s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+
+/* LEGEND */
+.leg{display:flex;flex-wrap:wrap;gap:10px;margin-top:8px}
+.leg-item{display:flex;align-items:center;gap:5px;font-size:10px;color:var(--soft);font-weight:500}
+.leg-dot{width:9px;height:9px;border-radius:3px;flex-shrink:0}
+
+/* PARTY / SUPPLIER CARDS */
+.party-card{display:flex;align-items:center;gap:11px;padding:10px 12px;border-radius:var(--rs);border:1px solid var(--border);margin-bottom:8px;background:var(--card);transition:all 0.15s;cursor:pointer}
+.party-card:hover{border-color:var(--ax-navy);background:var(--ax-navy-soft)}
+.party-av{width:38px;height:38px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;flex-shrink:0;background:var(--ax-navy);color:#fff}
+.party-av.red{background:var(--ax-red)}
+.party-av.amber{background:var(--warn)}
+.party-av.ok{background:var(--ok)}
+.party-info{flex:1;min-width:0}
+.party-name{font-size:12.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text)}
+.party-detail{font-size:10px;color:var(--xs);margin-top:1px}
+.party-stat{text-align:right;flex-shrink:0}
+.party-stat .big{font-size:13px;font-weight:800;font-family:'DM Mono',monospace;color:var(--ax-navy)}
+[data-theme="dark"] .party-stat .big{color:#FCA5A5}
+.party-stat .small{font-size:9px;color:var(--xs)}
+.mini-bar{width:100%;height:5px;background:var(--ax-navy-soft);border-radius:10px;overflow:hidden;margin-top:4px}
+.mini-fill{height:100%;border-radius:10px}
+.flag{display:inline-flex;align-items:center;font-size:9px;font-weight:700;padding:2px 7px;border-radius:10px}
+.fr{background:var(--dl);color:var(--ax-red-dark)}
+.fw{background:var(--wl);color:#92400E}
+.fo{background:var(--ol);color:var(--ok)}
+.rbadge{display:inline-flex;align-items:center;font-size:9px;font-weight:700;padding:2px 7px;border-radius:10px}
+.ra{background:var(--ol);color:var(--ok)}
+.rb{background:var(--wl);color:#92400E}
+.rc{background:var(--dl);color:var(--ax-red-dark)}
+.divider{height:1px;background:var(--border);margin:8px 0}
+
+/* ALERTS */
+.ai{display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border-radius:var(--rs);border:1px solid;margin-bottom:7px;font-size:11.5px}
+.ai:last-child{margin-bottom:0}
+.ad{background:var(--dl);border-color:var(--ax-red)}
+.aw{background:var(--wl);border-color:var(--warn)}
+.ainfo{background:var(--ax-navy-soft);border-color:var(--ax-navy)}
+.aok{background:var(--ol);border-color:var(--ok)}
+.aico{font-size:16px;margin-top:1px}
+.atxt{flex:1}
+.atit{font-weight:700;margin-bottom:1px;color:var(--text)}
+.asub{font-size:10px;color:var(--soft)}
+.atm{font-size:9px;color:var(--xs);font-family:'DM Mono',monospace;white-space:nowrap}
+
+/* TABLES */
+.tt,.ot{width:100%;border-collapse:collapse}
+.tt th,.ot th{font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:0.8px;color:var(--xs);padding:9px 12px;text-align:left;border-bottom:1px solid var(--border);background:var(--ax-navy-soft)}
+.tt td,.ot td{padding:9px 12px;border-bottom:1px solid var(--border);font-size:11.5px;vertical-align:middle;color:var(--text)}
+.tt tr:last-child td,.ot tr:last-child td{border-bottom:none}
+.tt tr:hover td,.ot tr:hover td{background:var(--ax-navy-soft)}
+.rnk{width:20px;height:20px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:9px;font-weight:800}
+.r1{background:#FFD700;color:#5C4400}
+.r2{background:#C0C0C0;color:#333}
+.r3{background:#CD7F32;color:#fff}
+.rn{background:var(--ax-navy-soft);color:var(--ax-navy)}
+.tspark{display:flex;align-items:flex-end;gap:2px;height:24px}
+.tsb{width:5px;border-radius:2px 2px 0 0}
+
+/* GAUGE */
+.gauge{position:relative;width:140px;height:80px;margin:0 auto}
+.gauge svg{width:100%;height:100%}
+.gauge-text{position:absolute;bottom:-4px;left:0;right:0;text-align:center;font-size:18px;font-weight:800;font-family:'DM Mono',monospace;color:var(--ax-navy)}
+
+/* HEATMAP */
+.heatmap{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+.heat-cell{aspect-ratio:1;border-radius:3px;background:var(--ax-navy-soft);display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--soft);cursor:pointer;transition:transform 0.1s}
+.heat-cell:hover{transform:scale(1.1)}
+.heat-cell.l1{background:#E5E9F2}
+.heat-cell.l2{background:#A5B4D6}
+.heat-cell.l3{background:#5C7AB8;color:#fff}
+.heat-cell.l4{background:#1B2E5C;color:#fff}
+.heat-cell.l5{background:var(--ax-red);color:#fff}
+.heat-cell.hol{background:#FEF3C7;color:#92400E}
+
+/* MULTI-FIRM GRID (anjaninex admin) */
+.firm-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;max-height:480px;overflow-y:auto;padding:2px}
+.firm-card{background:var(--card);border:1px solid var(--border);border-radius:var(--rs);padding:11px 12px;cursor:pointer;transition:all 0.15s;position:relative}
+.firm-card:hover{border-color:var(--ax-navy);transform:translateY(-1px)}
+.firm-card.warn{border-left:3px solid var(--warn)}
+.firm-card.danger{border-left:3px solid var(--ax-red)}
+.firm-card.healthy{border-left:3px solid var(--ok)}
+.firm-name{font-size:12px;font-weight:700;color:var(--text);margin-bottom:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.firm-meta{font-size:9px;color:var(--xs);margin-bottom:7px}
+.firm-stats{display:flex;justify-content:space-between;gap:6px;font-size:10px}
+.firm-stats div{flex:1}
+.firm-stats .label{color:var(--xs);font-size:8px;text-transform:uppercase;font-weight:700}
+.firm-stats .val{font-weight:800;font-family:'DM Mono',monospace;color:var(--ax-navy)}
+[data-theme="dark"] .firm-stats .val{color:#FCA5A5}
+
+/* ACTIVITY FEED */
+.feed-item{display:flex;align-items:flex-start;gap:9px;padding:8px 0;border-bottom:1px solid var(--border)}
+.feed-item:last-child{border-bottom:0}
+.feed-ico{width:30px;height:30px;border-radius:7px;background:var(--ax-navy-soft);color:var(--ax-navy);display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
+.feed-ico.red{background:var(--dl);color:var(--ax-red)}
+.feed-ico.green{background:var(--ol);color:var(--ok)}
+.feed-content{flex:1;min-width:0}
+.feed-text{font-size:11.5px;color:var(--text);line-height:1.4}
+.feed-meta{font-size:9px;color:var(--xs);margin-top:2px;font-family:'DM Mono',monospace}
+
+/* COMPARISON BADGE */
+.cmp{display:inline-block;font-size:10px;font-weight:700;padding:2px 6px;border-radius:8px;margin-left:6px;vertical-align:middle}
+.cmp.up{background:var(--ol);color:var(--ok)}
+.cmp.dn{background:var(--dl);color:var(--ax-red)}
+
+/* TOAST */
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--ax-navy);color:#fff;padding:10px 18px;border-radius:6px;font-size:12px;font-weight:600;box-shadow:var(--shadow-lg);z-index:1000;display:none;animation:toastIn 0.2s ease;border-left:3px solid var(--ax-red)}
+.toast.show{display:block}
+@keyframes toastIn{from{opacity:0;transform:translate(-50%,8px)}to{opacity:1;transform:translate(-50%,0)}}
+
+/* LIVE PULSE (real-time indicator) */
+.live-pulse{display:inline-flex;align-items:center;gap:5px;font-size:9px;color:var(--ok);font-weight:700;text-transform:uppercase;letter-spacing:0.5px}
+.live-pulse::before{content:'';width:7px;height:7px;background:var(--ok);border-radius:50%;animation:pulse 1.5s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.4;transform:scale(0.85)}}
+
+/* ═══════════════ RECHARGE MODAL ═══════════════ */
+.modal-backdrop{display:none;position:fixed;inset:0;background:rgba(15,30,64,0.55);backdrop-filter:blur(3px);z-index:600;align-items:center;justify-content:center;padding:20px}
+.modal-backdrop.open{display:flex;animation:fadeIn 0.2s ease}
+.modal{background:var(--card);border-radius:16px;width:100%;max-width:820px;max-height:92vh;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.3);display:flex;flex-direction:column;animation:modalIn 0.25s ease}
+@keyframes modalIn{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
+.modal-head{background:var(--ax-navy);color:#fff;padding:16px 22px;display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid var(--ax-red);flex-shrink:0}
+.modal-head h2{font-size:18px;font-weight:800}
+.modal-head .sub{font-size:11px;opacity:0.8;margin-top:1px}
+.modal-body{padding:22px;overflow-y:auto;flex:1}
+.modal-foot{padding:14px 22px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;background:var(--bg);flex-shrink:0}
+
+/* Balance card inside modal */
+.bal-card{background:var(--ax-navy);color:#fff;border-radius:12px;padding:18px 20px;margin-bottom:18px;display:flex;justify-content:space-between;align-items:center;position:relative;overflow:hidden}
+.bal-card::before{content:'';position:absolute;top:0;right:0;width:100px;height:100%;background:var(--ax-red);clip-path:polygon(40% 0,100% 0,100% 100%,0 100%);opacity:0.9}
+.bal-card .left{position:relative;z-index:2}
+.bal-card .label{font-size:11px;opacity:0.85;text-transform:uppercase;letter-spacing:0.5px;font-weight:700;margin-bottom:4px}
+.bal-card .amt{font-size:34px;font-weight:800;font-family:'DM Mono',monospace;line-height:1}
+.bal-card .meta{font-size:11px;opacity:0.85;margin-top:6px}
+.bal-card .right{position:relative;z-index:2;text-align:right}
+.bal-card .runway{font-size:12px;font-weight:700;margin-bottom:2px}
+.bal-card .runway-days{font-size:24px;font-weight:800;font-family:'DM Mono',monospace}
+.bal-card.low::before{background:var(--ax-red)}
+.bal-card.low{background:var(--ax-navy-dark)}
+
+/* Amount selector grid */
+.amt-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:14px}
+.amt-btn{padding:14px 8px;border:2px solid var(--border);background:var(--card);border-radius:10px;cursor:pointer;font-family:inherit;font-size:14px;font-weight:800;color:var(--ax-navy);transition:all 0.15s;text-align:center;position:relative}
+.amt-btn:hover{border-color:var(--ax-navy);background:var(--ax-navy-soft)}
+.amt-btn.selected{border-color:var(--ax-red);background:var(--ax-red-soft);color:var(--ax-red-dark)}
+.amt-btn .save{display:block;font-size:9px;color:var(--ok);font-weight:700;margin-top:3px}
+.amt-btn .pop{position:absolute;top:-8px;right:-4px;background:var(--ax-red);color:#fff;font-size:9px;font-weight:800;padding:2px 6px;border-radius:8px}
+
+/* Custom amount */
+.custom-amt{position:relative;margin-bottom:14px}
+.custom-amt input{width:100%;padding:14px 16px 14px 40px;border:2px solid var(--border);border-radius:10px;font-size:18px;font-weight:800;font-family:'DM Mono',monospace;color:var(--ax-navy);outline:none;transition:border-color 0.15s}
+.custom-amt input:focus{border-color:var(--ax-red)}
+.custom-amt .rs{position:absolute;left:16px;top:50%;transform:translateY(-50%);font-size:18px;font-weight:800;color:var(--soft)}
+.custom-amt .gst{position:absolute;right:14px;top:50%;transform:translateY(-50%);font-size:10px;color:var(--xs);font-weight:600}
+
+/* Payment methods */
+.pay-methods{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:14px}
+.pay-method{padding:12px 14px;border:2px solid var(--border);border-radius:10px;cursor:pointer;display:flex;align-items:center;gap:12px;transition:all 0.15s;background:var(--card)}
+.pay-method:hover{border-color:var(--ax-navy)}
+.pay-method.selected{border-color:var(--ax-red);background:var(--ax-red-soft)}
+.pay-method .ico{font-size:24px;width:36px;text-align:center;flex-shrink:0}
+.pay-method .info{flex:1;min-width:0}
+.pay-method .name{font-size:12px;font-weight:800;color:var(--ax-navy);margin-bottom:1px}
+.pay-method .desc{font-size:10px;color:var(--xs);font-weight:500}
+.pay-method .fee{font-size:9px;font-weight:700;padding:2px 6px;border-radius:6px;background:var(--ol);color:var(--ok)}
+.pay-method .fee.paid{background:var(--wl);color:#92400E}
+
+/* Section title in modal */
+.sec-title{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--ax-navy);margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.sec-title::before{content:'';width:3px;height:14px;background:var(--ax-red);border-radius:2px}
+
+/* Auto recharge box */
+.auto-box{background:var(--ax-navy-soft);border:1.5px solid var(--ax-navy);border-radius:10px;padding:12px 14px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;gap:14px}
+.auto-box .info{flex:1}
+.auto-box .title{font-size:12px;font-weight:800;color:var(--ax-navy);margin-bottom:2px}
+.auto-box .desc{font-size:10px;color:var(--soft)}
+
+/* Summary panel (right side) */
+.modal-grid{display:grid;grid-template-columns:1fr 280px;gap:20px}
+.summary-panel{background:var(--bg);border-radius:10px;padding:16px;border:1px solid var(--border);height:fit-content;position:sticky;top:0}
+.sum-row{display:flex;justify-content:space-between;font-size:12px;padding:7px 0;border-bottom:1px dashed var(--border)}
+.sum-row:last-of-type{border-bottom:none}
+.sum-row.total{font-size:15px;font-weight:800;color:var(--ax-red);padding-top:10px;margin-top:6px;border-top:2px solid var(--ax-red);border-bottom:none}
+.sum-label{color:var(--soft);font-weight:600}
+.sum-val{color:var(--text);font-weight:700;font-family:'DM Mono',monospace}
+
+/* Recent transactions table inside modal */
+.txn-table{width:100%;border-collapse:collapse;font-size:11px}
+.txn-table th{font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:0.6px;color:var(--xs);padding:8px 10px;text-align:left;border-bottom:1px solid var(--border);background:var(--ax-navy-soft)}
+.txn-table td{padding:9px 10px;border-bottom:1px solid var(--border);color:var(--text)}
+.txn-table tr:last-child td{border-bottom:none}
+.txn-cr{color:var(--ok);font-weight:700;font-family:'DM Mono',monospace}
+.txn-dr{color:var(--ax-red);font-weight:700;font-family:'DM Mono',monospace}
+
+/* Pricing reference */
+.pricing-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:8px}
+.pricing-item{padding:8px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;font-size:11px}
+.pricing-item .p-svc{font-weight:700;color:var(--ax-navy);margin-bottom:2px}
+.pricing-item .p-cost{color:var(--ax-red);font-weight:800;font-family:'DM Mono',monospace}
+
+/* Tab switcher inside modal */
+.modal-tabs{display:flex;gap:0;border-bottom:1.5px solid var(--border);margin-bottom:18px}
+.modal-tab{padding:10px 16px;font-size:12px;font-weight:700;color:var(--soft);background:transparent;border:0;border-bottom:3px solid transparent;cursor:pointer;font-family:inherit;transition:all 0.15s}
+.modal-tab:hover{color:var(--ax-navy)}
+.modal-tab.active{color:var(--ax-red);border-bottom-color:var(--ax-red)}
+.modal-tab-pane{display:none}
+.modal-tab-pane.active{display:block;animation:fadeIn 0.2s ease}
+
+@media(max-width:768px){
+  .modal{max-width:100%;max-height:100vh;border-radius:0}
+  .modal-grid{grid-template-columns:1fr}
+  .summary-panel{position:static}
+  .amt-grid{grid-template-columns:repeat(3,1fr)}
+  .pay-methods{grid-template-columns:1fr}
+}
+
+/* RESPONSIVE */
+@media(max-width:1100px){
+  .kpi-grid{grid-template-columns:repeat(3,1fr)}
+  .widget-grid,.widget-grid.col4{grid-template-columns:repeat(2,1fr)}
+}
+@media(max-width:768px){
+  .top-bar{padding:0 14px;height:54px}
+  .tb-brand h1{font-size:14px}
+  .tb-brand .sub{display:none}
+  .tb-chip span:not(.k){display:none}
+  .tabs-bar{padding:0 14px}
+  .tab-btn{padding:12px 10px;font-size:12px}
+  .tab-btn .tab-label{display:none}
+  .tab-action{padding:5px 8px;font-size:10px}
+  .tab-action span:not(.tk){display:none}
+  .content{padding:14px 14px 60px}
+  .kpi-grid{grid-template-columns:repeat(2,1fr);gap:8px}
+  .kpi-val{font-size:18px}
+  .widget-grid,.widget-grid.col2,.widget-grid.col4{grid-template-columns:1fr;gap:10px}
+  .widget.span2,.widget.span3{grid-column:span 1}
+  .side-panel{width:100%}
+}
+</style>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body data-theme="light">
+
+<!-- ═══════════════════════════════════════════════════ TOP BAR ═══════════════════════════════════════════════════ -->
+<div class="top-bar">
+  <div class="tb-brand">
+    <img src="anjaninex-logo.jpeg" alt="Anjaninex">
+    <div>
+      <h1>Anjani<span class="nex">nex</span> · Namokara</h1>
+      <div class="sub">Pro Dashboard · FY 2025-26 · <span class="live-pulse">Live</span></div>
+    </div>
+  </div>
+  <div class="tb-right">
+    <div class="tb-chip" id="branchChip" onclick="cycleBranch()">
+      🏢 <span class="k" id="branchLabel">All Branches</span> ▾
+    </div>
+    <div class="tb-chip wallet" onclick="openRecharge()" title="Click to recharge">
+      💰 <span class="k">₹</span><span id="walletAmt">12,450</span>
+    </div>
+    <button class="tb-icon" onclick="toggleTheme()" title="Toggle theme">
+      <span id="themeIcon">🌙</span>
+    </button>
+    <button class="tb-icon" onclick="openPanel('notif')" title="Notifications">
+      🔔<span class="dot"></span>
+    </button>
+    <button class="tb-icon" onclick="openPanel('user')" title="User menu" style="background:var(--ax-red)">
+      <span style="font-weight:800;font-size:12px">RY</span>
+    </button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ TABS BAR ═══════════════════════════════════════════════════ -->
+<div class="tabs-bar">
+  <button class="tab-btn active" data-tab="overview"   onclick="switchTab('overview',this)">📊 <span class="tab-label">Overview</span></button>
+  <button class="tab-btn"        data-tab="sales"      onclick="switchTab('sales',this)">📈 <span class="tab-label">Sales</span></button>
+  <button class="tab-btn"        data-tab="payments"   onclick="switchTab('payments',this)">💰 <span class="tab-label">Payments</span></button>
+  <button class="tab-btn"        data-tab="operations" onclick="switchTab('operations',this)">⚙️ <span class="tab-label">Operations</span></button>
+  <button class="tab-btn"        data-tab="parties"    onclick="switchTab('parties',this)">🏢 <span class="tab-label">Parties</span></button>
+  <button class="tab-btn"        data-tab="hr"         onclick="switchTab('hr',this)">👥 <span class="tab-label">HR</span></button>
+  <button class="tab-btn"        data-tab="gst"        onclick="switchTab('gst',this)">🏛 <span class="tab-label">GST</span></button>
+  <button class="tab-btn"        data-tab="anjaninex"  onclick="switchTab('anjaninex',this)">⚡ <span class="tab-label">Anjaninex Admin</span></button>
+  <div class="tab-spacer"></div>
+  <button class="tab-action" onclick="openPanel('export')">⬇ <span class="tk">Export</span></button>
+  <button class="tab-action" id="custBtn" onclick="toggleCustomize()">✎ <span>Customize</span></button>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ SIDE PANELS ═══════════════════════════════════════════════════ -->
+<!-- Customize panel -->
+<div class="side-panel" id="panel-customize">
+  <div class="sp-head">
+    <h3>✎ Customize Widgets</h3>
+    <button class="sp-close" onclick="closePanel('customize')">✕</button>
+  </div>
+  <div id="custContent"></div>
+  <div class="sp-footer">
+    <button class="btn-block danger" onclick="resetWidgets()">↺ Reset Layout</button>
+    <button class="btn-block primary" onclick="saveLayout()">💾 Save Layout</button>
+  </div>
+</div>
+
+<!-- Export panel -->
+<div class="side-panel" id="panel-export">
+  <div class="sp-head">
+    <h3>⬇ Export Dashboard</h3>
+    <button class="sp-close" onclick="closePanel('export')">✕</button>
+  </div>
+  <div class="sp-section">
+    <div class="sp-section-title">Format</div>
+    <button class="btn-block primary" onclick="doExport('pdf')" style="margin-bottom:8px">📄 Export as PDF (Current Tab)</button>
+    <button class="btn-block" onclick="doExport('xlsx')" style="margin-bottom:8px">📊 Export as Excel (.xlsx)</button>
+    <button class="btn-block" onclick="doExport('csv')" style="margin-bottom:8px">📋 Export as CSV (Tables only)</button>
+    <button class="btn-block" onclick="doExport('png')">🖼 Export as PNG (Screenshot)</button>
+  </div>
+  <div class="sp-section">
+    <div class="sp-section-title">Schedule</div>
+    <div class="sp-item">
+      <div>
+        <div class="sp-item-name">📅 Email me daily snapshot</div>
+        <div class="sp-item-sub">Sent at 9:00 AM IST</div>
+      </div>
+      <div class="toggle-switch" onclick="this.classList.toggle('on')"></div>
+    </div>
+    <div class="sp-item">
+      <div>
+        <div class="sp-item-name">📊 Weekly summary (Monday)</div>
+        <div class="sp-item-sub">Past 7 days roll-up</div>
+      </div>
+      <div class="toggle-switch on" onclick="this.classList.toggle('on')"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Notification panel -->
+<div class="side-panel" id="panel-notif">
+  <div class="sp-head">
+    <h3>🔔 Notifications</h3>
+    <button class="sp-close" onclick="closePanel('notif')">✕</button>
+  </div>
+  <div class="sp-section" id="notifContent"></div>
+</div>
+
+<!-- User panel -->
+<div class="side-panel" id="panel-user">
+  <div class="sp-head">
+    <h3>👤 Rajesh Yadav</h3>
+    <button class="sp-close" onclick="closePanel('user')">✕</button>
+  </div>
+  <div class="sp-section">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+      <div style="width:56px;height:56px;border-radius:14px;background:var(--ax-red);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:20px">RY</div>
+      <div>
+        <div style="font-weight:800;font-size:14px">Rajesh Yadav</div>
+        <div style="font-size:11px;color:var(--xs)">rajesh@namokara.demo</div>
+        <div style="font-size:10px;color:var(--ax-red);font-weight:700;margin-top:2px">FIRM OWNER · Namokara Agencies</div>
+      </div>
+    </div>
+    <button class="btn-block" style="margin-bottom:6px">⚙️ Profile Settings</button>
+    <button class="btn-block" style="margin-bottom:6px">🔐 Change Password</button>
+    <button class="btn-block" style="margin-bottom:6px">📱 My Sessions (3 active)</button>
+    <button class="btn-block danger">🚪 Sign Out</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ CONTENT ═══════════════════════════════════════════════════ -->
+<div class="content">
+
+  <!-- PERIOD BAR -->
+  <div class="period-bar">
+    <button class="prbtn" onclick="setPeriod(this,'today')">Today</button>
+    <button class="prbtn" onclick="setPeriod(this,'week')">This Week</button>
+    <button class="prbtn active" onclick="setPeriod(this,'month')">This Month</button>
+    <button class="prbtn" onclick="setPeriod(this,'quarter')">Quarter</button>
+    <button class="prbtn" onclick="setPeriod(this,'year')">Full FY</button>
+    <button class="prbtn" onclick="openDateRange()">📅 Custom</button>
+    <span class="compare-toggle">
+      <input type="checkbox" id="cmpToggle" onchange="toggleCompare(this.checked)" style="accent-color:var(--ax-red)">
+      <label for="cmpToggle">Compare vs last period</label>
+    </span>
+    <select id="branchSel" style="margin-left:auto" onchange="setBranch(this.value)">
+      <option value="all">🏢 All Branches</option>
+      <option value="jaipur">📍 Jaipur (HQ)</option>
+      <option value="delhi">📍 Delhi</option>
+      <option value="surat">📍 Surat</option>
+      <option value="mumbai">📍 Mumbai</option>
+    </select>
+  </div>
+
+  <!-- KPI STRIP -->
+  <div class="kpi-grid">
+    <div class="kpi-card red">
+      <span class="kpi-change up">↑ 12%</span>
+      <span class="kpi-icon">💼</span>
+      <div class="kpi-val">₹38.4L</div>
+      <div class="kpi-label">Total Sales (MTD)</div>
+      <div class="kpi-compare cmp-row" style="display:none">vs ₹34.2L last month</div>
+    </div>
+    <div class="kpi-card navy">
+      <span class="kpi-change up">↑ 9%</span>
+      <span class="kpi-icon">💎</span>
+      <div class="kpi-val">₹2.7L</div>
+      <div class="kpi-label">Commission Earned</div>
+      <div class="kpi-compare cmp-row" style="display:none">vs ₹2.4L last month</div>
+    </div>
+    <div class="kpi-card green">
+      <span class="kpi-change up">₹12.8L pending</span>
+      <span class="kpi-icon">✅</span>
+      <div class="kpi-val">₹25.6L</div>
+      <div class="kpi-label">Cash Received</div>
+      <div class="kpi-compare cmp-row" style="display:none">vs ₹23.1L last month</div>
+    </div>
+    <div class="kpi-card amber">
+      <span class="kpi-change dn">↑ 2 new</span>
+      <span class="kpi-icon">↩️</span>
+      <div class="kpi-val">₹1.2L</div>
+      <div class="kpi-label">GR Returns</div>
+      <div class="kpi-compare cmp-row" style="display:none">vs ₹0.9L last month</div>
+    </div>
+    <div class="kpi-card purple">
+      <span class="kpi-change up">↑ 18%</span>
+      <span class="kpi-icon">🤖</span>
+      <div class="kpi-val">128</div>
+      <div class="kpi-label">AI Bill Scans</div>
+      <div class="kpi-compare cmp-row" style="display:none">vs 108 last month</div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════ TAB: OVERVIEW (NEW) ═══════════════════════════════════════════════════ -->
+  <div class="tab-page active" id="tab-overview">
+    <div class="widget-grid" id="wg-overview">
+
+      <div class="widget span2" id="w-ov-sparkline">
+        <div class="w-head">
+          <div class="left"><span class="w-drag">⋮⋮</span><div><div class="w-title">📈 30-Day Sales Pulse</div><div class="w-sub">Solid red bars · daily totals</div></div></div>
+          <div class="w-actions"><button class="w-action" title="Refresh" onclick="renderOverview()">↻</button></div>
+        </div>
+        <div class="w-body">
+          <div style="font-size:30px;font-weight:800;color:var(--ax-red);font-family:'DM Mono',monospace">₹38,42,150<span class="cmp up">↑ 12%</span></div>
+          <div style="font-size:11px;color:var(--xs);margin-bottom:10px">Sales · last 30 days · auto-refreshing</div>
+          <div style="position:relative;height:140px"><canvas id="cOvSpark"></canvas></div>
+        </div>
+      </div>
+
+      <div class="widget" id="w-ov-insights">
+        <div class="w-head"><div class="left"><span class="w-drag">⋮⋮</span><div><div class="w-title">💡 Smart Insights</div><div class="w-sub">AI-generated takeaways</div></div></div></div>
+        <div class="w-body" id="insightsBox"></div>
+      </div>
+
+      <div class="widget" id="w-ov-activity">
+        <div class="w-head"><div class="left"><span class="w-drag">⋮⋮</span><div><div class="w-title">⚡ Recent Activity</div><div class="w-sub">Last 24 hours · live</div></div></div><div class="w-actions"><span class="live-pulse">Live</span></div></div>
+        <div class="w-body" id="activityFeed" style="max-height:280px;overflow-y:auto"></div>
+      </div>
+
+      <div class="widget" id="w-ov-shortcuts">
+        <div class="w-head"><div class="left"><span class="w-drag">⋮⋮</span><div><div class="w-title">⚡ Quick Actions</div><div class="w-sub">Most-used flows</div></div></div></div>
+        <div class="w-body">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+            <button class="btn-block primary" style="padding:14px">🧾 New Bill<br><span style="font-size:9px;opacity:0.85">+ AI Scan</span></button>
+            <button class="btn-block" style="padding:14px;background:var(--ax-navy);color:#fff;border-color:var(--ax-navy)">💰 Receipt<br><span style="font-size:9px;opacity:0.85">Mark paid</span></button>
+            <button class="btn-block" style="padding:14px">📍 Check-in<br><span style="font-size:9px;color:var(--xs)">HR module</span></button>
+            <button class="btn-block" style="padding:14px">📊 GSTR-1<br><span style="font-size:9px;color:var(--xs)">Export now</span></button>
+          </div>
+        </div>
+      </div>
+
+      <div class="widget" id="w-ov-wallet">
+        <div class="w-head"><div class="left"><span class="w-drag">⋮⋮</span><div><div class="w-title">💰 Wallet & Subscription</div><div class="w-sub">Balance · Plan · Auto-recharge</div></div></div><div class="w-actions"><button class="w-action" onclick="openRecharge()" title="Recharge">⚡</button></div></div>
+        <div class="w-body">
+          <div style="background:var(--ax-navy);color:#fff;border-radius:10px;padding:14px;margin-bottom:12px;position:relative;overflow:hidden">
+            <div style="position:absolute;top:0;right:0;width:60px;height:100%;background:var(--ax-red);clip-path:polygon(40% 0,100% 0,100% 100%,0 100%)"></div>
+            <div style="position:relative;z-index:2">
+              <div style="font-size:10px;opacity:0.8;text-transform:uppercase;letter-spacing:0.5px;font-weight:700">Wallet Balance</div>
+              <div style="font-size:26px;font-weight:800;font-family:'DM Mono',monospace;line-height:1.1;margin-top:4px">₹12,450<span style="font-size:11px;opacity:0.6;margin-left:8px">.00</span></div>
+              <div style="font-size:10px;opacity:0.85;margin-top:6px">⏱ ~5 days runway at current usage</div>
+            </div>
+          </div>
+          <button class="btn-block primary" style="margin-bottom:8px" onclick="openRecharge()">💳 Recharge Now</button>
+          <div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;padding:6px 0;border-top:1px dashed var(--border);margin-top:8px">
+            <span class="sum-label">Plan</span>
+            <span><strong style="color:var(--ax-red)">Enterprise</strong> · ₹6,999/mo</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;padding:6px 0;border-top:1px dashed var(--border)">
+            <span class="sum-label">Next billing</span>
+            <span><strong>15-Jun-2026</strong></span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;padding:6px 0;border-top:1px dashed var(--border)">
+            <span class="sum-label">Auto-recharge</span>
+            <span><span class="flag fo">✓ ON</span></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="widget" id="w-ov-goals">
+        <div class="w-head"><div class="left"><span class="w-drag">⋮⋮</span><div><div class="w-title">🎯 Monthly Goals</div><div class="w-sub">Track vs target</div></div></div></div>
+        <div class="w-body">
+          <div style="margin-bottom:12px">
+            <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px"><span style="font-weight:700">Sales</span><span class="mono" style="font-weight:700">₹38.4L / ₹50L</span></div>
+            <div class="mini-bar"><div class="mini-fill" style="background:var(--ax-red);width:77%"></div></div>
+            <div style="font-size:9px;color:var(--xs);margin-top:2px">77% · ₹11.6L to go (8 days left)</div>
+          </div>
+          <div style="margin-bottom:12px">
+            <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px"><span style="font-weight:700">Collection</span><span class="mono" style="font-weight:700">₹25.6L / ₹40L</span></div>
+            <div class="mini-bar"><div class="mini-fill" style="background:var(--ok);width:64%"></div></div>
+            <div style="font-size:9px;color:var(--xs);margin-top:2px">64% · ₹14.4L pending follow-up</div>
+          </div>
+          <div>
+            <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px"><span style="font-weight:700">New Parties</span><span class="mono" style="font-weight:700">7 / 10</span></div>
+            <div class="mini-bar"><div class="mini-fill" style="background:var(--ax-navy);width:70%"></div></div>
+            <div style="font-size:9px;color:var(--xs);margin-top:2px">70% · onboard 3 more</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════ TAB: SALES ═══════════════════════════════════════════════════ -->
+  <div class="tab-page" id="tab-sales">
+    <div class="widget-grid" id="wg-sales">
+
+      <div class="widget span2" id="w-sales-trend">
+        <div class="w-head">
+          <div class="left"><span class="w-drag">⋮⋮</span><div><div class="w-title">📈 Monthly Sales Trend</div><div class="w-sub">Sale · Commission · GR toggle</div></div></div>
+          <div class="w-actions" style="gap:5px">
+            <button class="prbtn active" style="padding:3px 8px;font-size:9px" onclick="switchSalesChart(this,'sale')">Sale</button>
+            <button class="prbtn" style="padding:3px 8px;font-size:9px" onclick="switchSalesChart(this,'comm')">Comm</button>
+            <button class="prbtn" style="padding:3px 8px;font-size:9px" onclick="switchSalesChart(this,'gr')">GR</button>
+          </div>
+        </div>
+        <div class="w-body">
+          <div id="salesBigVal" style="font-size:26px;font-weight:800;color:var(--ax-red);font-family:'DM Mono',monospace">₹38.4L</div>
+          <div id="salesBigSub" style="font-size:10px;color:var(--xs);margin-bottom:10px">Total Sales · FY 2025-26</div>
+          <div style="position:relative;height:160px"><canvas id="cSalesTrend"></canvas></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;text-align:center;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+            <div><div style="font-size:9px;color:var(--xs);text-transform:uppercase;font-weight:700">Best Month</div><div style="font-size:13px;font-weight:800;color:var(--ax-navy)" id="bestMonth">Oct 25</div></div>
+            <div><div style="font-size:9px;color:var(--xs);text-transform:uppercase;font-weight:700">Peak</div><div style="font-size:13px;font-weight:800;color:var(--ax-red)" id="peakAmt">₹5.12L</div></div>
+            <div><div style="font-size:9px;color:var(--xs);text-transform:uppercase;font-weight:700">This Month</div><div style="font-size:13px;font-weight:800;color:var(--ok)" id="thisMonth">₹3.84L</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="widget" id="w-segment">
+        <div class="w-head"><div class="left"><span class="w-drag">⋮⋮</span><div><div class="w-title">🎯 Segment Mix</div><div class="w-sub">Fabric · Saadi · Readymade</div></div></div></div>
+        <div class="w-body">
+          <div style="position:relative;height:150px"><canvas id="cSegment"></canvas></div>
+          <div class="leg">
+            <div class="leg-item"><div class="leg-dot" style="background:#DC2626"></div>Fabric 45% — ₹21.7L</div>
+            <div class="leg-item"><div class="leg-dot" style="background:#1B2E5C"></div>Saadi 35% — ₹16.9L</div>
+            <div class="leg-item"><div class="leg-dot" style="background:#7C3AED"></div>Readymade 20% — ₹9.6L</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="widget" id="w-branch">
+        <div class="w-head"><div class="left"><span class="w-drag">⋮⋮</span><div><div class="w-title">🏢 Branch-wise Sales</div><div class="w-sub">Sales vs Received</div></div></div></div>
+        <div class="w-body"><div style="position:relative;height:180px"><canvas id="cBranch"></canvas></div></div>
+      </div>
+
+      <div class="widget" id="w-order-status">
+        <div class="w-head"><div class="left"><span class="w-drag">⋮⋮</span><div><div class="w-title">📦 Order Status</div><div class="w-sub">Billed · Pending · Cancelled</div></div></div></div>
+        <div class="w-body">
+          <div style="position:relative;height:150px"><canvas id="cOrderStatus"></canvas></div>
+          <div class="leg">
+            <div class="leg-item"><div class="leg-dot" style="background:#16A34A"></div>Billed 62%</div>
+            <div class="leg-item"><div class="leg-dot" style="background:#D97706"></div>Pending 28%</div>
+            <div class="leg-item"><div class="leg-dot" style="background:#DC2626"></div>Cancelled 10%</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="widget span3" id="w-trending">
+        <div class="w-head">
+          <div class="left"><span class="w-drag">⋮⋮</span><div><div class="w-title">🔥 Trending Items / Fabrics</div><div class="w-sub">Most ordered this period</div></div></div>
+          <button class="tab-action" style="margin:0">Full List →</button>
+        </div>
+        <div class="w-body" style="padding:0">
+          <div style="overflow-x:auto"><table class="tt" id="trendTable"></table></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════ TAB: PAYMENTS ═══════════════════════════════════════════════════ -->
+  <div class="tab-page" id="tab-payments">
+    <div class="widget-grid" id="wg-payments">
+
+      <div class="widget span2" id="w-collection">
+        <div class="w-head"><div class="left"><span class="w-drag">⋮⋮</span><div><div class="w-title">💰 Collection vs Outstanding</div><div class="w-sub">Last 6 months · stacked</div></div></div></div>
+        <div class="w-body"><div style="position:relative;height:180px"><canvas id="cCollection"></canvas></div></div>
+      </div>
+
+      <div class="widget" id="w-pay-mode">
+        <div class="w-head"><div class="left"><span class="w-drag">⋮⋮</span><div><div class="w-title">🏦 Payment Mode</div><div class="w-sub">NEFT · Cheque · UPI</div></div></div></div>
+        <div class="w-body">
+          <div style="position:relative;height:150px"><canvas id="cPayMode"></canvas></div>
+          <div class="leg">
+            <div class="leg-item"><div class="leg-dot" style="background:#1B2E5C"></div>NEFT/RTGS 48%</div>
+            <div class="leg-item"><div class="leg-dot" style="background:#DC2626"></div>Cheque 31%</div>
+            <div class="leg-item"><div class="leg-dot" style="background:#16A34A"></div>UPI 21%</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="widget" id="w-ontime">
+        <div class="w-head"><div class="left"><span class="w-drag">⋮⋮</span><div><div class="w-title">⏱ On-Time vs Late</div><div class="w-sub">Payment timing</div></div></div></div>
+        <div class="w-body">
+          <div style="position:relative;height:150px"><canvas id="cOnTime"></canvas></div>
+          <div class="leg">
+            <div class="leg-item"><div class="leg-dot" style="background:#16A34A"></div>On-Time 58%</div>
+            <div class="leg-item"><div class="leg-dot" style="background:#22C55E"></div>Early 17%</div>
+            <div class="leg-item"><div class="leg-dot" style="background:#DC2626"></div>Late 25%</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="widget" id="w-commission">
+        <div class="w-head"><div class="left"><span class="w-drag">⋮⋮</span><div><div class="w-title">💎 Monthly Commission</div><div class="w-sub">FY 2025-26 earned</div></div></div></div>
+        <div class="w-body"><div style="position:relative;height:180px"><canvas id="cCommission"></canvas></div></div>
+      </div>
+
+      <div class="widget" id="w-bill-aging">
+        <div class="w-head"><div class="left"><span class="w-drag">⋮⋮</span><div><div class="w-title">🗓 Bill Aging</div><div class="w-sub">Outstanding by days</div></div></div></div>
+        <div class="w-body"><div style="position:relative;height:180px"><canvas id="cBillAging"></canvas></div></div>
+      </div>
+
+      <div class="widget" id="w-outstanding">
+        <div class="w-head">
+          <div class="left"><span class="w-drag">⋮⋮</span><div><div class="w-title">📄 Outstanding Bills</div><div class="w-sub">Overdue + upcoming</div></div></div>
+          <button class="tab-action" style="margin:0">Ledger →</button>
+        </div>
+        <div class="w-body" style="padding:0">
+          <div style="overflow-x:auto"><table class="ot" id="outTable"></table></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════ TAB: OPERATIONS ═══════════════════════════════════════════════════ -->
+  <div class="tab-page" id="tab-operations">
+    <div class="widget-grid" id="wg-operations">
+
+      <div class="widget" id="w-gr-trend">
+        <div class="w-head"><div class="left"><span class="w-drag">⋮⋮</span><div><div class="w-title">↩️ GR Return Trend</div><div class="w-sub">Monthly return amount</div></div></div></div>
+        <div class="w-body"><div style="position:relative;height:170px"><canvas id="cGrTrend"></canvas></div></div>
+      </div>
+
+      <div class="widget" id="w-gr-reason">
+        <div class="w-head"><div class="left"><span class="w-drag">⋮⋮</span><div><div class="w-title">🔍 Return Reasons</div><div class="w-sub">Why items returned</div></div></div></div>
+        <div class="w-body">
+          <div style="position:relative;height:140px"><canvas id="cGrReason"></canvas></div>
+          <div class="leg">
+            <div class="leg-item"><div class="leg-dot" style="background:#DC2626"></div>Quality 45%</div>
+            <div class="leg-item"><div class="leg-dot" style="background:#D97706"></div>Extra Maal 31%</div>
+            <div class="leg-item"><div class="leg-dot" style="background:#1B2E5C"></div>Wrong Item 24%</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="widget" id="w-sampling">
+        <div class="w-head"><div class="left"><span class="w-drag">⋮⋮</span><div><div class="w-title">🧵 Sampling Funnel</div><div class="w-sub">Sent → Approved → Ordered</div></div></div></div>
+        <div class="w-body"><div style="position:relative;height:170px"><canvas id="cSampling"></canvas></div></div>
+      </div>
+
+      <div class="widget" id="w-samp-status">
+        <div class="w-head"><div class="left"><span class="w-drag">⋮⋮</span><div><div class="w-title">📊 Sample Status</div><div class="w-sub">Approval pipeline</div></div></div></div>
+        <div class="w-body">
+          <div style="position:relative;height:140px"><canvas id="cSampStatus"></canvas></div>
+          <div class="leg">
+            <div class="leg-item"><div class="leg-dot" style="background:#D97706"></div>Pending 35%</div>
+            <div class="leg-item"><div class="leg-dot" style="background:#16A34A"></div>Approved 40%</div>
+            <div class="leg-item"><div class="leg-dot" style="background:#1B2E5C"></div>Changes 15%</div>
+            <div class="leg-item"><div class="leg-dot" style="background:#DC2626"></div>Rejected 10%</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="widget span2" id="w-supplier-perf">
+        <div class="w-head"><div class="left"><span class="w-drag">⋮⋮</span><div><div class="w-title">🏭 Supplier Performance</div><div class="w-sub">Extra maal · Return rate · Reliability</div></div></div></div>
+        <div class="w-body" style="padding:10px 12px" id="supplierList"></div>
+      </div>
+
+      <div class="widget" id="w-alerts">
+        <div class="w-head"><div class="left"><span class="w-drag">⋮⋮</span><div><div class="w-title">🔔 Smart Alerts</div><div class="w-sub">Action lene wali cheezein</div></div></div></div>
+        <div class="w-body" style="padding:10px 12px" id="alertBox"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════ TAB: PARTIES ═══════════════════════════════════════════════════ -->
+  <div class="tab-page" id="tab-parties">
+    <div class="widget-grid" id="wg-parties">
+
+      <div class="widget span2" id="w-party-os">
+        <div class="w-head"><div class="left"><span class="w-drag">⋮⋮</span><div><div class="w-title">📊 Party Outstanding</div><div class="w-sub">Receivable vs Payable</div></div></div></div>
+        <div class="w-body"><div style="position:relative;height:200px"><canvas id="cPartyOs"></canvas></div></div>
+      </div>
+
+      <div class="widget" id="w-party-rating">
+        <div class="w-head"><div class="left"><span class="w-drag">⋮⋮</span><div><div class="w-title">⭐ Party Ratings</div><div class="w-sub">A+ · A · B · C distribution</div></div></div></div>
+        <div class="w-body">
+          <div style="position:relative;height:140px"><canvas id="cPartyRating"></canvas></div>
+          <div class="leg">
+            <div class="leg-item"><div class="leg-dot" style="background:#16A34A"></div>A+ 30%</div>
+            <div class="leg-item"><div class="leg-dot" style="background:#22C55E"></div>A 35%</div>
+            <div class="leg-item"><div class="leg-dot" style="background:#D97706"></div>B 25%</div>
+            <div class="leg-item"><div class="leg-dot" style="background:#DC2626"></div>C 10%</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="widget" id="w-city">
+        <div class="w-head"><div class="left"><span class="w-drag">⋮⋮</span><div><div class="w-title">🗺️ City-wise Parties</div><div class="w-sub">Top 5 cities</div></div></div></div>
+        <div class="w-body"><div style="position:relative;height:200px"><canvas id="cCity"></canvas></div></div>
+      </div>
+
+      <div class="widget" id="w-comm-sup">
+        <div class="w-head"><div class="left"><span class="w-drag">⋮⋮</span><div><div class="w-title">💰 Supplier Commission</div><div class="w-sub">Supplier-wise earnings</div></div></div></div>
+        <div class="w-body"><div style="position:relative;height:200px"><canvas id="cCommSup"></canvas></div></div>
+      </div>
+
+      <div class="widget span2" id="w-buyers">
+        <div class="w-head"><div class="left"><span class="w-drag">⋮⋮</span><div><div class="w-title">🛒 Buyer Behaviour</div><div class="w-sub">Return rate · Payment · Rating</div></div></div></div>
+        <div class="w-body" style="padding:10px 12px" id="buyerList"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════ TAB: HR (NEW) ═══════════════════════════════════════════════════ -->
+  <div class="tab-page" id="tab-hr">
+    <div class="widget-grid col4" id="wg-hr">
+
+      <div class="widget" id="w-hr-present">
+        <div class="w-head"><div class="left"><span class="w-drag">⋮⋮</span><div><div class="w-title">✅ Present Today</div><div class="w-sub">Out of 22 staff</div></div></div></div>
+        <div class="w-body" style="text-align:center;padding:18px 14px">
+          <div style="font-size:42px;font-weight:800;color:var(--ok);font-family:'DM Mono',monospace">12</div>
+          <div style="font-size:11px;color:var(--xs);margin-top:4px">2 late · 3 absent · 5 leave</div>
+          <div class="mini-bar" style="margin-top:10px"><div class="mini-fill" style="background:var(--ok);width:55%"></div></div>
+          <div style="font-size:9px;color:var(--xs);margin-top:4px">55% attendance · ↑ 3% vs yesterday</div>
+        </div>
+      </div>
+
+      <div class="widget" id="w-hr-checkin">
+        <div class="w-head"><div class="left"><span class="w-drag">⋮⋮</span><div><div class="w-title">📍 Latest Check-ins</div><div class="w-sub">GPS-verified · live</div></div></div></div>
+        <div class="w-body" style="padding:8px 12px;max-height:200px;overflow-y:auto" id="checkinList"></div>
+      </div>
+
+      <div class="widget" id="w-hr-payroll">
+        <div class="w-head"><div class="left"><span class="w-drag">⋮⋮</span><div><div class="w-title">💰 Payroll Status</div><div class="w-sub">May 2026</div></div></div></div>
+        <div class="w-body">
+          <div style="font-size:24px;font-weight:800;color:var(--ax-red);font-family:'DM Mono',monospace">₹1,20,200</div>
+          <div style="font-size:10px;color:var(--xs);margin-bottom:10px">Total payable · 22 staff</div>
+          <div style="font-size:11px;line-height:1.7">
+            <div>✅ PF Payable: <strong class="mono">₹14,424</strong></div>
+            <div>✅ TDS Payable: <strong class="mono">₹3,800</strong></div>
+            <div>⏳ Net to Bank: <strong class="mono" style="color:var(--ok)">₹1,02,000</strong></div>
+          </div>
+          <button class="btn-block primary" style="margin-top:10px">🚀 Run Payroll</button>
+        </div>
+      </div>
+
+      <div class="widget" id="w-hr-leaves">
+        <div class="w-head"><div class="left"><span class="w-drag">⋮⋮</span><div><div class="w-title">🏖 Pending Leaves</div><div class="w-sub">Awaiting approval</div></div></div></div>
+        <div class="w-body" style="padding:8px 12px" id="leaveList"></div>
+      </div>
+
+      <div class="widget span2" id="w-hr-heatmap">
+        <div class="w-head"><div class="left"><span class="w-drag">⋮⋮</span><div><div class="w-title">📅 Attendance Heatmap (May)</div><div class="w-sub">Daily presence intensity</div></div></div></div>
+        <div class="w-body">
+          <div class="heatmap" id="heatmap"></div>
+          <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--xs);margin-top:8px">
+            <span>Less</span>
+            <div style="display:flex;gap:3px">
+              <div style="width:12px;height:12px;background:#E5E9F2;border-radius:2px"></div>
+              <div style="width:12px;height:12px;background:#A5B4D6;border-radius:2px"></div>
+              <div style="width:12px;height:12px;background:#5C7AB8;border-radius:2px"></div>
+              <div style="width:12px;height:12px;background:#1B2E5C;border-radius:2px"></div>
+              <div style="width:12px;height:12px;background:#DC2626;border-radius:2px"></div>
+            </div>
+            <span>Full</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="widget span2" id="w-hr-livemap">
+        <div class="w-head"><div class="left"><span class="w-drag">⋮⋮</span><div><div class="w-title">🗺 Field Staff Live Locations</div><div class="w-sub">5 active · last ping &lt; 60s</div></div></div><div class="w-actions"><span class="live-pulse">Live</span></div></div>
+        <div class="w-body" style="padding:0">
+          <div style="position:relative;height:200px;background:repeating-linear-gradient(0deg,transparent 0,transparent 39px,rgba(27,46,92,0.05) 39px,rgba(27,46,92,0.05) 40px),repeating-linear-gradient(90deg,transparent 0,transparent 39px,rgba(27,46,92,0.05) 39px,rgba(27,46,92,0.05) 40px);background-color:var(--ax-cream-2)">
+            <svg viewBox="0 0 800 200" style="width:100%;height:100%;position:absolute;top:0;left:0">
+              <path d="M 100,40 L 700,60" stroke="#999" stroke-width="2"/>
+              <path d="M 50,120 L 750,140" stroke="#999" stroke-width="2"/>
+              <polyline points="80,80 150,90 240,100 340,120 460,140 580,135 680,150" stroke="#DC2626" stroke-width="3" fill="none" opacity="0.9"/>
+              <polyline points="120,30 200,50 290,70 380,80 470,75 580,65" stroke="#1B2E5C" stroke-width="3" fill="none" opacity="0.9"/>
+              <circle cx="680" cy="150" r="10" fill="#DC2626" stroke="#fff" stroke-width="2"/>
+              <text x="680" y="135" text-anchor="middle" font-size="10" fill="#1B2E5C" font-weight="800">Vikram</text>
+              <circle cx="580" cy="65" r="10" fill="#1B2E5C" stroke="#fff" stroke-width="2"/>
+              <text x="580" y="50" text-anchor="middle" font-size="10" fill="#1B2E5C" font-weight="800">Asha</text>
+              <circle cx="340" cy="120" r="10" fill="#16A34A" stroke="#fff" stroke-width="2"/>
+              <text x="340" y="105" text-anchor="middle" font-size="10" fill="#1B2E5C" font-weight="800">Priya</text>
+              <text x="160" y="180" font-size="11" fill="#666" font-weight="700">Vidhyadhar Nagar</text>
+              <text x="400" y="180" font-size="11" fill="#666" font-weight="700">C-Scheme</text>
+              <text x="640" y="180" font-size="11" fill="#666" font-weight="700">Sitapura</text>
+            </svg>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════ TAB: GST (NEW) ═══════════════════════════════════════════════════ -->
+  <div class="tab-page" id="tab-gst">
+    <div class="widget-grid" id="wg-gst">
+
+      <div class="widget" id="w-gst-net">
+        <div class="w-head"><div class="left"><span class="w-drag">⋮⋮</span><div><div class="w-title">🏛 Net GST Payable</div><div class="w-sub">After ITC set-off</div></div></div></div>
+        <div class="w-body" style="text-align:center;padding:16px">
+          <div class="gauge">
+            <svg viewBox="0 0 100 60">
+              <path d="M 10 50 A 40 40 0 0 1 90 50" stroke="var(--border)" stroke-width="8" fill="none"/>
+              <path d="M 10 50 A 40 40 0 0 1 65 18" stroke="#DC2626" stroke-width="8" fill="none" stroke-linecap="round"/>
+            </svg>
+            <div class="gauge-text">₹10,714</div>
+          </div>
+          <div style="font-size:10px;color:var(--xs);margin-top:18px">Output ₹70,000 − Input ₹59,286</div>
+          <div style="font-size:11px;color:var(--ax-red);font-weight:700;margin-top:4px">Due: 20-Jun-2026</div>
+        </div>
+      </div>
+
+      <div class="widget" id="w-gst-output">
+        <div class="w-head"><div class="left"><span class="w-drag">⋮⋮</span><div><div class="w-title">📤 Output Tax</div><div class="w-sub">CGST · SGST · IGST</div></div></div></div>
+        <div class="w-body">
+          <div style="position:relative;height:140px"><canvas id="cGstOut"></canvas></div>
+          <div class="leg">
+            <div class="leg-item"><div class="leg-dot" style="background:#DC2626"></div>CGST ₹35,000</div>
+            <div class="leg-item"><div class="leg-dot" style="background:#1B2E5C"></div>SGST ₹35,000</div>
+            <div class="leg-item"><div class="leg-dot" style="background:#7C3AED"></div>IGST ₹0</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="widget" id="w-gst-eway">
+        <div class="w-head"><div class="left"><span class="w-drag">⋮⋮</span><div><div class="w-title">📋 E-Invoice & E-Way Bill</div><div class="w-sub">Generation status</div></div></div></div>
+        <div class="w-body">
+          <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)">
+            <div><div style="font-size:11px;font-weight:700">E-Invoice IRN</div><div style="font-size:10px;color:var(--xs)">42 generated · 3 pending</div></div>
+            <span class="flag fo">93%</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)">
+            <div><div style="font-size:11px;font-weight:700">E-Way Bill</div><div style="font-size:10px;color:var(--xs)">28 generated · 1 expired</div></div>
+            <span class="flag fw">97%</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:8px 0">
+            <div><div style="font-size:11px;font-weight:700">QR Codes</div><div style="font-size:10px;color:var(--xs)">All bills B2B compliant</div></div>
+            <span class="flag fo">100%</span>
+          </div>
+          <button class="btn-block primary" style="margin-top:8px">🔄 Sync Pending IRNs</button>
+        </div>
+      </div>
+
+      <div class="widget span2" id="w-gst-hsn">
+        <div class="w-head"><div class="left"><span class="w-drag">⋮⋮</span><div><div class="w-title">📊 HSN-wise Summary (GSTR-1 Table 12)</div><div class="w-sub">For monthly return</div></div></div></div>
+        <div class="w-body" style="padding:0">
+          <div style="overflow-x:auto"><table class="tt" id="hsnTable"></table></div>
+        </div>
+      </div>
+
+      <div class="widget" id="w-gst-timeline">
+        <div class="w-head"><div class="left"><span class="w-drag">⋮⋮</span><div><div class="w-title">📅 Compliance Calendar</div><div class="w-sub">Upcoming due dates</div></div></div></div>
+        <div class="w-body" style="padding:8px 12px" id="complianceList"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════ TAB: ANJANINEX ADMIN (NEW) ═══════════════════════════════════════════════════ -->
+  <div class="tab-page" id="tab-anjaninex">
+    <div class="widget-grid col4" id="wg-anjaninex">
+
+      <div class="widget" id="w-ax-mrr">
+        <div class="w-head"><div class="left"><span class="w-drag">⋮⋮</span><div><div class="w-title">💰 MRR</div><div class="w-sub">Monthly Recurring</div></div></div></div>
+        <div class="w-body">
+          <div style="font-size:24px;font-weight:800;color:var(--ax-red);font-family:'DM Mono',monospace">₹25.4L</div>
+          <div style="font-size:10px;color:var(--ok);font-weight:700">↑ ₹1.8L (7.6%)</div>
+          <div style="position:relative;height:50px;margin-top:8px"><canvas id="cMrrSpark"></canvas></div>
+        </div>
+      </div>
+
+      <div class="widget" id="w-ax-firms">
+        <div class="w-head"><div class="left"><span class="w-drag">⋮⋮</span><div><div class="w-title">🏢 Active Firms</div><div class="w-sub">Of 1,024 total</div></div></div></div>
+        <div class="w-body">
+          <div style="font-size:24px;font-weight:800;color:var(--ax-navy);font-family:'DM Mono',monospace">967</div>
+          <div style="font-size:10px;color:var(--xs)">43 trial · 14 suspended</div>
+          <div style="margin-top:8px;font-size:10px">
+            <div>🟢 Healthy: <strong>892</strong></div>
+            <div>🟡 At-risk: <strong>61</strong></div>
+            <div>🔴 Churn risk: <strong>14</strong></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="widget" id="w-ax-ai">
+        <div class="w-head"><div class="left"><span class="w-drag">⋮⋮</span><div><div class="w-title">🤖 AI Revenue (Today)</div><div class="w-sub">Markup on Gemini</div></div></div></div>
+        <div class="w-body">
+          <div style="font-size:22px;font-weight:800;color:#7C3AED;font-family:'DM Mono',monospace">₹7,231</div>
+          <div style="font-size:10px;color:var(--xs)">28,924 paid scans · 67% margin</div>
+          <div style="margin-top:10px;font-size:10px">
+            <div>📥 Revenue: <strong class="mono">₹7,231</strong></div>
+            <div>📤 Gemini cost: <strong class="mono" style="color:var(--ax-red)">₹2,386</strong></div>
+            <div>💵 Margin: <strong class="mono" style="color:var(--ok)">₹4,845</strong></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="widget" id="w-ax-wallet-dist">
+        <div class="w-head"><div class="left"><span class="w-drag">⋮⋮</span><div><div class="w-title">💼 Wallet Distribution</div><div class="w-sub">All firms · balance</div></div></div></div>
+        <div class="w-body">
+          <div style="position:relative;height:120px"><canvas id="cWalletDist"></canvas></div>
+          <div style="font-size:9px;color:var(--xs);margin-top:6px;text-align:center">14 firms below ₹500 — auto-alert sent</div>
+        </div>
+      </div>
+
+      <div class="widget span4" id="w-ax-firms-grid">
+        <div class="w-head">
+          <div class="left"><span class="w-drag">⋮⋮</span><div><div class="w-title">🏢 All Firms (Multi-Tenant View)</div><div class="w-sub">Click any firm to inspect</div></div></div>
+          <input type="text" placeholder="🔍 Search 1,024 firms..." style="padding:5px 10px;border-radius:6px;border:1px solid var(--border);font-size:11px;font-family:inherit;outline:none;width:200px" oninput="filterFirms(this.value)">
+        </div>
+        <div class="w-body">
+          <div class="firm-grid" id="firmGrid"></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div><!-- /.content -->
+
+<!-- ═══════════════════════════════════════════════════ RECHARGE MODAL ═══════════════════════════════════════════════════ -->
+<div class="modal-backdrop" id="rechargeModal" onclick="if(event.target===this)closeRecharge()">
+  <div class="modal">
+    <div class="modal-head">
+      <div>
+        <h2>💳 Recharge Wallet</h2>
+        <div class="sub">Top-up your Anjaninex wallet · Used for AI scans, SMS, WhatsApp</div>
+      </div>
+      <button class="sp-close" onclick="closeRecharge()">✕</button>
+    </div>
+
+    <div class="modal-body">
+      <!-- Modal tabs -->
+      <div class="modal-tabs">
+        <button class="modal-tab active" onclick="switchModalTab(this,'recharge')">💳 Recharge</button>
+        <button class="modal-tab" onclick="switchModalTab(this,'history')">📜 History</button>
+        <button class="modal-tab" onclick="switchModalTab(this,'pricing')">💰 Pricing</button>
+        <button class="modal-tab" onclick="switchModalTab(this,'auto')">🔁 Auto-Recharge</button>
+      </div>
+
+      <!-- ========== PANE: RECHARGE ========== -->
+      <div class="modal-tab-pane active" id="mtab-recharge">
+        <!-- Current balance -->
+        <div class="bal-card low">
+          <div class="left">
+            <div class="label">Current Balance</div>
+            <div class="amt">₹<span id="modalBalAmt">12,450</span></div>
+            <div class="meta">Last debit: ₹0.25 (AI scan) · 2 min ago</div>
+          </div>
+          <div class="right">
+            <div class="runway">⏱ Runway</div>
+            <div class="runway-days">~5 days</div>
+            <div style="font-size:10px;opacity:0.8;margin-top:2px">at current usage</div>
+          </div>
+        </div>
+
+        <div class="modal-grid">
+          <div>
+            <!-- Quick amounts -->
+            <div class="sec-title">Quick Amount</div>
+            <div class="amt-grid">
+              <button class="amt-btn" onclick="selectAmount(this,500)">₹500</button>
+              <button class="amt-btn" onclick="selectAmount(this,1000)">₹1,000</button>
+              <button class="amt-btn selected" onclick="selectAmount(this,2500)">₹2,500<span class="pop">Popular</span></button>
+              <button class="amt-btn" onclick="selectAmount(this,5000)">₹5,000<span class="save">Save ₹50</span></button>
+              <button class="amt-btn" onclick="selectAmount(this,10000)">₹10,000<span class="save">Save ₹150</span></button>
+            </div>
+
+            <!-- Custom amount -->
+            <div class="custom-amt">
+              <span class="rs">₹</span>
+              <input type="number" id="customAmt" placeholder="Enter custom amount (min ₹100)" oninput="onCustomAmount(this.value)" min="100" max="500000">
+              <span class="gst">+ 18% GST</span>
+            </div>
+
+            <!-- Payment methods -->
+            <div class="sec-title" style="margin-top:18px">Payment Method</div>
+            <div class="pay-methods">
+              <div class="pay-method selected" onclick="selectPayMethod(this,'upi')">
+                <div class="ico">📱</div>
+                <div class="info">
+                  <div class="name">UPI</div>
+                  <div class="desc">Instant · PhonePe, GPay, Paytm</div>
+                </div>
+                <div class="fee">FREE</div>
+              </div>
+              <div class="pay-method" onclick="selectPayMethod(this,'razorpay')">
+                <div class="ico">💳</div>
+                <div class="info">
+                  <div class="name">Razorpay (Card/NetBanking)</div>
+                  <div class="desc">Visa · Mastercard · RuPay · 50+ banks</div>
+                </div>
+                <div class="fee paid">+2%</div>
+              </div>
+              <div class="pay-method" onclick="selectPayMethod(this,'neft')">
+                <div class="ico">🏦</div>
+                <div class="info">
+                  <div class="name">NEFT / RTGS / IMPS</div>
+                  <div class="desc">Direct bank transfer · Manual confirm</div>
+                </div>
+                <div class="fee">FREE</div>
+              </div>
+              <div class="pay-method" onclick="selectPayMethod(this,'cheque')">
+                <div class="ico">📃</div>
+                <div class="info">
+                  <div class="name">Cheque / Cash</div>
+                  <div class="desc">Visit Anjaninex office · Allow 1-2 days</div>
+                </div>
+                <div class="fee">FREE</div>
+              </div>
+            </div>
+
+            <!-- UPI details (shown when UPI selected) -->
+            <div id="upiDetails" style="background:var(--ax-red-soft);border:1.5px dashed var(--ax-red);border-radius:10px;padding:14px;margin-bottom:10px">
+              <div style="display:flex;align-items:center;gap:14px">
+                <div style="width:80px;height:80px;background:#fff;border-radius:8px;display:flex;align-items:center;justify-content:center;border:2px solid var(--ax-red);flex-shrink:0">
+                  <div style="font-size:11px;text-align:center;color:var(--ax-navy);font-weight:700">QR<br><span style="font-size:8px;opacity:0.7">scan to pay</span></div>
+                </div>
+                <div style="flex:1">
+                  <div style="font-size:11px;color:var(--soft);margin-bottom:4px">Pay to UPI ID</div>
+                  <div style="font-size:16px;font-weight:800;color:var(--ax-navy);font-family:'DM Mono',monospace;margin-bottom:6px">anjaninex@upi <button onclick="copyUpi()" style="border:0;background:var(--ax-navy);color:#fff;padding:3px 8px;border-radius:4px;font-size:10px;cursor:pointer;margin-left:6px">📋 Copy</button></div>
+                  <div style="font-size:10px;color:var(--soft);line-height:1.5">After payment, enter the transaction ID below. Balance updates in 1-2 minutes.</div>
+                </div>
+              </div>
+              <input type="text" placeholder="Enter UPI Reference / Transaction ID" style="width:100%;padding:10px 12px;margin-top:10px;border:1.5px solid var(--ax-red);border-radius:6px;font-family:'DM Mono',monospace;font-size:12px;outline:none" id="upiTxn">
+            </div>
+
+            <!-- GSTIN field -->
+            <div class="sec-title" style="margin-top:14px">GST Invoice (Optional)</div>
+            <input type="text" placeholder="Your GSTIN (for input tax credit on this payment)" value="08AABCN1234A1Z5" style="width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:8px;font-family:'DM Mono',monospace;font-size:12px;outline:none;color:var(--text);background:var(--card)">
+            <div style="font-size:10px;color:var(--xs);margin-top:5px">✓ GST invoice will be emailed · Eligible for full ITC claim</div>
+          </div>
+
+          <!-- ========== SUMMARY PANEL (right side) ========== -->
+          <div class="summary-panel">
+            <div class="sec-title" style="margin-bottom:14px">Payment Summary</div>
+            <div class="sum-row">
+              <span class="sum-label">Recharge amount</span>
+              <span class="sum-val" id="sumAmt">₹2,500.00</span>
+            </div>
+            <div class="sum-row">
+              <span class="sum-label">GST (18%)</span>
+              <span class="sum-val" id="sumGst">₹450.00</span>
+            </div>
+            <div class="sum-row">
+              <span class="sum-label">Gateway fee</span>
+              <span class="sum-val" id="sumFee" style="color:var(--ok)">FREE</span>
+            </div>
+            <div class="sum-row">
+              <span class="sum-label">Cashback</span>
+              <span class="sum-val" id="sumCb" style="color:var(--ok)">— ₹0.00</span>
+            </div>
+            <div class="sum-row total">
+              <span>Total to pay</span>
+              <span id="sumTotal">₹2,950.00</span>
+            </div>
+
+            <!-- Estimated additions -->
+            <div style="background:var(--card);border-radius:8px;padding:12px;margin-top:14px;border:1.5px solid var(--ok)">
+              <div style="font-size:10px;font-weight:800;color:var(--ok);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">After Recharge</div>
+              <div style="font-size:11px;line-height:1.7;color:var(--text)">
+                <div>💰 New balance: <strong class="mono" style="color:var(--ax-navy)" id="newBal">₹14,950</strong></div>
+                <div>⏱ Runway: <strong>~33 days</strong></div>
+                <div>🤖 AI scans available: <strong>10,000+</strong></div>
+                <div>📱 SMS available: <strong>16,666+</strong></div>
+              </div>
+            </div>
+
+            <div style="font-size:10px;color:var(--xs);text-align:center;margin-top:10px;line-height:1.5">
+              🔒 Secure payment by Razorpay<br>
+              All transactions encrypted with 256-bit SSL
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ========== PANE: HISTORY ========== -->
+      <div class="modal-tab-pane" id="mtab-history">
+        <div class="sec-title">Recent Transactions</div>
+        <div style="overflow-x:auto;margin-bottom:14px">
+          <table class="txn-table">
+            <thead>
+              <tr>
+                <th>Date</th><th>Type</th><th>Description</th><th>Reference</th>
+                <th style="text-align:right">Debit</th>
+                <th style="text-align:right">Credit</th>
+                <th style="text-align:right">Balance</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>2026-05-27 18:32</td><td><span class="flag fr">DEBIT</span></td><td>AI scan ×2</td><td class="mono" style="font-size:10px">scan:8a4e</td><td style="text-align:right" class="txn-dr">— ₹0.50</td><td style="text-align:right">—</td><td style="text-align:right" class="mono"><strong>₹12,450.00</strong></td></tr>
+              <tr><td>2026-05-27 14:20</td><td><span class="flag fr">DEBIT</span></td><td>SMS sent ×5</td><td class="mono" style="font-size:10px">sms:9f2c</td><td style="text-align:right" class="txn-dr">— ₹0.75</td><td style="text-align:right">—</td><td style="text-align:right" class="mono"><strong>₹12,450.50</strong></td></tr>
+              <tr><td>2026-05-26 11:00</td><td><span class="flag fr">DEBIT</span></td><td>WhatsApp bill share ×3</td><td class="mono" style="font-size:10px">wa:3e1b</td><td style="text-align:right" class="txn-dr">— ₹2.55</td><td style="text-align:right">—</td><td style="text-align:right" class="mono"><strong>₹12,451.25</strong></td></tr>
+              <tr style="background:var(--ol)"><td>2026-05-15 09:45</td><td><span class="flag fo">RECHARGE</span></td><td>Razorpay payment</td><td class="mono" style="font-size:10px">rzp_J0K1...</td><td style="text-align:right">—</td><td style="text-align:right" class="txn-cr">+ ₹5,000.00</td><td style="text-align:right" class="mono"><strong>₹12,453.80</strong></td></tr>
+              <tr><td>2026-05-15 09:00</td><td><span class="flag fw">SUBSCRIPTION</span></td><td>Monthly plan (Enterprise)</td><td class="mono" style="font-size:10px">sub:may26</td><td style="text-align:right" class="txn-dr">— ₹6,999.00</td><td style="text-align:right">—</td><td style="text-align:right" class="mono"><strong>₹7,453.80</strong></td></tr>
+              <tr style="background:var(--ol)"><td>2026-05-01 10:30</td><td><span class="flag fo">RECHARGE</span></td><td>UPI · anjaninex@upi</td><td class="mono" style="font-size:10px">UPI/620148...</td><td style="text-align:right">—</td><td style="text-align:right" class="txn-cr">+ ₹15,000.00</td><td style="text-align:right" class="mono"><strong>₹14,452.80</strong></td></tr>
+              <tr><td>2026-04-30 23:59</td><td><span class="flag fr">DEBIT</span></td><td>AI scans monthly summary (108)</td><td class="mono" style="font-size:10px">batch:apr</td><td style="text-align:right" class="txn-dr">— ₹27.00</td><td style="text-align:right">—</td><td style="text-align:right" class="mono"><strong>—₹547.20</strong></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Summary stats -->
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:14px">
+          <div class="kpi-card green" style="cursor:default">
+            <div class="kpi-val" style="font-size:18px">₹20,000</div>
+            <div class="kpi-label">Total Recharged (MTD)</div>
+          </div>
+          <div class="kpi-card red" style="cursor:default">
+            <div class="kpi-val" style="font-size:18px">₹7,550</div>
+            <div class="kpi-label">Total Spent (MTD)</div>
+          </div>
+          <div class="kpi-card navy" style="cursor:default">
+            <div class="kpi-val" style="font-size:18px">₹12,450</div>
+            <div class="kpi-label">Current Balance</div>
+          </div>
+          <div class="kpi-card amber" style="cursor:default">
+            <div class="kpi-val" style="font-size:18px">₹37.75</div>
+            <div class="kpi-label">Avg Daily Spend</div>
+          </div>
+        </div>
+
+        <button class="btn-block" style="margin-top:14px" onclick="showToast('📥 Exporting full ledger as Excel...')">📊 Export Full Wallet Ledger (Excel)</button>
+      </div>
+
+      <!-- ========== PANE: PRICING ========== -->
+      <div class="modal-tab-pane" id="mtab-pricing">
+        <div class="sec-title">Per-Service Rates</div>
+        <div class="pricing-grid">
+          <div class="pricing-item">
+            <div class="p-svc">🤖 AI Bill Scan (Gemini)</div>
+            <div class="p-cost">₹0.25 per scan</div>
+            <div style="font-size:9px;color:var(--xs);margin-top:3px">First 50/month FREE on Starter+</div>
+          </div>
+          <div class="pricing-item">
+            <div class="p-svc">📱 SMS (Transactional)</div>
+            <div class="p-cost">₹0.15 per SMS</div>
+            <div style="font-size:9px;color:var(--xs);margin-top:3px">Login OTP, bill alerts, payment reminders</div>
+          </div>
+          <div class="pricing-item">
+            <div class="p-svc">💬 WhatsApp Message</div>
+            <div class="p-cost">₹0.85 per message</div>
+            <div style="font-size:9px;color:var(--xs);margin-top:3px">Bill share, GR notifications, marketing</div>
+          </div>
+          <div class="pricing-item">
+            <div class="p-svc">📞 Voice OTP</div>
+            <div class="p-cost">₹0.45 per call</div>
+            <div style="font-size:9px;color:var(--xs);margin-top:3px">Fallback when SMS fails</div>
+          </div>
+          <div class="pricing-item">
+            <div class="p-svc">📧 Email (Transactional)</div>
+            <div class="p-cost">FREE up to 10K/mo</div>
+            <div style="font-size:9px;color:var(--xs);margin-top:3px">Then ₹0.05 per email</div>
+          </div>
+          <div class="pricing-item">
+            <div class="p-svc">💾 Extra Storage</div>
+            <div class="p-cost">₹50 per GB / month</div>
+            <div style="font-size:9px;color:var(--xs);margin-top:3px">Beyond plan limit (50 GB Enterprise)</div>
+          </div>
+          <div class="pricing-item">
+            <div class="p-svc">📄 PDF Generation (bulk)</div>
+            <div class="p-cost">₹0.10 per PDF</div>
+            <div style="font-size:9px;color:var(--xs);margin-top:3px">Bills, payslips, reports</div>
+          </div>
+          <div class="pricing-item">
+            <div class="p-svc">🔐 E-invoice IRN</div>
+            <div class="p-cost">₹0.50 per IRN</div>
+            <div style="font-size:9px;color:var(--xs);margin-top:3px">Govt portal API call</div>
+          </div>
+        </div>
+
+        <div class="sec-title" style="margin-top:22px">Subscription Plans (separate from wallet)</div>
+        <div style="background:var(--bg);border-radius:10px;padding:12px;border:1px solid var(--border)">
+          <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)">
+            <div><strong style="font-size:12px">Starter</strong> <span style="font-size:10px;color:var(--xs)">— 100 bills/mo, 50 AI scans, 2 users, 5GB</span></div>
+            <div class="mono" style="font-weight:800;color:var(--ax-navy)">₹999/mo</div>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)">
+            <div><strong style="font-size:12px;color:var(--ax-red)">Pro ⭐</strong> <span style="font-size:10px;color:var(--xs)">— 500 bills/mo, 200 AI scans, 5 users, 25GB, HR module</span></div>
+            <div class="mono" style="font-weight:800;color:var(--ax-red)">₹2,499/mo</div>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:10px 0">
+            <div><strong style="font-size:12px">Enterprise</strong> <span style="font-size:10px;color:var(--xs)">— Unlimited everything, white-label, API</span></div>
+            <div class="mono" style="font-weight:800;color:var(--ax-navy)">₹6,999/mo</div>
+          </div>
+        </div>
+
+        <div style="background:var(--ax-red-soft);border:1px solid var(--ax-red);border-radius:8px;padding:12px;margin-top:14px;font-size:11px;line-height:1.6">
+          💡 <strong>Bulk recharge discount:</strong> Recharge ₹10,000+ get ₹150 cashback · ₹25,000+ get ₹500 cashback · ₹50,000+ get ₹1,200 cashback
+        </div>
+      </div>
+
+      <!-- ========== PANE: AUTO-RECHARGE ========== -->
+      <div class="modal-tab-pane" id="mtab-auto">
+        <div class="sec-title">Auto-Recharge Settings</div>
+        <div style="font-size:11px;color:var(--soft);margin-bottom:14px">
+          Never run out of balance — wallet auto-tops-up when balance drops below threshold.
+        </div>
+
+        <div class="auto-box">
+          <div class="info">
+            <div class="title">🔁 Enable Auto-Recharge</div>
+            <div class="desc">Use saved Razorpay payment method · Cancel anytime</div>
+          </div>
+          <div class="toggle-switch on" onclick="this.classList.toggle('on')"></div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+          <div>
+            <label style="font-size:11px;font-weight:700;color:var(--ax-navy);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;display:block">When balance drops below</label>
+            <div style="position:relative">
+              <span style="position:absolute;left:14px;top:50%;transform:translateY(-50%);font-weight:800;color:var(--soft)">₹</span>
+              <input type="number" value="500" style="width:100%;padding:11px 14px 11px 30px;border:1.5px solid var(--border);border-radius:8px;font-family:'DM Mono',monospace;font-size:14px;font-weight:700;outline:none">
+            </div>
+            <div style="font-size:10px;color:var(--xs);margin-top:4px">Min ₹100 · Max ₹5,000</div>
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:700;color:var(--ax-navy);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;display:block">Auto-recharge amount</label>
+            <div style="position:relative">
+              <span style="position:absolute;left:14px;top:50%;transform:translateY(-50%);font-weight:800;color:var(--soft)">₹</span>
+              <input type="number" value="5000" style="width:100%;padding:11px 14px 11px 30px;border:1.5px solid var(--border);border-radius:8px;font-family:'DM Mono',monospace;font-size:14px;font-weight:700;outline:none">
+            </div>
+            <div style="font-size:10px;color:var(--xs);margin-top:4px">Recommended: 30 days of usage</div>
+          </div>
+        </div>
+
+        <div class="sec-title" style="margin-top:18px">Saved Payment Method</div>
+        <div style="background:var(--ax-navy);color:#fff;border-radius:12px;padding:18px;font-family:'DM Mono',monospace;position:relative;overflow:hidden">
+          <div style="position:absolute;top:14px;right:14px;font-size:14px;font-weight:800;background:var(--ax-red);padding:3px 10px;border-radius:4px">VISA</div>
+          <div style="font-size:11px;opacity:0.8;margin-bottom:18px;text-transform:uppercase;letter-spacing:1px">Razorpay Card</div>
+          <div style="font-size:20px;letter-spacing:4px;margin-bottom:14px">•••• •••• •••• 4521</div>
+          <div style="display:flex;justify-content:space-between;font-size:11px">
+            <div><div style="opacity:0.7;font-size:9px">CARD HOLDER</div><div>RAJESH YADAV</div></div>
+            <div><div style="opacity:0.7;font-size:9px">EXPIRES</div><div>12/27</div></div>
+          </div>
+        </div>
+        <button class="btn-block" style="margin-top:10px">+ Add Another Card / UPI</button>
+
+        <div class="sec-title" style="margin-top:18px">Auto-Recharge Limit (Monthly Cap)</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px">
+          <label style="display:flex;align-items:center;gap:8px;padding:10px;border:1.5px solid var(--border);border-radius:8px;cursor:pointer;font-size:12px"><input type="radio" name="cap" style="accent-color:var(--ax-red)"> ₹10,000</label>
+          <label style="display:flex;align-items:center;gap:8px;padding:10px;border:1.5px solid var(--ax-red);background:var(--ax-red-soft);border-radius:8px;cursor:pointer;font-size:12px;color:var(--ax-red-dark);font-weight:700"><input type="radio" name="cap" checked style="accent-color:var(--ax-red)"> ₹25,000</label>
+          <label style="display:flex;align-items:center;gap:8px;padding:10px;border:1.5px solid var(--border);border-radius:8px;cursor:pointer;font-size:12px"><input type="radio" name="cap" style="accent-color:var(--ax-red)"> Unlimited</label>
+        </div>
+        <div style="font-size:10px;color:var(--xs)">Auto-recharge will pause if monthly limit reached · You'll get SMS alert</div>
+
+        <div style="background:var(--ol);border:1px solid var(--ok);border-radius:8px;padding:12px;margin-top:18px;font-size:11px;line-height:1.6">
+          ✅ <strong>Auto-recharge is ACTIVE</strong> · Last triggered May 15 (₹5,000) · Next trigger when balance hits ₹500
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-foot">
+      <div style="font-size:11px;color:var(--soft)">
+        🔒 256-bit SSL · PCI-DSS compliant · Razorpay-powered
+      </div>
+      <div style="display:flex;gap:10px">
+        <button onclick="closeRecharge()" class="btn-block" style="width:auto;padding:10px 20px">Cancel</button>
+        <button onclick="doRecharge()" class="btn-block primary" style="width:auto;padding:10px 26px;font-size:13px">💳 Pay ₹<span id="payBtnAmt">2,950</span></button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ TOAST ═══════════════════════════════════════════════════ -->
+<div class="toast" id="toast"></div>
+
+<!-- ═══════════════════════════════════════════════════ INLINE CHART LIBRARY ═══════════════════════════════════════════════════ -->
+<script>
+// NChart — self-contained chart library (no CDN). Supports line, bar, donut.
+(function(w){'use strict';function NChart(canvas,cfg){if(!canvas)return;this.canvas=canvas;this.ctx=canvas.getContext('2d');this.cfg=cfg;this._dpr=window.devicePixelRatio||1;this._init();}NChart.prototype._init=function(){var c=this.canvas,ctx=this.ctx,cfg=this.cfg,dpr=this._dpr;var pw=c.parentElement?c.parentElement.clientWidth||400:400;var ph=c.parentElement?c.parentElement.clientHeight||200:200;c.width=pw*dpr;c.height=ph*dpr;c.style.width=pw+'px';c.style.height=ph+'px';ctx.scale(dpr,dpr);this._w=pw;this._h=ph;this.draw();};NChart.prototype.destroy=function(){this.ctx.clearRect(0,0,this.canvas.width,this.canvas.height);};NChart.prototype.draw=function(){var t=this.cfg.type;if(t==='line')this._drawLine();else if(t==='bar')this._drawBar();else if(t==='doughnut'||t==='donut')this._drawDonut();};NChart.prototype._pad=function(){return{t:20,r:14,b:30,l:46};};NChart.prototype._drawLine=function(){var ctx=this.ctx,w=this._w,h=this._h,cfg=this.cfg;var pad=this._pad();var cw=w-pad.l-pad.r,ch=h-pad.t-pad.b;var labels=cfg.data.labels||[];var ds=cfg.data.datasets||[];ctx.clearRect(0,0,w,h);var allVals=[];ds.forEach(function(d){(d.data||[]).forEach(function(v){allVals.push(v);});});var mx=Math.max.apply(null,allVals)||1;mx*=1.15;ctx.strokeStyle='rgba(214,221,234,0.5)';ctx.lineWidth=0.5;ctx.fillStyle='#8893AC';ctx.font='9px DM Sans,system-ui';ctx.textAlign='right';for(var i=0;i<=4;i++){var yv=mx*(i/4);var yp=pad.t+ch-(ch*(i/4));ctx.beginPath();ctx.moveTo(pad.l,yp);ctx.lineTo(pad.l+cw,yp);ctx.stroke();var lbl=yv>=100000?'₹'+(yv/100000).toFixed(1)+'L':yv>=1000?'₹'+(yv/1000).toFixed(0)+'K':yv.toFixed(0);ctx.fillText(lbl,pad.l-4,yp+3);}ctx.fillStyle='#8893AC';ctx.textAlign='center';labels.forEach(function(lb,i){var xp=pad.l+(i/(labels.length-1||1))*cw;ctx.fillText(lb,xp,h-pad.b+12);});ds.forEach(function(d){var pts=d.data||[];var col=d.borderColor||'#DC2626';var bgcol=d.backgroundColor||'rgba(220,38,38,0.12)';var lw=d.borderWidth||2.5;if(d.fill!==false){ctx.beginPath();pts.forEach(function(v,i){var xp=pad.l+(i/(pts.length-1||1))*cw;var yp=pad.t+ch-(ch*(v/mx));if(i===0)ctx.moveTo(xp,yp);else ctx.lineTo(xp,yp);});ctx.lineTo(pad.l+cw,pad.t+ch);ctx.lineTo(pad.l,pad.t+ch);ctx.closePath();ctx.fillStyle=bgcol;ctx.fill();}ctx.beginPath();ctx.strokeStyle=col;ctx.lineWidth=lw;pts.forEach(function(v,i){var xp=pad.l+(i/(pts.length-1||1))*cw;var yp=pad.t+ch-(ch*(v/mx));if(i===0)ctx.moveTo(xp,yp);else ctx.lineTo(xp,yp);});ctx.stroke();pts.forEach(function(v,i){var xp=pad.l+(i/(pts.length-1||1))*cw;var yp=pad.t+ch-(ch*(v/mx));ctx.beginPath();ctx.arc(xp,yp,3.5,0,Math.PI*2);ctx.fillStyle='#fff';ctx.fill();ctx.strokeStyle=col;ctx.lineWidth=2;ctx.stroke();});});};NChart.prototype._drawBar=function(){var ctx=this.ctx,w=this._w,h=this._h,cfg=this.cfg;var opts=cfg.options||{};var isH=opts.indexAxis==='y';var pad=isH?{t:8,r:22,b:18,l:78}:{t:18,r:14,b:30,l:44};var cw=w-pad.l-pad.r,ch=h-pad.t-pad.b;var labels=cfg.data.labels||[];var ds=cfg.data.datasets||[];var stacked=(opts.scales&&opts.scales.x&&opts.scales.x.stacked)||false;ctx.clearRect(0,0,w,h);var stackTotals=[];labels.forEach(function(_,li){var tot=0;ds.forEach(function(d){tot+=(d.data[li]||0);});stackTotals.push(tot);});var mx=stacked?Math.max.apply(null,stackTotals):Math.max.apply(null,ds.reduce(function(a,d){return a.concat(d.data||[]);},[]));mx=mx*1.15||1;if(!isH){ctx.strokeStyle='rgba(214,221,234,0.5)';ctx.lineWidth=0.5;ctx.fillStyle='#8893AC';ctx.font='9px DM Sans,system-ui';ctx.textAlign='right';for(var gi=0;gi<=4;gi++){var yv=mx*(gi/4);var yp=pad.t+ch-(ch*(gi/4));ctx.beginPath();ctx.moveTo(pad.l,yp);ctx.lineTo(pad.l+cw,yp);ctx.stroke();var lbl=yv>=100000?'₹'+(yv/100000).toFixed(1)+'L':yv>=1000?'₹'+(yv/1000).toFixed(0)+'K':yv%1===0?yv.toFixed(0):yv.toFixed(1);ctx.fillText(lbl,pad.l-4,yp+3);}ctx.fillStyle='#4A5878';ctx.textAlign='center';ctx.font='9px DM Sans';var grpW=cw/labels.length;labels.forEach(function(lb,li){ctx.fillText(lb,pad.l+li*grpW+grpW/2,h-pad.b+12);});labels.forEach(function(lb,li){var grpX=pad.l+li*grpW;var bw=stacked?grpW*0.55:grpW*0.75/ds.length;var bx=stacked?grpX+(grpW-grpW*0.55)/2:grpX+(grpW-bw*ds.length)/2;var stackY=0;ds.forEach(function(d,di){var v=d.data[li]||0;var bh=ch*(v/mx);var x=stacked?bx:bx+di*bw;var y=pad.t+ch-bh-(stacked?ch*(stackY/mx):0);var bg=Array.isArray(d.backgroundColor)?d.backgroundColor[li]:d.backgroundColor||'#DC2626';ctx.fillStyle=bg;var r=Math.min(4,bw/3,bh/3);ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+bw-r,y);ctx.quadraticCurveTo(x+bw,y,x+bw,y+r);ctx.lineTo(x+bw,y+bh);ctx.lineTo(x,y+bh);ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);ctx.closePath();ctx.fill();if(stacked)stackY+=v;});});}else{var bh=Math.min(22,(ch/labels.length)*0.7);var gap=(ch/labels.length)-bh;ctx.font='10px DM Sans';ctx.textAlign='right';labels.forEach(function(lb,li){var yp=pad.t+li*(bh+gap);ctx.fillStyle='#4A5878';ctx.fillText(lb,pad.l-6,yp+bh/2+3);ds.forEach(function(d,di){var v=d.data[li]||0;var bw=cw*(v/mx);var bg=Array.isArray(d.backgroundColor)?d.backgroundColor[li]:d.backgroundColor||'#DC2626';ctx.fillStyle=bg;var r=Math.min(4,bh/3);var y0=yp+di*(bh/ds.length);var bhi=bh/ds.length;ctx.beginPath();ctx.moveTo(pad.l,y0+r);ctx.lineTo(pad.l,y0+bhi-r);ctx.quadraticCurveTo(pad.l,y0+bhi,pad.l+r,y0+bhi);ctx.lineTo(pad.l+bw-r,y0+bhi);ctx.quadraticCurveTo(pad.l+bw,y0+bhi,pad.l+bw,y0+bhi-r);ctx.lineTo(pad.l+bw,y0+r);ctx.quadraticCurveTo(pad.l+bw,y0,pad.l+bw-r,y0);ctx.lineTo(pad.l+r,y0);ctx.quadraticCurveTo(pad.l,y0,pad.l,y0+r);ctx.closePath();ctx.fill();});ctx.fillStyle='#1B2E5C';ctx.textAlign='left';ctx.font='bold 10px DM Mono';var v0=ds[0].data[li]||0;var bw0=cw*(v0/mx);ctx.fillText(v0.toLocaleString('en-IN'),pad.l+bw0+5,yp+bh/2+3);ctx.textAlign='right';});}if(ds.length>1&&!isH){var lx=pad.l,ly=4;ctx.font='9px DM Sans';ctx.textAlign='left';ds.forEach(function(d){var bg=Array.isArray(d.backgroundColor)?d.backgroundColor[0]:d.backgroundColor||'#DC2626';ctx.fillStyle=bg;ctx.fillRect(lx,ly,9,9);ctx.fillStyle='#4A5878';ctx.fillText(d.label||'',lx+12,ly+8);lx+=ctx.measureText(d.label||'').width+30;});}};NChart.prototype._drawDonut=function(){var ctx=this.ctx,w=this._w,h=this._h,cfg=this.cfg;ctx.clearRect(0,0,w,h);var ds=cfg.data.datasets[0]||{};var vals=ds.data||[];var colors=ds.backgroundColor||['#DC2626','#1B2E5C','#16A34A','#D97706','#7C3AED'];var total=vals.reduce(function(a,b){return a+b;},0)||1;var cutout=parseFloat((cfg.options&&cfg.options.cutout)||'62%')/100;var cx=w/2,cy=h/2;var r=Math.min(w,h)*0.42;var ir=r*cutout;var start=-Math.PI/2;vals.forEach(function(v,i){var sweep=(v/total)*Math.PI*2;ctx.beginPath();ctx.moveTo(cx+Math.cos(start)*r,cy+Math.sin(start)*r);ctx.arc(cx,cy,r,start,start+sweep);ctx.arc(cx,cy,ir,start+sweep,start,true);ctx.closePath();ctx.fillStyle=colors[i%colors.length];ctx.fill();start+=sweep;});};function Chart(canvas,cfg){return new NChart(canvas,cfg);}Chart.prototype=NChart.prototype;w.Chart=Chart;})(window);
+
+// ═══════════════ STATE ═══════════════
+const STATE = {
+  tab: 'overview',
+  period: 'month',
+  branch: 'all',
+  branches: ['all','jaipur','delhi','surat','mumbai'],
+  branchIdx: 0,
+  compare: false,
+  customize: false,
+  theme: localStorage.getItem('ax-theme') || 'light',
+  charts: {}
+};
+
+const RED = '#DC2626', NAVY = '#1B2E5C', CREAM = '#FAF7F0',
+      OK = '#16A34A', WARN = '#D97706', PURP = '#7C3AED';
+
+// ═══════════════ WIDGET DEFINITIONS ═══════════════
+const WIDGETS = {
+  // overview
+  'w-ov-sparkline':  {tab:'overview',  name:'30-Day Sales Pulse',     icon:'📈', def:true},
+  'w-ov-insights':   {tab:'overview',  name:'Smart Insights',          icon:'💡', def:true},
+  'w-ov-activity':   {tab:'overview',  name:'Recent Activity Feed',    icon:'⚡', def:true},
+  'w-ov-shortcuts':  {tab:'overview',  name:'Quick Actions',           icon:'⚡', def:true},
+  'w-ov-wallet':     {tab:'overview',  name:'Wallet & Subscription',   icon:'💰', def:true},
+  'w-ov-goals':      {tab:'overview',  name:'Monthly Goals',           icon:'🎯', def:true},
+  // sales
+  'w-sales-trend':   {tab:'sales',     name:'Monthly Sales Trend',     icon:'📈', def:true},
+  'w-segment':       {tab:'sales',     name:'Segment Mix Donut',       icon:'🎯', def:true},
+  'w-branch':        {tab:'sales',     name:'Branch-wise Sales',       icon:'🏢', def:true},
+  'w-order-status':  {tab:'sales',     name:'Order Status Donut',      icon:'📦', def:true},
+  'w-trending':      {tab:'sales',     name:'Trending Items Table',    icon:'🔥', def:true},
+  // payments
+  'w-collection':    {tab:'payments',  name:'Collection vs Outstanding', icon:'💰', def:true},
+  'w-pay-mode':      {tab:'payments',  name:'Payment Mode Donut',      icon:'🏦', def:true},
+  'w-ontime':        {tab:'payments',  name:'On-Time vs Late Donut',   icon:'⏱', def:true},
+  'w-commission':    {tab:'payments',  name:'Monthly Commission Bar',  icon:'💎', def:true},
+  'w-bill-aging':    {tab:'payments',  name:'Bill Aging Chart',        icon:'🗓', def:true},
+  'w-outstanding':   {tab:'payments',  name:'Outstanding Bills Table', icon:'📄', def:true},
+  // operations
+  'w-gr-trend':      {tab:'operations',name:'GR Return Trend Line',    icon:'↩️', def:true},
+  'w-gr-reason':     {tab:'operations',name:'Return Reasons Donut',    icon:'🔍', def:true},
+  'w-sampling':      {tab:'operations',name:'Sampling Funnel Bar',     icon:'🧵', def:true},
+  'w-samp-status':   {tab:'operations',name:'Sample Status Donut',     icon:'📊', def:true},
+  'w-supplier-perf': {tab:'operations',name:'Supplier Performance',    icon:'🏭', def:true},
+  'w-alerts':        {tab:'operations',name:'Smart Alerts Panel',      icon:'🔔', def:true},
+  // parties
+  'w-party-os':      {tab:'parties',   name:'Party Outstanding Bar',   icon:'📊', def:true},
+  'w-party-rating':  {tab:'parties',   name:'Party Rating Donut',      icon:'⭐', def:true},
+  'w-city':          {tab:'parties',   name:'City-wise Parties',       icon:'🗺️', def:true},
+  'w-comm-sup':      {tab:'parties',   name:'Supplier Commission Bar', icon:'💰', def:true},
+  'w-buyers':        {tab:'parties',   name:'Buyer Behaviour Cards',   icon:'🛒', def:true},
+  // hr (NEW)
+  'w-hr-present':    {tab:'hr',        name:'Present Today',           icon:'✅', def:true},
+  'w-hr-checkin':    {tab:'hr',        name:'Latest Check-ins',        icon:'📍', def:true},
+  'w-hr-payroll':    {tab:'hr',        name:'Payroll Status',          icon:'💰', def:true},
+  'w-hr-leaves':     {tab:'hr',        name:'Pending Leaves',          icon:'🏖', def:true},
+  'w-hr-heatmap':    {tab:'hr',        name:'Attendance Heatmap',      icon:'📅', def:true},
+  'w-hr-livemap':    {tab:'hr',        name:'Field Staff Live Map',    icon:'🗺', def:true},
+  // gst (NEW)
+  'w-gst-net':       {tab:'gst',       name:'Net GST Payable Gauge',   icon:'🏛', def:true},
+  'w-gst-output':    {tab:'gst',       name:'Output Tax Donut',        icon:'📤', def:true},
+  'w-gst-eway':      {tab:'gst',       name:'E-Invoice & E-Way Bill',  icon:'📋', def:true},
+  'w-gst-hsn':       {tab:'gst',       name:'HSN-wise Summary',        icon:'📊', def:true},
+  'w-gst-timeline':  {tab:'gst',       name:'Compliance Calendar',     icon:'📅', def:true},
+  // anjaninex (NEW)
+  'w-ax-mrr':        {tab:'anjaninex', name:'MRR',                     icon:'💰', def:true},
+  'w-ax-firms':      {tab:'anjaninex', name:'Active Firms',            icon:'🏢', def:true},
+  'w-ax-ai':         {tab:'anjaninex', name:'AI Revenue',              icon:'🤖', def:true},
+  'w-ax-wallet-dist':{tab:'anjaninex', name:'Wallet Distribution',     icon:'💼', def:true},
+  'w-ax-firms-grid': {tab:'anjaninex', name:'All Firms Grid',          icon:'🏢', def:true}
+};
+
+let widgetState = {};
+function loadWidgetState(){
+  const saved = localStorage.getItem('ax-widgets');
+  if(saved){
+    try{widgetState = JSON.parse(saved);}catch{widgetState = {};}
+  }
+  Object.keys(WIDGETS).forEach(id => {
+    if(widgetState[id] === undefined) widgetState[id] = WIDGETS[id].def;
+  });
+}
+function saveLayout(){
+  localStorage.setItem('ax-widgets', JSON.stringify(widgetState));
+  showToast('💾 Layout saved! Will persist next visit.');
+}
+function resetWidgets(){
+  widgetState = {};
+  Object.keys(WIDGETS).forEach(id => widgetState[id] = WIDGETS[id].def);
+  localStorage.removeItem('ax-widgets');
+  applyWidgetState();
+  buildCustomizePanel();
+  showToast('↺ Layout reset to default');
+}
+function applyWidgetState(){
+  Object.keys(WIDGETS).forEach(id => {
+    const el = document.getElementById(id);
+    if(el){
+      if(widgetState[id]) el.classList.remove('hidden');
+      else el.classList.add('hidden');
+    }
+  });
+}
+
+// ═══════════════ THEME ═══════════════
+function toggleTheme(){
+  STATE.theme = STATE.theme === 'light' ? 'dark' : 'light';
+  document.body.setAttribute('data-theme', STATE.theme);
+  document.getElementById('themeIcon').textContent = STATE.theme === 'light' ? '🌙' : '☀️';
+  localStorage.setItem('ax-theme', STATE.theme);
+  setTimeout(renderAll, 50);
+}
+
+// ═══════════════ TABS ═══════════════
+function switchTab(name, btn){
+  STATE.tab = name;
+  document.querySelectorAll('.tab-page').forEach(p => p.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  setTimeout(renderTabCharts, 50);
+}
+
+// ═══════════════ PERIOD / BRANCH / COMPARE ═══════════════
+function setPeriod(btn, p){
+  STATE.period = p;
+  document.querySelectorAll('.period-bar .prbtn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  showToast(`📅 Period: ${p.toUpperCase()}`);
+  renderAll();
+}
+function setBranch(b){
+  STATE.branch = b;
+  document.getElementById('branchLabel').textContent = b === 'all' ? 'All Branches' : b.charAt(0).toUpperCase() + b.slice(1);
+  showToast(`🏢 Branch: ${b}`);
+  renderAll();
+}
+function cycleBranch(){
+  STATE.branchIdx = (STATE.branchIdx + 1) % STATE.branches.length;
+  const b = STATE.branches[STATE.branchIdx];
+  document.getElementById('branchSel').value = b;
+  setBranch(b);
+}
+function toggleCompare(on){
+  STATE.compare = on;
+  document.querySelectorAll('.cmp-row').forEach(r => r.style.display = on ? 'block' : 'none');
+  showToast(on ? '📊 Compare mode ON — last period shown below KPIs' : '📊 Compare mode OFF');
+}
+function openDateRange(){
+  showToast('📅 Custom date range picker (would open modal in real app)');
+}
+
+// ═══════════════ CUSTOMIZE / DRAG-DROP ═══════════════
+function toggleCustomize(){
+  STATE.customize = !STATE.customize;
+  document.getElementById('custBtn').classList.toggle('active', STATE.customize);
+  document.querySelectorAll('.widget').forEach(w => {
+    if(STATE.customize) w.classList.add('customize-mode');
+    else w.classList.remove('customize-mode');
+  });
+  if(STATE.customize) openPanel('customize');
+  else closePanel('customize');
+}
+function buildCustomizePanel(){
+  const tabs = ['overview','sales','payments','operations','parties','hr','gst','anjaninex'];
+  const html = tabs.map(t => {
+    const widgets = Object.entries(WIDGETS).filter(([id, w]) => w.tab === t);
+    if(widgets.length === 0) return '';
+    return `<div class="sp-section">
+      <div class="sp-section-title">${t.toUpperCase()} (${widgets.length})</div>
+      ${widgets.map(([id, w]) => `
+        <div class="sp-item">
+          <div>
+            <div class="sp-item-name">${w.icon} ${w.name}</div>
+            <div class="sp-item-sub">${id}</div>
+          </div>
+          <div class="toggle-switch ${widgetState[id]?'on':''}" onclick="toggleWidget('${id}')"></div>
+        </div>
+      `).join('')}
+    </div>`;
+  }).join('');
+  document.getElementById('custContent').innerHTML = html;
+}
+function toggleWidget(id){
+  widgetState[id] = !widgetState[id];
+  applyWidgetState();
+  buildCustomizePanel();
+}
+
+// Drag-drop reordering
+let draggedWidget = null;
+function setupDragDrop(){
+  document.querySelectorAll('.widget').forEach(w => {
+    w.draggable = false;
+    const drag = w.querySelector('.w-drag');
+    if(drag){
+      drag.onmousedown = () => { w.draggable = true; };
+      drag.onmouseup = () => { w.draggable = false; };
+    }
+    w.ondragstart = (e) => {
+      draggedWidget = w;
+      w.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    };
+    w.ondragend = () => {
+      if(draggedWidget) draggedWidget.classList.remove('dragging');
+      draggedWidget = null;
+      document.querySelectorAll('.drag-over').forEach(x => x.classList.remove('drag-over'));
+    };
+    w.ondragover = (e) => {
+      if(!draggedWidget || draggedWidget === w) return;
+      e.preventDefault();
+      w.classList.add('drag-over');
+    };
+    w.ondragleave = () => w.classList.remove('drag-over');
+    w.ondrop = (e) => {
+      e.preventDefault();
+      if(!draggedWidget || draggedWidget === w) return;
+      const parent = w.parentElement;
+      const rect = w.getBoundingClientRect();
+      if(e.clientY < rect.top + rect.height/2) parent.insertBefore(draggedWidget, w);
+      else parent.insertBefore(draggedWidget, w.nextSibling);
+      w.classList.remove('drag-over');
+      showToast('↕️ Widget reordered');
+    };
+  });
+}
+
+// ═══════════════ PANELS ═══════════════
+function openPanel(name){
+  document.querySelectorAll('.side-panel').forEach(p => p.classList.remove('open'));
+  document.getElementById('panel-' + name).classList.add('open');
+  if(name === 'customize') buildCustomizePanel();
+  if(name === 'notif') buildNotifications();
+}
+function closePanel(name){
+  document.getElementById('panel-' + name).classList.remove('open');
+}
+
+// ═══════════════ EXPORT ═══════════════
+function doExport(format){
+  const messages = {
+    pdf: '📄 Exporting current tab as PDF... (would use jsPDF + html2canvas in real app)',
+    xlsx: '📊 Generating Excel file with all widget data... (would use SheetJS)',
+    csv: '📋 Downloading CSV of all tables on this tab...',
+    png: '🖼 Capturing screenshot...'
+  };
+  showToast(messages[format]);
+  // Simulate CSV download
+  if(format === 'csv'){
+    const csv = 'Bill No,Date,Party,Amount,Status\nJPR-001,2026-05-27,Bawa Collection,172738,Paid\nJPR-002,2026-05-26,Sharma Brothers,57712,Pending\n';
+    const blob = new Blob([csv], {type: 'text/csv'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'anjaninex-export-' + Date.now() + '.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+}
+
+// ═══════════════ TOAST ═══════════════
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+// ═══════════════ RENDER ═══════════════
+function renderAll(){
+  applyWidgetState();
+  renderTabCharts();
+  renderOverview();
+  renderTables();
+  renderLists();
+  setupDragDrop();
+}
+function destroyChart(id){
+  if(STATE.charts[id]){
+    try{ STATE.charts[id].destroy(); }catch{}
+    delete STATE.charts[id];
+  }
+}
+function mkChart(canvasId, cfg){
+  const cv = document.getElementById(canvasId);
+  if(!cv) return;
+  destroyChart(canvasId);
+  STATE.charts[canvasId] = new Chart(cv, cfg);
+}
+function months(n){
+  const all = ['Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar'];
+  return all.slice(0, n);
+}
+function renderOverview(){
+  // 30-day spark - SOLID RED bars
+  mkChart('cOvSpark', {
+    type:'bar',
+    data:{
+      labels:['1','2','3','4','5','6','7','8','9','10','11','12','13','14','15','16','17','18','19','20','21','22','23','24','25','26','27','28','29','30'],
+      datasets:[{label:'Sales',data:[42,38,55,61,48,52,67,72,58,49,63,71,82,74,69,58,67,79,91,85,73,68,79,87,93,82,76,89,95,102],backgroundColor:RED}]
+    }
+  });
+  // Insights box
+  document.getElementById('insightsBox').innerHTML = `
+    <div class="ai aok"><span class="aico">📈</span><div class="atxt"><div class="atit">Sales 12% above last month</div><div class="asub">₹38.4L vs ₹34.2L — keep momentum</div></div></div>
+    <div class="ai aw"><span class="aico">⚠️</span><div class="atxt"><div class="atit">₹12.8L outstanding > 60 days</div><div class="asub">8 parties owe — follow up today</div></div></div>
+    <div class="ai ainfo"><span class="aico">💡</span><div class="atxt"><div class="atit">Design 3030 trending +18%</div><div class="asub">Reorder before stock runs out</div></div></div>
+    <div class="ai ad"><span class="aico">🔴</span><div class="atxt"><div class="atit">Wallet at ₹12,450 — 5 days runway</div><div class="asub">Recharge before AI scans get blocked</div></div></div>
+  `;
+  // Activity feed
+  document.getElementById('activityFeed').innerHTML = `
+    <div class="feed-item"><div class="feed-ico red">🧾</div><div class="feed-content"><div class="feed-text"><strong>Bill JPR-0048</strong> created for Bawa Collection — ₹1,72,738</div><div class="feed-meta">2 min ago · Asha S.</div></div></div>
+    <div class="feed-item"><div class="feed-ico green">💰</div><div class="feed-content"><div class="feed-text"><strong>₹50,000 received</strong> via UPI from Sharma Brothers</div><div class="feed-meta">15 min ago · Auto-allocated</div></div></div>
+    <div class="feed-item"><div class="feed-ico">🤖</div><div class="feed-content"><div class="feed-text"><strong>AI scanned bill</strong> — 92% confidence, ₹0.25 charged</div><div class="feed-meta">1 hour ago · Gemini Flash</div></div></div>
+    <div class="feed-item"><div class="feed-ico">📍</div><div class="feed-content"><div class="feed-text"><strong>Vikram checked in</strong> at Sitapura branch</div><div class="feed-meta">1.5 hours ago · GPS + selfie ✓</div></div></div>
+    <div class="feed-item"><div class="feed-ico">🏖</div><div class="feed-content"><div class="feed-text"><strong>Asha applied leave</strong> May 30-31 (CL)</div><div class="feed-meta">3 hours ago · Pending approval</div></div></div>
+    <div class="feed-item"><div class="feed-ico red">↩️</div><div class="feed-content"><div class="feed-text"><strong>GR-005 created</strong> — Mehta Traders returned 12 PCS (quality)</div><div class="feed-meta">5 hours ago · ₹12,400</div></div></div>
+  `;
+}
+
+function renderTabCharts(){
+  const t = STATE.tab;
+
+  if(t === 'sales'){
+    mkChart('cSalesTrend', {
+      type:'line',
+      data:{labels:months(12),datasets:[{label:'Sales',data:[280000,320000,290000,350000,380000,420000,512000,440000,395000,380000,365000,384000],borderColor:RED,backgroundColor:'rgba(220,38,38,0.10)',borderWidth:2.5}]}
+    });
+    mkChart('cSegment', {
+      type:'doughnut',
+      data:{datasets:[{data:[45,35,20],backgroundColor:[RED,NAVY,PURP]}]},
+      options:{cutout:'62%'}
+    });
+    mkChart('cBranch', {
+      type:'bar',
+      data:{labels:['Jaipur','Delhi','Surat','Mumbai'],datasets:[
+        {label:'Sales',data:[1850000,1240000,890000,1280000],backgroundColor:RED},
+        {label:'Received',data:[1320000,890000,710000,940000],backgroundColor:NAVY}
+      ]}
+    });
+    mkChart('cOrderStatus', {
+      type:'doughnut',
+      data:{datasets:[{data:[62,28,10],backgroundColor:[OK,WARN,RED]}]},
+      options:{cutout:'62%'}
+    });
+  }
+
+  if(t === 'payments'){
+    mkChart('cCollection', {
+      type:'bar',
+      data:{labels:['Dec','Jan','Feb','Mar','Apr','May'],datasets:[
+        {label:'Collected',data:[2400000,2150000,2580000,2890000,2650000,2560000],backgroundColor:OK},
+        {label:'Outstanding',data:[890000,1120000,1240000,1380000,1280000,1280000],backgroundColor:WARN}
+      ],},
+      options:{scales:{x:{stacked:true}}}
+    });
+    mkChart('cPayMode', {
+      type:'doughnut',
+      data:{datasets:[{data:[48,31,21],backgroundColor:[NAVY,RED,OK]}]},
+      options:{cutout:'62%'}
+    });
+    mkChart('cOnTime', {
+      type:'doughnut',
+      data:{datasets:[{data:[58,17,25],backgroundColor:[OK,'#22C55E',RED]}]},
+      options:{cutout:'62%'}
+    });
+    mkChart('cCommission', {
+      type:'bar',
+      data:{labels:months(12),datasets:[{label:'Commission',data:[18000,22000,19500,26000,28000,31000,38000,33000,29500,28200,27000,28800],backgroundColor:NAVY}]}
+    });
+    mkChart('cBillAging', {
+      type:'bar',
+      data:{labels:['0-30','31-60','61-90','90+'],datasets:[{data:[345000,412500,568200,234300],backgroundColor:[OK,WARN,'#EA580C',RED]}]}
+    });
+  }
+
+  if(t === 'operations'){
+    mkChart('cGrTrend', {
+      type:'line',
+      data:{labels:months(12),datasets:[{label:'GR Returns',data:[8000,12000,9500,15000,11000,18000,22000,17000,14500,16200,13000,12000],borderColor:RED,backgroundColor:'rgba(220,38,38,0.10)'}]}
+    });
+    mkChart('cGrReason', {
+      type:'doughnut',
+      data:{datasets:[{data:[45,31,24],backgroundColor:[RED,WARN,NAVY]}]},
+      options:{cutout:'62%'}
+    });
+    mkChart('cSampling', {
+      type:'bar',
+      data:{labels:['Sent','Approved','Ordered','Delivered'],datasets:[{data:[120,85,62,48],backgroundColor:NAVY}]}
+    });
+    mkChart('cSampStatus', {
+      type:'doughnut',
+      data:{datasets:[{data:[35,40,15,10],backgroundColor:[WARN,OK,NAVY,RED]}]},
+      options:{cutout:'62%'}
+    });
+  }
+
+  if(t === 'parties'){
+    mkChart('cPartyOs', {
+      type:'bar',
+      data:{labels:['Bawa Collection','Sharma Bros','Mehta Traders','Singh Garments','Jain Fab','Patel Dist','Anita Apparels','Krishna Fab'],datasets:[
+        {label:'Receivable',data:[122738,57712,0,165000,301000,0,536750,42000],backgroundColor:OK},
+        {label:'Payable',data:[0,0,0,0,0,376800,0,0],backgroundColor:RED}
+      ]},
+      options:{indexAxis:'y'}
+    });
+    mkChart('cPartyRating', {
+      type:'doughnut',
+      data:{datasets:[{data:[30,35,25,10],backgroundColor:[OK,'#22C55E',WARN,RED]}]},
+      options:{cutout:'62%'}
+    });
+    mkChart('cCity', {
+      type:'bar',
+      data:{labels:['Jaipur','Delhi','Mumbai','Surat','Ahmedabad'],datasets:[{data:[48,32,28,22,18],backgroundColor:NAVY}]},
+      options:{indexAxis:'y'}
+    });
+    mkChart('cCommSup', {
+      type:'bar',
+      data:{labels:['Parvati Export','Surat Silks','Krishna Tex','Anita Mills','Jain Fabs'],datasets:[{data:[85000,68000,52000,41000,36000],backgroundColor:RED}]},
+      options:{indexAxis:'y'}
+    });
+  }
+
+  if(t === 'gst'){
+    mkChart('cGstOut', {
+      type:'doughnut',
+      data:{datasets:[{data:[35000,35000,0],backgroundColor:[RED,NAVY,PURP]}]},
+      options:{cutout:'62%'}
+    });
+  }
+
+  if(t === 'anjaninex'){
+    mkChart('cMrrSpark', {
+      type:'line',
+      data:{labels:['','','','','','','','','','','',''],datasets:[{data:[1820000,1950000,2060000,2150000,2280000,2310000,2380000,2440000,2470000,2500000,2520000,2540000],borderColor:RED,backgroundColor:'rgba(220,38,38,0.10)',borderWidth:2}]}
+    });
+    mkChart('cWalletDist', {
+      type:'bar',
+      data:{labels:['<₹500','₹500-2K','₹2-10K','₹10-50K','>₹50K'],datasets:[{data:[14,87,425,398,100],backgroundColor:[RED,WARN,NAVY,OK,PURP]}]}
+    });
+  }
+}
+
+// ═══════════════ TABLES ═══════════════
+function renderTables(){
+  // Trending items
+  const trendData = [
+    {rank:1,name:'Design 3030',hsn:'63062200',qty:'285 PCS',rev:127395,trend:[42,48,55,62,68,75,82,89],up:'+18%'},
+    {rank:2,name:'Karina',hsn:'63062200',qty:'242 PCS',rev:108174,trend:[38,42,48,55,58,65,70,75],up:'+12%'},
+    {rank:3,name:'Designer Lehenga',hsn:'62149090',qty:'26 PCS',rev:98800,trend:[15,18,22,26,30,35,42,48],up:'+24%'},
+    {rank:4,name:'Pratistha Jaipur Print',hsn:'52083930',qty:'340 MTR',rev:81600,trend:[42,45,48,50,52,55,58,60],up:'+3%'},
+    {rank:5,name:'Anaya Saree',hsn:'62149090',qty:'42 PCS',rev:50400,trend:[18,22,25,28,30,32,35,38],up:'+9%'},
+    {rank:6,name:'Pranjul Pearl',hsn:'52083930',qty:'280 MTR',rev:33600,trend:[35,38,36,34,32,30,28,26],up:'-5%'}
+  ];
+  const tt = document.getElementById('trendTable');
+  if(tt){
+    tt.innerHTML = `
+      <thead><tr><th>Rank</th><th>Item</th><th>HSN</th><th>Qty</th><th>Revenue</th><th>Trend</th><th>%</th></tr></thead>
+      <tbody>${trendData.map(r => `
+        <tr>
+          <td><span class="rnk ${r.rank===1?'r1':r.rank===2?'r2':r.rank===3?'r3':'rn'}">${r.rank}</span></td>
+          <td><strong>${r.name}</strong></td>
+          <td class="mono" style="font-size:10px;color:var(--xs)">${r.hsn}</td>
+          <td class="mono">${r.qty}</td>
+          <td class="mono" style="font-weight:800;color:var(--ax-red)">₹${r.rev.toLocaleString('en-IN')}</td>
+          <td><div class="tspark">${r.trend.map(v => `<div class="tsb" style="height:${v*0.25}px;background:${r.up.startsWith('+')?RED:NAVY}"></div>`).join('')}</div></td>
+          <td><span class="${r.up.startsWith('+')?'cmp up':'cmp dn'}">${r.up}</span></td>
+        </tr>
+      `).join('')}</tbody>
+    `;
+  }
+  // Outstanding bills
+  const outData = [
+    {bill:'JPR-BILL-0001',date:'2026-05-27',party:'Bawa Collection',amt:172738,paid:50000,due:'2026-06-27',age:0,status:'partial'},
+    {bill:'JPR-BILL-0002',date:'2026-05-26',party:'Sharma Brothers',amt:57712,paid:0,due:'2026-06-26',age:1,status:'pending'},
+    {bill:'JPR-BILL-0006',date:'2026-04-22',party:'Singh Garments',amt:165000,paid:0,due:'2026-05-22',age:5,status:'overdue'},
+    {bill:'JPR-BILL-0008',date:'2026-03-15',party:'Jain Fab',amt:301000,paid:0,due:'2026-04-15',age:42,status:'critical'},
+    {bill:'JPR-BILL-0010',date:'2026-02-08',party:'Patel Distributors',amt:376800,paid:0,due:'2026-03-08',age:80,status:'critical'}
+  ];
+  const ot = document.getElementById('outTable');
+  if(ot){
+    ot.innerHTML = `
+      <thead><tr><th>Bill #</th><th>Party</th><th>Amount</th><th>Pending</th><th>Due</th><th>Age</th><th>Status</th></tr></thead>
+      <tbody>${outData.map(r => `
+        <tr>
+          <td class="mono" style="font-size:10px"><strong>${r.bill}</strong></td>
+          <td><strong>${r.party}</strong></td>
+          <td class="mono">₹${r.amt.toLocaleString('en-IN')}</td>
+          <td class="mono" style="font-weight:800;color:var(--ax-red)">₹${(r.amt-r.paid).toLocaleString('en-IN')}</td>
+          <td class="mono" style="font-size:10px">${r.due}</td>
+          <td class="mono">${r.age}d</td>
+          <td><span class="${r.status==='critical'?'flag fr':r.status==='overdue'?'flag fw':'flag fo'}">${r.status.toUpperCase()}</span></td>
+        </tr>
+      `).join('')}</tbody>
+    `;
+  }
+  // HSN table (GST)
+  const hsnData = [
+    {hsn:'63062200',desc:'Tarpaulins, canopies',rate:5,taxable:235569,cgst:5889,sgst:5889,igst:0,total:247347},
+    {hsn:'52083930',desc:'Cotton fabric (printed)',rate:5,taxable:81600,cgst:2040,sgst:2040,igst:0,total:85680},
+    {hsn:'62149090',desc:'Sarees, lehengas',rate:12,taxable:149200,cgst:8952,sgst:8952,igst:0,total:167104},
+    {hsn:'53109010',desc:'Jute woven fabrics',rate:5,taxable:42500,cgst:1062,sgst:1062,igst:0,total:44624}
+  ];
+  const hsn = document.getElementById('hsnTable');
+  if(hsn){
+    hsn.innerHTML = `
+      <thead><tr><th>HSN</th><th>Description</th><th>Rate</th><th>Taxable</th><th>CGST</th><th>SGST</th><th>IGST</th><th>Total</th></tr></thead>
+      <tbody>${hsnData.map(r => `
+        <tr>
+          <td class="mono"><strong>${r.hsn}</strong></td>
+          <td>${r.desc}</td>
+          <td class="mono">${r.rate}%</td>
+          <td class="mono">₹${r.taxable.toLocaleString('en-IN')}</td>
+          <td class="mono">₹${r.cgst.toLocaleString('en-IN')}</td>
+          <td class="mono">₹${r.sgst.toLocaleString('en-IN')}</td>
+          <td class="mono">${r.igst>0?'₹'+r.igst.toLocaleString('en-IN'):'—'}</td>
+          <td class="mono" style="font-weight:800;color:var(--ax-red)">₹${r.total.toLocaleString('en-IN')}</td>
+        </tr>
+      `).join('')}</tbody>
+    `;
+  }
+}
+
+// ═══════════════ LISTS ═══════════════
+function renderLists(){
+  // Supplier performance
+  const suppliers = [
+    {name:'Parvati Export',code:'PRT',extra:8,ret:2,rel:96,col:'navy',rating:'A+'},
+    {name:'Surat Silks',code:'SST',extra:6,ret:4,rel:88,col:'navy',rating:'A'},
+    {name:'Krishna Tex',code:'KRT',extra:11,ret:3,rel:91,col:'red',rating:'A'},
+    {name:'Anita Mills',code:'AAM',extra:14,ret:7,rel:74,col:'amber',rating:'B'},
+    {name:'Jain Fabs',code:'JFB',extra:18,ret:12,rel:62,col:'red',rating:'C'}
+  ];
+  const sl = document.getElementById('supplierList');
+  if(sl){
+    sl.innerHTML = suppliers.map(s => `
+      <div class="party-card">
+        <div class="party-av ${s.col}">${s.code}</div>
+        <div class="party-info">
+          <div class="party-name">${s.name}</div>
+          <div class="party-detail">Extra ${s.extra}% · Return ${s.ret}% · Reliability ${s.rel}%</div>
+          <div class="mini-bar"><div class="mini-fill" style="background:${s.rel>=85?OK:s.rel>=70?WARN:RED};width:${s.rel}%"></div></div>
+        </div>
+        <div class="party-stat"><div class="rbadge ${s.rating.startsWith('A')?'ra':s.rating==='B'?'rb':'rc'}">${s.rating}</div></div>
+      </div>
+    `).join('');
+  }
+  // Buyer behaviour
+  const buyers = [
+    {name:'Bawa Collection',code:'BC',outs:122738,onTime:92,rating:'A+',ret:1,col:'ok'},
+    {name:'Sharma Brothers',code:'SB',outs:57712,onTime:78,rating:'A',ret:3,col:'navy'},
+    {name:'Mehta Traders',code:'MT',outs:0,onTime:88,rating:'A',ret:2,col:'navy'},
+    {name:'Singh Garments',code:'SG',outs:165000,onTime:55,rating:'B',ret:8,col:'amber'},
+    {name:'Jain Fab',code:'JF',outs:301000,onTime:42,rating:'C',ret:12,col:'red'},
+    {name:'Patel Distributors',code:'PD',outs:376800,onTime:35,rating:'C',ret:15,col:'red'}
+  ];
+  const bl = document.getElementById('buyerList');
+  if(bl){
+    bl.innerHTML = buyers.map(b => `
+      <div class="party-card">
+        <div class="party-av ${b.col}">${b.code}</div>
+        <div class="party-info">
+          <div class="party-name">${b.name}</div>
+          <div class="party-detail">Outstanding ₹${b.outs.toLocaleString('en-IN')} · On-time ${b.onTime}% · Return ${b.ret}%</div>
+        </div>
+        <div class="party-stat"><div class="rbadge ${b.rating.startsWith('A')?'ra':b.rating==='B'?'rb':'rc'}">${b.rating}</div></div>
+      </div>
+    `).join('');
+  }
+  // Smart alerts
+  const ab = document.getElementById('alertBox');
+  if(ab){
+    ab.innerHTML = `
+      <div class="ai ad"><span class="aico">🚨</span><div class="atxt"><div class="atit">Patel Distributors — ₹3.76L overdue 80 days</div><div class="asub">Send legal notice or restructure?</div></div><div class="atm">2h ago</div></div>
+      <div class="ai aw"><span class="aico">⚠️</span><div class="atxt"><div class="atit">Anaya Saree stock at 8 PCS</div><div class="asub">Reorder threshold 10 — auto-PO?</div></div><div class="atm">3h ago</div></div>
+      <div class="ai ainfo"><span class="aico">💡</span><div class="atxt"><div class="atit">Bawa Collection paid early (₹50K)</div><div class="asub">Offer 2% early-payment discount next time</div></div><div class="atm">5h ago</div></div>
+      <div class="ai aok"><span class="aico">✅</span><div class="atxt"><div class="atit">All May invoices uploaded to GSTR-1</div><div class="asub">42 bills · ₹70K output tax · ready to file</div></div><div class="atm">1d ago</div></div>
+    `;
+  }
+  // Check-ins
+  const ci = document.getElementById('checkinList');
+  if(ci){
+    ci.innerHTML = `
+      <div class="party-card"><div class="party-av ok">AS</div><div class="party-info"><div class="party-name">Asha Sharma</div><div class="party-detail">📍 Jaipur HQ</div></div><div class="party-stat"><div class="big" style="color:var(--ok);font-size:11px">09:02 AM</div></div></div>
+      <div class="party-card"><div class="party-av ok">VS</div><div class="party-info"><div class="party-name">Vikram Singh</div><div class="party-detail">📍 Surat Branch</div></div><div class="party-stat"><div class="big" style="color:var(--ok);font-size:11px">09:08 AM</div></div></div>
+      <div class="party-card"><div class="party-av amber">PM</div><div class="party-info"><div class="party-name">Priya Mehta</div><div class="party-detail">📍 Field — Sitapura</div></div><div class="party-stat"><div class="big" style="color:var(--warn);font-size:11px">09:24 AM</div></div></div>
+      <div class="party-card"><div class="party-av ok">RY</div><div class="party-info"><div class="party-name">Ravi Yadav</div><div class="party-detail">📍 Mumbai</div></div><div class="party-stat"><div class="big" style="color:var(--ok);font-size:11px">09:31 AM</div></div></div>
+    `;
+  }
+  // Leaves
+  const ll = document.getElementById('leaveList');
+  if(ll){
+    ll.innerHTML = `
+      <div style="padding:8px;border:1px solid var(--border);border-radius:6px;margin-bottom:6px">
+        <div style="display:flex;justify-content:space-between"><strong style="font-size:11px">Asha Sharma</strong><span class="flag fw">CL · 2d</span></div>
+        <div style="font-size:10px;color:var(--xs);margin-top:2px">May 30-31 · Family function</div>
+        <div style="display:flex;gap:5px;margin-top:6px"><button class="btn-block" style="padding:5px;font-size:10px;background:var(--ok);color:#fff;border-color:var(--ok)">✓ Approve</button><button class="btn-block" style="padding:5px;font-size:10px">✗ Reject</button></div>
+      </div>
+      <div style="padding:8px;border:1px solid var(--border);border-radius:6px;margin-bottom:6px">
+        <div style="display:flex;justify-content:space-between"><strong style="font-size:11px">Vikram Singh</strong><span class="flag fw">SL · 1d</span></div>
+        <div style="font-size:10px;color:var(--xs);margin-top:2px">Jun 02 · Doctor visit</div>
+        <div style="display:flex;gap:5px;margin-top:6px"><button class="btn-block" style="padding:5px;font-size:10px;background:var(--ok);color:#fff;border-color:var(--ok)">✓ Approve</button><button class="btn-block" style="padding:5px;font-size:10px">✗ Reject</button></div>
+      </div>
+      <div style="padding:8px;border:1px solid var(--border);border-radius:6px">
+        <div style="display:flex;justify-content:space-between"><strong style="font-size:11px">Priya Mehta</strong><span class="flag fw">PL · 6d</span></div>
+        <div style="font-size:10px;color:var(--xs);margin-top:2px">Jun 10-15 · Vacation</div>
+        <div style="display:flex;gap:5px;margin-top:6px"><button class="btn-block" style="padding:5px;font-size:10px;background:var(--ok);color:#fff;border-color:var(--ok)">✓ Approve</button><button class="btn-block" style="padding:5px;font-size:10px">✗ Reject</button></div>
+      </div>
+    `;
+  }
+  // Heatmap (May 2026)
+  const hm = document.getElementById('heatmap');
+  if(hm){
+    let html = '';
+    for(let d = 1; d <= 31; d++){
+      const dow = (d + 3) % 7; // assume May 1 was a Friday
+      let cls = 'l3';
+      if(dow === 0 || dow === 6) cls = 'l1';
+      if(d === 14) cls = 'hol';  // Buddha Purnima
+      if(d === 5 || d === 12 || d === 19 || d === 26) cls = 'l1';  // some weekends
+      if([3,8,15,22,27].includes(d)) cls = 'l5';  // peak attendance days
+      if([7,11,18,25].includes(d)) cls = 'l4';
+      if([4,10,17,24].includes(d)) cls = 'l2';
+      html += `<div class="heat-cell ${cls}" title="May ${d}">${d}</div>`;
+    }
+    hm.innerHTML = html;
+  }
+  // Notifications
+  const nc = document.getElementById('notifContent');
+  if(nc){
+    nc.innerHTML = `
+      <div class="sp-section-title">Today</div>
+      <div class="ai ad"><span class="aico">🚨</span><div class="atxt"><div class="atit">Wallet balance low</div><div class="asub">₹12,450 — ~5 days runway</div></div></div>
+      <div class="ai aw"><span class="aico">⏰</span><div class="atxt"><div class="atit">3 bills due tomorrow</div><div class="asub">₹2.4L expected</div></div></div>
+      <div class="ai aok"><span class="aico">✅</span><div class="atxt"><div class="atit">v1.7.0 deployed</div><div class="asub">HR module live for your firm</div></div></div>
+    `;
+  }
+  // Compliance calendar
+  const cl = document.getElementById('complianceList');
+  if(cl){
+    cl.innerHTML = `
+      <div class="ai aw"><span class="aico">📅</span><div class="atxt"><div class="atit">GSTR-1 filing</div><div class="asub">42 invoices · ₹70K output tax</div></div><div class="atm">11-Jun</div></div>
+      <div class="ai aw"><span class="aico">📅</span><div class="atxt"><div class="atit">GSTR-3B filing</div><div class="asub">Net payable ₹10,714</div></div><div class="atm">20-Jun</div></div>
+      <div class="ai ainfo"><span class="aico">📅</span><div class="atxt"><div class="atit">TDS Payment (Q1)</div><div class="asub">₹3,800 deducted</div></div><div class="atm">07-Jul</div></div>
+      <div class="ai ainfo"><span class="aico">📅</span><div class="atxt"><div class="atit">PF Deposit (May)</div><div class="asub">₹14,424 employer+employee</div></div><div class="atm">15-Jun</div></div>
+    `;
+  }
+  // Firms grid (anjaninex admin)
+  renderFirms();
+}
+
+function renderFirms(){
+  const firms = [
+    {n:'Namokara Agencies',m:'Enterprise · Jaipur',mrr:6999,wallet:12450,status:'healthy',scans:3420},
+    {n:'Bawa Collection Pvt',m:'Enterprise · Delhi',mrr:6999,wallet:8920,status:'healthy',scans:2890},
+    {n:'Raj Textiles',m:'Pro · Jaipur',mrr:2499,wallet:4300,status:'healthy',scans:1820},
+    {n:'Surat Silks Pvt Ltd',m:'Pro · Surat',mrr:2499,wallet:3150,status:'healthy',scans:2145},
+    {n:'Mumbai Cloth Co',m:'Starter · Mumbai',mrr:999,wallet:1200,status:'healthy',scans:420},
+    {n:'Sharma Bros',m:'Starter · Jaipur',mrr:999,wallet:340,status:'danger',scans:180},
+    {n:'Krishna Fab House',m:'Trial · Mumbai',mrr:0,wallet:500,status:'warn',scans:60},
+    {n:'Mehta Traders',m:'Pro · Delhi',mrr:2499,wallet:185,status:'danger',scans:780},
+    {n:'Jain Fab',m:'Pro · Surat',mrr:2499,wallet:50,status:'danger',scans:520},
+    {n:'Anita Apparels',m:'Pro · Ahmedabad',mrr:2499,wallet:6800,status:'healthy',scans:1604},
+    {n:'Patel Distributors',m:'Starter · Rajkot',mrr:999,wallet:2100,status:'warn',scans:280},
+    {n:'Designer Hub',m:'Enterprise · Bangalore',mrr:6999,wallet:18200,status:'healthy',scans:4100}
+  ];
+  const fg = document.getElementById('firmGrid');
+  if(fg){
+    fg.innerHTML = firms.map(f => `
+      <div class="firm-card ${f.status}" onclick="showToast('Opening ${f.n}...')">
+        <div class="firm-name">${f.n}</div>
+        <div class="firm-meta">${f.m}</div>
+        <div class="firm-stats">
+          <div><div class="label">MRR</div><div class="val">₹${f.mrr.toLocaleString('en-IN')}</div></div>
+          <div><div class="label">Wallet</div><div class="val" style="${f.wallet<500?'color:var(--ax-red)':''}">₹${f.wallet.toLocaleString('en-IN')}</div></div>
+          <div><div class="label">AI Scans</div><div class="val">${f.scans}</div></div>
+        </div>
+      </div>
+    `).join('');
+  }
+}
+function filterFirms(q){
+  const cards = document.querySelectorAll('.firm-card');
+  cards.forEach(c => {
+    const txt = c.textContent.toLowerCase();
+    c.style.display = txt.includes(q.toLowerCase()) ? 'block' : 'none';
+  });
+}
+function buildNotifications(){
+  /* already built */
+}
+
+// ═══════════════ SALES CHART TOGGLE ═══════════════
+function switchSalesChart(btn, type){
+  document.querySelectorAll('#w-sales-trend .prbtn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const data = type==='sale' ? [280000,320000,290000,350000,380000,420000,512000,440000,395000,380000,365000,384000]
+              : type==='comm' ? [18000,22000,19500,26000,28000,31000,38000,33000,29500,28200,27000,28800]
+              : [8000,12000,9500,15000,11000,18000,22000,17000,14500,16200,13000,12000];
+  const color = type==='gr' ? RED : type==='comm' ? NAVY : RED;
+  document.getElementById('salesBigVal').textContent = '₹' + (data[data.length-1]/100000).toFixed(2) + 'L';
+  document.getElementById('salesBigSub').textContent = `${type==='sale'?'Total Sales':type==='comm'?'Total Commission':'Total GR Returns'} · current month`;
+  mkChart('cSalesTrend', {
+    type:'line',
+    data:{labels:months(12),datasets:[{label:type,data:data,borderColor:color,backgroundColor:color+'1F',borderWidth:2.5}]}
+  });
+}
+
+// ═══════════════ REAL-TIME SIMULATION ═══════════════
+function startRealtimeSim(){
+  setInterval(() => {
+    // Bump wallet by ±tiny amount to simulate live
+    const w = document.getElementById('walletAmt');
+    const cur = parseInt(w.textContent.replace(/,/g,''));
+    const next = cur - Math.floor(Math.random()*3);
+    w.textContent = next.toLocaleString('en-IN');
+  }, 8000);
+}
+
+// ═══════════════ RECHARGE MODAL ═══════════════
+let rechargeAmount = 2500;
+let payMethod = 'upi';
+
+function openRecharge(){
+  document.getElementById('rechargeModal').classList.add('open');
+  document.body.style.overflow = 'hidden';
+  document.getElementById('modalBalAmt').textContent = document.getElementById('walletAmt').textContent;
+  updateSummary();
+  toggleUpiDetails();
+}
+function closeRecharge(){
+  document.getElementById('rechargeModal').classList.remove('open');
+  document.body.style.overflow = '';
+}
+function switchModalTab(btn, name){
+  document.querySelectorAll('.modal-tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.modal-tab-pane').forEach(p => p.classList.remove('active'));
+  document.getElementById('mtab-' + name).classList.add('active');
+}
+function selectAmount(btn, amt){
+  document.querySelectorAll('.amt-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  rechargeAmount = amt;
+  document.getElementById('customAmt').value = '';
+  updateSummary();
+}
+function onCustomAmount(val){
+  const n = parseInt(val) || 0;
+  if(n > 0){
+    document.querySelectorAll('.amt-btn').forEach(b => b.classList.remove('selected'));
+    rechargeAmount = n;
+    updateSummary();
+  }
+}
+function selectPayMethod(el, method){
+  document.querySelectorAll('.pay-method').forEach(p => p.classList.remove('selected'));
+  el.classList.add('selected');
+  payMethod = method;
+  toggleUpiDetails();
+  updateSummary();
+}
+function toggleUpiDetails(){
+  const upi = document.getElementById('upiDetails');
+  if(upi) upi.style.display = payMethod === 'upi' ? 'block' : 'none';
+}
+function updateSummary(){
+  const amt = rechargeAmount;
+  const gst = Math.round(amt * 0.18);
+  const fee = payMethod === 'razorpay' ? Math.round(amt * 0.02) : 0;
+  // Cashback tiers
+  let cb = 0;
+  if(amt >= 50000) cb = 1200;
+  else if(amt >= 25000) cb = 500;
+  else if(amt >= 10000) cb = 150;
+  else if(amt >= 5000) cb = 50;
+
+  const total = amt + gst + fee - cb;
+  const fmt = n => '₹' + n.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+
+  document.getElementById('sumAmt').textContent = fmt(amt);
+  document.getElementById('sumGst').textContent = fmt(gst);
+  document.getElementById('sumFee').textContent = fee > 0 ? fmt(fee) : 'FREE';
+  document.getElementById('sumFee').style.color = fee > 0 ? 'var(--warn)' : 'var(--ok)';
+  document.getElementById('sumCb').textContent = cb > 0 ? '— ' + fmt(cb) : '— ₹0.00';
+  document.getElementById('sumTotal').textContent = fmt(total);
+  document.getElementById('payBtnAmt').textContent = total.toLocaleString('en-IN');
+
+  // New balance
+  const curBal = parseInt(document.getElementById('walletAmt').textContent.replace(/,/g, ''));
+  document.getElementById('newBal').textContent = '₹' + (curBal + amt).toLocaleString('en-IN');
+}
+function copyUpi(){
+  navigator.clipboard.writeText('anjaninex@upi').then(() => showToast('📋 UPI ID copied: anjaninex@upi'));
+}
+function doRecharge(){
+  const amt = rechargeAmount;
+  if(amt < 100){
+    showToast('⚠️ Minimum recharge is ₹100');
+    return;
+  }
+  const method = payMethod;
+  showToast(`💳 Processing ₹${amt} via ${method.toUpperCase()}...`);
+  setTimeout(() => {
+    showToast(`✅ Recharge successful! ₹${amt.toLocaleString('en-IN')} added to wallet`);
+    const cur = parseInt(document.getElementById('walletAmt').textContent.replace(/,/g, ''));
+    const next = cur + amt;
+    document.getElementById('walletAmt').textContent = next.toLocaleString('en-IN');
+    document.getElementById('modalBalAmt').textContent = next.toLocaleString('en-IN');
+    setTimeout(closeRecharge, 800);
+  }, 1500);
+}
+
+// ═══════════════ INIT ═══════════════
+function init(){
+  loadWidgetState();
+  document.body.setAttribute('data-theme', STATE.theme);
+  document.getElementById('themeIcon').textContent = STATE.theme === 'light' ? '🌙' : '☀️';
+  applyWidgetState();
+  renderAll();
+  startRealtimeSim();
+  // re-render on resize
+  let rt;
+  window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(renderAll, 200); });
+  // ESC closes modal/panels
+  window.addEventListener('keydown', (e) => {
+    if(e.key === 'Escape'){
+      closeRecharge();
+      ['customize','export','notif','user'].forEach(p => closePanel(p));
+    }
+  });
+}
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>

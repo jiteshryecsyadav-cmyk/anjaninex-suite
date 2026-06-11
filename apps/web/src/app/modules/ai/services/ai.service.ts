@@ -1,0 +1,108 @@
+import { Injectable, inject } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { environment } from '../../../../environments/environment';
+
+export interface ExtractedParty {
+  name: string;
+  gst: string;
+  pan: string;
+  address: string;
+  city: string;
+  state: string;
+  pincode: string;
+  phone: string;
+  email: string;
+}
+
+export interface ExtractedInvoice {
+  number: string;
+  date: string;
+  dueDate: string;
+  poNumber: string;
+}
+
+export interface ExtractedItem {
+  name: string;
+  hsnSac: string;
+  qty: number;
+  unit: string;
+  rate: number;
+  discountPercent: number;
+  taxRate: number;
+  taxableAmount: number;
+  totalAmount: number;
+}
+
+export interface ExtractedTotals {
+  taxableTotal: number;
+  cgst: number;
+  sgst: number;
+  igst: number;
+  roundOff: number;
+  grandTotal: number;
+  amountInWords: string;
+}
+
+export interface ExtractedTransport {
+  name: string;
+  vehicleNo: string;
+  lrNo: string;
+  lrDate: string;
+}
+
+export interface ExtractedBank {
+  name: string;
+  accountNo: string;
+  ifsc: string;
+}
+
+export interface ExtractedBill {
+  confidence: number;
+  fromCache: boolean;
+  cost: number;
+  modelUsed: string;
+  imageHash: string;
+  extractionId: string;
+  failureReason?: string | null;
+  supplier: ExtractedParty;
+  buyer: ExtractedParty;
+  invoice: ExtractedInvoice;
+  items: ExtractedItem[];
+  totals: ExtractedTotals;
+  transport: ExtractedTransport;
+  bank: ExtractedBank;
+}
+
+export interface ScanReportRow {
+  date: string; time: string; type: string;
+  model: string; confidence: number; user: string;
+}
+
+@Injectable({ providedIn: 'root' })
+export class AiService {
+  private http = inject(HttpClient);
+  private base = `${environment.apiUrl}/api/ai`;
+
+  extractBill(image: File, source: 'bill' | 'order' = 'bill') {
+    const fd = new FormData();
+    fd.append('image', image);
+    fd.append('source', source);
+    return this.http.post<ExtractedBill>(`${this.base}/extract-bill`, fd);
+  }
+
+  scanReport(limit = 200) {
+    return this.http.get<ScanReportRow[]>(`${this.base}/scan-report`, { params: { limit } as any });
+  }
+
+  usage() {
+    return this.http.get<{ usedThisMonth: number; total: number; quotaMonthly: number; lastScanAt: string | null }>(`${this.base}/usage`);
+  }
+
+  recentExtractions(limit = 20) {
+    return this.http.get<any[]>(`${this.base}/recent-extractions`, { params: { limit } as any });
+  }
+
+  markCorrected(id: string, diff: any) {
+    return this.http.post(`${this.base}/mark-corrected/${id}`, diff);
+  }
+}

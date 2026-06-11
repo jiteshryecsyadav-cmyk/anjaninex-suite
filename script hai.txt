@@ -1,0 +1,21 @@
+merko bina ai ki madat se aap es ki script likh sakte ho kya ya ai lagana padega 
+step 1 suppler ya buyer photo bheje to app usko phale read kare ki vo whatsapp no supplier ka hai ya buyer ka thik.
+2 (a)photo dekhe rate ya price likha text to us aage jo digit ho 999(rate/price )hogi  (b) ya hamara bote kud rate /price kud puche 
+3 fir water marking ho ( supplier /buyer name aage ke 3 text 3 digit mobile no ke aage ke 4 digit fir date time aur rate ho)
+4 example ek supplier ne 1 photo bheji rate 699rs ki ab hamara system dudega uske buyer kaun kaun hai hai jase hum buyer ke master me Min Budget ,Max Budget,
+ Categories match kare jo jo buyer us range ke hai un sub ko vo 
+photo chali jaye automatic.
+5 example ab mano buyer ne koi photo pasand ae aur hamare bot ko bheje to hamara bot us se puche kya app order confirm kar rahe ho aur vo yes
+ dabaye to us se quantity puche , fir usko replay ke liye wait ka msg de system us ko read kare with help of watermark ,fir vo suppler dude fir suppler ko
+ order ka msg bheje fir bot us puche kya aap order with quantity  accept kar rahe ho vo yes kare to hamara system us buyer ko msg bhege
+ aap order supplier ne accept kar kiya hai  
+fir me chacta hu vo ya trading me save ho ja ye, ya broker ho notifikation mile, ya ad me us order ki list me add hojaye pura oprder detail time sath with photo  
+jo best lage aap ko 
+
+ 1 dekhat hogi jab hamare pass supplier ,buyer, 
+   dono (ek firm supplier /buyer hai ) kase hamare system ko pata lagega 
+   mera soch na hai  jab both ho us condition me core master,trading, ad me waha form me 2 whatsapp ka filed ho 1 supplier whastsapp no 1 buyer whatsapp no 
+
+
+
+ME CHAHTA HU CORE MASTER 

@@ -1,0 +1,1489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Namokara Suite — Project Overview</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800;900&family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  body { font-family: 'DM Sans', system-ui, sans-serif; }
+  .display { font-family: 'Syne', sans-serif; }
+  .mono { font-family: 'DM Mono', monospace; }
+  .brand-gradient { background: linear-gradient(135deg, #3d0070 0%, #c2185b 55%, #f57c00 100%); }
+  .anjaninex-gradient { background: linear-gradient(135deg, #dc2626 0%, #1e3a8a 100%); }
+  details summary { cursor: pointer; list-style: none; }
+  details summary::-webkit-details-marker { display: none; }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+  .tab-btn.active { background: #5c1a8b; color: white; }
+</style>
+</head>
+<body class="bg-gradient-to-br from-purple-50 via-white to-orange-50 min-h-screen">
+
+<!-- HEADER -->
+<header class="brand-gradient text-white sticky top-0 z-50 shadow-2xl">
+  <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="w-12 h-12 rounded-xl bg-white text-purple-700 flex items-center justify-center font-black text-2xl display">N</div>
+      <div>
+        <div class="display font-black text-2xl">Namokara Suite</div>
+        <div class="text-xs opacity-90">Project Overview & Status · v1.7.0</div>
+      </div>
+    </div>
+    <div class="flex items-center gap-2 text-sm">
+      <span class="px-3 py-1 bg-green-500/20 border border-green-300 rounded-full hidden lg:inline">
+        ✅ 8/8 Modules Built
+      </span>
+      <span class="px-3 py-1 bg-yellow-500/20 border border-yellow-300 rounded-full hidden lg:inline">
+        ⚠️ Not Tested Yet
+      </span>
+
+      <!-- DOWNLOAD MENU -->
+      <div class="relative">
+        <button onclick="document.getElementById('dlMenu').classList.toggle('hidden')"
+                class="flex items-center gap-1 px-3 py-1.5 bg-white text-purple-700 font-bold rounded-lg hover:bg-purple-50 text-sm">
+          ⬇️ Download
+        </button>
+        <div id="dlMenu" class="hidden absolute right-0 mt-2 w-72 bg-white text-gray-800 rounded-xl shadow-2xl border border-purple-200 z-50 overflow-hidden">
+          <div class="px-4 py-2 bg-purple-50 text-xs font-bold text-purple-700 uppercase border-b">Save this overview</div>
+
+          <button onclick="downloadThisPage()" class="w-full text-left px-4 py-3 hover:bg-purple-50 flex items-center gap-3 border-b text-sm">
+            <span class="text-2xl">💾</span>
+            <div>
+              <div class="font-bold">Save HTML to Computer</div>
+              <div class="text-xs text-gray-500">PROJECT_OVERVIEW.html (offline copy)</div>
+            </div>
+          </button>
+
+          <button onclick="window.print()" class="w-full text-left px-4 py-3 hover:bg-purple-50 flex items-center gap-3 border-b text-sm">
+            <span class="text-2xl">📄</span>
+            <div>
+              <div class="font-bold">Print / Save as PDF</div>
+              <div class="text-xs text-gray-500">Ctrl+P → Save as PDF</div>
+            </div>
+          </button>
+
+          <a href="../README.md" download="README.md" class="block px-4 py-3 hover:bg-purple-50 flex items-center gap-3 border-b text-sm text-gray-800 no-underline">
+            <span class="text-2xl">📋</span>
+            <div>
+              <div class="font-bold">Project README</div>
+              <div class="text-xs text-gray-500">Top-level project intro</div>
+            </div>
+          </a>
+
+          <a href="GETTING_STARTED.md" download="GETTING_STARTED.md" class="block px-4 py-3 hover:bg-purple-50 flex items-center gap-3 border-b text-sm text-gray-800 no-underline">
+            <span class="text-2xl">🚀</span>
+            <div>
+              <div class="font-bold">Getting Started Guide</div>
+              <div class="text-xs text-gray-500">Setup instructions</div>
+            </div>
+          </a>
+
+          <a href="CHANGELOG.md" download="CHANGELOG.md" class="block px-4 py-3 hover:bg-purple-50 flex items-center gap-3 text-sm text-gray-800 no-underline">
+            <span class="text-2xl">📝</span>
+            <div>
+              <div class="font-bold">Changelog (v1.0 → v1.7)</div>
+              <div class="text-xs text-gray-500">Full version history</div>
+            </div>
+          </a>
+
+          <div class="px-4 py-2 bg-gray-50 text-xs text-gray-500 border-t">
+            💡 <strong>Tip:</strong> Ctrl+S also saves this page directly from browser
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Nav tabs -->
+  <div class="max-w-7xl mx-auto px-6 pb-3 flex gap-1 overflow-x-auto">
+    <button onclick="showTab('overview')" class="tab-btn active px-4 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap">📊 Overview</button>
+    <button onclick="showTab('architecture')" class="tab-btn px-4 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap">🏗 Architecture</button>
+    <button onclick="showTab('modules')" class="tab-btn px-4 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap">📦 8 Modules</button>
+    <button onclick="showTab('contact-hub')" class="tab-btn px-4 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap">👤 Contact Hub</button>
+    <button onclick="showTab('screens')" class="tab-btn px-4 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap">🖥 Screens (40+)</button>
+    <button onclick="showTab('tech')" class="tab-btn px-4 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap">⚙️ Tech Stack</button>
+    <button onclick="showTab('pending')" class="tab-btn px-4 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap">🔴 Pending Work</button>
+    <button onclick="showTab('howto')" class="tab-btn px-4 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap">🚀 How to Run</button>
+  </div>
+</header>
+
+<main class="max-w-7xl mx-auto p-6">
+
+<!-- ============================================================ -->
+<!-- TAB: OVERVIEW                                                  -->
+<!-- ============================================================ -->
+<div id="overview" class="tab-content active">
+
+  <!-- Important notice about this file -->
+  <div class="bg-yellow-50 border-l-4 border-yellow-500 rounded-r-lg p-4 mb-6">
+    <div class="flex items-start gap-3">
+      <span class="text-2xl">📌</span>
+      <div class="flex-1">
+        <div class="font-bold text-yellow-900">Important: Yeh Static Snapshot Hai (Mirror Copy NAHI)</div>
+        <div class="text-sm text-yellow-800 mt-1">
+          Browser me jo aap dekh rahe ho — yeh ek <strong>static HTML file</strong> hai (PROJECT_OVERVIEW.html).
+          Real-time mirror nahi hai. Code change karne pe yeh page automatic update nahi hoga.
+          <br><br>
+          <strong>Real live software dekhne ke liye:</strong>
+          Run <code class="bg-yellow-200 px-1 rounded">docker compose up -d</code> + <code class="bg-yellow-200 px-1 rounded">cd apps/web; npm start</code>
+          → <a href="http://localhost:4200" class="underline font-bold">http://localhost:4200</a> par actual app khulega.
+          <br><br>
+          <strong>Download options:</strong> Top right me ⬇️ Download button click karo — HTML save kar sakte ho ya PDF banao.
+          Ya simply <kbd class="bg-white px-2 py-0.5 rounded border text-xs">Ctrl + S</kbd> press karo.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Hero stats -->
+  <div class="grid grid-cols-4 gap-4 mb-6">
+    <div class="bg-white rounded-2xl p-5 shadow-lg border-l-4 border-purple-600">
+      <div class="text-xs uppercase font-bold text-gray-500">Total Files</div>
+      <div class="display font-black text-3xl text-purple-700 mt-1">130</div>
+      <div class="text-xs text-gray-400 mt-1">Across 8 modules</div>
+    </div>
+    <div class="bg-white rounded-2xl p-5 shadow-lg border-l-4 border-orange-500">
+      <div class="text-xs uppercase font-bold text-gray-500">Total Size</div>
+      <div class="display font-black text-3xl text-orange-700 mt-1">1.1 MB</div>
+      <div class="text-xs text-gray-400 mt-1">Source code only</div>
+    </div>
+    <div class="bg-white rounded-2xl p-5 shadow-lg border-l-4 border-green-500">
+      <div class="text-xs uppercase font-bold text-gray-500">DB Tables</div>
+      <div class="display font-black text-3xl text-green-700 mt-1">40+</div>
+      <div class="text-xs text-gray-400 mt-1">Across 8 schemas</div>
+    </div>
+    <div class="bg-white rounded-2xl p-5 shadow-lg border-l-4 border-blue-500">
+      <div class="text-xs uppercase font-bold text-gray-500">API Endpoints</div>
+      <div class="display font-black text-3xl text-blue-700 mt-1">100+</div>
+      <div class="text-xs text-gray-400 mt-1">REST + SignalR</div>
+    </div>
+  </div>
+
+  <!-- What you built -->
+  <div class="bg-white rounded-2xl p-6 shadow-lg mb-6">
+    <h2 class="display font-black text-2xl text-purple-700 mb-4">🎉 Aapne Kya Bana Liya</h2>
+    <div class="prose max-w-none text-gray-700">
+      <p class="mb-3">
+        Ek <strong>complete multi-tenant SaaS platform</strong> jo 4 alag-alag apps (broker, supplier, accounting, staffnex) ko
+        ek hi software me combine karta hai. <strong>Anjaninex</strong> SaaS owner hai jo multiple firms (Namokara Agencies +
+        others) ko serve karta hai.
+      </p>
+      <div class="grid grid-cols-3 gap-3 mt-4">
+        <div class="bg-purple-50 p-3 rounded-lg border border-purple-200">
+          <div class="font-bold text-purple-700">🏢 Multi-tenant SaaS</div>
+          <div class="text-xs">Anjaninex serves many firms via wallet-based pricing</div>
+        </div>
+        <div class="bg-orange-50 p-3 rounded-lg border border-orange-200">
+          <div class="font-bold text-orange-700">📱 PWA Installable</div>
+          <div class="text-xs">Install on Android/iOS like native app</div>
+        </div>
+        <div class="bg-green-50 p-3 rounded-lg border border-green-200">
+          <div class="font-bold text-green-700">🤖 AI-First</div>
+          <div class="text-xs">Gemini bill scanner with mock + production modes</div>
+        </div>
+        <div class="bg-blue-50 p-3 rounded-lg border border-blue-200">
+          <div class="font-bold text-blue-700">📸 Selfie + GPS</div>
+          <div class="text-xs">Browser camera + Geolocation for attendance</div>
+        </div>
+        <div class="bg-pink-50 p-3 rounded-lg border border-pink-200">
+          <div class="font-bold text-pink-700">💰 Auto-Posting</div>
+          <div class="text-xs">Trading bills → Accounting vouchers automatically</div>
+        </div>
+        <div class="bg-yellow-50 p-3 rounded-lg border border-yellow-200">
+          <div class="font-bold text-yellow-700">🗺 Live Maps</div>
+          <div class="text-xs">Leaflet + OSM for staff location trails</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Module status -->
+  <div class="bg-white rounded-2xl p-6 shadow-lg mb-6">
+    <h2 class="display font-black text-2xl text-purple-700 mb-4">📦 Module Status</h2>
+    <div class="grid grid-cols-4 gap-3">
+      <div class="border border-green-200 bg-green-50 p-3 rounded-lg">
+        <div class="text-2xl">🔐</div>
+        <div class="font-bold text-sm mt-1">Core + Auth</div>
+        <div class="text-xs text-green-700 mt-1">✅ Live · 20+ files</div>
+      </div>
+      <div class="border border-green-200 bg-green-50 p-3 rounded-lg">
+        <div class="text-2xl">📒</div>
+        <div class="font-bold text-sm mt-1">Accounting</div>
+        <div class="text-xs text-green-700 mt-1">✅ Live · 14 files</div>
+      </div>
+      <div class="border border-green-200 bg-green-50 p-3 rounded-lg">
+        <div class="text-2xl">🛒</div>
+        <div class="font-bold text-sm mt-1">Trading</div>
+        <div class="text-xs text-green-700 mt-1">✅ Live · 14 files</div>
+      </div>
+      <div class="border border-green-200 bg-green-50 p-3 rounded-lg">
+        <div class="text-2xl">📈</div>
+        <div class="font-bold text-sm mt-1">Reports</div>
+        <div class="text-xs text-green-700 mt-1">✅ Live · 6 files</div>
+      </div>
+      <div class="border border-green-200 bg-green-50 p-3 rounded-lg">
+        <div class="text-2xl">🚚</div>
+        <div class="font-bold text-sm mt-1">Suppliers</div>
+        <div class="text-xs text-green-700 mt-1">✅ Live · 9 files</div>
+      </div>
+      <div class="border border-green-200 bg-green-50 p-3 rounded-lg">
+        <div class="text-2xl">🤖</div>
+        <div class="font-bold text-sm mt-1">AI Bill Scan</div>
+        <div class="text-xs text-green-700 mt-1">✅ Live · 7 files</div>
+      </div>
+      <div class="border border-green-200 bg-green-50 p-3 rounded-lg">
+        <div class="text-2xl">⚡</div>
+        <div class="font-bold text-sm mt-1">Anjaninex Admin</div>
+        <div class="text-xs text-green-700 mt-1">✅ Live · 6 files</div>
+      </div>
+      <div class="border border-green-200 bg-green-50 p-3 rounded-lg">
+        <div class="text-2xl">👥</div>
+        <div class="font-bold text-sm mt-1">HR + Payroll</div>
+        <div class="text-xs text-green-700 mt-1">✅ Live · 12 files</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Demo credentials -->
+  <div class="bg-gradient-to-r from-purple-600 to-orange-500 text-white rounded-2xl p-6 shadow-lg">
+    <h2 class="display font-black text-2xl mb-3">🔑 Demo Login Credentials</h2>
+    <div class="grid grid-cols-4 gap-3 text-sm">
+      <div class="bg-white/10 backdrop-blur p-3 rounded-lg border border-white/20">
+        <div class="font-bold">⚡ Anjaninex Super Admin</div>
+        <div class="mono text-xs mt-1">anjaninex / Demo@123</div>
+        <div class="text-xs opacity-80 mt-1">All firms, revenue, AI cost</div>
+      </div>
+      <div class="bg-white/10 backdrop-blur p-3 rounded-lg border border-white/20">
+        <div class="font-bold">👔 Firm Owner</div>
+        <div class="mono text-xs mt-1">rajesh / Demo@123</div>
+        <div class="text-xs opacity-80 mt-1">All Namokara branches + ops</div>
+      </div>
+      <div class="bg-white/10 backdrop-blur p-3 rounded-lg border border-white/20">
+        <div class="font-bold">🛡 Firm Admin</div>
+        <div class="mono text-xs mt-1">admin / Demo@123</div>
+        <div class="text-xs opacity-80 mt-1">All ops except wallet</div>
+      </div>
+      <div class="bg-white/10 backdrop-blur p-3 rounded-lg border border-white/20">
+        <div class="font-bold">👨‍💼 Staff</div>
+        <div class="mono text-xs mt-1">asha / Demo@123</div>
+        <div class="text-xs opacity-80 mt-1">Basic ops, attendance</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ============================================================ -->
+<!-- TAB: ARCHITECTURE                                              -->
+<!-- ============================================================ -->
+<div id="architecture" class="tab-content">
+
+  <div class="bg-white rounded-2xl p-6 shadow-lg mb-6">
+    <h2 class="display font-black text-2xl text-purple-700 mb-4">🏗 System Architecture</h2>
+
+    <div class="bg-gray-50 rounded-xl p-6 font-mono text-sm leading-7 overflow-x-auto">
+<pre class="text-gray-800">
+┌─────────────────────────────────────────────────────────────────────┐
+│                          📱 CLIENT DEVICES                            │
+│                  Angular 19 PWA · Browser or Installed                │
+└────────────────────────────────┬────────────────────────────────────┘
+                                 │ HTTPS
+                  ┌──────────────▼──────────────┐
+                  │   Nginx Reverse Proxy +TLS   │
+                  │      (Production only)        │
+                  └──────────────┬──────────────┘
+                                 │
+                  ┌──────────────▼──────────────┐
+                  │   .NET Core 8 API (Kestrel)  │
+                  │  ┌────────────────────────┐  │
+                  │  │ JWT Auth + RBAC        │  │
+                  │  │ TenantContext (RLS)    │  │
+                  │  │ BranchContext          │  │
+                  │  └────────────────────────┘  │
+                  │  ┌────────────────────────┐  │
+                  │  │ 8 Module Services      │  │
+                  │  │  Core·Trading·Acct·HR  │  │
+                  │  │  Suppliers·Reports·AI  │  │
+                  │  │  Platform Admin        │  │
+                  │  └────────────────────────┘  │
+                  └──┬──────────┬─────────┬─────┘
+                     │          │         │
+            ┌────────▼─┐    ┌──▼──┐   ┌──▼────┐
+            │PostgreSQL│    │Redis│   │ MinIO │
+            │  16      │    │ 7   │   │ (S3)  │
+            │ 8 schemas│    │cache│   │selfies│
+            │  RLS on  │    │perms│   │ bills │
+            └──────────┘    └─────┘   └───────┘
+                     │
+            ┌────────▼─────────────────┐
+            │ External (when activated) │
+            │  • Gemini 2.5 Flash       │
+            │  • WhatsApp Cloud API     │
+            │  • Razorpay (Phase 2)     │
+            │  • MSG91 SMS              │
+            └───────────────────────────┘
+</pre>
+    </div>
+  </div>
+
+  <!-- Multi-tenant model -->
+  <div class="bg-white rounded-2xl p-6 shadow-lg mb-6">
+    <h2 class="display font-black text-2xl text-purple-700 mb-4">🏢 Multi-Tenant SaaS Model</h2>
+
+    <div class="grid grid-cols-3 gap-4 text-center">
+      <div class="bg-gradient-to-br from-red-500 to-blue-700 text-white rounded-xl p-5">
+        <div class="text-5xl mb-2">⚡</div>
+        <div class="display font-black text-lg">ANJANINEX</div>
+        <div class="text-xs opacity-90 mt-1">SaaS Owner / Developer</div>
+        <div class="text-xs mt-2 bg-white/10 px-2 py-1 rounded">Operates platform</div>
+      </div>
+      <div class="bg-purple-100 text-purple-900 rounded-xl p-5">
+        <div class="text-5xl mb-2">📦</div>
+        <div class="display font-black text-lg">NAMOKARA SUITE</div>
+        <div class="text-xs mt-1">The Platform Software</div>
+        <div class="text-xs mt-2 bg-white/40 px-2 py-1 rounded">8 modules · Multi-tenant</div>
+      </div>
+      <div class="bg-gradient-to-br from-orange-400 to-purple-600 text-white rounded-xl p-5">
+        <div class="text-5xl mb-2">🏢</div>
+        <div class="display font-black text-lg">FIRMS</div>
+        <div class="text-xs opacity-90 mt-1">Tenant Clients</div>
+        <div class="text-xs mt-2 bg-white/10 px-2 py-1 rounded">Namokara + others</div>
+      </div>
+    </div>
+
+    <div class="mt-4 bg-gray-50 rounded-xl p-4 font-mono text-xs overflow-x-auto">
+<pre>
+ANJANINEX  ──builds──>  NAMOKARA SUITE  ──serves──>  Multiple Firms (Tenants)
+                                                       │
+                                                       ├── Firm #1: Namokara Agencies
+                                                       │     └── 3 Branches → Departments → Users
+                                                       │
+                                                       ├── Firm #2: Bawa Collection Pvt
+                                                       │     └── Branches...
+                                                       │
+                                                       └── ... (1000s of brokers possible)
+</pre>
+    </div>
+  </div>
+
+  <!-- DB schema isolation -->
+  <div class="bg-white rounded-2xl p-6 shadow-lg">
+    <h2 class="display font-black text-2xl text-purple-700 mb-4">💾 Database Schema Organization</h2>
+    <p class="text-sm text-gray-600 mb-4">One PostgreSQL database, 8 logical schemas, Row-Level Security enforces firm isolation</p>
+
+    <div class="grid grid-cols-4 gap-3">
+      <div class="bg-red-50 border border-red-200 rounded-lg p-3">
+        <div class="mono text-xs text-red-700 font-bold">platform.*</div>
+        <div class="text-xs mt-1">Firms, plans, wallet, changelog (Anjaninex)</div>
+      </div>
+      <div class="bg-blue-50 border border-blue-200 rounded-lg p-3">
+        <div class="mono text-xs text-blue-700 font-bold">core.*</div>
+        <div class="text-xs mt-1">Users, roles, contacts, branches</div>
+      </div>
+      <div class="bg-green-50 border border-green-200 rounded-lg p-3">
+        <div class="mono text-xs text-green-700 font-bold">accounting.*</div>
+        <div class="text-xs mt-1">Heads, groups, ledgers, vouchers</div>
+      </div>
+      <div class="bg-purple-50 border border-purple-200 rounded-lg p-3">
+        <div class="mono text-xs text-purple-700 font-bold">trading.*</div>
+        <div class="text-xs mt-1">Parties, bills, payments, GR</div>
+      </div>
+      <div class="bg-orange-50 border border-orange-200 rounded-lg p-3">
+        <div class="mono text-xs text-orange-700 font-bold">suppliers.*</div>
+        <div class="text-xs mt-1">Supplier profiles, photos, rates</div>
+      </div>
+      <div class="bg-pink-50 border border-pink-200 rounded-lg p-3">
+        <div class="mono text-xs text-pink-700 font-bold">hr.*</div>
+        <div class="text-xs mt-1">Employees, attendance, payroll, GPS trails</div>
+      </div>
+      <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+        <div class="mono text-xs text-yellow-700 font-bold">ai.*</div>
+        <div class="text-xs mt-1">Extraction logs, cache</div>
+      </div>
+      <div class="bg-gray-50 border border-gray-200 rounded-lg p-3">
+        <div class="mono text-xs text-gray-700 font-bold">audit.*</div>
+        <div class="text-xs mt-1">Audit trail (immutable)</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ============================================================ -->
+<!-- TAB: MODULES                                                   -->
+<!-- ============================================================ -->
+<div id="modules" class="tab-content">
+
+  <div class="space-y-4">
+
+    <!-- Module 1: Core -->
+    <details class="bg-white rounded-2xl shadow-lg" open>
+      <summary class="p-5 flex items-center justify-between hover:bg-gray-50 rounded-2xl">
+        <div class="flex items-center gap-3">
+          <div class="text-3xl">🔐</div>
+          <div>
+            <div class="display font-bold text-lg text-purple-700">1. Core (Auth + RBAC + Branches + Wallet)</div>
+            <div class="text-xs text-gray-500">Foundation — used by all modules</div>
+          </div>
+        </div>
+        <span class="text-xs bg-green-100 text-green-700 px-3 py-1 rounded-full font-bold">✅ Live</span>
+      </summary>
+      <div class="px-5 pb-5 border-t pt-4">
+        <div class="grid grid-cols-2 gap-3 text-sm">
+          <ul class="space-y-1">
+            <li>✓ JWT authentication with refresh tokens</li>
+            <li>✓ 6-tier role hierarchy (SuperAdmin → Staff)</li>
+            <li>✓ 40+ system permissions seeded</li>
+            <li>✓ Action-level RBAC: <code class="mono bg-gray-100 px-1">[HasPermission(...)]</code></li>
+            <li>✓ Permission caching in Redis (5min TTL)</li>
+            <li>✓ Multi-branch (Firm → Branches → Departments → Users)</li>
+            <li>✓ Branch context middleware (X-Branch-Id header)</li>
+          </ul>
+          <ul class="space-y-1">
+            <li>✓ Row-Level Security (RLS) on all firm tables</li>
+            <li>✓ Tenant context middleware (sets app.current_firm_id)</li>
+            <li>✓ Wallet system (debit/recharge/history)</li>
+            <li>✓ Anjaninex platform revenue tracking</li>
+            <li>✓ Session management with refresh token rotation</li>
+            <li>✓ Login audit log</li>
+            <li>✓ 4 demo users + roles seeded</li>
+          </ul>
+        </div>
+      </div>
+    </details>
+
+    <!-- Module 2: Accounting -->
+    <details class="bg-white rounded-2xl shadow-lg">
+      <summary class="p-5 flex items-center justify-between hover:bg-gray-50 rounded-2xl">
+        <div class="flex items-center gap-3">
+          <div class="text-3xl">📒</div>
+          <div>
+            <div class="display font-bold text-lg text-purple-700">2. Accounting (Tally-Style Double Entry)</div>
+            <div class="text-xs text-gray-500">Heads → Groups → Sub Groups → Ledgers → Vouchers → Reports</div>
+          </div>
+        </div>
+        <span class="text-xs bg-green-100 text-green-700 px-3 py-1 rounded-full font-bold">✅ Live</span>
+      </summary>
+      <div class="px-5 pb-5 border-t pt-4">
+        <div class="grid grid-cols-2 gap-3 text-sm">
+          <ul class="space-y-1">
+            <li>✓ 5 Account Heads (Assets/Liab/Capital/Income/Expenses)</li>
+            <li>✓ 11 Account Groups seeded</li>
+            <li>✓ 15 Sub Groups (Bank, Cash, Debtors, Creditors, etc.)</li>
+            <li>✓ 14 default Ledgers (HDFC, ICICI, Cash, Sales A/c)</li>
+            <li>✓ Vouchers: Payment, Receipt, Contra, Journal, Sales, Purchase</li>
+            <li>✓ Auto-balance trigger (Dr=Cr or error)</li>
+          </ul>
+          <ul class="space-y-1">
+            <li>✓ FY-aware voucher numbering (JPR-V-P0001)</li>
+            <li>✓ Trial Balance report (real-time)</li>
+            <li>✓ P&L (Income - Expense)</li>
+            <li>✓ Balance Sheet (Assets vs Liabilities)</li>
+            <li>✓ Ledger Statement (per ledger transactions)</li>
+            <li>✓ 8 sub-pages with shared sub-nav</li>
+          </ul>
+        </div>
+      </div>
+    </details>
+
+    <!-- Module 3: Trading -->
+    <details class="bg-white rounded-2xl shadow-lg">
+      <summary class="p-5 flex items-center justify-between hover:bg-gray-50 rounded-2xl">
+        <div class="flex items-center gap-3">
+          <div class="text-3xl">🛒</div>
+          <div>
+            <div class="display font-bold text-lg text-purple-700">3. Trading + Auto-Post Magic</div>
+            <div class="text-xs text-gray-500">Parties, Items, Bills, Payments + automatic Accounting integration</div>
+          </div>
+        </div>
+        <span class="text-xs bg-green-100 text-green-700 px-3 py-1 rounded-full font-bold">✅ Live</span>
+      </summary>
+      <div class="px-5 pb-5 border-t pt-4">
+        <div class="grid grid-cols-2 gap-3 text-sm">
+          <ul class="space-y-1">
+            <li>✓ Party Master (extends contacts, GST/PAN/credit)</li>
+            <li>✓ Items master with HSN, default rate, tax</li>
+            <li>✓ Bill Entry with multi-line items + GST calc</li>
+            <li>✓ <strong class="text-red-600">🔥 AUTO-POST: Bill save → Sales voucher created</strong></li>
+            <li>✓ Payment Receipt with bill allocation</li>
+            <li>✓ <strong class="text-red-600">🔥 AUTO-POST: Payment save → Receipt voucher</strong></li>
+          </ul>
+          <ul class="space-y-1">
+            <li>✓ Auto-create party ledger in Sundry Debtors</li>
+            <li>✓ Auto-create CGST/SGST Payable ledgers</li>
+            <li>✓ Bill status auto-update (pending/partial/paid)</li>
+            <li>✓ Outstanding tracking</li>
+            <li>✓ 7 sample fabric items seeded</li>
+            <li>✓ Sales register, payments list</li>
+          </ul>
+        </div>
+        <div class="mt-3 bg-purple-50 border border-purple-200 rounded p-3 text-xs font-mono">
+          <strong class="text-purple-700">Example auto-post:</strong> Save bill ₹1,05,000 → System creates voucher:<br>
+          Dr Bawa Collection ₹1,05,000 | Cr Sales A/c ₹1,00,000 | Cr CGST ₹2,500 | Cr SGST ₹2,500
+        </div>
+      </div>
+    </details>
+
+    <!-- Module 4: Reports -->
+    <details class="bg-white rounded-2xl shadow-lg">
+      <summary class="p-5 flex items-center justify-between hover:bg-gray-50 rounded-2xl">
+        <div class="flex items-center gap-3">
+          <div class="text-3xl">📈</div>
+          <div>
+            <div class="display font-bold text-lg text-purple-700">4. Reports (Cross-Module Analytics)</div>
+            <div class="text-xs text-gray-500">Executive Dashboard + 7 detailed reports</div>
+          </div>
+        </div>
+        <span class="text-xs bg-green-100 text-green-700 px-3 py-1 rounded-full font-bold">✅ Live</span>
+      </summary>
+      <div class="px-5 pb-5 border-t pt-4">
+        <div class="grid grid-cols-2 gap-3 text-sm">
+          <ul class="space-y-1">
+            <li>✓ <strong>Executive Dashboard</strong> with KPIs + 30-day chart</li>
+            <li>✓ Sales Register (all bills with GST breakdown)</li>
+            <li>✓ Outstanding Bills (color-coded aging)</li>
+            <li>✓ Party-wise Aging (0-30/31-60/61-90/90+ buckets)</li>
+          </ul>
+          <ul class="space-y-1">
+            <li>✓ Top Customers (🥇🥈🥉 ranking)</li>
+            <li>✓ Top Items (best sellers)</li>
+            <li>✓ GST Summary (for GSTR-1 filing)</li>
+            <li>✓ Payment Mode breakdown (visual bars)</li>
+          </ul>
+        </div>
+      </div>
+    </details>
+
+    <!-- Module 5: Suppliers -->
+    <details class="bg-white rounded-2xl shadow-lg">
+      <summary class="p-5 flex items-center justify-between hover:bg-gray-50 rounded-2xl">
+        <div class="flex items-center gap-3">
+          <div class="text-3xl">🚚</div>
+          <div>
+            <div class="display font-bold text-lg text-purple-700">5. Suppliers Directory</div>
+            <div class="text-xs text-gray-500">Visual directory with photos, rates, 27 fabric categories</div>
+          </div>
+        </div>
+        <span class="text-xs bg-green-100 text-green-700 px-3 py-1 rounded-full font-bold">✅ Live</span>
+      </summary>
+      <div class="px-5 pb-5 border-t pt-4">
+        <div class="grid grid-cols-2 gap-3 text-sm">
+          <ul class="space-y-1">
+            <li>✓ 27 default categories (Saree, Silk, Cotton, Bandhani, Banarasi, etc.)</li>
+            <li>✓ Visual 3-column grid of supplier cards</li>
+            <li>✓ Photo support (up to multiple per supplier)</li>
+            <li>✓ Rates per category</li>
+            <li>✓ Reliability score + delivery lead time</li>
+          </ul>
+          <ul class="space-y-1">
+            <li>✓ Supplier detail page with 4 stat cards</li>
+            <li>✓ Category filter chips</li>
+            <li>✓ Search by name/phone/GST</li>
+            <li>✓ Direct WhatsApp + Call buttons</li>
+            <li>✓ Categories management (add/delete custom)</li>
+          </ul>
+        </div>
+      </div>
+    </details>
+
+    <!-- Module 6: AI Bill Scan -->
+    <details class="bg-white rounded-2xl shadow-lg">
+      <summary class="p-5 flex items-center justify-between hover:bg-gray-50 rounded-2xl">
+        <div class="flex items-center gap-3">
+          <div class="text-3xl">🤖</div>
+          <div>
+            <div class="display font-bold text-lg text-purple-700">6. AI Bill Scan (Gemini)</div>
+            <div class="text-xs text-gray-500">Invoice OCR with mock mode + production-ready Gemini integration</div>
+          </div>
+        </div>
+        <span class="text-xs bg-green-100 text-green-700 px-3 py-1 rounded-full font-bold">✅ Live (mock)</span>
+      </summary>
+      <div class="px-5 pb-5 border-t pt-4">
+        <div class="grid grid-cols-2 gap-3 text-sm">
+          <ul class="space-y-1">
+            <li>✓ Full Bill Scan Modal with 5 states</li>
+            <li>✓ Camera capture (front camera, getUserMedia)</li>
+            <li>✓ File upload with client-side compression</li>
+            <li>✓ Real Gemini 2.5 Flash API integration</li>
+            <li>✓ Mock mode (works without API key in dev)</li>
+          </ul>
+          <ul class="space-y-1">
+            <li>✓ SHA-256 image hash caching (24hr TTL)</li>
+            <li>✓ Wallet pre-debit (₹0.15 per scan)</li>
+            <li>✓ Audit log of all extractions</li>
+            <li>✓ Confidence-coded result preview</li>
+            <li>✓ One-click "Use This Data" → auto-fills Bill Entry</li>
+          </ul>
+        </div>
+        <div class="mt-3 bg-yellow-50 border border-yellow-200 rounded p-3 text-xs">
+          <strong>To activate production:</strong> Get Gemini API key from https://aistudio.google.com/apikey (free tier 1500/day) →
+          set in <code class="mono bg-white px-1">appsettings.Production.json</code>
+        </div>
+      </div>
+    </details>
+
+    <!-- Module 7: Anjaninex Admin -->
+    <details class="bg-white rounded-2xl shadow-lg">
+      <summary class="p-5 flex items-center justify-between hover:bg-gray-50 rounded-2xl">
+        <div class="flex items-center gap-3">
+          <div class="text-3xl">⚡</div>
+          <div>
+            <div class="display font-bold text-lg text-purple-700">7. Anjaninex Admin Portal</div>
+            <div class="text-xs text-gray-500">SaaS owner dashboard — cross-firm management</div>
+          </div>
+        </div>
+        <span class="text-xs bg-green-100 text-green-700 px-3 py-1 rounded-full font-bold">✅ Live</span>
+      </summary>
+      <div class="px-5 pb-5 border-t pt-4">
+        <div class="grid grid-cols-2 gap-3 text-sm">
+          <ul class="space-y-1">
+            <li>✓ Anjaninex Dashboard with MRR, MTD revenue, KPIs</li>
+            <li>✓ 30-day revenue/margin chart</li>
+            <li>✓ Top 5 firms by revenue (medal ranking)</li>
+            <li>✓ Low wallet balance alerts</li>
+            <li>✓ Tenant Firms list with search/filter</li>
+          </ul>
+          <ul class="space-y-1">
+            <li>✓ Firm Detail with full stats + wallet history</li>
+            <li>✓ Recharge wallet from Anjaninex side</li>
+            <li>✓ Suspend/Activate firms</li>
+            <li>✓ Subscription Plans (4 tiers visible)</li>
+            <li>✓ AI Cost Monitor (per-agent revenue/cost/margin)</li>
+            <li>✓ Changelog Publisher (push to all users)</li>
+          </ul>
+        </div>
+      </div>
+    </details>
+
+    <!-- Module 8: HR -->
+    <details class="bg-white rounded-2xl shadow-lg">
+      <summary class="p-5 flex items-center justify-between hover:bg-gray-50 rounded-2xl">
+        <div class="flex items-center gap-3">
+          <div class="text-3xl">👥</div>
+          <div>
+            <div class="display font-bold text-lg text-purple-700">8. HR + Selfie + GPS + Payroll</div>
+            <div class="text-xs text-gray-500">Complete staff management with attendance, leave, payroll auto-post</div>
+          </div>
+        </div>
+        <span class="text-xs bg-green-100 text-green-700 px-3 py-1 rounded-full font-bold">✅ Live</span>
+      </summary>
+      <div class="px-5 pb-5 border-t pt-4">
+        <div class="grid grid-cols-2 gap-3 text-sm">
+          <ul class="space-y-1">
+            <li>✓ Staff Master (10 tables, 3 seeded employees)</li>
+            <li>✓ Attendance Policy (9:30-6:30 + grace + weekends)</li>
+            <li>✓ 10 Indian holidays for 2026</li>
+            <li>✓ 3 salary structures (₹15K / ₹35K / ₹75K CTC)</li>
+            <li>✓ <strong>📸 Browser camera selfie</strong> check-in/out</li>
+            <li>✓ <strong>📍 GPS coordinates</strong> auto-captured</li>
+          </ul>
+          <ul class="space-y-1">
+            <li>✓ Location trails partitioned by month (high volume)</li>
+            <li>✓ <strong>🗺 Live Location Map</strong> (Leaflet + OpenStreetMap)</li>
+            <li>✓ Leave management with balance tracking</li>
+            <li>✓ Leave approval workflow</li>
+            <li>✓ Monthly payroll auto-calc (PF/ESI/LOP)</li>
+            <li>✓ <strong class="text-red-600">🔥 Payroll auto-post to Accounting</strong></li>
+          </ul>
+        </div>
+        <div class="mt-3 bg-pink-50 border border-pink-200 rounded p-3 text-xs font-mono">
+          <strong class="text-pink-700">Payroll auto-post:</strong> Mark Paid → Voucher created:<br>
+          Dr Salary & Wages ₹50K | Cr HDFC Bank ₹44.2K | Cr PF Payable ₹3.6K | Cr ESI Payable ₹2.2K
+        </div>
+      </div>
+    </details>
+  </div>
+</div>
+
+
+<!-- ============================================================ -->
+<!-- TAB: CONTACT HUB                                               -->
+<!-- ============================================================ -->
+<div id="contact-hub" class="tab-content">
+
+  <div class="bg-white rounded-2xl p-6 shadow-lg mb-6">
+    <h2 class="display font-black text-2xl text-purple-700 mb-4">👤 Centralized "Contact Hub" Architecture</h2>
+    <p class="text-gray-700 mb-4">
+      <strong>Aapne pucha tha:</strong> "Party Master, Supplier Directory, Staff Master alag-alag hain kya?"<br>
+      <strong>Answer:</strong> UI alag, lekin <strong>underlying data ek hi <code class="mono bg-gray-100 px-1">core.contacts</code> table me hai</strong>.
+      Yeh HubSpot/Salesforce wala pattern hai.
+    </p>
+
+    <!-- Visual diagram -->
+    <div class="bg-gradient-to-br from-purple-50 to-orange-50 rounded-xl p-6 mb-4">
+      <div class="text-center mb-6">
+        <div class="inline-block bg-white border-4 border-purple-500 rounded-xl p-5 shadow-lg">
+          <div class="display font-black text-purple-700">core.contacts (ONE master)</div>
+          <div class="text-xs text-gray-600 mt-2">
+            id: <code class="mono bg-gray-100 px-1">abc-123</code><br>
+            name: Bawa Collection<br>
+            phone: +91 98765 43210<br>
+            gst: 07ABCDE1234A1Z5<br>
+            flags: <code class="mono">{is_party: true, is_supplier: true}</code>
+          </div>
+        </div>
+      </div>
+
+      <div class="text-center text-2xl text-purple-600 mb-2">▼ extended by ▼</div>
+
+      <div class="grid grid-cols-3 gap-3">
+        <div class="bg-white border-2 border-blue-300 rounded-xl p-4">
+          <div class="font-bold text-blue-700">trading.party_profiles</div>
+          <div class="text-xs mt-2 mono text-gray-600">
+            contact_id: abc-123 ←<br>
+            party_code: PRT-001<br>
+            credit_limit: ₹5L<br>
+            ledger_id: → accounting<br>
+            commission: 2%
+          </div>
+        </div>
+        <div class="bg-white border-2 border-orange-300 rounded-xl p-4">
+          <div class="font-bold text-orange-700">suppliers.supplier_profiles</div>
+          <div class="text-xs mt-2 mono text-gray-600">
+            contact_id: abc-123 ←<br>
+            supplier_code: SUP-001<br>
+            photos: [4 photos]<br>
+            categories: [Saree, Silk]<br>
+            rate_unit: mtr
+          </div>
+        </div>
+        <div class="bg-white border-2 border-green-300 rounded-xl p-4">
+          <div class="font-bold text-green-700">hr.employee_profiles</div>
+          <div class="text-xs mt-2 mono text-gray-600">
+            contact_id: abc-123 ←<br>
+            employee_code: EMP-001<br>
+            salary_structure_id<br>
+            joining_date<br>
+            reporting_to
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- What works -->
+    <div class="grid grid-cols-2 gap-4">
+      <div class="bg-green-50 border border-green-200 rounded-xl p-4">
+        <h3 class="font-bold text-green-700 mb-2">✅ Yeh Kaam Karta Hai</h3>
+        <ul class="text-sm space-y-1">
+          <li>✓ Phone/GST update ek jagah → sab jagah reflect</li>
+          <li>✓ GST se auto-dedup (existing contact reuse)</li>
+          <li>✓ Bawa Collection ek hi entity Party+Supplier dono me</li>
+          <li>✓ Ledger linking automatic (Party → Sundry Debtors)</li>
+          <li>✓ Demo seed me 4 contacts shared across modules</li>
+        </ul>
+      </div>
+      <div class="bg-red-50 border border-red-200 rounded-xl p-4">
+        <h3 class="font-bold text-red-700 mb-2">❌ Yeh Pending Hai</h3>
+        <ul class="text-sm space-y-1">
+          <li>✗ "360° Contact View" — ek page jo sab role dikhaye</li>
+          <li>✗ "Convert to Supplier" button on Party page</li>
+          <li>✗ Duplicate detection alert during creation</li>
+          <li>✗ Contact merge tool (agar accidentally 2 ban gaye)</li>
+          <li>✗ Activity timeline per contact</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ============================================================ -->
+<!-- TAB: SCREENS                                                   -->
+<!-- ============================================================ -->
+<div id="screens" class="tab-content">
+
+  <div class="bg-white rounded-2xl p-6 shadow-lg mb-6">
+    <h2 class="display font-black text-2xl text-purple-700 mb-4">🖥 Built Screens (40+ Pages)</h2>
+
+    <div class="grid grid-cols-2 gap-4">
+
+      <!-- Core/Auth -->
+      <div class="border-l-4 border-blue-500 pl-4">
+        <h3 class="font-bold text-blue-700 mb-2">🔐 Core</h3>
+        <ul class="text-sm space-y-1">
+          <li>✓ Login page (Namokara + "Powered by Anjaninex")</li>
+          <li>✓ Dashboard (KPI cards + quick actions)</li>
+          <li>✓ Forbidden page (permission denied)</li>
+          <li>✓ Shell with top nav, branch switcher, wallet chip</li>
+          <li>✓ Auto-update banner</li>
+        </ul>
+      </div>
+
+      <!-- Accounting -->
+      <div class="border-l-4 border-green-500 pl-4">
+        <h3 class="font-bold text-green-700 mb-2">📒 Accounting (8 pages)</h3>
+        <ul class="text-sm space-y-1">
+          <li>✓ Account Heads (5 system heads with colors)</li>
+          <li>✓ Groups (add/delete)</li>
+          <li>✓ Sub Groups (add/delete)</li>
+          <li>✓ Ledgers (search, balance, CRUD)</li>
+          <li>✓ Voucher Entry (Tally-style with 4 types)</li>
+          <li>✓ Trial Balance</li>
+          <li>✓ Profit & Loss</li>
+          <li>✓ Balance Sheet</li>
+        </ul>
+      </div>
+
+      <!-- Trading -->
+      <div class="border-l-4 border-purple-500 pl-4">
+        <h3 class="font-bold text-purple-700 mb-2">🛒 Trading (6 pages)</h3>
+        <ul class="text-sm space-y-1">
+          <li>✓ Party Master (with CRUD + form)</li>
+          <li>✓ Items master</li>
+          <li>✓ Bills list (with filters)</li>
+          <li>✓ Bill Entry (with AI Scan button)</li>
+          <li>✓ Payments list</li>
+          <li>✓ Payment Receipt (with allocation)</li>
+        </ul>
+      </div>
+
+      <!-- Reports -->
+      <div class="border-l-4 border-orange-500 pl-4">
+        <h3 class="font-bold text-orange-700 mb-2">📈 Reports (8 pages)</h3>
+        <ul class="text-sm space-y-1">
+          <li>✓ Executive Dashboard (KPIs + chart)</li>
+          <li>✓ Sales Register</li>
+          <li>✓ Outstanding Bills</li>
+          <li>✓ Party-wise Aging (0-30/31-60/61-90/90+)</li>
+          <li>✓ Top Parties (medals)</li>
+          <li>✓ Top Items</li>
+          <li>✓ GST Summary</li>
+          <li>✓ Payment Mode</li>
+        </ul>
+      </div>
+
+      <!-- Suppliers -->
+      <div class="border-l-4 border-pink-500 pl-4">
+        <h3 class="font-bold text-pink-700 mb-2">🚚 Suppliers (4 pages)</h3>
+        <ul class="text-sm space-y-1">
+          <li>✓ Directory grid (with photos)</li>
+          <li>✓ Add/Edit Supplier form</li>
+          <li>✓ Supplier Detail (photos + rates)</li>
+          <li>✓ Categories management</li>
+        </ul>
+      </div>
+
+      <!-- AI -->
+      <div class="border-l-4 border-yellow-500 pl-4">
+        <h3 class="font-bold text-yellow-700 mb-2">🤖 AI (modal)</h3>
+        <ul class="text-sm space-y-1">
+          <li>✓ Bill Scan Modal (camera + file + result)</li>
+          <li>✓ Integrated into Bill Entry page</li>
+          <li>(More agents pending — Cheque, Voice, Search)</li>
+        </ul>
+      </div>
+
+      <!-- Anjaninex -->
+      <div class="border-l-4 border-red-500 pl-4">
+        <h3 class="font-bold text-red-700 mb-2">⚡ Anjaninex Admin (6 pages)</h3>
+        <ul class="text-sm space-y-1">
+          <li>✓ Anjaninex Dashboard</li>
+          <li>✓ Firms list</li>
+          <li>✓ Firm Detail (with wallet history + recharge)</li>
+          <li>✓ Subscription Plans</li>
+          <li>✓ AI Cost Monitor</li>
+          <li>✓ Changelog Publisher</li>
+        </ul>
+      </div>
+
+      <!-- HR -->
+      <div class="border-l-4 border-teal-500 pl-4">
+        <h3 class="font-bold text-teal-700 mb-2">👥 HR (7 pages)</h3>
+        <ul class="text-sm space-y-1">
+          <li>✓ HR Dashboard (KPIs)</li>
+          <li>✓ Staff Master</li>
+          <li>✓ <strong>Check-in/Check-out (selfie + GPS)</strong></li>
+          <li>✓ Monthly Attendance Register</li>
+          <li>✓ <strong>Live Location Map (Leaflet)</strong></li>
+          <li>✓ Leaves (apply + approve)</li>
+          <li>✓ Payroll (run + mark paid + auto-post)</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Demo flow -->
+  <div class="bg-gradient-to-r from-purple-600 to-orange-500 text-white rounded-2xl p-6 shadow-lg">
+    <h2 class="display font-black text-2xl mb-4">🎯 Complete End-to-End Demo Flow</h2>
+    <ol class="space-y-3 text-sm">
+      <li class="flex gap-3">
+        <span class="bg-white text-purple-700 w-8 h-8 rounded-full flex items-center justify-center font-bold flex-shrink-0">1</span>
+        <div>Login as <code class="mono bg-white/20 px-1">rajesh / Demo@123</code></div>
+      </li>
+      <li class="flex gap-3">
+        <span class="bg-white text-purple-700 w-8 h-8 rounded-full flex items-center justify-center font-bold flex-shrink-0">2</span>
+        <div><strong>HR → Check-in</strong> → Allow camera + GPS → Selfie captured + GPS recorded</div>
+      </li>
+      <li class="flex gap-3">
+        <span class="bg-white text-purple-700 w-8 h-8 rounded-full flex items-center justify-center font-bold flex-shrink-0">3</span>
+        <div><strong>Trading → New Bill</strong> → Click "🤖 AI Scan Bill" → Upload image → Auto-fill form</div>
+      </li>
+      <li class="flex gap-3">
+        <span class="bg-white text-purple-700 w-8 h-8 rounded-full flex items-center justify-center font-bold flex-shrink-0">4</span>
+        <div>Save Bill → System auto-creates Sales voucher in Accounting</div>
+      </li>
+      <li class="flex gap-3">
+        <span class="bg-white text-purple-700 w-8 h-8 rounded-full flex items-center justify-center font-bold flex-shrink-0">5</span>
+        <div><strong>Trading → Receipt</strong> → Bawa pays ₹50K → Auto-post Receipt voucher + bill marked partial</div>
+      </li>
+      <li class="flex gap-3">
+        <span class="bg-white text-purple-700 w-8 h-8 rounded-full flex items-center justify-center font-bold flex-shrink-0">6</span>
+        <div><strong>Reports → Executive Dashboard</strong> → All KPIs updated instantly</div>
+      </li>
+      <li class="flex gap-3">
+        <span class="bg-white text-purple-700 w-8 h-8 rounded-full flex items-center justify-center font-bold flex-shrink-0">7</span>
+        <div><strong>HR → Payroll</strong> → Run for current month → "Mark Paid" → Auto-create salary voucher</div>
+      </li>
+      <li class="flex gap-3">
+        <span class="bg-white text-purple-700 w-8 h-8 rounded-full flex items-center justify-center font-bold flex-shrink-0">8</span>
+        <div>Logout, login as <code class="mono bg-white/20 px-1">anjaninex</code> → ⚡ Anjaninex tab → See firm's revenue + AI cost</div>
+      </li>
+    </ol>
+  </div>
+</div>
+
+
+<!-- ============================================================ -->
+<!-- TAB: TECH STACK                                                -->
+<!-- ============================================================ -->
+<div id="tech" class="tab-content">
+
+  <div class="bg-white rounded-2xl p-6 shadow-lg mb-6">
+    <h2 class="display font-black text-2xl text-purple-700 mb-4">⚙️ Tech Stack</h2>
+
+    <div class="grid grid-cols-2 gap-6">
+
+      <div>
+        <h3 class="font-bold text-purple-700 mb-3">Frontend</h3>
+        <div class="space-y-2 text-sm">
+          <div class="flex justify-between p-2 bg-purple-50 rounded">
+            <span><strong>Angular 19</strong></span>
+            <span class="mono text-xs">Standalone components, signals</span>
+          </div>
+          <div class="flex justify-between p-2 bg-purple-50 rounded">
+            <span><strong>Tailwind CSS</strong></span>
+            <span class="mono text-xs">Utility-first styling</span>
+          </div>
+          <div class="flex justify-between p-2 bg-purple-50 rounded">
+            <span><strong>Angular Service Worker</strong></span>
+            <span class="mono text-xs">PWA installable</span>
+          </div>
+          <div class="flex justify-between p-2 bg-purple-50 rounded">
+            <span><strong>Leaflet 1.9</strong></span>
+            <span class="mono text-xs">Maps (via CDN, free)</span>
+          </div>
+          <div class="flex justify-between p-2 bg-purple-50 rounded">
+            <span><strong>Browser APIs</strong></span>
+            <span class="mono text-xs">getUserMedia, Geolocation</span>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <h3 class="font-bold text-orange-700 mb-3">Backend</h3>
+        <div class="space-y-2 text-sm">
+          <div class="flex justify-between p-2 bg-orange-50 rounded">
+            <span><strong>.NET Core 8</strong></span>
+            <span class="mono text-xs">Modular monolith</span>
+          </div>
+          <div class="flex justify-between p-2 bg-orange-50 rounded">
+            <span><strong>EF Core 8 + Npgsql</strong></span>
+            <span class="mono text-xs">ORM for PostgreSQL</span>
+          </div>
+          <div class="flex justify-between p-2 bg-orange-50 rounded">
+            <span><strong>JWT Bearer Auth</strong></span>
+            <span class="mono text-xs">Refresh token rotation</span>
+          </div>
+          <div class="flex justify-between p-2 bg-orange-50 rounded">
+            <span><strong>SignalR</strong></span>
+            <span class="mono text-xs">Real-time notifications (wired, not used yet)</span>
+          </div>
+          <div class="flex justify-between p-2 bg-orange-50 rounded">
+            <span><strong>Serilog + Seq</strong></span>
+            <span class="mono text-xs">Structured logging</span>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <h3 class="font-bold text-green-700 mb-3">Database & Storage</h3>
+        <div class="space-y-2 text-sm">
+          <div class="flex justify-between p-2 bg-green-50 rounded">
+            <span><strong>PostgreSQL 16</strong></span>
+            <span class="mono text-xs">Primary database with RLS</span>
+          </div>
+          <div class="flex justify-between p-2 bg-green-50 rounded">
+            <span><strong>PgBouncer</strong></span>
+            <span class="mono text-xs">Transaction-mode pooling</span>
+          </div>
+          <div class="flex justify-between p-2 bg-green-50 rounded">
+            <span><strong>Redis 7</strong></span>
+            <span class="mono text-xs">Cache (permissions, sessions)</span>
+          </div>
+          <div class="flex justify-between p-2 bg-green-50 rounded">
+            <span><strong>MinIO</strong></span>
+            <span class="mono text-xs">S3-compatible (selfies, bills)</span>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <h3 class="font-bold text-blue-700 mb-3">External APIs (stubbed for now)</h3>
+        <div class="space-y-2 text-sm">
+          <div class="flex justify-between p-2 bg-blue-50 rounded">
+            <span><strong>Gemini 2.5 Flash</strong></span>
+            <span class="mono text-xs">AI invoice OCR (mock active)</span>
+          </div>
+          <div class="flex justify-between p-2 bg-blue-50 rounded">
+            <span><strong>WhatsApp Cloud API</strong></span>
+            <span class="mono text-xs">⚠️ Stub only</span>
+          </div>
+          <div class="flex justify-between p-2 bg-blue-50 rounded">
+            <span><strong>Razorpay</strong></span>
+            <span class="mono text-xs">⚠️ Not integrated</span>
+          </div>
+          <div class="flex justify-between p-2 bg-blue-50 rounded">
+            <span><strong>MSG91 SMS</strong></span>
+            <span class="mono text-xs">⚠️ Stub only</span>
+          </div>
+          <div class="flex justify-between p-2 bg-blue-50 rounded">
+            <span><strong>SMTP (Mailhog dev)</strong></span>
+            <span class="mono text-xs">Wired, prod SMTP pending</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Infra services -->
+  <div class="bg-white rounded-2xl p-6 shadow-lg">
+    <h2 class="display font-black text-2xl text-purple-700 mb-4">🐳 Docker Compose Services</h2>
+    <div class="grid grid-cols-3 gap-3 text-sm">
+      <div class="bg-gray-50 p-3 rounded border-l-4 border-blue-500">
+        <div class="font-bold">postgres</div>
+        <div class="mono text-xs">localhost:5432</div>
+      </div>
+      <div class="bg-gray-50 p-3 rounded border-l-4 border-blue-500">
+        <div class="font-bold">pgbouncer</div>
+        <div class="mono text-xs">localhost:6432</div>
+      </div>
+      <div class="bg-gray-50 p-3 rounded border-l-4 border-red-500">
+        <div class="font-bold">redis</div>
+        <div class="mono text-xs">localhost:6379</div>
+      </div>
+      <div class="bg-gray-50 p-3 rounded border-l-4 border-orange-500">
+        <div class="font-bold">minio</div>
+        <div class="mono text-xs">:9000 API, :9001 console</div>
+      </div>
+      <div class="bg-gray-50 p-3 rounded border-l-4 border-green-500">
+        <div class="font-bold">pgadmin</div>
+        <div class="mono text-xs">localhost:5050</div>
+      </div>
+      <div class="bg-gray-50 p-3 rounded border-l-4 border-purple-500">
+        <div class="font-bold">seq (logs)</div>
+        <div class="mono text-xs">localhost:5341</div>
+      </div>
+      <div class="bg-gray-50 p-3 rounded border-l-4 border-yellow-500">
+        <div class="font-bold">mailhog</div>
+        <div class="mono text-xs">localhost:8025</div>
+      </div>
+      <div class="bg-gray-50 p-3 rounded border-l-4 border-pink-500">
+        <div class="font-bold">jaeger</div>
+        <div class="mono text-xs">localhost:16686</div>
+      </div>
+      <div class="bg-gray-50 p-3 rounded border-l-4 border-teal-500">
+        <div class="font-bold">api + web + admin</div>
+        <div class="mono text-xs">:5000 + :4200 + :4201</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ============================================================ -->
+<!-- TAB: PENDING                                                   -->
+<!-- ============================================================ -->
+<div id="pending" class="tab-content">
+
+  <!-- Critical -->
+  <div class="bg-red-50 border-2 border-red-300 rounded-2xl p-6 shadow-lg mb-6">
+    <h2 class="display font-black text-2xl text-red-700 mb-4">🔴 CRITICAL — Pehle Yeh Karo (Production Se Pehle)</h2>
+
+    <div class="space-y-3">
+      <div class="bg-white rounded-lg p-4 border-l-4 border-red-500">
+        <div class="flex items-start justify-between">
+          <div>
+            <div class="font-bold">1. Code Test Karo (compile + run)</div>
+            <div class="text-sm text-gray-600 mt-1">130 files likhe hain but <strong>abhi tak ek baar bhi run nahi hua</strong>. Compile errors ho sakte hain.</div>
+          </div>
+          <span class="text-xs bg-red-100 text-red-700 px-2 py-1 rounded">~1-3 din</span>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-lg p-4 border-l-4 border-red-500">
+        <div class="flex items-start justify-between">
+          <div>
+            <div class="font-bold">2. PWA Icons + Anjaninex Logo files</div>
+            <div class="text-sm text-gray-600 mt-1">10 icon sizes + 12 iOS splash screens + Anjaninex logo. Use progressier.com tool.</div>
+          </div>
+          <span class="text-xs bg-red-100 text-red-700 px-2 py-1 rounded">~1 din</span>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-lg p-4 border-l-4 border-red-500">
+        <div class="flex items-start justify-between">
+          <div>
+            <div class="font-bold">3. Real Gemini API Key</div>
+            <div class="text-sm text-gray-600 mt-1">Free from aistudio.google.com/apikey (1500/day). Set in appsettings.Production.json.</div>
+          </div>
+          <span class="text-xs bg-red-100 text-red-700 px-2 py-1 rounded">~5 min</span>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-lg p-4 border-l-4 border-red-500">
+        <div class="flex items-start justify-between">
+          <div>
+            <div class="font-bold">4. Production Deployment</div>
+            <div class="text-sm text-gray-600 mt-1">Hostinger VPS / Hetzner setup, Nginx config, SSL via Let's Encrypt, Cloudflare CDN.</div>
+          </div>
+          <span class="text-xs bg-red-100 text-red-700 px-2 py-1 rounded">~2-3 din</span>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-lg p-4 border-l-4 border-red-500">
+        <div class="flex items-start justify-between">
+          <div>
+            <div class="font-bold">5. Razorpay Integration (wallet recharge)</div>
+            <div class="text-sm text-gray-600 mt-1">Abhi manual recharge se kaam ho raha hai. Real payment gateway integration baaki.</div>
+          </div>
+          <span class="text-xs bg-red-100 text-red-700 px-2 py-1 rounded">~1 din</span>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-lg p-4 border-l-4 border-red-500">
+        <div class="flex items-start justify-between">
+          <div>
+            <div class="font-bold">6. SMTP + SMS providers</div>
+            <div class="text-sm text-gray-600 mt-1">Zoho Mail + MSG91 setup. Email templates likhne hain.</div>
+          </div>
+          <span class="text-xs bg-red-100 text-red-700 px-2 py-1 rounded">~1 din</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Important -->
+  <div class="bg-yellow-50 border-2 border-yellow-300 rounded-2xl p-6 shadow-lg mb-6">
+    <h2 class="display font-black text-2xl text-yellow-800 mb-4">🟡 IMPORTANT — Launch Ke 1-2 Hafte Baad</h2>
+    <div class="grid grid-cols-2 gap-3">
+      <div class="bg-white rounded-lg p-3 text-sm">
+        <div class="font-bold">Bill print + Payslip PDF</div>
+        <div class="text-xs text-gray-500 mt-1">Customer demand karega</div>
+      </div>
+      <div class="bg-white rounded-lg p-3 text-sm">
+        <div class="font-bold">Excel export of reports</div>
+        <div class="text-xs text-gray-500 mt-1">Standard feature</div>
+      </div>
+      <div class="bg-white rounded-lg p-3 text-sm">
+        <div class="font-bold">Real-time notifications (SignalR)</div>
+        <div class="text-xs text-gray-500 mt-1">Wired but not used yet</div>
+      </div>
+      <div class="bg-white rounded-lg p-3 text-sm">
+        <div class="font-bold">Email templates</div>
+        <div class="text-xs text-gray-500 mt-1">Welcome, bill reminder, payslip</div>
+      </div>
+      <div class="bg-white rounded-lg p-3 text-sm">
+        <div class="font-bold">WhatsApp Cloud API real integration</div>
+        <div class="text-xs text-gray-500 mt-1">Big feature</div>
+      </div>
+      <div class="bg-white rounded-lg p-3 text-sm">
+        <div class="font-bold">Permission Matrix UI</div>
+        <div class="text-xs text-gray-500 mt-1">Admin self-service</div>
+      </div>
+      <div class="bg-white rounded-lg p-3 text-sm">
+        <div class="font-bold">Audit log viewer UI</div>
+        <div class="text-xs text-gray-500 mt-1">Compliance</div>
+      </div>
+      <div class="bg-white rounded-lg p-3 text-sm">
+        <div class="font-bold">Bulk operations (staff CSV upload)</div>
+        <div class="text-xs text-gray-500 mt-1">Productivity</div>
+      </div>
+      <div class="bg-white rounded-lg p-3 text-sm">
+        <div class="font-bold">Goods Return UI</div>
+        <div class="text-xs text-gray-500 mt-1">DB ready, no screen</div>
+      </div>
+      <div class="bg-white rounded-lg p-3 text-sm">
+        <div class="font-bold">Orders UI</div>
+        <div class="text-xs text-gray-500 mt-1">DB ready, no screen</div>
+      </div>
+      <div class="bg-white rounded-lg p-3 text-sm">
+        <div class="font-bold">Better charts (Chart.js)</div>
+        <div class="text-xs text-gray-500 mt-1">Replace div-bars</div>
+      </div>
+      <div class="bg-white rounded-lg p-3 text-sm">
+        <div class="font-bold">Security audit (OWASP)</div>
+        <div class="text-xs text-gray-500 mt-1">Critical for SaaS</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Nice to have -->
+  <div class="bg-green-50 border-2 border-green-300 rounded-2xl p-6 shadow-lg">
+    <h2 class="display font-black text-2xl text-green-800 mb-4">🟢 NICE TO HAVE — Phase 2 / V2.0</h2>
+
+    <div class="grid grid-cols-2 gap-6">
+      <div>
+        <h3 class="font-bold text-green-700 mb-2">From Original Blueprint (skipped)</h3>
+        <ul class="text-sm space-y-1">
+          <li>○ Cmd+K Command Palette (Linear-style)</li>
+          <li>○ Right Drawer multi-tab</li>
+          <li>○ AI Cheque Scanner</li>
+          <li>○ AI Voice Order Parser</li>
+          <li>○ AI Natural Language Search</li>
+          <li>○ AI Business Card Scanner</li>
+          <li>○ AI Rate Sheet Parser</li>
+          <li>○ Performance Reviews module</li>
+          <li>○ ESI/PF/TDS compliance forms (Form 16)</li>
+          <li>○ Contact 360° unified view</li>
+        </ul>
+      </div>
+      <div>
+        <h3 class="font-bold text-green-700 mb-2">Future Modules</h3>
+        <ul class="text-sm space-y-1">
+          <li>○ Inventory / Stock management</li>
+          <li>○ Production / Manufacturing</li>
+          <li>○ Customer portal (parties self-service)</li>
+          <li>○ Bank reconciliation</li>
+          <li>○ GST e-invoicing (IRN)</li>
+          <li>○ E-way bill generation</li>
+          <li>○ Tender management</li>
+          <li>○ CRM features (lead pipeline)</li>
+          <li>○ Mobile push notifications (FCM)</li>
+          <li>○ Multi-currency support</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ============================================================ -->
+<!-- TAB: HOW TO RUN                                                -->
+<!-- ============================================================ -->
+<div id="howto" class="tab-content">
+
+  <div class="bg-white rounded-2xl p-6 shadow-lg mb-6">
+    <h2 class="display font-black text-2xl text-purple-700 mb-4">🚀 How to Run Locally</h2>
+
+    <div class="space-y-4">
+
+      <div class="bg-gray-900 text-white p-4 rounded-lg mono text-sm overflow-x-auto">
+        <div class="text-yellow-300"># 1. Open terminal at project root</div>
+        <div>cd "G:\Indian B2B SaaS platform"</div>
+        <div></div>
+        <div class="text-yellow-300"># 2. Copy env template</div>
+        <div>copy .env.example .env</div>
+        <div></div>
+        <div class="text-yellow-300"># 3. Start all infrastructure</div>
+        <div>docker compose up -d</div>
+        <div></div>
+        <div class="text-yellow-300"># 4. Wait 30 sec, then seed data (run in order)</div>
+        <div>docker exec -i namokara_postgres psql -U namokara -d namokara_dev &lt; db/seed/demo-data.sql</div>
+        <div>docker exec -i namokara_postgres psql -U namokara -d namokara_dev &lt; db/seed/accounting-defaults.sql</div>
+        <div>docker exec -i namokara_postgres psql -U namokara -d namokara_dev &lt; db/seed/trading-defaults.sql</div>
+        <div>docker exec -i namokara_postgres psql -U namokara -d namokara_dev &lt; db/seed/suppliers-defaults.sql</div>
+        <div>docker exec -i namokara_postgres psql -U namokara -d namokara_dev &lt; db/seed/hr-defaults.sql</div>
+      </div>
+
+      <div class="bg-gray-900 text-white p-4 rounded-lg mono text-sm overflow-x-auto">
+        <div class="text-yellow-300"># Terminal 1: Backend API</div>
+        <div>cd apps\api</div>
+        <div>dotnet restore</div>
+        <div>dotnet run</div>
+        <div class="text-green-400 mt-2"># → API available at http://localhost:5000/swagger</div>
+      </div>
+
+      <div class="bg-gray-900 text-white p-4 rounded-lg mono text-sm overflow-x-auto">
+        <div class="text-yellow-300"># Terminal 2: Frontend</div>
+        <div>cd apps\web</div>
+        <div>npm install</div>
+        <div>npm start</div>
+        <div class="text-green-400 mt-2"># → Web app at http://localhost:4200</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Service URLs -->
+  <div class="bg-white rounded-2xl p-6 shadow-lg mb-6">
+    <h2 class="display font-black text-2xl text-purple-700 mb-4">🌐 Service URLs (After Setup)</h2>
+    <table class="w-full text-sm">
+      <thead class="bg-purple-100 text-purple-700 uppercase text-xs">
+        <tr>
+          <th class="text-left px-3 py-2">Service</th>
+          <th class="text-left px-3 py-2">URL</th>
+          <th class="text-left px-3 py-2">Login</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="border-t">
+          <td class="px-3 py-2 font-bold">🏠 Main Web App</td>
+          <td class="px-3 py-2 mono text-blue-600">http://localhost:4200</td>
+          <td class="px-3 py-2">rajesh / Demo@123</td>
+        </tr>
+        <tr class="border-t">
+          <td class="px-3 py-2 font-bold">📡 API Swagger</td>
+          <td class="px-3 py-2 mono text-blue-600">http://localhost:5000/swagger</td>
+          <td class="px-3 py-2">—</td>
+        </tr>
+        <tr class="border-t">
+          <td class="px-3 py-2 font-bold">📊 PgAdmin (DB GUI)</td>
+          <td class="px-3 py-2 mono text-blue-600">http://localhost:5050</td>
+          <td class="px-3 py-2">dev@namokara.local / dev_only_change_me</td>
+        </tr>
+        <tr class="border-t">
+          <td class="px-3 py-2 font-bold">📦 MinIO Console</td>
+          <td class="px-3 py-2 mono text-blue-600">http://localhost:9001</td>
+          <td class="px-3 py-2">namokara / dev_only_change_me</td>
+        </tr>
+        <tr class="border-t">
+          <td class="px-3 py-2 font-bold">📋 Seq (Logs)</td>
+          <td class="px-3 py-2 mono text-blue-600">http://localhost:5341</td>
+          <td class="px-3 py-2">—</td>
+        </tr>
+        <tr class="border-t">
+          <td class="px-3 py-2 font-bold">📧 Mailhog</td>
+          <td class="px-3 py-2 mono text-blue-600">http://localhost:8025</td>
+          <td class="px-3 py-2">—</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Project paths -->
+  <div class="bg-white rounded-2xl p-6 shadow-lg">
+    <h2 class="display font-black text-2xl text-purple-700 mb-4">📁 Project File Structure</h2>
+    <div class="bg-gray-50 rounded-lg p-4 mono text-xs overflow-x-auto">
+<pre>
+G:\Indian B2B SaaS platform\
+├── README.md                                  ← Project intro
+├── docker-compose.yml                         ← Infra services
+├── .env.example                               ← Env template
+├── package.json                               ← Monorepo config
+│
+├── apps/
+│   ├── api/                                   ← .NET Core 8 Backend
+│   │   ├── Program.cs                         ← App entry
+│   │   ├── Namokara.Api.csproj                ← NuGet packages
+│   │   ├── appsettings.json                   ← Config
+│   │   ├── Common/Auth/                       ← JWT, Permissions
+│   │   ├── Common/Middleware/                 ← Tenant context, RLS
+│   │   ├── Infrastructure/Persistence/        ← EF DbContext
+│   │   ├── Infrastructure/Storage/            ← MinIO service
+│   │   └── Modules/                           ← 8 modules
+│   │       ├── Platform/                      ← Anjaninex (Firms, Wallet)
+│   │       ├── Core/                          ← Auth, Users
+│   │       ├── Accounting/                    ← Ledgers, Vouchers
+│   │       ├── Trading/                       ← Parties, Bills, Payments
+│   │       ├── Reports/                       ← Cross-module analytics
+│   │       ├── Suppliers/                     ← Directory, Photos
+│   │       ├── Ai/                            ← Bill scanner (Gemini)
+│   │       └── Hr/                            ← Staff, Attendance, Payroll
+│   │
+│   └── web/                                   ← Angular 19 Frontend
+│       ├── package.json
+│       ├── angular.json
+│       ├── tailwind.config.js
+│       ├── ngsw-config.json                   ← PWA service worker
+│       └── src/
+│           ├── index.html
+│           ├── main.ts
+│           ├── manifest.webmanifest           ← PWA manifest
+│           ├── environments/                  ← Env configs
+│           └── app/
+│               ├── core/                      ← Auth, HTTP, Version
+│               ├── layout/shell/              ← Top nav, footer
+│               ├── pages/                     ← Login, Dashboard, Forbidden
+│               └── modules/                   ← 8 module folders
+│
+├── db/
+│   ├── init/                                  ← Auto-runs on first PG start
+│   │   ├── 01-extensions.sql                  ← pg_trgm, pgcrypto, RLS funcs
+│   │   ├── 02-schemas.sql                     ← Create 8 schemas
+│   │   ├── 03-platform.sql                    ← Firms, plans, wallet
+│   │   ├── 04-core.sql                        ← Users, RBAC, contacts
+│   │   ├── 05-rls.sql                         ← RLS policies
+│   │   ├── 06-accounting.sql                  ← COA, vouchers
+│   │   ├── 07-trading.sql                     ← Parties, bills, payments
+│   │   ├── 08-suppliers.sql                   ← Supplier directory
+│   │   ├── 09-ai.sql                          ← AI logs + cache
+│   │   └── 10-hr.sql                          ← Employees, payroll, GPS
+│   │
+│   └── seed/                                  ← Demo data (run manually)
+│       ├── demo-data.sql                      ← Firm + 4 users + 4 contacts
+│       ├── accounting-defaults.sql            ← Chart of accounts
+│       ├── trading-defaults.sql               ← Parties + items
+│       ├── suppliers-defaults.sql             ← 27 categories + suppliers
+│       └── hr-defaults.sql                    ← Holidays, salary, employees
+│
+└── docs/
+    ├── README.md
+    ├── GETTING_STARTED.md                     ← Setup guide
+    ├── CHANGELOG.md                           ← Version history
+    └── PROJECT_OVERVIEW.html                  ← ← YOU ARE HERE!
+</pre>
+    </div>
+  </div>
+</div>
+
+</main>
+
+<!-- FOOTER -->
+<footer class="brand-gradient text-white mt-12 py-6">
+  <div class="max-w-7xl mx-auto px-6 text-center">
+    <div class="display font-black text-2xl mb-2">Namokara Suite v1.7.0</div>
+    <div class="text-sm opacity-90 mb-3">8 modules · 130 files · 1.1 MB code · Multi-tenant SaaS</div>
+    <hr class="border-white/20 my-3 max-w-md mx-auto">
+    <div class="flex items-center justify-center gap-2 text-sm">
+      <div class="w-6 h-6 rounded bg-gradient-to-br from-red-500 to-blue-700 flex items-center justify-center font-black text-xs">A</div>
+      <span>Powered by <strong>Anjaninex</strong> · Building world-class B2B software</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+function showTab(name) {
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(name).classList.add('active');
+  event.target.classList.add('active');
+}
+
+// Download the entire HTML page as a file
+function downloadThisPage() {
+  const html = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
+  const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'Namokara-Suite-Overview-v1.7.0.html';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  document.getElementById('dlMenu').classList.add('hidden');
+}
+
+// Close download menu when clicking outside
+document.addEventListener('click', (e) => {
+  const menu = document.getElementById('dlMenu');
+  const btn = e.target.closest('button');
+  if (!menu) return;
+  if (btn && btn.textContent.includes('Download')) return;
+  if (!menu.contains(e.target)) menu.classList.add('hidden');
+});
+</script>
+
+</body>
+</html>

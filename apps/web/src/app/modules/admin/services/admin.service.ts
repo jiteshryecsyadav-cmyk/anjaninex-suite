@@ -1,0 +1,247 @@
+import { Injectable, inject } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { environment } from '../../../../environments/environment';
+
+export interface AnjaninexKpi {
+  totalFirms: number;
+  activeFirms: number;
+  trialFirms: number;
+  suspendedFirms: number;
+  mrrInr: number;
+  mtdRevenue: number;
+  mtdMargin: number;
+  todayRevenue: number;
+  newFirmsThisMonth: number;
+  totalWalletBalance: number;
+  aiCallsToday: number;
+  aiRevenueToday: number;
+  aiCostToday: number;
+}
+
+export interface FirmListItem {
+  id: string;
+  name: string;
+  gst: string | null;
+  city: string | null;
+  contactEmail: string;
+  planCode: string;
+  status: string;
+  walletBalance: number;
+  mtdSpend: number;
+  createdAt: string;
+  activatedAt: string | null;
+}
+
+export interface FirmDetail extends FirmListItem {
+  legalName: string | null;
+  pan: string | null;
+  state: string | null;
+  contactPhone: string;
+  planName: string;
+  planMonthlyInr: number | null;
+  creditLimit: number;
+  trialEndsAt: string | null;
+  branchCount: number;
+  userCount: number;
+  billCount: number;
+  voucherCount: number;
+  supplierCount: number;
+  lifetimeSpend: number;
+  lifetimeRevenue: number;
+}
+
+export interface WalletTxn {
+  id: number;
+  txnType: string;
+  amount: number;
+  balanceAfter: number;
+  description: string | null;
+  referenceId: string | null;
+  createdAt: string;
+}
+
+export interface RevenuePoint {
+  day: string;
+  gross: number;
+  cost: number;
+  margin: number;
+}
+
+export interface AgentCost {
+  agentName: string;
+  calls: number;
+  costInr: number;
+  revenueInr: number;
+  marginInr: number;
+  avgConfidence: number;
+}
+
+export interface Plan {
+  id: string;
+  code: string;
+  name: string;
+  monthlyInr: number | null;
+  annualInr: number | null;
+  maxBranches: number;
+  maxUsers: number;
+  maxAiCalls: number;
+  maxWaMessages: number;
+  features: string;
+  isActive: boolean;
+  firmCount: number;
+}
+
+export interface FirmReportRow {
+  id: string; name: string; city: string | null; status: string;
+  planName: string | null; planEnds: string | null; extendedOn: string | null;
+  branches: number; staff: number; walletBalance: number;
+}
+export interface FirmReport {
+  summary: { total: number; active: number; trial: number; grace: number; suspended: number; cancelled: number; extended: number };
+  firms: FirmReportRow[];
+}
+
+export interface CreateFirmReq {
+  name: string; legalName?: string; gst?: string; pan?: string; city?: string; state?: string;
+  contactEmail: string; contactPhone: string; planId?: string | null;
+  bankName?: string; accountNo?: string; ifsc?: string;
+  adminFullName: string; adminUsername: string; adminPassword: string;
+}
+
+export interface SavePlan {
+  code: string; name: string;
+  monthlyInr: number | null; annualInr: number | null;
+  maxBranches: number; maxUsers: number; maxAiCalls: number; maxWaMessages: number;
+  features: string;
+}
+
+export interface TopFirm {
+  firmId: string;
+  name: string;
+  planCode: string;
+  revenue: number;
+  days: number;
+}
+
+export interface LowBalanceFirm {
+  firmId: string;
+  name: string;
+  balance: number;
+  lastDailySpend: number;
+}
+
+@Injectable({ providedIn: 'root' })
+export class AdminService {
+  private http = inject(HttpClient);
+  private base = `${environment.apiUrl}/api/admin`;
+
+  kpi() { return this.http.get<AnjaninexKpi>(`${this.base}/kpi`); }
+  dailyRevenue(days = 30) { return this.http.get<RevenuePoint[]>(`${this.base}/daily-revenue`, { params: { days } as any }); }
+  topFirms(top = 10) { return this.http.get<TopFirm[]>(`${this.base}/top-firms`, { params: { top } as any }); }
+  lowBalance() { return this.http.get<LowBalanceFirm[]>(`${this.base}/low-balance`); }
+
+  listFirms(search?: string, status?: string) {
+    const p: any = {};
+    if (search) p.search = search;
+    if (status) p.status = status;
+    return this.http.get<FirmListItem[]>(`${this.base}/firms`, { params: p });
+  }
+  getFirm(id: string) { return this.http.get<FirmDetail>(`${this.base}/firms/${id}`); }
+  firmWalletHistory(id: string, limit = 50) {
+    return this.http.get<WalletTxn[]>(`${this.base}/firms/${id}/wallet-history`, { params: { limit } as any });
+  }
+  recharge(id: string, amount: number, source: string, reference: string) {
+    return this.http.post(`${this.base}/firms/${id}/recharge`, { amount, source, reference });
+  }
+  suspend(id: string) { return this.http.post(`${this.base}/firms/${id}/suspend`, {}); }
+  activate(id: string) { return this.http.post(`${this.base}/firms/${id}/activate`, {}); }
+  changePlan(id: string, planId: string) { return this.http.post(`${this.base}/firms/${id}/change-plan`, { planId }); }
+
+  aiCostBreakdown(days = 30) { return this.http.get<AgentCost[]>(`${this.base}/ai/cost-breakdown`, { params: { days } as any }); }
+  aiDailyRevenue(days = 30) { return this.http.get<RevenuePoint[]>(`${this.base}/ai/daily-revenue`, { params: { days } as any }); }
+
+  listPlans() { return this.http.get<Plan[]>(`${this.base}/plans`); }
+  togglePlan(id: string) { return this.http.post(`${this.base}/plans/${id}/toggle`, {}); }
+  createFirm(data: CreateFirmReq) {
+    return this.http.post<{ firmId: string; username: string }>(`${this.base}/firms`, data);
+  }
+  getFirmReport() { return this.http.get<FirmReport>(`${this.base}/firms-report`); }
+  getFirmApiKeys(id: string) { return this.http.get<FirmApiKeysInfo>(`${this.base}/firms/${id}/api-keys`); }
+  saveFirmApiKeys(id: string, data: SaveFirmApiKeys) {
+    return this.http.put(`${this.base}/firms/${id}/api-keys`, data);
+  }
+  extendBulk(days: number, planId?: string) {
+    return this.http.post<{ count: number }>(`${this.base}/subscription/extend-bulk`, { days, planId: planId ?? null });
+  }
+  createPlan(data: SavePlan) { return this.http.post<Plan>(`${this.base}/plans`, data); }
+  updatePlan(id: string, data: SavePlan) { return this.http.put<Plan>(`${this.base}/plans/${id}`, data); }
+  deletePlan(id: string) { return this.http.delete(`${this.base}/plans/${id}`); }
+
+  listChangelog() { return this.http.get<any[]>(`${this.base}/changelog`); }
+  publishChangelog(entry: any) { return this.http.post(`${this.base}/changelog`, entry); }
+
+  getBilling() { return this.http.get<BillingSettings>(`${this.base}/billing`); }
+  saveBilling(s: SaveBilling) { return this.http.put<BillingSettings>(`${this.base}/billing`, s); }
+
+  // Add-on services (admin catalog)
+  listAddonServices() { return this.http.get<AddonService[]>(`${this.base}/addon-services`); }
+  createAddonService(s: SaveAddonService) { return this.http.post<AddonService>(`${this.base}/addon-services`, s); }
+  updateAddonService(id: string, s: SaveAddonService) { return this.http.put<AddonService>(`${this.base}/addon-services/${id}`, s); }
+  deleteAddonService(id: string) { return this.http.delete(`${this.base}/addon-services/${id}`); }
+
+  listPaymentRequests(status = 'pending') {
+    return this.http.get<AdminPaymentReq[]>(`${this.base}/payment-requests`, { params: { status } as any });
+  }
+  approvePayment(id: string) { return this.http.post(`${this.base}/payment-requests/${id}/approve`, {}); }
+  getTurnover() { return this.http.get<TurnoverInfo>(`${this.base}/payment-requests/turnover`); }
+  rejectPayment(id: string, reason: string) { return this.http.post(`${this.base}/payment-requests/${id}/reject`, { reason }); }
+}
+
+export interface FirmApiKeysInfo {
+  aiProvider: string; aiModel: string | null;
+  aiKeySet: boolean; aiKeyMasked: string | null;
+  mapsKeySet: boolean; mapsKeyMasked: string | null;
+}
+export interface SaveFirmApiKeys {
+  aiProvider: string;
+  aiApiKey?: string | null;   // null/omit = no change, '' = clear
+  aiModel?: string | null;
+  mapsApiKey?: string | null;
+}
+
+export interface AdminPaymentReq {
+  id: string; firmId: string; firmName: string | null; amount: number;
+  method: string | null; reference: string | null; note: string | null;
+  status: string; createdAt: string | null;
+}
+
+export interface BillingSettings {
+  payeeName: string | null; upiId: string | null; bankName: string | null;
+  accountName: string | null; accountNo: string | null; ifsc: string | null;
+  qrImageUrl: string | null; instructions: string | null; gateway: string | null;
+  razorpayKeyId: string | null; gatewayEnabled: boolean; razorpaySecretSet: boolean;
+  booksFirmId: string | null; gstin: string | null;
+}
+export interface SaveBilling {
+  payeeName?: string | null; upiId?: string | null; bankName?: string | null;
+  accountName?: string | null; accountNo?: string | null; ifsc?: string | null;
+  qrImageUrl?: string | null; instructions?: string | null; gateway?: string | null;
+  razorpayKeyId?: string | null; razorpayKeySecret?: string | null; gatewayEnabled?: boolean;
+  booksFirmId?: string | null; gstin?: string | null;
+}
+
+export interface AddonService {
+  id: string; code: string; name: string; icon: string | null; unit: string | null;
+  rate: number; freeNote: string | null; billingType: string; active: boolean;
+  allowSelf: boolean; sortOrder: number;
+}
+export interface SaveAddonService {
+  code?: string | null; name: string; icon?: string | null; unit?: string | null;
+  rate: number; freeNote?: string | null; billingType?: string | null; active: boolean;
+  allowSelf: boolean; sortOrder: number;
+}
+
+export interface TurnoverInfo {
+  fyLabel: string; turnover: number; threshold: number;
+  gstApplicable: boolean; gstCollected: number;
+}

@@ -1,0 +1,380 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================================
+   GLOBAL PRINT — page print karte time app chrome (sidebar/header)
+   hata do. Invoice-preview modal apna khud ka print CSS use karta hai.
+   ============================================================ */
+@media print {
+  app-shell aside,
+  app-shell header,
+  .no-print { display: none !important; }
+  app-shell main { width: 100% !important; max-width: 100% !important; overflow: visible !important; }
+  html, body { height: auto !important; overflow: visible !important; background: #fff !important; }
+}
+
+/* ============================================================
+   ANJANINEX BRAND THEME — 3 solid colors, NO gradients/blends
+   ============================================================ */
+:root {
+  /* Logo colors (do NOT modify) */
+  --anjaninex-red:        #DC2626;
+  --anjaninex-red-dark:   #B91C1C;
+  --anjaninex-red-soft:   #FEE2E2;
+  --anjaninex-navy:       #1B2E5C;
+  --anjaninex-navy-dark:  #0F1E40;
+  --anjaninex-navy-soft:  #E5E9F2;
+  --anjaninex-cream:      #FAF7F0;
+  --anjaninex-cream-2:    #F5EFE3;
+
+  /* Semantic tokens (use these in components) */
+  --brand-primary:    var(--anjaninex-red);     /* CTAs */
+  --brand-secondary:  var(--anjaninex-navy);    /* structure */
+  --brand-light:      var(--anjaninex-cream);   /* page bg */
+  --brand-dark:       var(--anjaninex-navy-dark);
+
+  --bg:        var(--anjaninex-cream);
+  --card:      #FFFFFF;
+  --border:    #D6DDEA;                          /* very light navy tint */
+  --text:      var(--anjaninex-navy-dark);
+  --text-soft: #4A5878;
+
+  --ok:   #16A34A;
+  --warn: #D97706;
+  --err:  var(--anjaninex-red);
+  --info: var(--anjaninex-navy);
+}
+
+[data-theme="dark"] {
+  --bg:        #0A1226;
+  --card:      #15203D;
+  --border:    #2A3A5C;
+  --text:      #F0F3FA;
+  --text-soft: #B0BCD4;
+}
+
+* { box-sizing: border-box; }
+
+/* ============================================================
+   Shared back-link button — used across all pages
+   ============================================================ */
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--anjaninex-navy);
+  text-decoration: none;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #fff;
+  transition: all 0.15s;
+  cursor: pointer;
+}
+.back-link:hover {
+  background: var(--anjaninex-cream);
+  border-color: var(--anjaninex-navy);
+  color: var(--anjaninex-red);
+}
+.back-link svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* Page top bar — universal back button container at top of every page */
+.page-top-bar {
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+}
+
+body {
+  margin: 0;
+  font-family: 'DM Sans', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---------- BRAND HELPERS (solid, no gradient) ---------- */
+.brand-bg-red    { background: var(--anjaninex-red);  color: #fff; }
+.brand-bg-navy   { background: var(--anjaninex-navy); color: #fff; }
+.brand-bg-cream  { background: var(--anjaninex-cream); color: var(--text); }
+.brand-text-red  { color: var(--anjaninex-red); }
+.brand-text-navy { color: var(--anjaninex-navy); }
+
+/* Legacy alias — the old `brand-gradient` class is now a solid navy block.
+   Any component that used it for headers still works, just flat instead of gradient. */
+.brand-gradient {
+  background: var(--anjaninex-navy);
+  color: #fff;
+}
+
+/* Anjaninex logo block — red+navy split, NO blending */
+.anjaninex-block {
+  background: var(--anjaninex-red);
+  color: #fff;
+  position: relative;
+}
+.anjaninex-block::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--anjaninex-navy);
+  clip-path: polygon(50% 0, 100% 0, 100% 100%, 50% 100%);
+}
+
+/* ---------- BUTTONS ---------- */
+.btn-primary {
+  background: var(--anjaninex-red);
+  color: #fff;
+  padding: 10px 18px;
+  border-radius: 8px;
+  font-weight: 700;
+  border: 0;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.15s;
+}
+.btn-primary:hover  { background: var(--anjaninex-red-dark); transform: translateY(-1px); }
+.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; background: var(--anjaninex-red); }
+
+.btn-secondary {
+  background: var(--anjaninex-navy);
+  color: #fff;
+  padding: 10px 18px;
+  border-radius: 8px;
+  font-weight: 700;
+  border: 0;
+  cursor: pointer;
+}
+.btn-secondary:hover { background: var(--anjaninex-navy-dark); }
+
+.btn-outline {
+  background: transparent;
+  color: var(--anjaninex-navy);
+  padding: 10px 18px;
+  border-radius: 8px;
+  font-weight: 700;
+  border: 1.5px solid var(--anjaninex-navy);
+  cursor: pointer;
+}
+.btn-outline:hover { background: var(--anjaninex-navy-soft); }
+
+/* ---------- INPUTS ---------- */
+.input {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  font-size: 14px;
+  background: var(--card);
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.input:focus {
+  border-color: var(--anjaninex-navy);
+  box-shadow: 0 0 0 3px rgba(27, 46, 92, 0.12);
+}
+
+/* ---------- CARDS ---------- */
+.card {
+  background: var(--card);
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(27, 46, 92, 0.08);
+  padding: 24px;
+  border: 1px solid var(--border);
+}
+
+/* ---------- BADGES (status chips — solid fills) ---------- */
+.badge-red    { background: var(--anjaninex-red-soft);  color: var(--anjaninex-red-dark); padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; }
+.badge-navy   { background: var(--anjaninex-navy-soft); color: var(--anjaninex-navy);     padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; }
+.badge-success{ background: #DCFCE7;                    color: #15803D;                   padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; }
+.badge-warn   { background: #FEF3C7;                    color: #92400E;                   padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; }
+
+/* ============================================================
+   DARK MODE (quick invert) — shell ke 🌙 button se toggle hota hai.
+   Poora UI invert + hue-rotate; images/video/QR wapas normal kar diye
+   jaate hain taaki photos sahi dikhein.
+   ============================================================ */
+body.dark-mode {
+  filter: invert(1) hue-rotate(180deg);
+  background: #0e0e12;
+}
+body.dark-mode img,
+body.dark-mode video,
+body.dark-mode iframe {
+  filter: invert(1) hue-rotate(180deg);
+}
+
+/* ============================================================
+   COLOR THEMES (5) — sidebar ke color dots se badalte hain.
+   Tailwind ki anjaninex-* classes in RGB channel vars se chalti hain.
+   ============================================================ */
+:root {
+  /* Classic Navy-Red (default) */
+  --ax-red-rgb:        220 38 38;
+  --ax-red-dark-rgb:   185 28 28;
+  --ax-red-soft-rgb:   254 226 226;
+  --ax-navy-rgb:       27 46 92;
+  --ax-navy-dark-rgb:  15 30 64;
+  --ax-navy-soft-rgb:  229 233 242;
+  --ax-cream-rgb:      250 247 240;
+  --ax-cream2-rgb:     245 239 227;
+
+  /* Full-color semantic aliases (components use var(--ax-navy) etc.).
+     RGB channels se bante hain isliye theme-switch par bhi badalte hain. */
+  --ax-navy:       rgb(var(--ax-navy-rgb));
+  --ax-navy-dark:  rgb(var(--ax-navy-dark-rgb));
+  --ax-navy-soft:  rgb(var(--ax-navy-soft-rgb));
+  --ax-red:        rgb(var(--ax-red-rgb));
+  --ax-red-dark:   rgb(var(--ax-red-dark-rgb));
+  --ax-red-soft:   rgb(var(--ax-red-soft-rgb));
+  --ax-cream:      rgb(var(--ax-cream-rgb));
+  --soft:          #4A5878;
+  --xs:            #8A96AD;
+}
+
+/* 👑 Royal Purple */
+body.theme-royal {
+  --ax-navy-rgb: 76 29 149;  --ax-navy-dark-rgb: 46 16 101;  --ax-navy-soft-rgb: 237 233 254;
+  --ax-red-rgb: 219 39 119;  --ax-red-dark-rgb: 190 24 93;   --ax-red-soft-rgb: 252 231 243;
+  --anjaninex-navy: #4C1D95; --anjaninex-navy-dark: #2E1065; --anjaninex-navy-soft: #EDE9FE;
+  --anjaninex-red: #DB2777;  --anjaninex-red-dark: #BE185D;  --anjaninex-red-soft: #FCE7F3;
+}
+
+/* 🌲 Forest Green */
+body.theme-forest {
+  --ax-navy-rgb: 20 83 45;   --ax-navy-dark-rgb: 5 46 22;    --ax-navy-soft-rgb: 220 252 231;
+  --ax-red-rgb: 234 88 12;   --ax-red-dark-rgb: 194 65 12;   --ax-red-soft-rgb: 255 237 213;
+  --anjaninex-navy: #14532D; --anjaninex-navy-dark: #052E16; --anjaninex-navy-soft: #DCFCE7;
+  --anjaninex-red: #EA580C;  --anjaninex-red-dark: #C2410C;  --anjaninex-red-soft: #FFEDD5;
+}
+
+/* 🌊 Ocean Teal */
+body.theme-ocean {
+  --ax-navy-rgb: 14 116 144; --ax-navy-dark-rgb: 22 78 99;   --ax-navy-soft-rgb: 207 250 254;
+  --ax-red-rgb: 245 158 11;  --ax-red-dark-rgb: 217 119 6;   --ax-red-soft-rgb: 254 243 199;
+  --anjaninex-navy: #0E7490; --anjaninex-navy-dark: #164E63; --anjaninex-navy-soft: #CFFAFE;
+  --anjaninex-red: #F59E0B;  --anjaninex-red-dark: #D97706;  --anjaninex-red-soft: #FEF3C7;
+}
+
+/* 🖤 Midnight Black */
+body.theme-midnight {
+  --ax-navy-rgb: 24 24 27;   --ax-navy-dark-rgb: 9 9 11;     --ax-navy-soft-rgb: 228 228 231;
+  --ax-red-rgb: 220 38 38;   --ax-red-dark-rgb: 185 28 28;   --ax-red-soft-rgb: 254 226 226;
+  --anjaninex-navy: #18181B; --anjaninex-navy-dark: #09090B; --anjaninex-navy-soft: #E4E4E7;
+  --anjaninex-red: #DC2626;  --anjaninex-red-dark: #B91C1C;  --anjaninex-red-soft: #FEE2E2;
+}
+
+/* ============================================================
+   PREMIUM THEMES v2 — 2 gradient blends + 2 fluorescent neons
+   ============================================================ */
+
+/* 🌅 SUNSET BLEND — purple→pink→orange gradient */
+body.theme-sunset {
+  --ax-navy-rgb: 139 47 201;  --ax-navy-dark-rgb: 91 27 158;  --ax-navy-soft-rgb: 246 232 255;
+  --ax-red-rgb: 249 115 22;   --ax-red-dark-rgb: 234 88 12;   --ax-red-soft-rgb: 255 237 213;
+  --anjaninex-navy: #8B2FC9;  --anjaninex-navy-dark: #5B1B9E; --anjaninex-navy-soft: #F6E8FF;
+  --anjaninex-red: #F97316;   --anjaninex-red-dark: #EA580C;  --anjaninex-red-soft: #FFEDD5;
+}
+body.theme-sunset app-shell aside,
+body.theme-sunset app-shell header {
+  background: linear-gradient(160deg, #7C3AED 0%, #C026D3 45%, #F97316 110%) !important;
+}
+
+/* 🌌 AURORA BLEND — cyan→blue→violet gradient */
+body.theme-aurora {
+  --ax-navy-rgb: 14 116 144;  --ax-navy-dark-rgb: 19 78 74;   --ax-navy-soft-rgb: 204 251 241;
+  --ax-red-rgb: 99 102 241;   --ax-red-dark-rgb: 79 70 229;   --ax-red-soft-rgb: 224 231 255;
+  --anjaninex-navy: #0E7490;  --anjaninex-navy-dark: #134E4A; --anjaninex-navy-soft: #CCFBF1;
+  --anjaninex-red: #6366F1;   --anjaninex-red-dark: #4F46E5;  --anjaninex-red-soft: #E0E7FF;
+}
+body.theme-aurora app-shell aside,
+body.theme-aurora app-shell header {
+  background: linear-gradient(160deg, #06B6D4 0%, #3B82F6 50%, #8B5CF6 110%) !important;
+}
+
+/* ⚡ NEON CYBER — fluorescent green on black, glow ke saath */
+body.theme-neon {
+  --ax-navy-rgb: 10 10 18;    --ax-navy-dark-rgb: 0 0 0;      --ax-navy-soft-rgb: 217 255 224;
+  --ax-red-rgb: 0 230 118;    --ax-red-dark-rgb: 0 200 83;    --ax-red-soft-rgb: 232 255 232;
+  --anjaninex-navy: #0A0A12;  --anjaninex-navy-dark: #000000; --anjaninex-navy-soft: #D9FFE0;
+  --anjaninex-red: #00E676;   --anjaninex-red-dark: #00C853;  --anjaninex-red-soft: #E8FFE8;
+}
+body.theme-neon app-shell aside  { box-shadow: inset -1px 0 0 rgba(0,230,118,.5), 4px 0 24px rgba(0,230,118,.15); }
+body.theme-neon app-shell header { box-shadow: 0 1px 0 rgba(0,230,118,.5), 0 4px 24px rgba(0,230,118,.15); }
+
+/* 💜 NEON VIOLET — fluorescent magenta on deep purple-black, glow */
+body.theme-violet {
+  --ax-navy-rgb: 27 5 48;     --ax-navy-dark-rgb: 13 1 24;    --ax-navy-soft-rgb: 245 225 255;
+  --ax-red-rgb: 224 64 251;   --ax-red-dark-rgb: 194 23 232;  --ax-red-soft-rgb: 251 227 255;
+  --anjaninex-navy: #1B0530;  --anjaninex-navy-dark: #0D0118; --anjaninex-navy-soft: #F5E1FF;
+  --anjaninex-red: #E040FB;   --anjaninex-red-dark: #C217E8;  --anjaninex-red-soft: #FBE3FF;
+}
+body.theme-violet app-shell aside  { box-shadow: inset -1px 0 0 rgba(224,64,251,.5), 4px 0 24px rgba(224,64,251,.18); }
+body.theme-violet app-shell header { box-shadow: 0 1px 0 rgba(224,64,251,.5), 0 4px 24px rgba(224,64,251,.18); }
+
+/* 🥉 METALLIC GOLD — brown(+10% black) metallic structure + golden accent, neon-cyber jaisi glow */
+body.theme-gold {
+  --ax-navy-rgb: 62 39 35;    --ax-navy-dark-rgb: 33 20 16;   --ax-navy-soft-rgb: 247 238 221;
+  --ax-red-rgb: 212 175 55;   --ax-red-dark-rgb: 184 134 11;  --ax-red-soft-rgb: 255 248 220;
+  --anjaninex-navy: #3E2723;  --anjaninex-navy-dark: #211410; --anjaninex-navy-soft: #F7EEDD;
+  --anjaninex-red: #D4AF37;   --anjaninex-red-dark: #B8860B;  --anjaninex-red-soft: #FFF8DC;
+}
+/* metallic sheen — halki diagonal chamak brown par */
+body.theme-gold app-shell aside,
+body.theme-gold app-shell header {
+  background: linear-gradient(160deg, #4E342E 0%, #3E2723 35%, #271612 70%, #1A0E0A 100%) !important;
+}
+/* golden glow (neon-cyber style) */
+body.theme-gold app-shell aside  { box-shadow: inset -1px 0 0 rgba(212,175,55,.55), 4px 0 24px rgba(212,175,55,.18); }
+body.theme-gold app-shell header { box-shadow: 0 1px 0 rgba(212,175,55,.55), 0 4px 24px rgba(212,175,55,.18); }
+
+/* ROYAL touch for Metallic Gold — maroon→brown→black royal blend, richer gold */
+body.theme-gold app-shell aside,
+body.theme-gold app-shell header {
+  background: linear-gradient(160deg, #5C1F1B 0%, #4E2A1E 30%, #3A211B 60%, #1A0E0A 100%) !important;
+}
+body.theme-gold {
+  --anjaninex-navy: #4A2620;  --ax-navy-rgb: 74 38 32;
+}
+
+/* DARK CHERRY version — gehre cherry/maroon tones + gold */
+body.theme-gold app-shell aside,
+body.theme-gold app-shell header {
+  background: linear-gradient(160deg, #5E1219 0%, #4A0E15 35%, #350A10 65%, #1C0508 100%) !important;
+}
+body.theme-gold {
+  --anjaninex-navy: #4A0E15;      --ax-navy-rgb: 74 14 21;
+  --anjaninex-navy-dark: #1C0508; --ax-navy-dark-rgb: 28 5 8;
+  --anjaninex-navy-soft: #FBEAEA; --ax-navy-soft-rgb: 251 234 234;
+}
+
+/* NEON CYBER v2 — black ki jagah DARK GREY METALLIC + wahi green glow */
+body.theme-neon {
+  --anjaninex-navy: #2B2F36;      --ax-navy-rgb: 43 47 54;
+  --anjaninex-navy-dark: #16181D; --ax-navy-dark-rgb: 22 24 29;
+}
+body.theme-neon app-shell aside,
+body.theme-neon app-shell header {
+  background: linear-gradient(160deg, #3A3F47 0%, #2B2F36 40%, #1E2126 75%, #131519 100%) !important;
+}
+
+/* ============================================================
+   MOBILE FIT — phone par padding kam + tables horizontal scroll
+   ============================================================ */
+@media (max-width: 640px) {
+  main { padding: 10px !important; }
+  table { font-size: 12px; }
+  /* card ke andar wali tables phone par scroll ho jayein, layout na toote */
+  .card, .overflow-x-auto { -webkit-overflow-scrolling: touch; }
+  /* fixed multi-column grids phone par 2 column me wrap (common pattern) */
+  .grid-cols-3, .grid-cols-4, .grid-cols-5, .grid-cols-6 {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}

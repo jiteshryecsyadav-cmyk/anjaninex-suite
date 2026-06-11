@@ -1,0 +1,39 @@
+{
+  "name": "namokara-suite",
+  "version": "1.0.0",
+  "description": "Multi-tenant B2B SaaS platform — Trading, Accounting, Suppliers, HR. Built by Anjaninex.",
+  "private": true,
+  "author": "Anjaninex",
+  "license": "UNLICENSED",
+  "workspaces": [
+    "apps/web",
+    "apps/admin"
+  ],
+  "scripts": {
+    "start": "docker compose up -d",
+    "stop": "docker compose down",
+    "logs": "docker compose logs -f",
+    "reset": "docker compose down -v && docker compose up -d",
+    "db:migrate": "cd apps/api && dotnet ef database update",
+    "db:seed": "cd apps/api && dotnet run --project Tools/Seeder",
+    "web:dev": "cd apps/web && npm run start",
+    "api:dev": "cd apps/api && dotnet watch run",
+    "test": "npm run test --workspaces && cd apps/api && dotnet test",
+    "build": "npm run build --workspaces && cd apps/api && dotnet publish -c Release"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/anjaninex/namokara-suite"
+  },
+  "keywords": [
+    "saas",
+    "multi-tenant",
+    "angular",
+    "dotnet",
+    "postgresql",
+    "pwa",
+    "trading",
+    "accounting",
+    "hr"
+  ]
+}

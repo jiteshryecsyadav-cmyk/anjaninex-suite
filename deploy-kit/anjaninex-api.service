@@ -1,0 +1,15 @@
+[Unit]
+Description=Anjaninex .NET 8 API
+After=network.target postgresql.service
+
+[Service]
+WorkingDirectory=/var/www/anjaninex/api-out
+ExecStart=/usr/bin/dotnet /var/www/anjaninex/api-out/Namokara.Api.dll
+Restart=always
+RestartSec=5
+User=www-data
+Environment=ASPNETCORE_ENVIRONMENT=Production
+Environment=ASPNETCORE_URLS=http://127.0.0.1:5000
+
+[Install]
+WantedBy=multi-user.target

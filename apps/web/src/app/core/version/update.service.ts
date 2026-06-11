@@ -51,8 +51,10 @@ export class UpdateService {
     this.sw.versionUpdates
       .pipe(filter((evt): evt is VersionReadyEvent => evt.type === 'VERSION_READY'))
       .subscribe(async () => {
-        await this.loadChangelog();
-        this.newVersionAvailable.set(true);
+        // AUTO-UPDATE: naya version publish hote hi chup-chaap activate + reload.
+        // User ko manual "Update" / cache-clear nahi karna padega — hamesha latest.
+        try { await this.sw.activateUpdate(); } catch {}
+        document.location.reload();
       });
 
     this.sw.unrecoverable.subscribe(() => document.location.reload());

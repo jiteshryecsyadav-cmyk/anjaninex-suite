@@ -8,6 +8,7 @@ import { BackButtonComponent } from '../../../shared/back-button.component';
 import { InvoicePreviewComponent, PreviewData } from '../../../shared/invoice-preview.component';
 import { InDatePipe } from '../../../shared/in-date.pipe';
 import { PaginatorComponent } from '../../../shared/paginator.component';
+import { FeatureService } from '../../../shared/feature.service';
 
 @Component({
   selector: 'app-orders',
@@ -176,6 +177,7 @@ import { PaginatorComponent } from '../../../shared/paginator.component';
 })
 export class OrdersComponent {
   private svc = inject(TradingService);
+  features = inject(FeatureService);
   orders = signal<OrderListItem[]>([]);
   loading = signal(true);
   filterStatus = '';
@@ -258,8 +260,8 @@ export class OrdersComponent {
             title: 'ORDER CONFIRMATION',
             number: o.orderNo,
             date: o.orderDate,
-            firmName: 'Namokara Agencies',
-            firmGst: '24AAMPV0025C1Z3',
+            firmName: this.features.firmName() || 'Anjaninex',
+            firmGst: this.features.firmGst(),
             firmAddress: 'Commission Agent · Surat, Gujarat',
             supplier: {
               name: sup.displayName,

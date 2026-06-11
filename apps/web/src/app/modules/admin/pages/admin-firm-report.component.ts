@@ -135,7 +135,7 @@ export class AdminFirmReportComponent {
     const s = this.rep().summary;
     const doc = new jsPDF();
     doc.setFontSize(16); doc.setTextColor(92, 26, 139);
-    doc.text('Firms Report — Namokara', 14, 16);
+    doc.text('Firms Report — Anjaninex', 14, 16);
     doc.setFontSize(9); doc.setTextColor(80);
     doc.text(`Total: ${s.total}  Active: ${s.active}  Trial: ${s.trial}  Grace: ${s.grace}  Suspended: ${s.suspended}  Extended: ${s.extended}`, 14, 23);
     doc.text(new Date().toLocaleString('en-IN'), 14, 28);
@@ -176,7 +176,7 @@ export class AdminFirmReportComponent {
         td{border-bottom:1px solid #ddd;padding:6px 8px}
         small{color:#888}
       </style></head><body>
-      <h2>📈 Firms Report — Namokara</h2>
+      <h2>📈 Firms Report — Anjaninex</h2>
       <div class="sum">Total: ${s.total} · Active: ${s.active} · Trial: ${s.trial} · Grace: ${s.grace} · Suspended: ${s.suspended} · Extended: ${s.extended} &nbsp;|&nbsp; ${new Date().toLocaleString('en-IN')}</div>
       <table><thead><tr><th>Firm</th><th>Plan</th><th>Status</th><th style="text-align:right">Branches</th><th style="text-align:right">Staff</th><th>Plan Ends</th><th>Extended On</th><th style="text-align:right">Wallet</th></tr></thead>
       <tbody>${rowsHtml}</tbody></table>

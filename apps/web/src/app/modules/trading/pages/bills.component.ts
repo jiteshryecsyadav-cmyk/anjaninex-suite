@@ -8,6 +8,7 @@ import { BackButtonComponent } from '../../../shared/back-button.component';
 import { InvoicePreviewComponent, PreviewData } from '../../../shared/invoice-preview.component';
 import { InDatePipe } from '../../../shared/in-date.pipe';
 import { PaginatorComponent } from '../../../shared/paginator.component';
+import { FeatureService } from '../../../shared/feature.service';
 
 @Component({
   selector: 'app-bills',
@@ -185,6 +186,7 @@ import { PaginatorComponent } from '../../../shared/paginator.component';
 })
 export class BillsComponent {
   private svc = inject(TradingService);
+  features = inject(FeatureService);
   bills = signal<BillListItem[]>([]);
   loading = signal(true);
   filterStatus = '';
@@ -275,8 +277,8 @@ export class BillsComponent {
           number: b.billNo,
           date: b.billDate,
           // Namokara = commission agent (header). Supplier/Buyer = real bill parties.
-          firmName: 'Namokara Agencies',
-          firmGst: '24AAMPV0025C1Z3',
+          firmName: this.features.firmName() || 'Anjaninex',
+          firmGst: this.features.firmGst(),
           firmAddress: 'Commission Agent · Surat, Gujarat — 395003',
           supplier: card(supParty),
           buyer: card(buyParty),

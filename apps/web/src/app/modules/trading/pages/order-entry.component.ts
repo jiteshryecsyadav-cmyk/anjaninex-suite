@@ -13,6 +13,7 @@ import { amountInWords } from '../../../shared/amount-in-words.util';
 import { todayLocal } from '../../../shared/date.util';
 import { ToastService } from '../../../shared/toast.service';
 import { AuthService } from '../../../core/auth/auth.service';
+import { FeatureService } from '../../../shared/feature.service';
 
 interface LineRow {
   itemId: string | null;
@@ -91,7 +92,7 @@ interface LineRow {
           <div>
             <label class="lbl">COMPANY *</label>
             <select [(ngModel)]="company" class="ip">
-              <option value="namokara">Namokara Agencies-24AAMPV0025C1Z3</option>
+              <option value="namokara">{{ features.firmName() || 'Anjaninex' }}{{ features.firmGst() ? '-' + features.firmGst() : '' }}</option>
             </select>
           </div>
           <div>
@@ -989,6 +990,7 @@ interface LineRow {
 })
 export class OrderEntryComponent {
   private svc = inject(TradingService);
+  features = inject(FeatureService);
   private router = inject(Router);
   private toast = inject(ToastService);
   private route = inject(ActivatedRoute);
@@ -1549,7 +1551,7 @@ export class OrderEntryComponent {
       `Supplier: ${sup}\nBuyer: ${buy}\n` +
       `Items: ${this.lines().filter(l => l.itemName).length}\n` +
       `Net Total: ₹${this.netTotal().toFixed(2)}\n` +
-      `— Namokara Agencies`);
+      `— ${this.features.firmName() || 'Anjaninex'}`);
     const clean = phone.replace(/[^0-9]/g, '');
     window.open(`https://wa.me/${clean}?text=${msg}`, '_blank');
   }

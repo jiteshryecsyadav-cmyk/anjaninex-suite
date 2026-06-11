@@ -3,6 +3,7 @@ import { CommonModule, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { AccountingService, TrialBalance, ProfitLoss, BalanceSheet } from '../services/accounting.service';
+import { FeatureService } from '../../../shared/feature.service';
 
 // =============================================================================
 // Shared Sub-Nav Template (DRY)
@@ -57,7 +58,7 @@ const subNavTemplate = `
         <div class="card p-0 overflow-hidden">
           <div class="p-4 border-b flex items-center justify-between">
             <div>
-              <h3 class="font-display font-bold text-lg">Namokara Agencies — Trial Balance</h3>
+              <h3 class="font-display font-bold text-lg">{{ features.firmName() || 'Anjaninex' }} — Trial Balance</h3>
               <p class="text-xs text-gray-500">As of {{ d.asOf }}</p>
             </div>
             @if (d.isBalanced) {
@@ -135,6 +136,7 @@ const subNavTemplate = `
 })
 export class TrialBalanceComponent {
   private svc = inject(AccountingService);
+  features = inject(FeatureService);
   data = signal<TrialBalance | null>(null);
   loading = signal(true);
   asOf = new Date().toISOString().split('T')[0];

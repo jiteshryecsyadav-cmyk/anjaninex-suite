@@ -9,6 +9,7 @@ import { amountInWords } from '../../../shared/amount-in-words.util';
 import { InvoicePreviewComponent, PreviewData } from '../../../shared/invoice-preview.component';
 import { todayLocal } from '../../../shared/date.util';
 import { InDatePipe } from '../../../shared/in-date.pipe';
+import { FeatureService } from '../../../shared/feature.service';
 
 interface ReturnRow {
   selected: boolean;
@@ -38,7 +39,7 @@ interface ReturnRow {
         <div class="gh-left">
           <img src="anjaninex-logo.jpeg" alt="Anjaninex" class="gh-logo">
           <div>
-            <h2 class="gh-title">Goods Return (GR) — Namokara Agencies</h2>
+            <h2 class="gh-title">Goods Return (GR) — {{ features.firmName() || 'Anjaninex' }}</h2>
             <p class="gh-sub">Return items back to supplier · adjust bill or issue credit note</p>
           </div>
         </div>
@@ -756,6 +757,7 @@ interface ReturnRow {
 })
 export class GrEntryComponent {
   private svc = inject(TradingService);
+  features = inject(FeatureService);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
   editId: string | null = null;
@@ -1100,8 +1102,8 @@ export class GrEntryComponent {
       title: 'GOODS RETURN (GR)',
       number: this.tempGrNo(),
       date: this.grDate,
-      firmName: 'Namokara Agencies',
-      firmGst: '24AAMPV0025C1Z3',
+      firmName: this.features.firmName() || 'Anjaninex',
+      firmGst: this.features.firmGst(),
       firmAddress: 'Commission Agent · Surat, Gujarat',
       supplier: supCard,
       buyer: buyCard,

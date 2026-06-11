@@ -14,6 +14,7 @@ import { environment } from '../../../../environments/environment';
 import { forkJoin } from 'rxjs';
 import { InDatePipe } from '../../../shared/in-date.pipe';
 import { WaSendComponent } from '../../../shared/wa-send.component';
+import { FeatureService } from '../../../shared/feature.service';
 
 // CSV cell escaping: quote when value has comma/quote/newline; doubles inner quotes
 function csvCell(v: any): string {
@@ -352,6 +353,7 @@ const subNav = `
 })
 export class SalesRegisterComponent {
   private svc = inject(ReportsService);
+  features = inject(FeatureService);
   rows = signal<SalesRegisterRow[]>([]);
   loading = signal(true);
   fromDate = '';   // default: SAARE bills (date filter chahiye to user khud lagaye)
@@ -439,7 +441,7 @@ export class SalesRegisterComponent {
     if (rows.length > max) lines.push(`+${rows.length - max} aur...`);
     lines.push('------------------');
     lines.push(`Total: ₹${Math.round(this.totalSales()).toLocaleString('en-IN')}`);
-    lines.push('- Namokara Agencies');
+    lines.push('- ' + (this.features.firmName() || 'Anjaninex'));
     return lines.join('\n');
   }
   waPhone(): string | null {
@@ -793,6 +795,7 @@ export class SalesRegisterComponent {
 })
 export class OutstandingReportComponent {
   private svc = inject(ReportsService);
+  features = inject(FeatureService);
   rows = signal<OutstandingRow[]>([]);
   loading = signal(true);
 
@@ -884,7 +887,7 @@ export class OutstandingReportComponent {
     lines.push('------------------');
     const totPending = rows.reduce((s, r) => s + (r.pending || 0), 0);
     lines.push(`Total Pending: ₹${Math.round(totPending).toLocaleString('en-IN')}`);
-    lines.push('- Namokara Agencies');
+    lines.push('- ' + (this.features.firmName() || 'Anjaninex'));
     return lines.join('\n');
   }
   waPhone(): string | null {
@@ -3049,6 +3052,7 @@ interface OnTimeRow {
 export class OnTimeLateEarlyComponent {
   private svc = inject(ReportsService);
   private trading = inject(TradingService);
+  features = inject(FeatureService);
   bills = signal<SalesRegisterRow[]>([]);
   payments = signal<any[]>([]);
   parties = signal<Party[]>([]);
@@ -3227,7 +3231,7 @@ export class OnTimeLateEarlyComponent {
     lines.push('------------------');
     const totPending = rows.reduce((s, r) => s + (r.pending || 0), 0);
     lines.push(`Total Pending: ₹${Math.round(totPending).toLocaleString('en-IN')}`);
-    lines.push('- Namokara Agencies');
+    lines.push('- ' + (this.features.firmName() || 'Anjaninex'));
     return lines.join('\n');
   }
   waPhone(): string | null {
@@ -4334,6 +4338,7 @@ interface PendingOrderRow {
 })
 export class PendingOrdersReportComponent {
   private trading = inject(TradingService);
+  features = inject(FeatureService);
   orders = signal<OrderListItem[]>([]);
   parties = signal<Party[]>([]);
   bills = signal<BillListItem[]>([]);
@@ -4490,7 +4495,7 @@ export class PendingOrdersReportComponent {
     if (rows.length > max) lines.push(`+${rows.length - max} aur...`);
     lines.push('------------------');
     lines.push(`Total Pending Value: ₹${Math.round(this.totalPendingValue()).toLocaleString('en-IN')}`);
-    lines.push('- Namokara Agencies');
+    lines.push('- ' + (this.features.firmName() || 'Anjaninex'));
     return lines.join('\n');
   }
   waPhone(): string | null {
@@ -4940,6 +4945,7 @@ interface PartyGroupRow {
 export class PartyWiseReportComponent {
   private svc = inject(ReportsService);
   private trading = inject(TradingService);
+  features = inject(FeatureService);
   bills = signal<SalesRegisterRow[]>([]);
   parties = signal<Party[]>([]);
   loading = signal(true);
@@ -5130,7 +5136,7 @@ export class PartyWiseReportComponent {
     lines.push('------------------');
     const totPending = groups.reduce((s, g) => s + (g.totalPending || 0), 0);
     lines.push(`Total Pending: ₹${Math.round(totPending).toLocaleString('en-IN')}`);
-    lines.push('- Namokara Agencies');
+    lines.push('- ' + (this.features.firmName() || 'Anjaninex'));
     return lines.join('\n');
   }
   waPhone(): string | null {

@@ -8,6 +8,7 @@ import { BackButtonComponent } from '../../../shared/back-button.component';
 import { InvoicePreviewComponent, PreviewData } from '../../../shared/invoice-preview.component';
 import { InDatePipe } from '../../../shared/in-date.pipe';
 import { PaginatorComponent } from '../../../shared/paginator.component';
+import { FeatureService } from '../../../shared/feature.service';
 
 @Component({
   selector: 'app-payments',
@@ -135,6 +136,7 @@ import { PaginatorComponent } from '../../../shared/paginator.component';
 })
 export class PaymentsComponent {
   private svc = inject(TradingService);
+  features = inject(FeatureService);
   payments = signal<PaymentListItem[]>([]);
   loading = signal(true);
   filterType = '';
@@ -183,8 +185,8 @@ export class PaymentsComponent {
         address: party.city ? `Address on file · ${party.city}` : null
       };
       const firmCard = {
-        name: 'Namokara Agencies',
-        gst: '24AAMPV0025C1Z3',
+        name: this.features.firmName() || 'Anjaninex',
+        gst: this.features.firmGst(),
         mobile: '+91 98765 43210',
         city: 'Surat',
         address: 'Commission Agent · Surat, Gujarat — 395001'
@@ -207,8 +209,8 @@ export class PaymentsComponent {
         title: p.paymentType === 'receipt' ? 'PAYMENT RECEIPT' : 'PAYMENT VOUCHER',
         number: p.paymentNo,
         date: p.paymentDate,
-        firmName: 'Namokara Agencies',
-        firmGst: '24AAMPV0025C1Z3',
+        firmName: this.features.firmName() || 'Anjaninex',
+        firmGst: this.features.firmGst(),
         firmAddress: 'Commission Agent · Surat, Gujarat',
         // RECEIPT (we got money): we = supplier, party = buyer paying us
         // PAYMENT (we paid): party = supplier we paid, we = buyer

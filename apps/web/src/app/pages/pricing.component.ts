@@ -91,7 +91,7 @@ const PLANS: Plan[] = [
     monthlyInr: 9999,
     annualInr: 99999,
     cta: 'Contact Sales',
-    ctaLink: 'mailto:sales@namokara.com?subject=Enterprise%20Inquiry',
+    ctaLink: 'mailto:sales@anjaninex.com?subject=Enterprise%20Inquiry',
     limits: { users: 'Unlimited', branches: 'Unlimited', ai: 'Unlimited' },
     features: [
       'Everything in Business +',
@@ -316,7 +316,7 @@ const FAQS = [
           <a routerLink="/signup" class="bg-white text-[#5c1a8b] px-8 py-4 rounded-xl font-black text-lg hover:shadow-2xl transition">
             🚀 Start Free Trial
           </a>
-          <a href="mailto:sales@namokara.com" class="border-2 border-white text-white px-8 py-4 rounded-xl font-black text-lg hover:bg-white hover:text-[#5c1a8b] transition">
+          <a href="mailto:sales@anjaninex.com" class="border-2 border-white text-white px-8 py-4 rounded-xl font-black text-lg hover:bg-white hover:text-[#5c1a8b] transition">
             💬 Talk to Sales
           </a>
         </div>

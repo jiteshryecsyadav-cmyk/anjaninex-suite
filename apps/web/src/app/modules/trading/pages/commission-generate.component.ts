@@ -10,6 +10,7 @@ import { amountInWords } from '../../../shared/amount-in-words.util';
 import { ToastService } from '../../../shared/toast.service';
 import { InDatePipe } from '../../../shared/in-date.pipe';
 import { todayLocal, toLocalYmd } from '../../../shared/date.util';
+import { FeatureService } from '../../../shared/feature.service';
 
 interface CommRow {
   selected: boolean;
@@ -255,9 +256,9 @@ interface CommRow {
             <!-- Premium header band -->
             <div class="inv-band">
               <div class="ib-left">
-                <div class="ib-firm">Namokara Agencies</div>
+                <div class="ib-firm">{{ features.firmName() || 'Anjaninex' }}</div>
                 <div class="ib-tag">Commission Agent &amp; Brokerage Services</div>
-                <div class="ib-meta">GSTIN: 24AAMPV0025C1Z3 &nbsp;·&nbsp; Surat, Gujarat — 395003 &nbsp;·&nbsp; +91 98765 43210</div>
+                <div class="ib-meta">GSTIN: {{ features.firmGst() }} &nbsp;·&nbsp; Surat, Gujarat — 395003 &nbsp;·&nbsp; +91 98765 43210</div>
               </div>
               <div class="ib-right">
                 <div class="ib-doctype">COMMISSION TAX INVOICE</div>
@@ -279,8 +280,8 @@ interface CommRow {
             <div class="inv-fromto">
               <div class="ft-box">
                 <div class="ft-lbl">FROM &mdash; COMMISSION AGENT</div>
-                <div class="ft-name">Namokara Agencies</div>
-                <div class="ft-line">GSTIN: 24AAMPV0025C1Z3</div>
+                <div class="ft-name">{{ features.firmName() || 'Anjaninex' }}</div>
+                <div class="ft-line">GSTIN: {{ features.firmGst() }}</div>
                 <div class="ft-line">Surat, Gujarat — 395003</div>
                 <div class="ft-line">+91 98765 43210</div>
               </div>
@@ -361,7 +362,7 @@ interface CommRow {
                 This is a computer-generated invoice — no signature required.
               </div>
               <div class="foot-sig">
-                For <strong>Namokara Agencies</strong>
+                For <strong>{{ features.firmName() || 'Anjaninex' }}</strong>
                 <div class="sig-space"></div>
                 Authorised Signatory
               </div>
@@ -527,6 +528,7 @@ interface CommRow {
 })
 export class CommissionGenerateComponent {
   private svc = inject(TradingService);
+  features = inject(FeatureService);
   private router = inject(Router);
   private toast = inject(ToastService);
 

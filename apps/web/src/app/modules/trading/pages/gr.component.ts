@@ -8,6 +8,7 @@ import { InvoicePreviewComponent, PreviewData } from '../../../shared/invoice-pr
 import { BackButtonComponent } from '../../../shared/back-button.component';
 import { InDatePipe } from '../../../shared/in-date.pipe';
 import { PaginatorComponent } from '../../../shared/paginator.component';
+import { FeatureService } from '../../../shared/feature.service';
 
 @Component({
   selector: 'app-gr-list',
@@ -117,6 +118,7 @@ import { PaginatorComponent } from '../../../shared/paginator.component';
 })
 export class GrComponent {
   private svc = inject(TradingService);
+  features = inject(FeatureService);
 
   grs = signal<GoodsReturnListItem[]>([]);
   loading = signal(true);
@@ -157,8 +159,8 @@ export class GrComponent {
             title: 'GOODS RETURN NOTE',
             number: g.grNo,
             date: g.grDate,
-            firmName: 'Namokara Agencies',
-            firmGst: '24AAMPV0025C1Z3',
+            firmName: this.features.firmName() || 'Anjaninex',
+            firmGst: this.features.firmGst(),
             firmAddress: 'Commission Agent · Surat, Gujarat',
             supplier: {
               name: sup.displayName,

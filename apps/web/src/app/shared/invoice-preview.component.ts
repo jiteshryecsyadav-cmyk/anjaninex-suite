@@ -1,6 +1,7 @@
-import { Component, Input, Output, EventEmitter } from '@angular/core';
+import { Component, Input, Output, EventEmitter, inject } from '@angular/core';
 import { CommonModule, DatePipe, DecimalPipe } from '@angular/common';
 import { amountInWords } from './amount-in-words.util';
+import { FeatureService } from './feature.service';
 
 export interface PreviewParty {
   name: string;
@@ -272,7 +273,7 @@ export interface PreviewData {
                   <span>Broker Commission &#64; {{ data.commissionPct }}%</span>
                   <strong>₹ {{ data.commissionAmount | number:'1.2-2' }}</strong>
                 </div>
-                <div class="pay-comm-note">Commission Namokara Agencies ko — bill/payment par koi effect nahi.</div>
+                <div class="pay-comm-note">Commission {{ features.firmName() || 'Anjaninex' }} ko — bill/payment par koi effect nahi.</div>
               }
             </div>
           </div>
@@ -436,6 +437,7 @@ export interface PreviewData {
 export class InvoicePreviewComponent {
   @Input() data!: PreviewData;
   @Output() close = new EventEmitter<void>();
+  features = inject(FeatureService);
 
   /** Watermark text — firm ka pehla shabd (Namokara) uppercase. */
   wmText(): string {

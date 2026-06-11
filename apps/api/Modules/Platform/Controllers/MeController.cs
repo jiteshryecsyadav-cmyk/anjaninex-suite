@@ -197,6 +197,10 @@ public class MeController : ControllerBase
         return Ok(new
         {
             firmName = firm.Name,
+            firmGst = firm.GstNumber,
+            firmPan = firm.PanNumber,
+            firmCity = firm.City,
+            firmState = firm.State,
             modules = enabled,
             planCode = firm.PlanCode ?? "starter",
             limits = new

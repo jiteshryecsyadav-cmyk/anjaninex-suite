@@ -14,6 +14,7 @@ import { amountInWords } from '../../../shared/amount-in-words.util';
 import { todayLocal } from '../../../shared/date.util';
 import { ToastService } from '../../../shared/toast.service';
 import { InDatePipe } from '../../../shared/in-date.pipe';
+import { FeatureService } from '../../../shared/feature.service';
 import { firstValueFrom } from 'rxjs';
 
 interface LineRow {
@@ -45,7 +46,7 @@ interface LineRow {
         <div class="bh-left">
           <img src="anjaninex-logo.jpeg" alt="Anjaninex" class="bh-logo">
           <div>
-            <h2 class="bh-title">Namokara Agencies</h2>
+            <h2 class="bh-title">{{ features.firmName() || 'Anjaninex' }}</h2>
             <p class="bh-sub">Bill Entry · ✍️ Prepared by: <strong>{{ auth.user()?.fullName }}</strong></p>
           </div>
         </div>
@@ -92,7 +93,7 @@ interface LineRow {
           <div>
             <label class="lbl">COMPANY *</label>
             <select [(ngModel)]="company" class="ip">
-              <option value="namokara">Namokara Agencies-24AAMPV0025C1Z3</option>
+              <option value="namokara">{{ features.firmName() || 'Anjaninex' }}{{ features.firmGst() ? '-' + features.firmGst() : '' }}</option>
             </select>
           </div>
           <div>
@@ -1402,6 +1403,7 @@ interface LineRow {
 })
 export class BillEntryComponent {
   private svc = inject(TradingService);
+  features = inject(FeatureService);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
   auth = inject(AuthService);

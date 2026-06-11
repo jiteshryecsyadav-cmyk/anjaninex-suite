@@ -19,6 +19,10 @@ export type ModuleKey =
 
 export interface MeModulesResponse {
   firmName?: string;
+  firmGst?: string;
+  firmPan?: string;
+  firmCity?: string;
+  firmState?: string;
   modules: ModuleKey[];
   planCode: string;
   limits: {
@@ -58,6 +62,10 @@ export class FeatureService {
   /** Set of enabled module keys for the current firm. */
   modules = signal<Set<ModuleKey>>(new Set());
   firmName = signal<string>('');
+  firmGst = signal<string>('');
+  firmPan = signal<string>('');
+  firmCity = signal<string>('');
+  firmState = signal<string>('');
   planCode = signal<string>('starter');
   userLimit = signal<number>(3);
   branchLimit = signal<number>(1);
@@ -98,6 +106,10 @@ export class FeatureService {
       next: (r) => {
         this.modules.set(new Set<ModuleKey>(r.modules));
         this.firmName.set(r.firmName || '');
+        this.firmGst.set(r.firmGst || '');
+        this.firmPan.set(r.firmPan || '');
+        this.firmCity.set(r.firmCity || '');
+        this.firmState.set(r.firmState || '');
         this.planCode.set(r.planCode);
         this.userLimit.set(r.limits.userLimit);
         this.branchLimit.set(r.limits.branchLimit);

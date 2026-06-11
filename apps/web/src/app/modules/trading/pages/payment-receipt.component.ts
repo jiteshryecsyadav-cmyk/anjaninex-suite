@@ -12,6 +12,7 @@ import { todayLocal, toLocalYmd } from '../../../shared/date.util';
 import { ToastService } from '../../../shared/toast.service';
 import { InDatePipe } from '../../../shared/in-date.pipe';
 import { InvoicePreviewComponent, PreviewData } from '../../../shared/invoice-preview.component';
+import { FeatureService } from '../../../shared/feature.service';
 
 interface PayTxn {
   mode: 'Cheque' | 'NEFT' | 'RTGS' | 'UPI' | 'Cash';
@@ -89,7 +90,7 @@ interface PartyBehavior {
             <label class="lbl">COMPANY *</label>
             <select [(ngModel)]="company" class="ip">
               <option value="">— Select Company —</option>
-              <option value="namokara">Namokara Agencies-24AAMPV0025C1Z3</option>
+              <option value="namokara">{{ features.firmName() || 'Anjaninex' }}{{ features.firmGst() ? '-' + features.firmGst() : '' }}</option>
             </select>
           </div>
           <div>
@@ -948,6 +949,7 @@ interface PartyBehavior {
 })
 export class PaymentReceiptComponent {
   private svc = inject(TradingService);
+  features = inject(FeatureService);
   private http = inject(HttpClient);
   private router = inject(Router);
   private toast = inject(ToastService);
@@ -1360,15 +1362,15 @@ export class PaymentReceiptComponent {
     const supCard = sup
       ? { name: sup.displayName, gst: sup.gst, mobile: sup.phone, city: sup.city,
           address: sup.city ? `Address on file · ${sup.city}` : null }
-      : { name: 'Namokara Agencies', gst: '24AAMPV0025C1Z3', mobile: null,
+      : { name: this.features.firmName() || 'Anjaninex', gst: this.features.firmGst(), mobile: null,
           city: 'Surat', address: 'Commission Agent · Surat, Gujarat' };
     this.previewData.set({
       type: 'payment',
       title: 'PAYMENT RECEIPT',
       number: this.manualVNo || '(Auto — save par milega)',
       date: this.receiptDate,
-      firmName: 'Namokara Agencies',
-      firmGst: '24AAMPV0025C1Z3',
+      firmName: this.features.firmName() || 'Anjaninex',
+      firmGst: this.features.firmGst(),
       firmAddress: 'Commission Agent · Surat, Gujarat',
       supplier: supCard,            // asli supplier (broker Namokara footer me hai hi)
       buyer: partyCard,

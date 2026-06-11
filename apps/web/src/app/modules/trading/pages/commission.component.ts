@@ -29,6 +29,7 @@ interface CommBill {
 import { BackButtonComponent } from '../../../shared/back-button.component';
 import { InDatePipe } from '../../../shared/in-date.pipe';
 import { PaginatorComponent } from '../../../shared/paginator.component';
+import { FeatureService } from '../../../shared/feature.service';
 
 @Component({
   selector: 'app-commission',
@@ -518,6 +519,7 @@ import { PaginatorComponent } from '../../../shared/paginator.component';
 })
 export class CommissionComponent {
   private svc = inject(TradingService);
+  features = inject(FeatureService);
 
   parties = signal<Party[]>([]);
   rawBills = signal<BillListItem[]>([]);
@@ -740,8 +742,8 @@ export class CommissionComponent {
           address: party.city ? `Address on file · ${party.city}` : null
         };
         const firmCard = {
-          name: 'Namokara Agencies',
-          gst: '24AAMPV0025C1Z3',
+          name: this.features.firmName() || 'Anjaninex',
+          gst: this.features.firmGst(),
           mobile: '+91 98765 43210',
           city: 'Surat',
           address: 'Commission Agent · Surat, Gujarat — 395003'
@@ -751,8 +753,8 @@ export class CommissionComponent {
           title: bill.billType === 'sales' ? 'SALES INVOICE' : 'PURCHASE BILL',
           number: bill.billNo,
           date: bill.billDate,
-          firmName: 'Namokara Agencies',
-          firmGst: '24AAMPV0025C1Z3',
+          firmName: this.features.firmName() || 'Anjaninex',
+          firmGst: this.features.firmGst(),
           firmAddress: 'Commission Agent · Surat, Gujarat',
           supplier: firmCard,
           buyer: partyCard,
@@ -878,8 +880,8 @@ export class CommissionComponent {
           address: party.city ? `Address on file · ${party.city}` : null
         };
         const firmCard = {
-          name: 'Namokara Agencies',
-          gst: '24AAMPV0025C1Z3',
+          name: this.features.firmName() || 'Anjaninex',
+          gst: this.features.firmGst(),
           mobile: '+91 98765 43210',
           city: 'Surat',
           address: 'Commission Agent · Surat, Gujarat — 395003'
@@ -890,8 +892,8 @@ export class CommissionComponent {
           title: 'COMMISSION INVOICE',
           number: full.invoiceNo,
           date: full.invoiceDate,
-          firmName: 'Namokara Agencies',
-          firmGst: '24AAMPV0025C1Z3',
+          firmName: this.features.firmName() || 'Anjaninex',
+          firmGst: this.features.firmGst(),
           firmAddress: 'Commission Agent · Surat, Gujarat',
           supplier: firmCard,
           buyer: partyCard,
@@ -922,7 +924,7 @@ export class CommissionComponent {
       `Date: ${inv.invoiceDate}\n` +
       `Bills: ${inv.billCount}\n` +
       `Total: ₹${(+inv.totalAmount).toFixed(2)}\n\n` +
-      `- Namokara Agencies`
+      `- ${this.features.firmName() || 'Anjaninex'}`
     );
     window.open(`https://wa.me/91${ten}?text=${msg}`, '_blank');
   }

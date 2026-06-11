@@ -378,16 +378,16 @@ body.theme-neon app-shell header {
   app-pro-dashboard, app-dashboard, app-shell { display: block; overflow-x: hidden; max-width: 100vw; }
   /* fixed-width side panels/dropdowns phone par fit */
   .alerts-dropdown, .insights-panel { width: auto !important; max-width: calc(100vw - 20px) !important; }
-  /* charts/SVGs bahut compact (mobile) — chhoti height, kam khaali jagah */
-  .chart-svg, svg.chart-svg { max-width: 100% !important; height: 90px !important; }
-  .chart-svg-donut, svg.chart-svg-donut { max-width: 100% !important; height: 100px !important; }
-  .kpi-spark { max-width: 100% !important; height: 20px !important; }
-  /* dashboard cards: padding/margin/gap kam → screen me zyada content */
+  /* MOBILE: charts phone pe theek nahi fit hote → graph wale cards hide,
+     sirf KPI number cards + useful lists/alerts dikhein (clean + fast) */
+  .widget:has(.chart-svg), .widget:has(.chart-svg-donut) { display: none !important; }
+  .kpi-spark { display: none !important; }            /* KPI ki chhoti line hatao — saaf number */
+  /* cards compact */
   .widget, .chart-card, .kpi-card { padding: 10px !important; }
   .widget-head { padding-bottom: 6px !important; margin-bottom: 8px !important; }
   .widget { margin-bottom: 8px !important; }
-  .trend-summary { margin: 4px 0 !important; }
   .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 8px !important; }
+  .kpi-value { font-size: 22px !important; }
 
   /* Tables: poori width par horizontal scroll, layout na toote */
   table {

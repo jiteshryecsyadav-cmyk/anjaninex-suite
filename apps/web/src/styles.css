@@ -372,6 +372,14 @@ body.theme-neon app-shell header {
   /* thoda top space taaki dashboard ka pehla row topbar ke neeche na chhupe */
   main { padding: 18px 10px 12px !important; }
 
+  /* page kabhi side me na khinche (cards/charts cut na ho) */
+  html, body { overflow-x: hidden !important; max-width: 100%; }
+  /* charts/SVGs screen me fit */
+  .chart-svg, .chart-svg-donut, svg.chart-svg, svg.chart-svg-donut, .kpi-spark {
+    max-width: 100% !important; height: auto;
+  }
+  .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+
   /* Tables: poori width par horizontal scroll, layout na toote */
   table {
     display: block !important;

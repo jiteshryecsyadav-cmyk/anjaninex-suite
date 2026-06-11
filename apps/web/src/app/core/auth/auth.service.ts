@@ -35,6 +35,25 @@ export class AuthService {
   accessToken = this._accessToken.asReadonly();
   isAuthenticated = computed(() => this._accessToken() !== null);
 
+  // App background/band me itni der se zyada raha to auto-logout (mobile security)
+  private static readonly BG_LOGOUT_MS = 2 * 60 * 1000; // 2 minute
+
+  constructor() {
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+          localStorage.setItem('ax_bg', String(Date.now()));   // background gaya — time note
+        } else {
+          const bg = +(localStorage.getItem('ax_bg') || 0);     // wapas aaya
+          localStorage.removeItem('ax_bg');
+          if (this.isAuthenticated() && bg && Date.now() - bg > AuthService.BG_LOGOUT_MS) {
+            this.logout();                                      // 2 min+ → logout
+          }
+        }
+      });
+    }
+  }
+
   async login(identifier: string, password: string): Promise<void> {
     const res = await firstValueFrom(
       this.http.post<LoginResponse>(`${environment.apiUrl}/api/auth/login`, {
@@ -107,6 +126,13 @@ export class AuthService {
    *   4. session restored
    */
   async restoreSession(): Promise<void> {
+    // 2-min rule: app background/band me 2 min+ raha to session restore mat karo — logout rakho
+    const bg = +(localStorage.getItem('ax_bg') || 0);
+    if (bg && Date.now() - bg > AuthService.BG_LOGOUT_MS) {
+      localStorage.removeItem('ax_bg');
+      this.clearSession();
+      return;
+    }
     // Try silent refresh — HttpOnly cookie attaches automatically with credentials: include
     try {
       const res = await fetch('/api/auth/refresh', {

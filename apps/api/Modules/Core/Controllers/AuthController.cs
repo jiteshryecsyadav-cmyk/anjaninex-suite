@@ -28,8 +28,7 @@ public class AuthController : ControllerBase
         Secure = !HttpContext.Request.Host.Host.StartsWith("localhost"),
         SameSite = SameSiteMode.Strict,
         IsEssential = true,
-        Path = "/api/auth",      // narrow path — only sent to auth endpoints
-        Expires = DateTimeOffset.UtcNow.AddDays(days)
+        Path = "/api/auth"       // SESSION cookie (no Expires): app band hote hi session khatam -> reopen pe login
     };
 
     /// <summary>

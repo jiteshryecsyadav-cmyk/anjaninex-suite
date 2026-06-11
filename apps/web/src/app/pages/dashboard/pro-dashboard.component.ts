@@ -170,10 +170,9 @@ interface DonutSeg { label: string; color: string; value: number; pct: number; d
               <text x="5" y="105" class="ax-lbl">{{ axLbl(0.429) }}</text>
               <text x="5" y="145" class="ax-lbl">{{ axLbl(0.143) }}</text>
               <text x="15" y="170" class="ax-lbl">0</text>
-              <polygon [attr.points]="trendAreaPath()" fill="url(#trendArea)"/>
-              <polyline [attr.points]="trendLinePath()" fill="none" stroke="#1B2E5C" stroke-width="2.5"/>
               @for (p of trendPoints(); track p.label; let i = $index) {
-                <circle [attr.cx]="40 + i * 47" [attr.cy]="160 - p.value * 1.4" r="3.5" fill="#fff" stroke="#1B2E5C" stroke-width="2"/>
+                <rect [attr.x]="40 + i * 47 - 13" [attr.y]="160 - p.value * 1.4" width="26"
+                      [attr.height]="p.value * 1.4" rx="3" fill="#1B2E5C" opacity="0.88"/>
                 <text [attr.x]="40 + i * 47" y="185" class="ax-lbl" text-anchor="middle">{{ p.label }}</text>
               }
             </svg>

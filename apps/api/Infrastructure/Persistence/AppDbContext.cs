@@ -95,7 +95,12 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<Firm>().ToTable("firms", "platform");
         modelBuilder.Entity<SubscriptionPlan>().ToTable("subscription_plans", "platform");
         modelBuilder.Entity<WalletLedgerEntry>().ToTable("wallet_ledger", "platform");
-        modelBuilder.Entity<PlatformRevenueEntry>().ToTable("platform_revenue", "platform");
+        modelBuilder.Entity<PlatformRevenueEntry>(e =>
+        {
+            e.ToTable("platform_revenue", "platform");
+            // margin_inr DB me GENERATED ALWAYS hai — EF isse INSERT/UPDATE me na bheje
+            e.Property(x => x.MarginInr).HasComputedColumnSql("gross_inr - cost_inr", stored: true);
+        });
         modelBuilder.Entity<ChangelogEntry>().ToTable("changelog", "platform");
 
         // Core

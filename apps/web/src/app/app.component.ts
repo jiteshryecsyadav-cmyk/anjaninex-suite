@@ -44,6 +44,8 @@ export class AppComponent implements OnInit {
 
       const v = el.value;
       if (!v) return;
+      // value me '@' ya koi digit ho (email/UPI/IFSC/GST/account/phone/code) → Title-case mat karo
+      if (/[@\d]/.test(v)) return;
       const tc = v.replace(/[\p{L}][\p{L}'’]*/gu,
         (w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
       if (tc !== v) {

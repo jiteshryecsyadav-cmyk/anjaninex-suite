@@ -464,7 +464,7 @@ type Tab = 'recharge' | 'history' | 'pricing' | 'auto';
   styles: [`
     /* ===== Plan Pay QR popup (Option B) ===== */
     .qr-pop-backdrop{position:fixed;inset:0;background:rgba(15,30,64,0.62);backdrop-filter:blur(4px);z-index:720;display:flex;align-items:center;justify-content:center;padding:18px;animation:fadeIn 0.18s ease}
-    .qr-pop{background:#fff;border-radius:16px;width:100%;max-width:380px;box-shadow:0 24px 70px rgba(0,0,0,0.35);overflow:hidden;animation:fadeIn 0.22s ease}
+    .qr-pop{background:#fff;border-radius:16px;width:100%;max-width:380px;box-shadow:0 24px 70px rgba(0,0,0,0.35);max-height:92vh;overflow-y:auto;animation:fadeIn 0.22s ease}
     .qr-pop-head{background:var(--ax-navy);color:#fff;padding:14px 18px;display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid var(--ax-red)}
     .qr-pop-title{font-size:16px;font-weight:800}
     .qr-pop-sub{font-size:11px;opacity:0.85;margin-top:1px}

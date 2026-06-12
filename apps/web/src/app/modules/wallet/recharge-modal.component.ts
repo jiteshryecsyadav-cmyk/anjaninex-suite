@@ -380,9 +380,9 @@ type Tab = 'recharge' | 'history' | 'pricing' | 'auto';
             <button class="btn-block" style="width:auto;padding:10px 20px" (click)="close()">Cancel</button>
             @if (activeTab() === 'recharge') {
               <button class="btn-block primary" style="width:auto;padding:10px 26px;font-size:13px"
-                      [disabled]="processing() || amount() < 100"
-                      (click)="submit()">
-                {{ processing() ? 'Processing...' : '💳 Pay ₹' + (breakdown().total | number:'1.0-0') }}
+                      [disabled]="amount() < 100"
+                      (click)="openRechargePay()">
+                💳 Pay ₹{{ breakdown().total | number:'1.0-0' }}
               </button>
             } @else if (activeTab() === 'auto') {
               <button class="btn-block primary" style="width:auto;padding:10px 26px" (click)="saveAuto()">💾 Save Settings</button>
@@ -410,8 +410,19 @@ type Tab = 'recharge' | 'history' | 'pricing' | 'auto';
             <small>₹{{ pp.price | number:'1.0-0' }} + 18% GST</small>
           </div>
 
-          <div class="qr-pop-img">
-            <img [src]="qrUrl()" alt="Payment QR" width="220" height="220" />
+          <div class="qr-pop-img" style="position:relative">
+            <img [src]="qrUrl()" alt="Payment QR" width="220" height="220"
+                 [style.filter]="qrExpired() ? 'blur(5px) grayscale(1)' : 'none'" />
+            @if (qrExpired()) {
+              <div class="qr-expired" (click)="refreshQr()">
+                <div style="font-weight:800;margin-bottom:6px">⏱ QR Expired</div>
+                <button class="qr-refresh-btn" (click)="refreshQr()">🔄 Refresh QR</button>
+              </div>
+            }
+          </div>
+
+          <div class="qr-timer" [class.qr-timer-red]="qrLeft() <= 30 && !qrExpired()">
+            @if (!qrExpired()) { ⏱ Valid for <strong>{{ qrClock() }}</strong> } @else { ⛔ QR expired — Refresh karein }
           </div>
 
           <div class="qr-pop-upi">
@@ -421,10 +432,22 @@ type Tab = 'recharge' | 'history' | 'pricing' | 'auto';
             }
           </div>
 
+          @if (payInfo()?.accountNo || payInfo()?.bankName) {
+            <div class="qr-bank">
+              <div class="qr-bank-head">🏦 Bank Transfer (NEFT / IMPS)</div>
+              @if (payInfo()?.accountName) { <div class="qr-bank-row"><span>Name</span><b>{{ payInfo()?.accountName }}</b></div> }
+              @if (payInfo()?.bankName) { <div class="qr-bank-row"><span>Bank</span><b>{{ payInfo()?.bankName }}</b></div> }
+              @if (payInfo()?.accountNo) { <div class="qr-bank-row"><span>A/C No</span><b class="mono">{{ payInfo()?.accountNo }}</b></div> }
+              @if (payInfo()?.ifsc) { <div class="qr-bank-row"><span>IFSC</span><b class="mono">{{ payInfo()?.ifsc }}</b></div> }
+            </div>
+          }
+
           <div class="qr-pop-note">
-            Kisi bhi UPI app (GPay / PhonePe / Paytm) se upar ka QR scan karein —
-            amount <strong>₹{{ breakdown().total | number:'1.0-0' }}</strong> already set hai.
+            UPI app (GPay / PhonePe / Paytm) se QR scan karein — amount
+            <strong>₹{{ breakdown().total | number:'1.0-0' }}</strong> already set hai.
           </div>
+
+          <button class="qr-gateway-btn" (click)="payViaGateway()">💳 Pay via Card / Net Banking</button>
 
           <label class="qr-pop-lbl">Payment ke baad UPI Transaction ID daalein</label>
           <input class="qr-pop-input" [(ngModel)]="upiTxnId" placeholder="e.g. 4039XXXXXXXX" />
@@ -464,6 +487,19 @@ type Tab = 'recharge' | 'history' | 'pricing' | 'auto';
     .qr-pop-submit:disabled{opacity:0.5;cursor:not-allowed}
     .qr-pop-submit:not(:disabled):hover{background:#13234d}
     .qr-pop-cancel{width:calc(100% - 36px);margin:0 18px 16px;padding:9px;background:transparent;color:var(--soft);border:1px solid var(--border);border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit}
+    /* QR timer + expire + bank + gateway */
+    .qr-timer{text-align:center;font-size:12px;color:var(--soft);padding:2px 18px 4px}
+    .qr-timer strong{color:var(--ax-navy);font-family:ui-monospace,monospace}
+    .qr-timer-red strong, .qr-timer.qr-timer-red{color:var(--ax-red)}
+    .qr-expired{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(255,255,255,0.72);border-radius:12px;cursor:pointer}
+    .qr-refresh-btn{background:var(--ax-red);color:#fff;border:0;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit}
+    .qr-bank{margin:6px 18px 4px;border:1px solid var(--border);border-radius:10px;padding:8px 12px;background:var(--ax-cream)}
+    .qr-bank-head{font-size:11px;font-weight:800;color:var(--ax-navy);margin-bottom:4px}
+    .qr-bank-row{display:flex;justify-content:space-between;font-size:12px;padding:1px 0}
+    .qr-bank-row span{color:var(--soft)}
+    .qr-bank-row b{color:var(--ax-navy)}
+    .qr-gateway-btn{width:calc(100% - 36px);margin:4px 18px 6px;padding:10px;background:#fff;color:var(--ax-navy);border:1.5px solid var(--ax-navy);border-radius:10px;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit}
+    .qr-gateway-btn:hover{background:var(--ax-navy);color:#fff}
 
     .modal-backdrop{position:fixed;inset:0;background:rgba(15,30,64,0.55);backdrop-filter:blur(3px);z-index:600;display:flex;align-items:center;justify-content:center;padding:20px;animation:fadeIn 0.2s ease}
     @keyframes fadeIn{from{opacity:0}to{opacity:1}}
@@ -660,8 +696,26 @@ export class RechargeModalComponent {
   ai = signal<{ provider: string; providerName: string; keySet: boolean; consoleUrl: string } | null>(null);
 
   // Admin-configured payment details (UPI/QR) — recharge modal me dikhane ke liye
-  payInfo = signal<{ payeeName?: string; upiId?: string; qrImageUrl?: string } | null>(null);
+  payInfo = signal<{ payeeName?: string; upiId?: string; qrImageUrl?: string; bankName?: string; accountName?: string; accountNo?: string; ifsc?: string; instructions?: string } | null>(null);
   payUpiId(): string { return this.payInfo()?.upiId || ''; }
+
+  // ── QR 2-min validity timer ──
+  qrLeft = signal(120);
+  qrNonce = signal(0);
+  qrExpired = computed(() => this.qrLeft() <= 0);
+  qrClock = computed(() => { const s = Math.max(0, this.qrLeft()); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; });
+  private qrTimer: any = null;
+  private startQrTimer(): void {
+    this.qrLeft.set(120);
+    this.qrNonce.set(Date.now());
+    clearInterval(this.qrTimer);
+    this.qrTimer = setInterval(() => {
+      this.qrLeft.update(v => v - 1);
+      if (this.qrLeft() <= 0) clearInterval(this.qrTimer);
+    }, 1000);
+  }
+  refreshQr(): void { this.startQrTimer(); }
+  ngOnDestroy(): void { clearInterval(this.qrTimer); }
   qrUrl(): string {
     const p = this.payInfo();
     if (!p) return '';
@@ -801,8 +855,17 @@ export class RechargeModalComponent {
     this.method.set('upi');
     this.upiTxnId = '';
     this.payPlan.set(plan);
+    this.startQrTimer();
   }
-  closePlanQr(): void { this.payPlan.set(null); }
+  /** Recharge tab ka Pay button — same QR popup (Wallet Recharge naam se) */
+  openRechargePay(): void {
+    if (this.amount() < 100) return;
+    this.method.set('upi');
+    this.upiTxnId = '';
+    this.payPlan.set({ name: 'Wallet Recharge', price: this.amount() });
+    this.startQrTimer();
+  }
+  closePlanQr(): void { this.payPlan.set(null); clearInterval(this.qrTimer); }
 
   async copyUpi(): Promise<void> {
     const upi = this.payUpiId();
@@ -811,6 +874,11 @@ export class RechargeModalComponent {
       await navigator.clipboard.writeText(upi);
       alert('Copied: ' + upi);
     } catch {}
+  }
+
+  payViaGateway(): void {
+    // Online gateway (Razorpay) abhi wired nahi — UPI/Bank manual flow use karein
+    alert('💳 Online gateway (Card / Net Banking / UPI AutoPay) jald aa raha hai.\n\nAbhi QR scan ya Bank transfer se payment karein, phir UPI Transaction ID daal ke "Payment Done — Submit" dabayein.');
   }
 
   async submit(): Promise<void> {

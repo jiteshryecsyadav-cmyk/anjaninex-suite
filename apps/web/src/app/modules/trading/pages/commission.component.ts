@@ -266,6 +266,7 @@ import { FeatureService } from '../../../shared/feature.service';
         </div>
 
         <div class="bottom-actions">
+          <a routerLink="/trading/commission/new" class="btn-red" style="text-decoration:none;display:inline-flex;align-items:center;gap:4px;">🧾 Generate Commission Invoice</a>
           <button (click)="printList()" class="btn-light">🖨 Print List</button>
         </div>
       </div>

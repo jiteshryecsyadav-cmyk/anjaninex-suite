@@ -224,7 +224,9 @@ export class PayRechargeComponent {
 
   qrSrc() {
     const i = this.info();
-    const data = `upi://pay?pa=${i?.upiId}&pn=${encodeURIComponent(i?.payeeName || '')}&cu=INR`;
+    // amount daala ho to QR me embed karo — scan par UPI app me amount auto-bhar jaayega
+    const amt = (this.amount && this.amount > 0) ? `&am=${(+this.amount).toFixed(2)}` : '';
+    const data = `upi://pay?pa=${i?.upiId}&pn=${encodeURIComponent(i?.payeeName || '')}${amt}&cu=INR`;
     return `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(data)}`;
   }
 

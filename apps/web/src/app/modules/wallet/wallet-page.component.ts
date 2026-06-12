@@ -35,7 +35,6 @@ type TxFilter = 'all' | 'recharge' | 'debit' | 'subscription' | 'refund';
             <strong>Balance kam hai</strong> — sirf {{ wallet.runwayDays() }} din ka runway bacha hai.
             Services ruk sakti hain. Abhi recharge karein.
           </div>
-          <button class="al-btn" (click)="openRecharge()">Recharge</button>
         </div>
       }
 

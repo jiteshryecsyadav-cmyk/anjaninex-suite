@@ -1018,12 +1018,26 @@ export class GrEntryComponent {
   }
 
   async loadBills() {
-    if (!this.buyerId) return;
+    // GR supplier ko return hai — bill us supplier+buyer ke transaction ka hota hai.
+    // Pehle sirf buyer ke OUTSTANDING bills aate the; agar koi outstanding na ho
+    // to dropdown khaali/disabled reh jaata tha. Ab supplier (ya buyer) ke SAARE
+    // bills load karo taaki "Select Original Bill" hamesha kaam kare.
+    const pid = this.supplierId || this.buyerId;
+    if (!pid) return;
     try {
-      const bills = await firstValueFrom(this.svc.outstandingBills(this.buyerId));
-      this.bills.set(bills);
+      const res = await firstValueFrom(this.svc.listBills({ partyId: pid, size: 200 }));
+      let items = (res.items || []).filter(b => !b.isDeleted);
+      // Dono select hain to supplier+buyer PAIR wale bills prefer karo (jo mile)
+      if (this.supplierId && this.buyerId) {
+        const pair = items.filter(b =>
+          (b.partyId === this.supplierId && b.buyerPartyId === this.buyerId) ||
+          (b.partyId === this.buyerId && b.buyerPartyId === this.supplierId));
+        if (pair.length) items = pair;
+      }
+      this.bills.set(items);
     } catch (e) {
       console.warn('No bills', e);
+      this.bills.set([]);
     }
   }
 

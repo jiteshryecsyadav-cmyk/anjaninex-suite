@@ -570,21 +570,21 @@ export class CommissionGenerateComponent {
   supplierIds = signal<Set<string>>(new Set());
   buyerIds = signal<Set<string>>(new Set());
 
-  // Party type ke hisaab se dropdown filter — BILLS me jo us role me aaya wahi
+  // Party type ke hisaab se dropdown filter.
+  // DETERMINISTIC: party master type OR bills se mila role — dono ka union.
+  // (Pehle sirf bills-derived role par depend karta tha jo async listBills ke
+  //  load-timing par nirbhar tha — isliye alag desktop/refresh par alag result
+  //  aata tha. Ab master partyType bhi shaamil — har jagah same list.)
   filteredParties = computed(() => {
     const t = this.partyType;
     const sup = this.supplierIds(), buy = this.buyerIds();
-    // BOTH = jo party dono role me aayi ho (supplier bhi + buyer bhi)
-    if (t === 'all') {
-      if (sup.size > 0 || buy.size > 0)
-        return this.buyers().filter(p => sup.has(p.id) && buy.has(p.id));
-      return this.buyers().filter(p => p.partyType === 'both');
-    }
-    const ids = t === 'supplier' ? sup : buy;
-    if (ids.size > 0) return this.buyers().filter(p => ids.has(p.id));
-    return this.buyers().filter(p =>
-      t === 'supplier' ? (p.partyType === 'seller' || p.partyType === 'both')
-                       : (p.partyType === 'buyer' || p.partyType === 'both'));
+    const isSup = (p: Party) => p.partyType === 'seller' || p.partyType === 'both' || sup.has(p.id);
+    const isBuy = (p: Party) => p.partyType === 'buyer'  || p.partyType === 'both' || buy.has(p.id);
+    return this.buyers().filter(p => {
+      if (t === 'supplier') return isSup(p);
+      if (t === 'buyer')    return isBuy(p);
+      return isSup(p) && isBuy(p);   // 'all' (Both) = dono role wali party
+    });
   });
 
   // Searchable party combo (method — computed plain-prop track nahi karta)

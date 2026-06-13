@@ -750,10 +750,27 @@ interface LineRow {
     .btn-add-item:hover { background: #142347; }
 
     .item-table-wrap { overflow-x: auto; border: 1px solid #D6DDEA; border-radius: 8px; }
-    .item-table { width: 100%; min-width: 1180px; font-size: 12px; border-collapse: collapse; background: #fff; }
-    /* Text columns ko zyada jagah — Item Name (2nd) + Description (3rd) */
-    .item-table th:nth-child(2), .item-table td:nth-child(2) { min-width: 168px; }
-    .item-table th:nth-child(3), .item-table td:nth-child(3) { min-width: 150px; }
+    .item-table {
+      width: 100%; min-width: 1024px; font-size: 12px; border-collapse: collapse;
+      background: #fff; table-layout: fixed;
+    }
+    /* Desktop: fixed column widths taaki saare 15 columns ek screen me fit ho (scroll na ho) */
+    .item-table th { overflow: hidden; text-overflow: ellipsis; }
+    .item-table th:nth-child(1){ width:30px }
+    .item-table th:nth-child(2){ width:148px }   /* Item Name */
+    .item-table th:nth-child(3){ width:128px }   /* Description */
+    .item-table th:nth-child(4){ width:56px }    /* Qty */
+    .item-table th:nth-child(5){ width:60px }    /* Unit */
+    .item-table th:nth-child(6){ width:66px }    /* Price */
+    .item-table th:nth-child(7){ width:50px }    /* RD */
+    .item-table th:nth-child(8){ width:64px }    /* HSN */
+    .item-table th:nth-child(9){ width:54px }    /* SGST% */
+    .item-table th:nth-child(10){ width:54px }   /* CGST% */
+    .item-table th:nth-child(11){ width:84px }   /* Taxable */
+    .item-table th:nth-child(12){ width:74px }   /* Tax */
+    .item-table th:nth-child(13){ width:84px }   /* Total */
+    .item-table th:nth-child(14){ width:30px }   /* Del */
+    .item-table th:nth-child(15){ width:42px }   /* Photo */
     .item-table thead { background: #1B2E5C; color: #fff; }
     .item-table th {
       padding: 8px 6px; text-align: left; font-weight: 700; font-size: 10px;
@@ -979,7 +996,7 @@ interface LineRow {
       /* Mobile: har item ko CARD bana do — har field apne label ke saath
          upar-niche dikhe (15-column squeeze / side-scroll ki zaroorat nahi). */
       .item-table-wrap { display: block; overflow: visible; border: 0; }
-      .item-table { min-width: 0; width: 100%; white-space: normal; }
+      .item-table { min-width: 0; width: 100%; white-space: normal; table-layout: auto; }
       .item-table thead { display: none; }
       .item-table tbody { display: block; }
       .item-table tbody tr {

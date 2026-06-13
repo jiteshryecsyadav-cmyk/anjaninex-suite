@@ -28,6 +28,7 @@ interface LineRow {
   rd: number;             // Rate Discount per unit
   sgstPct: number;
   cgstPct: number;
+  igstPct: number;
   photoFile: File | null;
   photoPreview: string | null;
 }
@@ -334,6 +335,7 @@ interface LineRow {
                 <th class="w-20">HSN</th>
                 <th class="w-16">SGST%</th>
                 <th class="w-16">CGST%</th>
+                <th class="w-16">IGST%</th>
                 <th class="w-24">TAXABLE AMT</th>
                 <th class="w-20">TAX AMT</th>
                 <th class="w-24">TOTAL</th>
@@ -398,12 +400,20 @@ interface LineRow {
                   <td data-label="SGST %">
                     <input [ngModel]="line.sgstPct"
                            (ngModelChange)="updateLine($index, 'sgstPct', +$event)"
-                           type="number" step="0.01" class="tip text-right">
+                           type="number" step="0.01" class="tip text-right"
+                           [disabled]="isInterState()">
                   </td>
                   <td data-label="CGST %">
                     <input [ngModel]="line.cgstPct"
                            (ngModelChange)="updateLine($index, 'cgstPct', +$event)"
-                           type="number" step="0.01" class="tip text-right">
+                           type="number" step="0.01" class="tip text-right"
+                           [disabled]="isInterState()">
+                  </td>
+                  <td data-label="IGST %">
+                    <input [ngModel]="line.igstPct"
+                           (ngModelChange)="updateLine($index, 'igstPct', +$event)"
+                           type="number" step="0.01" class="tip text-right"
+                           [disabled]="!isInterState()">
                   </td>
                   <td class="text-right font-mono" data-label="Taxable Amt">{{ lineTaxable($index) | number:'1.2-2' }}</td>
                   <td class="text-right font-mono" data-label="Tax Amt">{{ lineTax($index) | number:'1.2-2' }}</td>
@@ -429,7 +439,7 @@ interface LineRow {
             </tbody>
             <tfoot>
               <tr>
-                <td colspan="10" class="text-right ft-label">TOTALS →</td>
+                <td colspan="11" class="text-right ft-label">TOTALS →</td>
                 <td class="text-right font-mono" data-label="Taxable">{{ totalTaxable() | number:'1.2-2' }}</td>
                 <td class="text-right font-mono" data-label="Tax">{{ totalTax() | number:'1.2-2' }}</td>
                 <td class="text-right font-mono" data-label="Total">{{ totalAmount() | number:'1.2-2' }}</td>
@@ -653,14 +663,21 @@ interface LineRow {
               <span class="font-mono">₹ {{ taxableAfterCd() | number:'1.2-2' }}</span>
             </div>
             <div class="sum-divider"></div>
-            <div class="sum-row">
-              <span>SGST</span>
-              <span class="font-mono">₹ {{ sgstTotal() | number:'1.2-2' }}</span>
-            </div>
-            <div class="sum-row">
-              <span>CGST</span>
-              <span class="font-mono">₹ {{ cgstTotal() | number:'1.2-2' }}</span>
-            </div>
+            @if (isInterState()) {
+              <div class="sum-row">
+                <span>IGST</span>
+                <span class="font-mono">₹ {{ totalTax() | number:'1.2-2' }}</span>
+              </div>
+            } @else {
+              <div class="sum-row">
+                <span>SGST</span>
+                <span class="font-mono">₹ {{ sgstTotal() | number:'1.2-2' }}</span>
+              </div>
+              <div class="sum-row">
+                <span>CGST</span>
+                <span class="font-mono">₹ {{ cgstTotal() | number:'1.2-2' }}</span>
+              </div>
+            }
             <div class="sum-row">
               <span>TCS</span>
               <span class="font-mono">₹ {{ tcsAmt | number:'1.2-2' }}</span>
@@ -1100,26 +1117,12 @@ interface LineRow {
 
     .item-table-wrap { overflow-x: auto; border: 1px solid #D6DDEA; border-radius: 8px; }
     .item-table {
-      width: 100%; min-width: 1024px; font-size: 12px; border-collapse: collapse;
-      background: #fff; table-layout: fixed;
+      width: 100%; min-width: 1360px; font-size: 12px; border-collapse: collapse; background: #fff;
     }
-    /* Desktop: fixed column widths taaki saare 15 columns ek screen me fit ho (scroll na ho) */
-    .item-table th { overflow: hidden; text-overflow: ellipsis; }
-    .item-table th:nth-child(1){ width:30px }
-    .item-table th:nth-child(2){ width:148px }   /* Item Name */
-    .item-table th:nth-child(3){ width:128px }   /* Description */
-    .item-table th:nth-child(4){ width:56px }    /* Qty */
-    .item-table th:nth-child(5){ width:60px }    /* Unit */
-    .item-table th:nth-child(6){ width:66px }    /* Price */
-    .item-table th:nth-child(7){ width:50px }    /* RD */
-    .item-table th:nth-child(8){ width:64px }    /* HSN */
-    .item-table th:nth-child(9){ width:54px }    /* SGST% */
-    .item-table th:nth-child(10){ width:54px }   /* CGST% */
-    .item-table th:nth-child(11){ width:84px }   /* Taxable */
-    .item-table th:nth-child(12){ width:74px }   /* Tax */
-    .item-table th:nth-child(13){ width:84px }   /* Total */
-    .item-table th:nth-child(14){ width:30px }   /* Del */
-    .item-table th:nth-child(15){ width:42px }   /* Photo */
+    /* Desktop: columns apni poori readable width me; table LEFT-RIGHT scroll karti hai */
+    .item-table th { white-space: nowrap; }
+    .item-table th:nth-child(2), .item-table td:nth-child(2){ min-width: 170px; }  /* Item Name */
+    .item-table th:nth-child(3), .item-table td:nth-child(3){ min-width: 160px; }  /* Description */
     .item-table thead {
       background: #1B2E5C; color: #fff;
     }
@@ -1530,8 +1533,10 @@ export class BillEntryComponent {
             rd: +l.rd || 0,
             sgstPct: +l.sgstPct || 0,
             cgstPct: +l.cgstPct || 0,
+            igstPct: 0,
             photoFile: null, photoPreview: null
           })));
+          this.redistributeGst();
         }
 
         // CD bhi order se (type samet)
@@ -1826,7 +1831,7 @@ export class BillEntryComponent {
     return {
       itemId: null, itemName: '', description: '',
       hsnSac: '', qty: 0, unit: 'MTR', rate: 0, rd: 0,
-      sgstPct: 2.5, cgstPct: 2.5,
+      sgstPct: 2.5, cgstPct: 2.5, igstPct: 0,
       photoFile: null, photoPreview: null
     };
   }
@@ -1841,7 +1846,7 @@ export class BillEntryComponent {
   lineTax(idx: number): number {
     const taxable = this.lineTaxable(idx);
     const l = this.lines()[idx];
-    return taxable * (l.sgstPct + l.cgstPct) / 100;
+    return taxable * (l.sgstPct + l.cgstPct + l.igstPct) / 100;
   }
   lineTotal(idx: number): number {
     return this.lineTaxable(idx) + this.lineTax(idx);
@@ -1895,8 +1900,14 @@ export class BillEntryComponent {
       return s + this.lineTaxable(i) * (l.cgstPct / 100);
     }, 0);
   });
+  igstTotal = computed(() => {
+    return this.lines().reduce((s, _, i) => {
+      const l = this.lines()[i];
+      return s + this.lineTaxable(i) * (l.igstPct / 100);
+    }, 0);
+  });
   totalTaxable = computed(() => this.lines().reduce((s, _, i) => s + this.lineTaxable(i), 0));
-  totalTax = computed(() => this.sgstTotal() + this.cgstTotal());
+  totalTax = computed(() => this.sgstTotal() + this.cgstTotal() + this.igstTotal());
   totalAmount = computed(() => this.totalTaxable() + this.totalTax());
 
   /** Indian number-to-words for display in totals + summary. */
@@ -2033,9 +2044,11 @@ export class BillEntryComponent {
               rd: l.discountPct || 0,
               sgstPct: (l.taxRate || 5) / 2,
               cgstPct: (l.taxRate || 5) / 2,
+              igstPct: 0,
               photoFile: null,
               photoPreview: null
             })));
+            this.redistributeGst();
           }
         },
         error: () => alert('❌ Failed to load bill for editing')
@@ -2063,6 +2076,8 @@ export class BillEntryComponent {
       const half = (item.taxRate || 5) / 2;
       this.updateLine(idx, 'sgstPct', half);
       this.updateLine(idx, 'cgstPct', half);
+      this.updateLine(idx, 'igstPct', 0);
+      this.redistributeGst();
     }
   }
   // Description (master) pick → HSN + Unit + rate/tax auto-fill
@@ -2096,6 +2111,7 @@ export class BillEntryComponent {
     } else {
       this.supplierGstin = ''; this.supplierPan = ''; this.supplierAddress = ''; this.supplierPhone = '';
     }
+    this.redistributeGst();
   }
   onBuyerChange(id: string) {
     const p = this.parties().find(x => x.id === id);
@@ -2109,6 +2125,26 @@ export class BillEntryComponent {
     } else {
       this.buyerGstin = ''; this.buyerPan = ''; this.buyerAddress = ''; this.buyerPhone = ''; this.buyerCity = '';
     }
+    this.redistributeGst();
+  }
+
+  // ============ GST STATE LOGIC (intra vs inter-state) ============
+  /** Compare firm GSTIN state-code (first 2 chars) vs counterparty GSTIN. Default intra-state. */
+  isInterState(): boolean {
+    const firm = (this.features.firmGst() || '').trim();
+    const other = ((this.buyerGstin || '').trim() || (this.supplierGstin || '').trim());
+    if (firm.length < 2 || other.length < 2) return false;
+    return firm.substring(0, 2).toUpperCase() !== other.substring(0, 2).toUpperCase();
+  }
+  /** Auto move the total rate to the correct side (IGST vs SGST+CGST) based on state. */
+  redistributeGst(): void {
+    const inter = this.isInterState();
+    this.lines.update(arr => arr.map(l => {
+      const total = (+l.sgstPct || 0) + (+l.cgstPct || 0) + (+l.igstPct || 0);
+      return inter
+        ? { ...l, sgstPct: 0, cgstPct: 0, igstPct: total }
+        : { ...l, sgstPct: total / 2, cgstPct: total / 2, igstPct: 0 };
+    }));
   }
 
   // ============ DOCUMENT UPLOAD ============
@@ -2250,10 +2286,12 @@ export class BillEntryComponent {
           rd: 0,
           sgstPct: half,
           cgstPct: half,
+          igstPct: 0,
           photoFile: null,
           photoPreview: null
         };
       }));
+      this.redistributeGst();
     }
 
     // Transport
@@ -2438,7 +2476,7 @@ export class BillEntryComponent {
         unit: l.unit,
         rate: l.rate,
         discountPct: 0,
-        taxRate: l.sgstPct + l.cgstPct,
+        taxRate: l.sgstPct + l.cgstPct + l.igstPct,
         taxableAmount: this.lineTaxable(idx),
         totalAmount: this.lineTotal(idx)
       }));

@@ -87,7 +87,7 @@ import { FeatureService } from '../../../shared/feature.service';
                 <th class="px-3 py-3 text-center w-12">NO.</th>
                 <th class="px-3 py-3 text-left">BILL ENTRY NO.</th>
                 <th class="px-3 py-3 text-left">ORDER NO.</th>
-                <th class="px-3 py-3 text-left">SUPP. BILL DATE</th>
+                <th class="px-3 py-3 text-left">SUPP. BILL NO</th>
                 <th class="px-3 py-3 text-left">TYPE</th>
                 <th class="px-3 py-3 text-left">SUPPLIER</th>
                 <th class="px-3 py-3 text-left">BUYER</th>
@@ -107,7 +107,7 @@ import { FeatureService } from '../../../shared/feature.service';
                     }
                   </td>
                   <td class="px-3 py-3 font-mono text-xs">{{ b.poNumber || '—' }}</td>
-                  <td class="px-3 py-3 text-xs">{{ b.billDate | inDate }}</td>
+                  <td class="px-3 py-3 text-xs font-mono">{{ b.supplierBillNo || '—' }}</td>
                   <td class="px-3 py-3">
                     <span class="text-xs px-2 py-0.5 rounded font-bold uppercase"
                           [class.bg-green-100]="b.billType === 'sales'"

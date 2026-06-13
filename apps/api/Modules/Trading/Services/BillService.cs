@@ -48,7 +48,8 @@ public record BillListItemDto(
     decimal TaxableAmount = 0,          // payment receipt me NET AMT ke liye
     decimal TaxAmount = 0,              // CGST+SGST+IGST
     decimal GrAmount = 0,               // is bill ka ASLI goods-return total (0 = koi GR nahi)
-    decimal AdvanceExtra = 0);          // buyer ne bill se ZYADA diya — extra/advance amount
+    decimal AdvanceExtra = 0,           // buyer ne bill se ZYADA diya — extra/advance amount
+    string? SupplierBillNo = null);     // supplier ka original invoice no — list me dikhane ke liye
 
 public record BillDetailDto(
     Guid Id,
@@ -209,7 +210,8 @@ public class BillService : IBillService
                 b.CreatedAt,
                 TaxableAmount: b.TaxableAmount,
                 TaxAmount: b.Cgst + b.Sgst + b.Igst,
-                AdvanceExtra: advanceByBill.GetValueOrDefault(b.Id, 0m));
+                AdvanceExtra: advanceByBill.GetValueOrDefault(b.Id, 0m),
+                SupplierBillNo: b.SupplierBillNo);
         }).ToList();
 
         return (items, total);

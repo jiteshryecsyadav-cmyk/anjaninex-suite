@@ -88,6 +88,7 @@ export interface BillListItem {
   poNumber: string | null;
   ewayBillNo: string | null;   // For search + display
   ewayBillDate?: string | null; // migration 41 — e-Way bill date
+  supplierBillNo?: string | null;   // supplier ka original invoice no (list display)
   lrNo: string | null;
   total: number;
   paidAmount: number;

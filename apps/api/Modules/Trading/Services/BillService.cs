@@ -35,6 +35,7 @@ public record BillListItemDto(
     string? BuyerGst,
     string? PoNumber,
     string? EwayBillNo,         // For search + display
+    DateOnly? EwayBillDate,     // migration 41 — e-Way bill date
     string? LrNo,
     decimal Total,
     decimal PaidAmount,
@@ -94,6 +95,7 @@ public record CreateBillDto(
     string? Notes,
     // Transport / E-Way (migration 19)
     string? EwayBillNo,
+    DateOnly? EwayBillDate,        // migration 41 — e-Way bill date
     Guid? TransporterId,
     string? LrNo,
     DateOnly? LrDate,
@@ -199,6 +201,7 @@ public class BillService : IBillService
                 buyer?.GstNumber,
                 b.PoNumber,
                 b.EwayBillNo,
+                b.EwayBillDate,
                 b.LrNo,
                 b.Total, b.PaidAmount, b.Status, b.VoucherId, b.AiExtracted,
                 creators.GetValueOrDefault(b.CreatedBy),
@@ -353,6 +356,7 @@ public class BillService : IBillService
                 PartyId = dto.PartyId,
                 BuyerPartyId = dto.BuyerPartyId,
                 EwayBillNo = dto.EwayBillNo,
+                EwayBillDate = dto.EwayBillDate,
                 TransporterId = dto.TransporterId,
                 LrNo = dto.LrNo,
                 LrDate = dto.LrDate,
@@ -553,6 +557,7 @@ public class BillService : IBillService
             bill.PartyId = dto.PartyId;
             bill.BuyerPartyId = dto.BuyerPartyId;
             bill.EwayBillNo = dto.EwayBillNo;
+            bill.EwayBillDate = dto.EwayBillDate;
             bill.TransporterId = dto.TransporterId;
             bill.LrNo = dto.LrNo;
             bill.LrDate = dto.LrDate;

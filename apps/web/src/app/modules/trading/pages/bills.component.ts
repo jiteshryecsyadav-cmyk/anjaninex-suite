@@ -283,9 +283,10 @@ export class BillsComponent {
           supplier: card(supParty),
           buyer: card(buyParty),
           lines,
-          grossAmount: (b.taxableAmount || 0) + (b.discount || 0),   // pre-tax (taxable + discount), NOT total
-          taxableAmount: b.taxableAmount,
-          totalTax: b.cgst + b.sgst + b.igst,
+          // Reconciling breakdown: Gross − CD + Tax = Net (Tax = residual, sahi after-discount GST)
+          grossAmount: b.subtotal,
+          taxableAmount: b.subtotal - (b.discount || 0),
+          totalTax: b.total - (b.subtotal - (b.discount || 0)),
           cdAmount: b.discount,
           netAmount: b.total,
           paymentTerms: null,

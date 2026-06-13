@@ -272,9 +272,10 @@ export class OrdersComponent {
             },
             buyer,
             lines,
-            grossAmount: (o.subtotal || 0) + (o.cdAmount || 0),   // pre-tax (taxable + discount), NOT total
-            taxableAmount: o.subtotal,
-            totalTax: o.taxAmount,
+            // Reconciling breakdown: Gross − CD + Tax = Net (Tax = residual of net, sahi after-discount GST)
+            grossAmount: o.subtotal,
+            taxableAmount: o.subtotal - (o.cdAmount || 0),
+            totalTax: o.total - (o.subtotal - (o.cdAmount || 0)),
             cdAmount: o.cdAmount,
             netAmount: o.total,
             paymentTerms: o.paymentTerms,

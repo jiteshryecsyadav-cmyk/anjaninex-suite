@@ -87,6 +87,7 @@ export interface BillListItem {
   buyerGst: string | null;     // Buyer GST
   poNumber: string | null;
   ewayBillNo: string | null;   // For search + display
+  ewayBillDate?: string | null; // migration 41 — e-Way bill date
   lrNo: string | null;
   total: number;
   paidAmount: number;
@@ -129,6 +130,7 @@ export interface CreateBill {
   discount: number;
   roundOff: number;
   notes?: string;
+  ewayBillDate?: string | null;   // migration 41 — e-Way bill date
   lines: BillLine[];
 }
 

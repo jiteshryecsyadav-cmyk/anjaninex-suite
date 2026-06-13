@@ -402,7 +402,7 @@ public class PaymentService : IPaymentService
         return bills.Select(b => new BillListItemDto(
             b.Id, b.BillType, b.BillNo, b.BillDate, b.PartyId, "",
             null, b.BuyerPartyId, null, null, b.PoNumber,
-            b.EwayBillNo, b.LrNo,
+            b.EwayBillNo, b.EwayBillDate, b.LrNo,
             b.Total, b.PaidAmount, b.Status, b.VoucherId, b.AiExtracted,
             null, false, b.CreatedAt,
             b.TaxableAmount,

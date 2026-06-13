@@ -628,6 +628,10 @@ interface LineRow {
               <label class="lbl">E-WAY BILL NO</label>
               <input [(ngModel)]="ewayBillNo" type="text" placeholder="12-digit eWay No" maxlength="20" class="ip">
             </div>
+            <div>
+              <label class="lbl">E-WAY BILL DATE</label>
+              <input [(ngModel)]="ewayBillDate" type="date" class="ip">
+            </div>
 
             <div class="col-span-3">
               <label class="lbl">REMARK</label>
@@ -1748,6 +1752,7 @@ export class BillEntryComponent {
   lrNo = '';
   lrDate = '';
   ewayBillNo = '';                           // NEW — 12-digit e-Way bill no
+  ewayBillDate = '';                         // NEW — e-Way bill generation date
   remark = '';
 
   // Transporter master + AI smart-match state
@@ -2020,6 +2025,9 @@ export class BillEntryComponent {
           const lrMatch = notes.match(/LR:\s*([^\s\(|]+)\s*\(?([\d-]*)\)?/);
           this.lrNo = lrMatch ? lrMatch[1].trim() : '';
           this.lrDate = lrMatch && lrMatch[2] ? lrMatch[2].trim() : '';
+          // E-Way bill no/date — structured fields from the loaded bill (if present)
+          this.ewayBillNo = (b as any).ewayBillNo || '';
+          this.ewayBillDate = (b as any).ewayBillDate || '';
           // CD: "CD 2% = ₹500.00"
           const cdMatch = notes.match(/CD\s+([\d.]+)%/);
           if (cdMatch) {
@@ -2233,6 +2241,7 @@ export class BillEntryComponent {
         };
         this.supplierFilter.set(sName);
         this.supplierGstin   = sGst;
+        this.supplierPan     = (data.supplier as any)?.pan ?? '';
         this.supplierAddress = data.supplier?.address ?? data.supplier?.city ?? '';
         this.supplierPhone   = data.supplier?.phone ?? '';
         // AUTO-OPEN — user just clicks Save in modal
@@ -2262,6 +2271,7 @@ export class BillEntryComponent {
         };
         this.buyerFilter.set(bName);
         this.buyerGstin   = bGst;
+        this.buyerPan     = (data.buyer as any)?.pan ?? '';
         this.buyerAddress = data.buyer?.address ?? '';
         this.buyerPhone   = data.buyer?.phone   ?? '';
         this.buyerCity    = data.buyer?.city    ?? '';
@@ -2301,6 +2311,7 @@ export class BillEntryComponent {
     if (data.transport?.lrDate)     this.lrDate = data.transport.lrDate;
     if (data.transport?.name)       this.transporter = data.transport.name;
     if ((data.transport as any)?.ewayBillNo) this.ewayBillNo = (data.transport as any).ewayBillNo;
+    if ((data.transport as any)?.ewayBillDate) this.ewayBillDate = (data.transport as any).ewayBillDate;
 
     // SMART TRANSPORTER MATCH — GST first, then name
     const tName = data.transport?.name ?? '';
@@ -2433,7 +2444,7 @@ export class BillEntryComponent {
     this.cdPct.set(0); this.cdAmountOverride.set(null); this.cdEnabled.set(true);
     this.sweetLs = 0; this.interestAmt = 0; this.tcsAmt = 0;
     this.lrNo = ''; this.lrDate = ''; this.transporter = ''; this.transporterId = '';
-    this.ewayBillNo = ''; this.transporterMatchLevel.set(null);
+    this.ewayBillNo = ''; this.ewayBillDate = ''; this.transporterMatchLevel.set(null);
     this.aiTransporterName.set(''); this.aiTransporterGst.set('');
     this.supplierMatchLevel.set(null); this.buyerMatchLevel.set(null);
     this.aiSupplier = null; this.aiBuyer = null;
@@ -2510,6 +2521,7 @@ export class BillEntryComponent {
       supplierBillNo: this.supplierBillNo?.trim() || undefined,
       deliveryDate: this.lrDate || undefined,
       ewayBillNo: this.ewayBillNo?.trim() || undefined,
+      ewayBillDate: this.ewayBillDate?.trim() || undefined,
       transporterId: this.transporterId || undefined,
       lrNo: this.lrNo?.trim() || undefined,
       lrDate: this.lrDate || undefined,

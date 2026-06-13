@@ -86,6 +86,7 @@ public class TransportInfo
     public string LrNo { get; set; } = "";
     public string LrDate { get; set; } = "";
     public string EwayBillNo { get; set; } = "";   // NEW — 12-digit e-Way bill
+    public string EwayBillDate { get; set; } = ""; // NEW — e-Way bill generation date
 }
 
 public class BankInfo
@@ -467,6 +468,7 @@ IMPORTANT — read these fields very carefully, they matter most:
 - pan: if a party has NO GSTIN but a 10-char PAN (e.g. AQIPD4287E) is printed near their name, put it in pan. Otherwise """".
 - transport.name = the TRANSPORTER's name printed after labels like 'Transport:', 'Transporter:', 'Transport Name:', 'Despatched through', 'Carrier' (e.g. 'Transport : R Yadav Xpress Cargo Service' → name = ""R Yadav Xpress Cargo Service""). transport.gst = GSTIN printed in that SAME transport section (this is where a transporter GSTIN belongs — NOT in supplier/buyer).
 - transport.ewayBillNo = the E-WAY BILL number — a 12-digit number printed near labels like 'E-Way Bill No', 'E-Way Bill', 'EWB No', 'EWB', 'eWay Bill', 'EWAY BILL NO.'. It can appear anywhere (top, near invoice no, or in the transport/despatch box). Return DIGITS ONLY (strip spaces/dashes, e.g. '1234 5678 9012' → '123456789012'). If not printed, leave "".
+- transport.ewayBillDate = the E-Way Bill generation DATE printed near the e-way bill number (labels 'E-Way Bill Date', 'EWB Date', 'Date'). Output as YYYY-MM-DD (Indian day-first DD/MM/YYYY). If not printed, leave "".
 - transport.lrNo = the LR / GR / Builty / Docket number printed near 'LR No', 'GR No', 'Docket', 'CN No'. If not printed, leave "".
 
 Rules:
@@ -484,7 +486,7 @@ Schema (extract ONLY these keys):
   ""invoice"": {""number"":"""", ""date"":"""", ""poNumber"":""""},
   ""items"": [{""name"":"""", ""hsnSac"":"""", ""qty"":0, ""unit"":""PCS"", ""rate"":0, ""taxRate"":5, ""taxableAmount"":0, ""totalAmount"":0}],
   ""totals"": {""taxableTotal"":0, ""cgst"":0, ""sgst"":0, ""igst"":0, ""grandTotal"":0},
-  ""transport"": {""name"":"""", ""gst"":"""", ""lrNo"":"""", ""ewayBillNo"":""""}
+  ""transport"": {""name"":"""", ""gst"":"""", ""lrNo"":"""", ""ewayBillNo"":"""", ""ewayBillDate"":""""}
 }
 ";
 

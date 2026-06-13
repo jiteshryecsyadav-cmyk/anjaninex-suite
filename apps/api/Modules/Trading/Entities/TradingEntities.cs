@@ -118,6 +118,7 @@ public class Bill
     public Guid? TransporterId { get; set; }
     [MaxLength(50)] public string? LrNo { get; set; }
     public DateOnly? LrDate { get; set; }
+    public DateOnly? EwayBillDate { get; set; }   // migration 41 — e-Way bill generation date
 
     // Duplicate protection (migration 20) — supplier's own bill no on their invoice
     [MaxLength(50)] public string? SupplierBillNo { get; set; }

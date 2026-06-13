@@ -36,7 +36,7 @@ export class AuthService {
   isAuthenticated = computed(() => this._accessToken() !== null);
 
   // App background/band me itni der se zyada raha to auto-logout (mobile security)
-  private static readonly BG_LOGOUT_MS = 2 * 60 * 1000; // 2 minute
+  private static readonly BG_LOGOUT_MS = 10 * 60 * 1000; // 10 minute
 
   constructor() {
     if (typeof document !== 'undefined') {

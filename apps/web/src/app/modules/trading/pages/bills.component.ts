@@ -283,7 +283,7 @@ export class BillsComponent {
           supplier: card(supParty),
           buyer: card(buyParty),
           lines,
-          grossAmount: b.total,
+          grossAmount: (b.taxableAmount || 0) + (b.discount || 0),   // pre-tax (taxable + discount), NOT total
           taxableAmount: b.taxableAmount,
           totalTax: b.cgst + b.sgst + b.igst,
           cdAmount: b.discount,

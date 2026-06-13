@@ -272,7 +272,7 @@ export class OrdersComponent {
             },
             buyer,
             lines,
-            grossAmount: o.total,
+            grossAmount: (o.subtotal || 0) + (o.cdAmount || 0),   // pre-tax (taxable + discount), NOT total
             taxableAmount: o.subtotal,
             totalTax: o.taxAmount,
             cdAmount: o.cdAmount,

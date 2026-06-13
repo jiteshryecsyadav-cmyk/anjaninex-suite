@@ -138,8 +138,8 @@ interface LineRow {
             <input [(ngModel)]="billDate" type="date" class="ip">
           </div>
           <div class="col-span-2">
-            <label class="lbl">ENTRY DATE * <small style="color:#9CA3AF">(user ne kab entry ki)</small></label>
-            <input [(ngModel)]="recDate" type="date" class="ip">
+            <label class="lbl">ENTRY DATE <small style="color:#9CA3AF">(auto — aaj ki date, jab entry hui)</small></label>
+            <input [(ngModel)]="recDate" type="date" class="ip ip-auto" disabled title="System date — apne aap aaj ki date">
           </div>
         </div>
       </div>
@@ -1987,7 +1987,8 @@ export class BillEntryComponent {
         next: (b) => {
           this.billType = b.billType as any;
           this.billDate = b.billDate;
-          this.recDate = b.billDate;
+          // ENTRY DATE = jab originally entry hui (createdAt), bill date nahi
+          this.recDate = b.createdAt ? String(b.createdAt).substring(0, 10) : b.billDate;
           this.orderNo = b.poNumber || '';
           this.editBillNo = b.billNo || '';   // BILL ENTRY NO — edit me existing no dikhe
 

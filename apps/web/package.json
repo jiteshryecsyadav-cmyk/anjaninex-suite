@@ -5,6 +5,7 @@
   "scripts": {
     "ng": "ng",
     "start": "ng serve --host 0.0.0.0 --port 4200",
+    "prebuild": "node scripts/gen-version.js",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",

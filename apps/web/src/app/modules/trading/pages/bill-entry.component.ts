@@ -344,14 +344,14 @@ interface LineRow {
             <tbody>
               @for (line of lines(); track $index) {
                 <tr>
-                  <td class="text-center">{{ $index + 1 }}</td>
-                  <td>
+                  <td class="text-center sno-cell" data-label="#">{{ $index + 1 }}</td>
+                  <td data-label="Item Name">
                     <input [ngModel]="line.itemName"
                            (ngModelChange)="updateLine($index, 'itemName', $event)"
                            list="items-list" class="tip" placeholder="Item name"
                            (change)="autoFillFromItem($index, $event)">
                   </td>
-                  <td>
+                  <td data-label="Description">
                     <select [ngModel]="line.description"
                             (ngModelChange)="updateLine($index, 'description', $event)"
                             (change)="onDescPick($index, $event)"
@@ -363,12 +363,12 @@ interface LineRow {
                       <option value="Other">Other</option>
                     </select>
                   </td>
-                  <td>
+                  <td data-label="Qty">
                     <input [ngModel]="line.qty"
                            (ngModelChange)="updateLine($index, 'qty', +$event)"
                            type="number" step="0.01" class="tip text-right">
                   </td>
-                  <td>
+                  <td data-label="Unit">
                     <select [ngModel]="line.unit"
                             (ngModelChange)="updateLine($index, 'unit', $event)"
                             class="tip">
@@ -380,40 +380,40 @@ interface LineRow {
                       <option value="LTR">LTR</option>
                     </select>
                   </td>
-                  <td>
+                  <td data-label="Price">
                     <input [ngModel]="line.rate"
                            (ngModelChange)="updateLine($index, 'rate', +$event)"
                            type="number" step="0.01" class="tip text-right">
                   </td>
-                  <td>
+                  <td data-label="RD">
                     <input [ngModel]="line.rd"
                            (ngModelChange)="updateLine($index, 'rd', +$event)"
                            type="number" step="0.01" class="tip text-right">
                   </td>
-                  <td>
+                  <td data-label="HSN">
                     <input [ngModel]="line.hsnSac"
                            (ngModelChange)="updateLine($index, 'hsnSac', $event)"
                            type="text" class="tip text-center" placeholder="HSN">
                   </td>
-                  <td>
+                  <td data-label="SGST %">
                     <input [ngModel]="line.sgstPct"
                            (ngModelChange)="updateLine($index, 'sgstPct', +$event)"
                            type="number" step="0.01" class="tip text-right">
                   </td>
-                  <td>
+                  <td data-label="CGST %">
                     <input [ngModel]="line.cgstPct"
                            (ngModelChange)="updateLine($index, 'cgstPct', +$event)"
                            type="number" step="0.01" class="tip text-right">
                   </td>
-                  <td class="text-right font-mono">{{ lineTaxable($index) | number:'1.2-2' }}</td>
-                  <td class="text-right font-mono">{{ lineTax($index) | number:'1.2-2' }}</td>
-                  <td class="text-right font-mono total-cell">{{ lineTotal($index) | number:'1.2-2' }}</td>
-                  <td class="text-center">
+                  <td class="text-right font-mono" data-label="Taxable Amt">{{ lineTaxable($index) | number:'1.2-2' }}</td>
+                  <td class="text-right font-mono" data-label="Tax Amt">{{ lineTax($index) | number:'1.2-2' }}</td>
+                  <td class="text-right font-mono total-cell" data-label="Total">{{ lineTotal($index) | number:'1.2-2' }}</td>
+                  <td class="text-center" data-label="Delete">
                     @if (lines().length > 1) {
                       <button type="button" (click)="removeLine($index)" class="btn-del">🗑</button>
                     }
                   </td>
-                  <td class="text-center">
+                  <td class="text-center" data-label="Photo">
                     <label class="photo-upload">
                       @if (line.photoPreview) {
                         <img [src]="line.photoPreview" alt="item">
@@ -429,11 +429,11 @@ interface LineRow {
             </tbody>
             <tfoot>
               <tr>
-                <td colspan="10" class="text-right">TOTALS →</td>
-                <td class="text-right font-mono">{{ totalTaxable() | number:'1.2-2' }}</td>
-                <td class="text-right font-mono">{{ totalTax() | number:'1.2-2' }}</td>
-                <td class="text-right font-mono">{{ totalAmount() | number:'1.2-2' }}</td>
-                <td colspan="2"></td>
+                <td colspan="10" class="text-right ft-label">TOTALS →</td>
+                <td class="text-right font-mono" data-label="Taxable">{{ totalTaxable() | number:'1.2-2' }}</td>
+                <td class="text-right font-mono" data-label="Tax">{{ totalTax() | number:'1.2-2' }}</td>
+                <td class="text-right font-mono" data-label="Total">{{ totalAmount() | number:'1.2-2' }}</td>
+                <td colspan="2" class="ft-blank"></td>
               </tr>
             </tfoot>
           </table>
@@ -1387,9 +1387,53 @@ interface LineRow {
       .grid-cols-2, .grid-cols-3, .grid-cols-4 { grid-template-columns: 1fr !important; }
       .col-span-2, .col-span-3 { grid-column: span 1 !important; }
       .ip { width: 100% !important; }
-      /* Item table horizontally scrollable */
-      .item-table-wrap { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
-      .item-table { white-space: nowrap; }
+      /* Mobile: har item ko CARD bana do — har field apne label ke saath
+         upar-niche dikhe (15-column squeeze / side-scroll ki zaroorat nahi). */
+      .item-table-wrap { display: block; overflow: visible; border: 0; }
+      .item-table { min-width: 0; width: 100%; white-space: normal; }
+      .item-table thead { display: none; }
+      .item-table tbody { display: block; }
+      .item-table tbody tr {
+        display: block; background: #fff; border: 1px solid #D6DDEA;
+        border-radius: 10px; padding: 6px 10px; margin-bottom: 12px;
+        box-shadow: 0 1px 3px rgba(27,46,92,0.06);
+      }
+      .item-table tbody td {
+        display: flex; align-items: center; justify-content: space-between;
+        gap: 10px; width: 100%; padding: 7px 0; border-bottom: 1px dashed #EEF1F7;
+        text-align: right;
+      }
+      .item-table tbody td:last-child { border-bottom: 0; }
+      .item-table tbody td::before {
+        content: attr(data-label); flex: 0 0 42%; text-align: left;
+        font-size: 11px; font-weight: 700; color: #4A5878; text-transform: uppercase;
+        letter-spacing: 0.3px;
+      }
+      .item-table tbody td .tip { flex: 1; min-width: 0; font-size: 14px; padding: 9px 10px; }
+      /* SNO row banner-style */
+      .item-table tbody td.sno-cell {
+        justify-content: flex-start; background: #1B2E5C; color: #fff;
+        margin: -6px -10px 6px; padding: 8px 12px; border-radius: 10px 10px 0 0;
+        font-weight: 800; border-bottom: 0; text-align: left;
+      }
+      .item-table tbody td.sno-cell::before { content: "Item #"; color: #cdd6ec; flex: 0 0 auto; margin-right: 8px; }
+      /* tfoot totals as a card too */
+      .item-table tfoot { display: block; }
+      .item-table tfoot tr {
+        display: block; background: #FFF7ED; border: 1px solid #FCD34D;
+        border-radius: 10px; padding: 6px 12px; margin-top: 4px;
+      }
+      .item-table tfoot td {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 6px 0; border: 0; text-align: right;
+      }
+      .item-table tfoot td[data-label]::before {
+        content: attr(data-label); text-align: left; font-size: 11px;
+        font-weight: 700; color: #4A5878; text-transform: uppercase;
+      }
+      .item-table tfoot td.ft-label { justify-content: center; font-weight: 800; color: #1B2E5C; }
+      .item-table tfoot td.ft-blank { display: none; }
+      .photo-upload { margin-left: auto; }
       /* Summary card full width (was 1/3 column) */
       .summary-card { width: 100% !important; max-width: 100% !important; }
       /* Bottom action bar stacks */

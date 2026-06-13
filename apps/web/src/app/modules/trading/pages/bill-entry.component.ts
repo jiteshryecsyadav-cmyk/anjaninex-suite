@@ -1860,7 +1860,7 @@ export class BillEntryComponent {
     const override = this.cdAmountOverride();
     if (override !== null) return override;
     const base = this.cdType() === 'after'
-      ? this.grossAmt() + this.sgstTotal() + this.cgstTotal()   // GST samet total par
+      ? this.grossAmt() + this.sgstTotal() + this.cgstTotal() + this.igstTotal()   // GST samet total par
       : this.grossAmt();                                        // sirf taxable par
     return +(base * (this.cdPct() / 100)).toFixed(2);
   });
@@ -1874,6 +1874,7 @@ export class BillEntryComponent {
   });
   effSgst = computed(() => +(this.sgstTotal() * this.cdTaxFactor()).toFixed(2));
   effCgst = computed(() => +(this.cgstTotal() * this.cdTaxFactor()).toFixed(2));
+  effIgst = computed(() => +(this.igstTotal() * this.cdTaxFactor()).toFixed(2));
   toggleCd() {
     this.cdEnabled.set(!this.cdEnabled());
     this.cdAmountOverride.set(null);
@@ -1918,11 +1919,11 @@ export class BillEntryComponent {
     if (this.cdType() === 'after') {
       // GST poore par, discount total par
       return this.grossAmt() + this.sweetLs + this.interestAmt
-           + this.sgstTotal() + this.cgstTotal() + (+this.tcsAmt || 0)
+           + this.sgstTotal() + this.cgstTotal() + this.igstTotal() + (+this.tcsAmt || 0)
            - this.cdAmount();
     }
     // Before GST: discounted base + scaled tax
-    return this.taxableAfterCd() + this.effSgst() + this.effCgst() + (+this.tcsAmt || 0);
+    return this.taxableAfterCd() + this.effSgst() + this.effCgst() + this.effIgst() + (+this.tcsAmt || 0);
   });
 
   /** Net amount = e-Invoice Amt rounded to nearest whole rupee. */

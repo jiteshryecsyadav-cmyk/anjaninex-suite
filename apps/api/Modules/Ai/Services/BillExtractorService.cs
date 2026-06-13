@@ -466,6 +466,8 @@ IMPORTANT — read these fields very carefully, they matter most:
 - GSTIN STRICT RULE: take a GSTIN ONLY from that party's OWN section. The Transport/Transporter/LR section often prints the TRANSPORTER's GSTIN — NEVER put it in supplier.gst or buyer.gst. If the buyer's (or supplier's) own GSTIN is NOT printed, leave gst = """" — do NOT borrow a GSTIN from anywhere else on the bill.
 - pan: if a party has NO GSTIN but a 10-char PAN (e.g. AQIPD4287E) is printed near their name, put it in pan. Otherwise """".
 - transport.name = the TRANSPORTER's name printed after labels like 'Transport:', 'Transporter:', 'Transport Name:', 'Despatched through', 'Carrier' (e.g. 'Transport : R Yadav Xpress Cargo Service' → name = ""R Yadav Xpress Cargo Service""). transport.gst = GSTIN printed in that SAME transport section (this is where a transporter GSTIN belongs — NOT in supplier/buyer).
+- transport.ewayBillNo = the E-WAY BILL number — a 12-digit number printed near labels like 'E-Way Bill No', 'E-Way Bill', 'EWB No', 'EWB', 'eWay Bill', 'EWAY BILL NO.'. It can appear anywhere (top, near invoice no, or in the transport/despatch box). Return DIGITS ONLY (strip spaces/dashes, e.g. '1234 5678 9012' → '123456789012'). If not printed, leave "".
+- transport.lrNo = the LR / GR / Builty / Docket number printed near 'LR No', 'GR No', 'Docket', 'CN No'. If not printed, leave "".
 
 Rules:
 - Missing field: empty string """" or 0

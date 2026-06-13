@@ -1100,8 +1100,11 @@ interface LineRow {
 
     .item-table-wrap { overflow-x: auto; border: 1px solid #D6DDEA; border-radius: 8px; }
     .item-table {
-      width: 100%; font-size: 11.5px; border-collapse: collapse; background: #fff;
+      width: 100%; min-width: 1180px; font-size: 12px; border-collapse: collapse; background: #fff;
     }
+    /* Text columns ko zyada jagah — Item Name (2nd) + Description (3rd) */
+    .item-table th:nth-child(2), .item-table td:nth-child(2) { min-width: 168px; }
+    .item-table th:nth-child(3), .item-table td:nth-child(3) { min-width: 150px; }
     .item-table thead {
       background: #1B2E5C; color: #fff;
     }
@@ -1112,7 +1115,7 @@ interface LineRow {
     .item-table th.text-right { text-align: right; }
     .item-table th.text-center { text-align: center; }
     .item-table td {
-      padding: 4px 4px; border-bottom: 1px solid #F5EFE3; vertical-align: middle;
+      padding: 6px 5px; border-bottom: 1px solid #F5EFE3; vertical-align: middle;
     }
     .item-table tbody tr:hover { background: #FAF7F0; }
     .item-table tfoot {
@@ -1122,8 +1125,8 @@ interface LineRow {
     .total-cell { color: #DC2626; font-weight: 800; }
 
     .tip {
-      width: 100%; padding: 5px 6px; border: 1px solid #E5E9F2; border-radius: 4px;
-      font-size: 11.5px; color: #1B2E5C; background: #fff; font-family: inherit;
+      width: 100%; padding: 7px 8px; border: 1px solid #E5E9F2; border-radius: 4px;
+      font-size: 12px; color: #1B2E5C; background: #fff; font-family: inherit;
     }
     .tip:focus { outline: none; border-color: #DC2626; }
     .text-right { text-align: right; }

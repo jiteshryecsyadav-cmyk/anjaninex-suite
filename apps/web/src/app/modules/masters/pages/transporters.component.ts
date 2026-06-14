@@ -2,7 +2,8 @@ import { Component, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { MastersService, Transporter } from '../services/masters.service';
+import { MastersService, Transporter, CreateTransporter } from '../services/masters.service';
+import { firstValueFrom } from 'rxjs';
 import { BackButtonComponent } from '../../../shared/back-button.component';
 import { PaginatorComponent } from '../../../shared/paginator.component';
 import { INDIAN_STATES, citiesForState, matchIndiaState } from '../../../shared/india-data';
@@ -30,9 +31,16 @@ import { IndiaPincodeService } from '../../../shared/india-pincode.service';
             <span class="search-ico">🔍</span>
             <input [(ngModel)]="searchQuery" (input)="onSearch()" type="text" placeholder="Name, GSTIN, city, mobile, contact..." class="search-input">
           </div>
+          <label style="display:inline-flex;align-items:center;gap:6px;padding:9px 14px;border:1px solid #1B2E5C;color:#1B2E5C;background:#fff;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;" title="CSV/Excel(CSV save) se transporters import karo">📥 Import CSV
+            <input type="file" accept=".csv,text/csv" hidden (change)="onImportFile($event)">
+          </label>
           <button (click)="openAdd()" class="btn-add">+ Add Transporter</button>
         </div>
       </div>
+
+      @if (importMsg()) {
+        <div style="margin-top:12px;padding:9px 13px;background:#ecfdf5;border:1px solid #10b981;border-radius:8px;color:#065f46;font-weight:600;font-size:13px;">{{ importMsg() }}</div>
+      }
 
       <div class="kpi-row">
         <div class="kpi" style="border-left:4px solid #1B2E5C; background:#1B2E5C0d;"><div class="kpi-ico">🚚</div><div class="kpi-num" style="color:#1B2E5C;">{{ list().length }}</div><div class="kpi-lbl">TOTAL</div></div>
@@ -344,6 +352,8 @@ export class TransportersComponent {
 
   list = signal<Transporter[]>([]);
   loading = signal(true);
+  importing = signal(false);
+  importMsg = signal('');
   saving = signal(false);
   showForm = signal(false);
   editingId = signal<string | null>(null);
@@ -421,6 +431,104 @@ export class TransportersComponent {
   }
   private searchTimer: any;
   onSearch() { clearTimeout(this.searchTimer); this.searchTimer = setTimeout(() => this.load(), 300); }
+
+  // ============ CSV IMPORT (bulk transporters) ============
+  /** Minimal robust CSV parser — quoted fields + commas/newlines inside quotes. */
+  private parseCsv(text: string): string[][] {
+    const rows: string[][] = [];
+    let cur: string[] = [], val = '', q = false;
+    text = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+    for (let i = 0; i < text.length; i++) {
+      const c = text[i];
+      if (q) {
+        if (c === '"') { if (text[i + 1] === '"') { val += '"'; i++; } else q = false; }
+        else val += c;
+      } else {
+        if (c === '"') q = true;
+        else if (c === ',') { cur.push(val); val = ''; }
+        else if (c === '\n') { cur.push(val); rows.push(cur); cur = []; val = ''; }
+        else val += c;
+      }
+    }
+    if (val.length || cur.length) { cur.push(val); rows.push(cur); }
+    return rows.filter(r => r.some(x => (x || '').trim() !== ''));
+  }
+
+  async onImportFile(ev: Event) {
+    const input = ev.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+    input.value = '';   // dobara same file pick ho sake
+    let text = '';
+    try { text = await file.text(); } catch { alert('File padh nahi paaye.'); return; }
+    const rows = this.parseCsv(text);
+    if (rows.length < 2) { alert('CSV khaali hai ya sirf header row hai.'); return; }
+
+    const headers = rows[0].map(h => h.trim().toLowerCase());
+    const idx = (aliases: string[]) => headers.findIndex(h => aliases.includes(h));
+    const col = {
+      name: idx(['firm name', 'name', 'transport', 'transporter', 'transport name', 'transporter name', 'party', 'company', 'firm', 'transport details']),
+      gst: idx(['gst', 'gstin', 'gst no', 'gst no.', 'gst number', 'gstin no']),
+      mobile: idx(['mobile', 'phone', 'contact', 'mobile no', 'phone no', 'contact no', 'mobile number', 'number', 'mob', 'contact no.']),
+      whatsapp: idx(['whatsapp', 'wa', 'whatsapp no']),
+      city: idx(['city', 'place']),
+      state: idx(['state']),
+      pan: idx(['pan', 'pan no', 'pan number']),
+      pincode: idx(['pincode', 'pin', 'pin code', 'zip']),
+      email: idx(['email', 'e-mail', 'mail']),
+      address: idx(['address', 'add', 'addr']),
+      person: idx(['contact person', 'person', 'owner', 'contact name']),
+      landline: idx(['landline', 'std', 'office']),
+      remark: idx(['remark', 'remarks', 'note', 'notes']),
+    };
+    if (col.name < 0) {
+      alert('CSV ki pehli row me header chahiye — kam se kam ek column "Name" ya "Transport" naam ka. Headers: Name, GST, Mobile, City, State, PAN...');
+      return;
+    }
+
+    const existing = new Set(this.list().map(t => (t.firmName || '').trim().toLowerCase()));
+    const get = (r: string[], i: number) => (i >= 0 ? (r[i] || '').trim() : '');
+    const toImport: CreateTransporter[] = [];
+    for (let i = 1; i < rows.length; i++) {
+      const r = rows[i];
+      const nm = get(r, col.name);
+      if (!nm) continue;
+      if (existing.has(nm.toLowerCase())) continue;   // duplicate skip
+      existing.add(nm.toLowerCase());
+      toImport.push({
+        firmName: nm,
+        gstNo: get(r, col.gst) || undefined,
+        mobile: get(r, col.mobile) || undefined,
+        whatsapp: get(r, col.whatsapp) || undefined,
+        city: get(r, col.city) || undefined,
+        state: get(r, col.state) || undefined,
+        pan: get(r, col.pan) || undefined,
+        pincode: get(r, col.pincode) || undefined,
+        email: get(r, col.email) || undefined,
+        address: get(r, col.address) || undefined,
+        contactPerson: get(r, col.person) || undefined,
+        landline: get(r, col.landline) || undefined,
+        remark: get(r, col.remark) || undefined,
+        isActive: true,
+      });
+    }
+    if (!toImport.length) { alert('Koi naya transporter nahi mila (sab pehle se hain ya naam khaali hai).'); return; }
+    if (!confirm(`${toImport.length} transporter import honge. Continue?`)) return;
+
+    this.importing.set(true);
+    let ok = 0, fail = 0;
+    for (let i = 0; i < toImport.length; i++) {
+      this.importMsg.set(`⏳ Importing ${i + 1} / ${toImport.length} ...`);
+      try { await firstValueFrom(this.svc.createTransporter(toImport[i])); ok++; }
+      catch { fail++; }
+    }
+    this.importing.set(false);
+    const msg = `✅ ${ok} transporter add hue${fail ? `, ${fail} fail` : ''}.`;
+    this.importMsg.set(msg);
+    alert('Import complete — ' + msg);
+    this.load();
+    setTimeout(() => this.importMsg.set(''), 7000);
+  }
 
   openAdd() {
     this.editingId.set(null);

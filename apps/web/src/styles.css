@@ -419,6 +419,15 @@ body.theme-path4 app-shell header {
 }
 
 /* ============================================================
+   🚫 NO BLEND — har theme ka sidebar/header SOLID single colour (koi gradient nahi).
+   Ye rule sabhi theme gradients ko override karta hai (equal specificity + later source).
+   ============================================================ */
+body[class*="theme-"] app-shell aside,
+body[class*="theme-"] app-shell header {
+  background: var(--anjaninex-navy) !important;
+}
+
+/* ============================================================
    ✨ GLOSSY SHINE — saare buttons (logout-button jaisa) — har theme me
    ============================================================ */
 button, [class*="btn"] { position: relative; }

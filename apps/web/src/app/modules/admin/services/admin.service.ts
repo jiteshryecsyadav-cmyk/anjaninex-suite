@@ -130,6 +130,26 @@ export interface LowBalanceFirm {
   lastDailySpend: number;
 }
 
+// Firm ka login user — password kabhi nahi aata (security). Sirf reset hota hai.
+export interface FirmUser {
+  id: string;
+  fullName: string;
+  username: string;
+  email: string | null;
+  phone: string | null;
+  isActive: boolean;
+  roles: string[];
+  createdAt: string;
+}
+
+export interface UpdateFirmUserReq {
+  fullName: string;
+  username: string;
+  email?: string | null;
+  phone?: string | null;
+  isActive: boolean;
+}
+
 @Injectable({ providedIn: 'root' })
 export class AdminService {
   private http = inject(HttpClient);
@@ -156,6 +176,18 @@ export class AdminService {
   suspend(id: string) { return this.http.post(`${this.base}/firms/${id}/suspend`, {}); }
   activate(id: string) { return this.http.post(`${this.base}/firms/${id}/activate`, {}); }
   changePlan(id: string, planId: string) { return this.http.post(`${this.base}/firms/${id}/change-plan`, { planId }); }
+
+  // ---- Firm login users (super-admin) ----
+  listFirmUsers(firmId: string) { return this.http.get<FirmUser[]>(`${this.base}/firms/${firmId}/users`); }
+  resetFirmUserPassword(firmId: string, userId: string, newPassword: string) {
+    return this.http.post<{ ok: boolean }>(`${this.base}/firms/${firmId}/users/${userId}/reset-password`, { newPassword });
+  }
+  updateFirmUser(firmId: string, userId: string, data: UpdateFirmUserReq) {
+    return this.http.put<{ ok: boolean }>(`${this.base}/firms/${firmId}/users/${userId}`, data);
+  }
+  deleteFirmUser(firmId: string, userId: string) {
+    return this.http.delete<{ ok: boolean }>(`${this.base}/firms/${firmId}/users/${userId}`);
+  }
 
   aiCostBreakdown(days = 30) { return this.http.get<AgentCost[]>(`${this.base}/ai/cost-breakdown`, { params: { days } as any }); }
   aiDailyRevenue(days = 30) { return this.http.get<RevenuePoint[]>(`${this.base}/ai/daily-revenue`, { params: { days } as any }); }

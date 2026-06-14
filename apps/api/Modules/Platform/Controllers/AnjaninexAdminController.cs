@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Namokara.Api.Common.Auth;
+using Namokara.Api.Common.Errors;
 using Namokara.Api.Infrastructure.Persistence;
 using Namokara.Api.Modules.Platform.Entities;
 using Namokara.Api.Modules.Platform.Services;
@@ -160,6 +161,53 @@ public class AnjaninexAdminController : ControllerBase
         return key.Length <= 8 ? "****" : $"{key[..6]}…{key[^4..]}";
     }
 
+    // ---------------- Firm login users (super-admin) ----------------
+    // SECURITY: PasswordHash kabhi return/display nahi hota. Password sirf RESET ho sakta hai.
+    [HttpGet("firms/{id}/users")]
+    [HasPermission("platform.firm.view.platform")]
+    public async Task<IActionResult> FirmUsers(Guid id)
+        => Ok(await _svc.ListFirmUsers(id));
+
+    [HttpPost("firms/{id}/users/{userId}/reset-password")]
+    [HasPermission("platform.firm.edit.platform")]
+    public async Task<IActionResult> ResetUserPassword(Guid id, Guid userId, [FromBody] ResetPasswordDto dto)
+    {
+        try
+        {
+            var ok = await _svc.ResetUserPassword(id, userId, dto.NewPassword ?? "");
+            if (!ok) return NotFound(new { error = "User is firm ka nahi hai." });
+            return Ok(new { ok = true });
+        }
+        catch (Exception ex) { return BadRequest(new { error = FriendlyError.From(ex) }); }
+    }
+
+    [HttpPut("firms/{id}/users/{userId}")]
+    [HasPermission("platform.firm.edit.platform")]
+    public async Task<IActionResult> UpdateFirmUser(Guid id, Guid userId, [FromBody] UpdateFirmUserDto dto)
+    {
+        try
+        {
+            var ok = await _svc.UpdateFirmUser(id, userId, dto);
+            if (!ok) return NotFound(new { error = "User is firm ka nahi hai." });
+            return Ok(new { ok = true });
+        }
+        catch (Exception ex) { return BadRequest(new { error = FriendlyError.From(ex) }); }
+    }
+
+    [HttpDelete("firms/{id}/users/{userId}")]
+    [HasPermission("platform.firm.edit.platform")]
+    public async Task<IActionResult> DeleteFirmUser(Guid id, Guid userId)
+    {
+        try
+        {
+            var (ok, error, notFound) = await _svc.DeleteFirmUser(id, userId);
+            if (notFound) return NotFound(new { error = "User is firm ka nahi hai." });
+            if (!ok) return BadRequest(new { error });
+            return Ok(new { ok = true });
+        }
+        catch (Exception ex) { return BadRequest(new { error = FriendlyError.From(ex) }); }
+    }
+
     // ---------------- Plans ----------------
     [HttpGet("plans")]
     [HasPermission("platform.firm.view.platform")]
@@ -207,5 +255,6 @@ public class AnjaninexAdminController : ControllerBase
 }
 
 public record AdminRechargeDto(decimal Amount, string? Source, string? Reference);
+public record ResetPasswordDto(string? NewPassword);
 public record ChangePlanDto(Guid PlanId);
 public record SaveApiKeysDto(string? AiProvider, string? AiApiKey, string? AiModel, string? MapsApiKey);

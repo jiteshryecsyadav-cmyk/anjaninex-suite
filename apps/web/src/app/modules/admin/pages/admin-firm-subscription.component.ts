@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../environments/environment';
+import { AdminService, FirmUser } from '../services/admin.service';
 
 interface FirmSubscription {
   firmId: string;
@@ -211,6 +212,69 @@ const MODULE_LIST: Array<{ key: string; label: string; icon: string; description
           </div>
         </div>
 
+        <!-- Login / Users (super-admin) -->
+        <div class="card mb-4">
+          <div class="card-head">🔑 Login / Users</div>
+          <p class="text-xs text-gray-500 mt-1">
+            Is firm ke login users. <b>User ID</b> = jisse woh login karte hain. Password kabhi dikhta nahi — sirf RESET (naya set) hota hai.
+          </p>
+
+          @if (usersLoading()) {
+            <div class="text-center text-gray-500 p-4">Loading users…</div>
+          } @else if (users().length === 0) {
+            <div class="text-center text-gray-400 p-4">Koi login user nahi mila.</div>
+          } @else {
+            <div class="overflow-x-auto mt-3">
+              <table class="u-tbl">
+                <thead>
+                  <tr>
+                    <th>User ID</th><th>Email</th><th>Name</th><th>Status</th><th>Roles</th><th style="text-align:right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (u of users(); track u.id) {
+                    @if (editingId() === u.id) {
+                      <!-- inline edit row -->
+                      <tr class="edit-row">
+                        <td><input [(ngModel)]="editUsername" class="ip-sm" placeholder="User ID"></td>
+                        <td><input [(ngModel)]="editEmail" class="ip-sm" placeholder="Email"></td>
+                        <td><input [(ngModel)]="editFullName" class="ip-sm" placeholder="Name"></td>
+                        <td>
+                          <label class="inline-flex items-center gap-1 text-xs">
+                            <input type="checkbox" [(ngModel)]="editActive"> Active
+                          </label>
+                        </td>
+                        <td><input [(ngModel)]="editPhone" class="ip-sm" placeholder="Phone"></td>
+                        <td style="text-align:right; white-space:nowrap">
+                          <button (click)="saveEdit(u)" [disabled]="userBusy()" class="lnk save">Save</button>
+                          <button (click)="cancelEdit()" class="lnk">Cancel</button>
+                        </td>
+                      </tr>
+                    } @else {
+                      <tr>
+                        <td><b class="text-[#2d1040]">{{ u.username }}</b></td>
+                        <td class="text-gray-600">{{ u.email || '—' }}</td>
+                        <td>{{ u.fullName }}</td>
+                        <td>
+                          <span class="badge" [class.on]="u.isActive" [class.off]="!u.isActive">
+                            {{ u.isActive ? 'Active' : 'Inactive' }}
+                          </span>
+                        </td>
+                        <td class="text-xs text-gray-600">{{ u.roles.length ? u.roles.join(', ') : '—' }}</td>
+                        <td style="text-align:right; white-space:nowrap">
+                          <button (click)="resetPwd(u)" [disabled]="userBusy()" class="lnk">🔁 Reset Password</button>
+                          <button (click)="startEdit(u)" [disabled]="userBusy()" class="lnk">✏️ Edit</button>
+                          <button (click)="deleteUser(u)" [disabled]="userBusy()" class="lnk del">🗑 Delete</button>
+                        </td>
+                      </tr>
+                    }
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
+        </div>
+
         <!-- Save bar -->
         <div class="flex justify-end gap-3 sticky bottom-4 bg-white p-3 rounded-lg shadow-lg border border-purple-200">
           <span class="text-sm text-gray-600 self-center" *ngIf="dirty()">⚠️ Unsaved changes</span>
@@ -245,6 +309,20 @@ const MODULE_LIST: Array<{ key: string; label: string; icon: string; description
     .switch input:checked + .slider { background: #16a34a; }
     .switch input:checked + .slider:before { transform: translateX(24px); }
 
+    /* ===== Users table ===== */
+    .u-tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .u-tbl th { text-align: left; font-size: 10px; font-weight: 800; color: #6b3fa0; text-transform: uppercase; letter-spacing: .5px; padding: 6px 8px; border-bottom: 1.5px solid #ddc8f5; }
+    .u-tbl td { padding: 8px; border-bottom: 1px solid #f0e6fb; vertical-align: middle; }
+    .u-tbl tr.edit-row td { background: #faf5ff; }
+    .ip-sm { width: 100%; min-width: 90px; padding: 5px 7px; border: 1.5px solid #ddc8f5; border-radius: 6px; font-size: 12px; outline: none; background: #fff; }
+    .badge { font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 999px; text-transform: uppercase; }
+    .badge.on { background: #dcfce7; color: #16a34a; }
+    .badge.off { background: #fee2e2; color: #dc2626; }
+    .lnk { background: none; border: none; cursor: pointer; font-size: 12px; font-weight: 700; color: #5c1a8b; padding: 2px 6px; }
+    .lnk:disabled { opacity: .5; cursor: not-allowed; }
+    .lnk.del { color: #dc2626; }
+    .lnk.save { color: #16a34a; }
+
     /* ===== MOBILE (<=640px) ===== */
     @media (max-width: 640px) {
       .card { padding: 12px; }
@@ -255,6 +333,7 @@ const MODULE_LIST: Array<{ key: string; label: string; icon: string; description
 export class AdminFirmSubscriptionComponent implements OnInit {
   private route = inject(ActivatedRoute);
   private http = inject(HttpClient);
+  private admin = inject(AdminService);
   private base = `${environment.apiUrl}/api/admin`;
 
   modList = MODULE_LIST;
@@ -286,6 +365,73 @@ export class AdminFirmSubscriptionComponent implements OnInit {
   aiKeyInput = '';
   mapsKeyInput = '';
   savingKeys = signal(false);
+
+  // ---- Login / Users panel ----
+  users = signal<FirmUser[]>([]);
+  usersLoading = signal(true);
+  userBusy = signal(false);
+  editingId = signal<string | null>(null);
+  editFullName = '';
+  editUsername = '';
+  editEmail = '';
+  editPhone = '';
+  editActive = true;
+
+  loadUsers() {
+    this.usersLoading.set(true);
+    this.admin.listFirmUsers(this.firmId).subscribe({
+      next: (list) => { this.users.set(list); this.usersLoading.set(false); },
+      error: () => { this.users.set([]); this.usersLoading.set(false); }
+    });
+  }
+
+  resetPwd(u: FirmUser) {
+    const pwd = prompt(`"${u.username}" ka NAYA password (min 6 char):`);
+    if (pwd === null) return;
+    if (pwd.trim().length < 6) { alert('Password kam se kam 6 character ka ho.'); return; }
+    if (!confirm(`Pakka "${u.username}" ka password reset karein?`)) return;
+    this.userBusy.set(true);
+    this.admin.resetFirmUserPassword(this.firmId, u.id, pwd.trim()).subscribe({
+      next: () => { this.userBusy.set(false); alert('Password reset ho gaya'); },
+      error: (e) => { this.userBusy.set(false); alert('❌ ' + (e?.error?.error ?? 'fail')); }
+    });
+  }
+
+  startEdit(u: FirmUser) {
+    this.editingId.set(u.id);
+    this.editFullName = u.fullName;
+    this.editUsername = u.username;
+    this.editEmail = u.email || '';
+    this.editPhone = u.phone || '';
+    this.editActive = u.isActive;
+  }
+
+  cancelEdit() { this.editingId.set(null); }
+
+  saveEdit(u: FirmUser) {
+    if (!this.editUsername.trim()) { alert('User ID zaroori hai.'); return; }
+    if (!this.editFullName.trim()) { alert('Naam zaroori hai.'); return; }
+    this.userBusy.set(true);
+    this.admin.updateFirmUser(this.firmId, u.id, {
+      fullName: this.editFullName.trim(),
+      username: this.editUsername.trim(),
+      email: this.editEmail.trim() || null,
+      phone: this.editPhone.trim() || null,
+      isActive: this.editActive
+    }).subscribe({
+      next: () => { this.userBusy.set(false); this.editingId.set(null); this.loadUsers(); },
+      error: (e) => { this.userBusy.set(false); alert('❌ ' + (e?.error?.error ?? 'fail')); }
+    });
+  }
+
+  deleteUser(u: FirmUser) {
+    if (!confirm(`Pakka "${u.username}" ko delete karein? Ye wapas nahi aayega.`)) return;
+    this.userBusy.set(true);
+    this.admin.deleteFirmUser(this.firmId, u.id).subscribe({
+      next: () => { this.userBusy.set(false); this.loadUsers(); },
+      error: (e) => { this.userBusy.set(false); alert('❌ ' + (e?.error?.error ?? 'Delete fail ho gaya')); }
+    });
+  }
 
   providerLabel(): string {
     return this.aiProvider === 'claude' ? 'Anthropic' : this.aiProvider === 'openai' ? 'OpenAI' : 'Google AI';
@@ -361,6 +507,7 @@ export class AdminFirmSubscriptionComponent implements OnInit {
     this.loadPlans();
     this.reload();
     this.loadKeys();
+    this.loadUsers();
   }
 
   loadPlans() {

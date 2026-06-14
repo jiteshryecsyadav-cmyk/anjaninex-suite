@@ -118,10 +118,34 @@ public interface IPlatformAdminService
 
     Task<List<TopFirmDto>> TopFirmsByRevenue(int top);
     Task<List<LowBalanceFirmDto>> LowBalanceFirms();
+
+    // ---- Firm login users (super-admin) ----
+    Task<List<FirmUserDto>> ListFirmUsers(Guid firmId);
+    Task<bool> ResetUserPassword(Guid firmId, Guid userId, string newPassword);   // false = user firm ka nahi
+    Task<bool> UpdateFirmUser(Guid firmId, Guid userId, UpdateFirmUserDto dto);    // false = user firm ka nahi
+    Task<(bool ok, string? error, bool notFound)> DeleteFirmUser(Guid firmId, Guid userId);
 }
 
 public record TopFirmDto(Guid FirmId, string Name, string PlanCode, decimal Revenue, int Days);
 public record LowBalanceFirmDto(Guid FirmId, string Name, decimal Balance, decimal LastDailySpend);
+
+// Firm login user — PasswordHash KABHI bahar nahi jata (security).
+public record FirmUserDto(
+    Guid Id,
+    string FullName,
+    string Username,
+    string? Email,
+    string? Phone,
+    bool IsActive,
+    string[] Roles,
+    DateTimeOffset CreatedAt);
+
+public record UpdateFirmUserDto(
+    string FullName,
+    string Username,
+    string? Email,
+    string? Phone,
+    bool IsActive);
 
 public class PlatformAdminService : IPlatformAdminService
 {
@@ -740,5 +764,111 @@ public class PlatformAdminService : IPlatformAdminService
         return firms.Select(f => new LowBalanceFirmDto(
             f.Id, f.Name, f.WalletBalance,
             weekSpend.GetValueOrDefault(f.Id, 0))).ToList();
+    }
+
+    // -------------------------------------------------------------------------
+    // Firm login users (super-admin) — har firm ke login users dekho/manage karo.
+    // RLS bypass ke liye IgnoreQueryFilters() (baaki firm endpoints jaisa).
+    // PasswordHash KABHI bahar nahi bhejte — sirf RESET (naya set) ho sakta hai.
+    // -------------------------------------------------------------------------
+    public async Task<List<FirmUserDto>> ListFirmUsers(Guid firmId)
+    {
+        var users = await _db.Users.IgnoreQueryFilters()
+            .Where(u => u.FirmId == firmId)
+            .OrderByDescending(u => u.CreatedAt)
+            .ToListAsync();
+
+        var userIds = users.Select(u => u.Id).ToList();
+
+        // user -> role names (firm-scoped roles)
+        var roleLinks = await _db.UserRoles.IgnoreQueryFilters()
+            .Where(ur => userIds.Contains(ur.UserId))
+            .ToListAsync();
+        var roleIds = roleLinks.Select(r => r.RoleId).Distinct().ToList();
+        var roleNames = await _db.Roles.IgnoreQueryFilters()
+            .Where(r => roleIds.Contains(r.Id))
+            .ToDictionaryAsync(r => r.Id, r => r.Name);
+
+        var rolesByUser = roleLinks
+            .GroupBy(r => r.UserId)
+            .ToDictionary(
+                g => g.Key,
+                g => g.Select(x => roleNames.GetValueOrDefault(x.RoleId))
+                      .Where(n => !string.IsNullOrEmpty(n))
+                      .Select(n => n!)
+                      .ToArray());
+
+        return users.Select(u => new FirmUserDto(
+            u.Id, u.FullName, u.Username, u.Email, u.Phone, u.IsActive,
+            rolesByUser.GetValueOrDefault(u.Id, Array.Empty<string>()),
+            u.CreatedAt)).ToList();
+    }
+
+    public async Task<bool> ResetUserPassword(Guid firmId, Guid userId, string newPassword)
+    {
+        if (string.IsNullOrWhiteSpace(newPassword) || newPassword.Length < 6)
+            throw new ArgumentException("Password kam se kam 6 character ka ho.");
+
+        var user = await _db.Users.IgnoreQueryFilters()
+            .FirstOrDefaultAsync(u => u.Id == userId);
+        if (user is null || user.FirmId != firmId) return false;   // firm-ownership guard
+
+        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword);
+        user.UpdatedAt = DateTimeOffset.UtcNow;
+        await _db.SaveChangesAsync();
+        _log.LogInformation("Anjaninex reset password for user {UserId} of firm {FirmId}", userId, firmId);
+        return true;
+    }
+
+    public async Task<bool> UpdateFirmUser(Guid firmId, Guid userId, UpdateFirmUserDto dto)
+    {
+        var user = await _db.Users.IgnoreQueryFilters()
+            .FirstOrDefaultAsync(u => u.Id == userId);
+        if (user is null || user.FirmId != firmId) return false;   // firm-ownership guard
+
+        if (string.IsNullOrWhiteSpace(dto.FullName)) throw new ArgumentException("Naam zaroori hai.");
+        if (string.IsNullOrWhiteSpace(dto.Username)) throw new ArgumentException("User ID (username) zaroori hai.");
+
+        // password ko HAATH nahi lagate
+        user.FullName = dto.FullName.Trim();
+        user.Username = dto.Username.Trim();
+        user.Email = string.IsNullOrWhiteSpace(dto.Email) ? null : dto.Email.Trim();
+        user.Phone = string.IsNullOrWhiteSpace(dto.Phone) ? null : dto.Phone.Trim();
+        user.IsActive = dto.IsActive;
+        user.UpdatedAt = DateTimeOffset.UtcNow;
+        await _db.SaveChangesAsync();
+        return true;
+    }
+
+    public async Task<(bool ok, string? error, bool notFound)> DeleteFirmUser(Guid firmId, Guid userId)
+    {
+        var user = await _db.Users.IgnoreQueryFilters()
+            .FirstOrDefaultAsync(u => u.Id == userId);
+        if (user is null || user.FirmId != firmId)
+            return (false, null, true);   // firm-ownership guard → 404
+
+        // Firm ka aakhri ACTIVE user hard-delete mat karo.
+        var activeCount = await _db.Users.IgnoreQueryFilters()
+            .CountAsync(u => u.FirmId == firmId && u.IsActive);
+        if (user.IsActive && activeCount <= 1)
+            return (false, "Firm ka aakhri active user delete nahi kar sakte — pehle dusra admin banao", false);
+
+        // FK rows pehle hatao (warna FK error).
+        var roleLinks = await _db.UserRoles.IgnoreQueryFilters().Where(ur => ur.UserId == userId).ToListAsync();
+        if (roleLinks.Count > 0) _db.UserRoles.RemoveRange(roleLinks);
+
+        var branchLinks = await _db.UserBranchAccess.IgnoreQueryFilters().Where(b => b.UserId == userId).ToListAsync();
+        if (branchLinks.Count > 0) _db.UserBranchAccess.RemoveRange(branchLinks);
+
+        var permOverrides = await _db.UserPermissionOverrides.IgnoreQueryFilters().Where(p => p.UserId == userId).ToListAsync();
+        if (permOverrides.Count > 0) _db.UserPermissionOverrides.RemoveRange(permOverrides);
+
+        var sessions = await _db.Sessions.IgnoreQueryFilters().Where(s => s.UserId == userId).ToListAsync();
+        if (sessions.Count > 0) _db.Sessions.RemoveRange(sessions);
+
+        _db.Users.Remove(user);
+        await _db.SaveChangesAsync();
+        _log.LogInformation("Anjaninex deleted user {UserId} of firm {FirmId}", userId, firmId);
+        return (true, null, false);
     }
 }

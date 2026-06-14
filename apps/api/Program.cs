@@ -451,12 +451,52 @@ try
     // RLS isolation is fully preserved — the context is simply now applied consistently.
     app.Use(async (ctx, next) =>
     {
-        if (ctx.User?.Identity?.IsAuthenticated == true)
+        var firmId = ctx.User?.FindFirst("firm_id")?.Value;
+        var isSuper = ctx.User?.IsInRole("super_admin") == true
+                   || ctx.User?.IsInRole("SUPER_ADMIN") == true;
+
+        if (ctx.User?.Identity?.IsAuthenticated == true && (!string.IsNullOrEmpty(firmId) || isSuper))
         {
+            var branchId = ctx.User?.FindFirst("default_branch_id")?.Value
+                        ?? ctx.Request.Headers["X-Branch-Id"].FirstOrDefault();
+
             var db = ctx.RequestServices.GetRequiredService<AppDbContext>();
             await db.Database.OpenConnectionAsync();
-            try { await next(); }
-            finally { await db.Database.CloseConnectionAsync(); }
+            try
+            {
+                // Set tenant context EXPLICITLY on this held-open connection. We do NOT rely
+                // on TenantConnectionInterceptor here because OpenConnectionAsync() only fires
+                // the interceptor on a *physical* open — if the connection was already opened
+                // earlier in the request, the interceptor is skipped and context stays unset.
+                // Setting it here guarantees app.current_firm_id is present for EVERY operation
+                // on this connection, including raw GetDbConnection() paths (ReserveCounterAsync,
+                // WalletService, admin controllers) that bypass EF's interceptor.
+                var conn = db.Database.GetDbConnection();
+                using (var cmd = conn.CreateCommand())
+                {
+                    cmd.CommandText =
+                        "SELECT set_config('app.current_firm_id', @f, false), " +
+                        "set_config('app.current_branch_id', @b, false), " +
+                        "set_config('app.is_platform_admin', @a, false);";
+                    void Add(string n, string v)
+                    {
+                        var p = cmd.CreateParameter();
+                        p.ParameterName = n;
+                        p.Value = v;
+                        cmd.Parameters.Add(p);
+                    }
+                    Add("@f", firmId ?? "");
+                    Add("@b", branchId ?? "");
+                    Add("@a", isSuper ? "true" : "false");
+                    await cmd.ExecuteNonQueryAsync();
+                }
+
+                await next();
+            }
+            finally
+            {
+                await db.Database.CloseConnectionAsync();
+            }
         }
         else
         {

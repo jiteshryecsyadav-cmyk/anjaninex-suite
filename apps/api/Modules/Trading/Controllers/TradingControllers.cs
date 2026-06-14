@@ -263,6 +263,8 @@ public class OrdersController : TradingControllerBase
         }
         catch (Exception ex)
         {
+            var root = ex; while (root.InnerException != null) root = root.InnerException;
+            Console.WriteLine($"[Trading.Create] {root.GetType().Name}: {root.Message}");
             return BadRequest(new { error = Namokara.Api.Common.Errors.FriendlyError.From(ex) });
         }
     }
@@ -332,6 +334,8 @@ public class GoodsReturnsController : TradingControllerBase
         }
         catch (Exception ex)
         {
+            var root = ex; while (root.InnerException != null) root = root.InnerException;
+            Console.WriteLine($"[Trading.Create] {root.GetType().Name}: {root.Message}");
             return BadRequest(new { error = Namokara.Api.Common.Errors.FriendlyError.From(ex) });
         }
     }
@@ -420,6 +424,8 @@ public class PaymentsController : TradingControllerBase
         }
         catch (Exception ex)
         {
+            var root = ex; while (root.InnerException != null) root = root.InnerException;
+            Console.WriteLine($"[Trading.Create] {root.GetType().Name}: {root.Message}");
             return BadRequest(new { error = Namokara.Api.Common.Errors.FriendlyError.From(ex) });
         }
     }

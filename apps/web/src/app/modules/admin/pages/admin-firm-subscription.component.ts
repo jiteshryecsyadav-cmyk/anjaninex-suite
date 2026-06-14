@@ -282,17 +282,14 @@ const MODULE_LIST: Array<{ key: string; label: string; icon: string; description
             Is firm ki fixed UI theme. Firm ke users ise change nahi kar sakte — sirf yahan se set hoti hai.
             Select karte hi turant save ho jati hai.
           </p>
-          <div class="flex flex-wrap gap-2 mt-3">
-            @for (t of themeOptions; track t.key) {
-              <button (click)="pickTheme(t.key)" [disabled]="themeBusy()"
-                      class="theme-swatch"
-                      [class.sel]="firmTheme() === t.key"
-                      [title]="t.name">
-                <span class="sw" [style.background]="t.color"></span>
-                <span class="nm">{{ t.name }}</span>
-                @if (firmTheme() === t.key) { <span class="tick">✓</span> }
-              </button>
-            }
+          <div class="mt-3" style="max-width:340px;display:flex;align-items:center;gap:10px;">
+            <span class="sw" [style.background]="selectedThemeColor()" style="width:28px;height:28px;border-radius:8px;border:1px solid rgba(0,0,0,.15);flex-shrink:0;"></span>
+            <select (change)="pickTheme($any($event.target).value)" [disabled]="themeBusy()"
+                    style="flex:1;padding:9px 10px;border:1px solid #D6DDEA;border-radius:8px;font-size:14px;background:#fff;color:#1B2E5C;cursor:pointer;">
+              @for (t of themeOptions; track t.key) {
+                <option [value]="t.key" [selected]="firmTheme() === t.key">{{ t.name }}</option>
+              }
+            </select>
           </div>
         </div>
 
@@ -406,6 +403,9 @@ export class AdminFirmSubscriptionComponent implements OnInit {
   ];
   firmTheme = signal<string>('classic');
   themeBusy = signal(false);
+  selectedThemeColor(): string {
+    return this.themeOptions.find(t => t.key === this.firmTheme())?.color || '#1B2E5C';
+  }
 
   loadTheme() {
     this.admin.getFirm(this.firmId).subscribe({

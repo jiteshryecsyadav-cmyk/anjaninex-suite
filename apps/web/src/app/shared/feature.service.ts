@@ -114,6 +114,8 @@ export class FeatureService {
         this.firmCity.set(r.firmCity || '');
         this.firmState.set(r.firmState || '');
         this.firmTheme.set(r.firmTheme || 'classic');
+        // is device pe yaad rakho — login page (pre-auth) par bhi yahi theme dikhe
+        try { localStorage.setItem('ax_firm_theme', r.firmTheme || 'classic'); } catch {}
         this.planCode.set(r.planCode);
         this.userLimit.set(r.limits.userLimit);
         this.branchLimit.set(r.limits.branchLimit);

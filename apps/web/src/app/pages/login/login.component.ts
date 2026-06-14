@@ -10,55 +10,48 @@ import { environment } from '../../../environments/environment';
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule],
   template: `
-    <div class="lx-bg">
-      <!-- soft colour blobs -->
-      <span class="blob b1"></span>
-      <span class="blob b2"></span>
-      <span class="blob b3"></span>
-
-      <!-- scattered watermark text (cities + modules) -->
-      <div class="lx-marks">
-        @for (w of watermarks; track $index) {
-          <span [style.top.%]="w.t" [style.left.%]="w.l"
-                [style.font-size.px]="w.s"
-                [style.transform]="'rotate(' + w.r + 'deg)'"
-                [style.animation-duration.s]="watermarks.length * 2"
-                [style.animation-delay.s]="$index * 2">{{ w.x }}</span>
-        }
-      </div>
-
-      <div class="lx-wrap">
-        <!-- Brand header -->
-        <div class="lx-brand">
-          <img src="anjaninex-logo.jpeg" alt="Anjaninex" width="96" height="96" class="lx-logo">
-          <h1 class="lx-word">Anjani<span>nex</span></h1>
-          <p class="lx-sub">Business Suite</p>
-          <div class="lx-pills">
-            <span class="pill p-blue">📦 Trading</span>
-            <span class="pill p-green">📊 Accounting</span>
-            <span class="pill p-purple">🤝 Suppliers</span>
-            <span class="pill p-amber">👥 HR</span>
-          </div>
+    <div class="lx-shell">
+      <!-- LEFT — brand panel (firm theme colour) -->
+      <aside class="lx-brandpanel">
+        <div class="lx-bp-top">
+          <img src="anjaninex-logo.jpeg" alt="Anjaninex" class="lx-bp-logo">
+          <div class="lx-bp-name">Anjaninex</div>
+          <div class="lx-bp-suite">BUSINESS SUITE</div>
         </div>
+        <div class="lx-bp-mid">
+          <h2 class="lx-bp-head">Run your entire B2B business in one place.</h2>
+          <ul class="lx-bp-feats">
+            <li>Trading — orders, bills &amp; GST invoicing</li>
+            <li>Accounting — ledgers, P&amp;L &amp; balance sheet</li>
+            <li>Suppliers — catalog, matching &amp; directory</li>
+            <li>HR &amp; Wallet — team, payouts &amp; billing</li>
+          </ul>
+        </div>
+        <a [href]="anjaninexUrl" target="_blank" rel="noopener" class="lx-bp-bottom">
+          Powered by <strong>Anjaninex</strong> · Building world-class B2B software
+        </a>
+      </aside>
 
-        <!-- Login card -->
-        <form [formGroup]="form" (ngSubmit)="login()" class="lx-card">
-          <div class="lx-card-bar"></div>
+      <!-- RIGHT — sign-in form -->
+      <main class="lx-formpanel">
+        <form [formGroup]="form" (ngSubmit)="login()" class="lx-form">
+          <h1 class="lx-f-title">Sign in</h1>
+          <p class="lx-f-sub">Welcome back — please enter your details.</p>
 
           @if (error()) {
-            <div class="lx-error">⚠️ {{ error() }}</div>
+            <div class="lx-error">{{ error() }}</div>
           }
 
-          <label class="lx-label">Email / Phone / Username <span>*</span></label>
+          <label class="lx-label">Email / Phone / Username</label>
           <input formControlName="identifier" type="text" class="lx-input"
-                 placeholder="Enter username" autofocus autocomplete="username">
+                 placeholder="Enter your username" autofocus autocomplete="username">
 
-          <label class="lx-label mt">Password <span>*</span></label>
+          <label class="lx-label mt">Password</label>
           <div class="lx-pass">
             <input formControlName="password" [type]="showPassword() ? 'text' : 'password'"
-                   class="lx-input" placeholder="Enter password" autocomplete="current-password">
-            <button type="button" (click)="showPassword.set(!showPassword())" class="lx-eye">
-              {{ showPassword() ? '🙈' : '👁️' }}
+                   class="lx-input" placeholder="Enter your password" autocomplete="current-password">
+            <button type="button" (click)="showPassword.set(!showPassword())" class="lx-eye no-shine">
+              {{ showPassword() ? '🙈' : '👁' }}
             </button>
           </div>
 
@@ -70,104 +63,86 @@ import { environment } from '../../../environments/environment';
           </div>
 
           <button type="submit" class="lx-signin" [disabled]="loading()">
-            {{ loading() ? 'Signing in…' : '🔓 Sign In' }}
+            {{ loading() ? 'Signing in…' : 'Sign In' }}
           </button>
 
           <div class="lx-or"><span>OR</span></div>
+          <button type="button" class="lx-otp">Sign in with OTP</button>
 
-          <button type="button" class="lx-otp">📱 Sign in with OTP</button>
+          <a href="mailto:support@anjaninex.com" class="lx-help">Need help? support&#64;anjaninex.com</a>
         </form>
-
-        <!-- Powered by -->
-        <a [href]="anjaninexUrl" target="_blank" rel="noopener" class="lx-power">
-          <img src="anjaninex-logo.jpeg" alt="Anjaninex" width="40" height="40" class="object-contain">
-          <span>Powered by <strong>Anjaninex</strong></span>
-          <small>Building world-class B2B software</small>
-        </a>
-
-        <!-- Support -->
-        <a href="mailto:support@anjaninex.com" class="lx-support">
-          ✉️ Need help? <strong>support&#64;anjaninex.com</strong>
-        </a>
-      </div>
+      </main>
     </div>
   `,
   styles: [`
-    /* Background = firm theme colour (solid + subtle glow, no clashing blend) */
-    .lx-bg{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;position:relative;overflow:hidden;
-      background:radial-gradient(circle at 26% 16%, rgba(255,255,255,.10), transparent 58%), var(--anjaninex-navy, #1b2e5c)}
-    .blob{position:absolute;border-radius:50%;filter:blur(80px);opacity:.38;pointer-events:none}
-    .b1{width:360px;height:360px;background:var(--anjaninex-red,#d91e28);top:-90px;right:-70px}
-    .b2{width:320px;height:320px;background:rgba(255,255,255,.16);bottom:-100px;left:-80px}
-    .b3{width:240px;height:240px;background:var(--anjaninex-red,#d91e28);top:44%;left:60%;opacity:.20}
-    .lx-marks{position:absolute;inset:0;z-index:1;overflow:hidden}
-    .lx-marks span{position:absolute;color:rgba(255,255,255,.045);font-weight:900;letter-spacing:.5px;
-      white-space:nowrap;pointer-events:none;user-select:none;text-transform:uppercase;font-family:'JetBrains Mono',monospace;
-      animation-name:wmBlink;animation-timing-function:linear;animation-iteration-count:infinite}
-    @keyframes wmBlink{
-      0%   {opacity:.045; color:rgba(255,255,255,.045); text-shadow:none}
-      1%   {opacity:1;    color:#ffd166; text-shadow:0 0 22px rgba(255,180,40,.8)}
-      2.5% {opacity:1;    color:#ffd166; text-shadow:0 0 22px rgba(255,180,40,.8)}
-      4%   {opacity:.045; color:rgba(255,255,255,.045); text-shadow:none}
-      100% {opacity:.045}
-    }
-    .lx-wrap{position:relative;z-index:2;width:100%;max-width:430px;display:flex;flex-direction:column;align-items:center}
+    /* ===== Corporate split-screen sign-in ===== */
+    :host{display:block}
+    .lx-shell{min-height:100vh;display:flex;font-family:inherit}
 
-    .lx-brand{text-align:center;margin-bottom:18px}
-    .lx-logo{display:block;margin:0 auto;border-radius:18px;background:#fff;padding:8px;object-fit:contain;box-shadow:0 10px 30px rgba(0,0,0,.3)}
-    .lx-word{font-size:34px;font-weight:900;color:#fff;margin:12px 0 0;letter-spacing:-1px}
-    .lx-word span{background:linear-gradient(90deg,#ff5b64,#ffb020);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
-    .lx-sub{color:rgba(255,255,255,.8);font-weight:600;font-size:13px;margin-top:2px}
-    .lx-pills{display:flex;gap:7px;justify-content:center;flex-wrap:wrap;margin-top:12px}
-    .pill{font-size:11px;font-weight:700;padding:5px 11px;border-radius:999px;color:#fff;backdrop-filter:blur(4px)}
-    .p-blue{background:rgba(14,165,233,.28);border:1px solid rgba(14,165,233,.5)}
-    .p-green{background:rgba(22,163,74,.28);border:1px solid rgba(22,163,74,.5)}
-    .p-purple{background:rgba(147,51,234,.28);border:1px solid rgba(147,51,234,.5)}
-    .p-amber{background:rgba(217,119,6,.30);border:1px solid rgba(217,119,6,.5)}
+    /* LEFT — brand panel (firm theme colour) */
+    .lx-brandpanel{flex:0 0 42%;max-width:520px;background:var(--anjaninex-navy,#1b2e5c);color:#fff;
+      display:flex;flex-direction:column;justify-content:space-between;padding:48px 44px;position:relative;overflow:hidden}
+    .lx-brandpanel::before{content:'';position:absolute;inset:0;
+      background:radial-gradient(circle at 82% 10%, rgba(255,255,255,.10), transparent 55%);pointer-events:none}
+    .lx-bp-top,.lx-bp-mid,.lx-bp-bottom{position:relative;z-index:1}
+    .lx-bp-logo{width:62px;height:62px;border-radius:14px;background:#fff;padding:7px;object-fit:contain;box-shadow:0 8px 24px rgba(0,0,0,.25)}
+    .lx-bp-name{font-size:28px;font-weight:900;letter-spacing:-.5px;margin-top:16px}
+    .lx-bp-suite{font-size:12px;font-weight:700;color:rgba(255,255,255,.7);letter-spacing:2px;margin-top:2px}
+    .lx-bp-head{font-size:26px;font-weight:800;line-height:1.32;margin:0 0 24px;max-width:340px}
+    .lx-bp-feats{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:14px}
+    .lx-bp-feats li{font-size:14px;color:rgba(255,255,255,.9);padding-left:26px;position:relative;line-height:1.4}
+    .lx-bp-feats li::before{content:'✓';position:absolute;left:0;top:0;font-weight:900;color:#fff;
+      background:rgba(255,255,255,.18);width:18px;height:18px;border-radius:50%;font-size:11px;display:flex;align-items:center;justify-content:center}
+    .lx-bp-bottom{font-size:11.5px;color:rgba(255,255,255,.62);text-decoration:none}
+    .lx-bp-bottom strong{color:#fff}
 
-    .lx-card{width:100%;background:rgba(255,255,255,.97);border-radius:18px;padding:26px 24px 24px;
-      box-shadow:0 24px 60px rgba(0,0,0,.35);position:relative;overflow:hidden;display:flex;flex-direction:column}
-    .lx-card-bar{position:absolute;top:0;left:0;right:0;height:5px;background:var(--anjaninex-red,#d91e28)}
-    .lx-error{background:#fef2f2;border:1px solid #fecaca;color:#b91c1c;padding:9px 12px;border-radius:9px;font-size:13px;font-weight:600;margin-bottom:6px}
+    /* RIGHT — form panel */
+    .lx-formpanel{flex:1;display:flex;align-items:center;justify-content:center;padding:40px 24px;background:#f4f6fb}
+    .lx-form{width:100%;max-width:380px;background:#fff;border:1px solid #e6eaf2;border-radius:16px;padding:36px 32px;
+      box-shadow:0 18px 50px rgba(20,30,60,.10);display:flex;flex-direction:column}
+    .lx-f-title{font-size:24px;font-weight:800;color:#0f1729;margin:0}
+    .lx-f-sub{font-size:13px;color:#6b7280;margin:5px 0 22px}
+    .lx-error{background:#fef2f2;border:1px solid #fecaca;color:#b91c1c;padding:10px 12px;border-radius:9px;font-size:13px;font-weight:600;margin-bottom:14px}
 
-    .lx-label{font-size:11px;font-weight:800;color:var(--anjaninex-navy,#1b2e5c);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px}
-    .lx-label.mt{margin-top:14px}
-    .lx-label span{color:var(--anjaninex-red,#d91e28)}
-    .lx-input{width:100%;padding:12px 14px;border:1.5px solid #dbe2ee;border-radius:11px;font-size:14px;font-family:inherit;
-      background:#f8fafc;transition:.15s;box-sizing:border-box}
-    .lx-input:focus{outline:none;border-color:var(--anjaninex-navy,#1b2e5c);background:#fff;box-shadow:0 0 0 4px rgba(0,0,0,.06)}
+    .lx-label{font-size:12px;font-weight:700;color:#374151;margin-bottom:7px;display:block}
+    .lx-label.mt{margin-top:16px}
+    .lx-input{width:100%;padding:12px 14px;border:1.5px solid #d7dceb;border-radius:10px;font-size:14px;font-family:inherit;
+      background:#fff;transition:.15s;box-sizing:border-box}
+    .lx-input:focus{outline:none;border-color:var(--anjaninex-navy,#1b2e5c);box-shadow:0 0 0 3px rgba(0,0,0,.06)}
     .lx-pass{position:relative}
-    .lx-eye{position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:0;cursor:pointer;font-size:17px}
+    .lx-eye{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:0;cursor:pointer;font-size:16px;opacity:.65}
 
-    .lx-row{display:flex;justify-content:space-between;align-items:center;margin-top:14px;font-size:13px}
-    .lx-remember{display:flex;align-items:center;gap:7px;color:var(--anjaninex-navy,#1b2e5c);font-weight:600;cursor:pointer}
-    .lx-remember input{accent-color:var(--anjaninex-red,#d91e28);width:15px;height:15px}
-    .lx-forgot{color:var(--anjaninex-navy,#1b2e5c);font-weight:700;text-decoration:none}
-    .lx-forgot:hover{color:var(--anjaninex-red,#d91e28);text-decoration:underline}
+    .lx-row{display:flex;justify-content:space-between;align-items:center;margin-top:16px;font-size:13px}
+    .lx-remember{display:flex;align-items:center;gap:7px;color:#374151;font-weight:500;cursor:pointer}
+    .lx-remember input{accent-color:var(--anjaninex-navy,#1b2e5c);width:15px;height:15px}
+    .lx-forgot{color:var(--anjaninex-navy,#1b2e5c);font-weight:600;text-decoration:none}
+    .lx-forgot:hover{text-decoration:underline}
 
-    .lx-signin{margin-top:18px;padding:14px;border:0;border-radius:12px;color:#fff;font-size:15px;font-weight:800;cursor:pointer;
-      font-family:inherit;background:var(--anjaninex-red,#d91e28);box-shadow:0 10px 24px rgba(0,0,0,.28);transition:.15s}
-    .lx-signin:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 14px 30px rgba(0,0,0,.35);filter:brightness(1.06)}
+    .lx-signin{margin-top:22px;padding:13px;border:0;border-radius:10px;color:#fff;font-size:15px;font-weight:700;cursor:pointer;
+      font-family:inherit;background:var(--anjaninex-navy,#1b2e5c);box-shadow:0 8px 20px rgba(0,0,0,.16);transition:.15s}
+    .lx-signin:hover:not(:disabled){filter:brightness(1.08)}
     .lx-signin:disabled{opacity:.6;cursor:not-allowed}
 
-    .lx-or{display:flex;align-items:center;gap:10px;margin:16px 0 12px;color:#9ca3af;font-size:11px;font-weight:700}
+    .lx-or{display:flex;align-items:center;gap:10px;margin:18px 0 14px;color:#9ca3af;font-size:11px;font-weight:600}
     .lx-or::before,.lx-or::after{content:'';flex:1;height:1px;background:#e5e7eb}
 
-    .lx-otp{width:100%;padding:12px;border:1.5px solid var(--anjaninex-navy,#1b2e5c);background:#fff;color:var(--anjaninex-navy,#1b2e5c);border-radius:12px;
-      font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;transition:.15s}
-    .lx-otp:hover{background:var(--anjaninex-navy,#1b2e5c);color:#fff}
+    .lx-otp{width:100%;padding:12px;border:1.5px solid #d7dceb;background:#fff;color:#374151;border-radius:10px;
+      font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;transition:.15s}
+    .lx-otp:hover{border-color:var(--anjaninex-navy,#1b2e5c);color:var(--anjaninex-navy,#1b2e5c)}
 
-    .lx-power{margin-top:22px;display:flex;flex-direction:column;align-items:center;gap:4px;text-decoration:none;
-      color:rgba(255,255,255,.85)}
-    .lx-power img{border-radius:10px;background:#fff;padding:4px}
-    .lx-power span{font-size:12px;margin-top:4px}
-    .lx-power strong{color:#ffb020}
-    .lx-power small{font-size:10px;color:rgba(255,255,255,.6)}
+    .lx-help{margin-top:20px;text-align:center;font-size:12px;color:#9ca3af;text-decoration:none}
+    .lx-help:hover{color:#6b7280}
 
-    .lx-support{margin-top:14px;font-size:12px;color:rgba(255,255,255,.8);text-decoration:none;
-      background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);padding:7px 16px;border-radius:999px;transition:.15s}
-    .lx-support:hover{background:rgba(255,255,255,.16);color:#fff}
-    .lx-support strong{color:#ffb020}
+    @media (max-width:860px){
+      .lx-shell{flex-direction:column}
+      .lx-brandpanel{flex:none;max-width:none;padding:24px 22px;flex-direction:row;align-items:center;gap:14px;justify-content:flex-start}
+      .lx-bp-mid,.lx-bp-bottom{display:none}
+      .lx-bp-logo{width:46px;height:46px}
+      .lx-bp-name{font-size:21px;margin-top:0}
+      .lx-bp-suite{margin-top:0}
+      .lx-formpanel{padding:22px 14px}
+      .lx-form{padding:26px 22px}
+    }
   `]
 })
 export class LoginComponent {

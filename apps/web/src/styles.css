@@ -437,8 +437,7 @@ button::after, [class*="btn"]::after {
   background: linear-gradient(180deg, rgba(255,255,255,.30), rgba(255,255,255,0));
 }
 button:active::after, [class*="btn"]:active::after { height: 38%; opacity: .8; }   /* press par halka */
-/* in elements pe gloss NAHI (toggle switch, opt-out) */
-.switch::after, .no-shine::after, .switch::before { }
+/* toggle switch + opt-out par gloss NAHI */
 .switch::after, .no-shine::after { display: none !important; }
 
 /* ✨ Sidebar ka ACTIVE (clicked) menu item — logout button jaisa glossy shine */

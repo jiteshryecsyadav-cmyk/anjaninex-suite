@@ -983,6 +983,8 @@ DO UPDATE SET next_no = platform.voucher_counters.next_no + 1
 RETURNING next_no;";
         var conn = _db.Database.GetDbConnection();
         if (conn.State != System.Data.ConnectionState.Open) await conn.OpenAsync();
+        // RLS: raw connection bypasses EF interceptor — set tenant context before the write.
+        await Namokara.Api.Common.Db.TenantContextSetter.ApplyAsync(conn, firmId, branchId);
         await using var cmd = conn.CreateCommand();
         cmd.CommandText = string.Format(sql,
             $"'{firmId}'::uuid", $"'{branchId}'::uuid",

@@ -484,7 +484,7 @@ export class TransportersComponent {
       pincode: findCol(['pincode', 'pin code', 'pin', 'zip']),
       email: findCol(['email', 'e-mail', 'mail']),
       address: findCol(['address', 'addr']),
-      person: findCol(['contact person', 'person', 'owner', 'contact name']),
+      person: findCol(['contact person', 'manager', 'person', 'owner', 'contact name']),
       landline: findCol(['landline', 'std', 'telephone', 'office']),
       remark: findCol(['remark', 'note']),
     };
@@ -534,6 +534,14 @@ export class TransportersComponent {
         pincode: get(r, col.pincode), email: get(r, col.email), address: get(r, col.address),
         contactPerson: get(r, col.person), landline: get(r, col.landline), remark: get(r, col.remark),
       };
+      // Mobile me 2 number dash/slash/comma se jude ho sakte hain → pehla=Mobile, doosra=WhatsApp.
+      // (Mobile/WhatsApp column 20 char tak — lambi joined value warna reject ho jaati hai.)
+      if (csv.mobile) {
+        const parts = csv.mobile.split(/[-,/;|&]+/).map(x => x.trim()).filter(Boolean);
+        if (parts.length > 1) { csv.mobile = parts[0]; if (!csv.whatsapp) csv.whatsapp = parts[1]; }
+        csv.mobile = csv.mobile.slice(0, 20);
+      }
+      if (csv.whatsapp) csv.whatsapp = csv.whatsapp.slice(0, 20);
       const ex = exByName.get(key);
       if (ex) {
         // existing ke KHAALI fields CSV se bharo (existing value preferred)

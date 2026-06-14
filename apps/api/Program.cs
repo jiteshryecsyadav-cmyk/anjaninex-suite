@@ -432,6 +432,38 @@ try
     // for backwards compat with any code that reads HttpContext.Items["FirmId"].
     app.UseMiddleware<TenantContextMiddleware>();
     app.UseAuthorization();
+
+    // ---------------- P0-RLS: hold ONE context-carrying DB connection per request ----------------
+    // BUG (42501 "new row violates row-level security policy"): EF auto-closes the DB
+    // connection between operations, and several hot code paths grab the RAW ADO connection
+    // directly (ReserveCounterAsync in Order/Bill/GR/Commission/Payment/Voucher/Payroll,
+    // WalletService, admin controllers, etc.) via:
+    //     var conn = _db.Database.GetDbConnection();
+    //     if (conn.State != Open) await conn.OpenAsync();   // <-- bypasses EF interceptor
+    // A raw OpenAsync() does NOT fire TenantConnectionInterceptor, so app.current_firm_id
+    // is never set on that connection → core.current_firm_id() returns NULL → every INSERT's
+    // RLS WITH CHECK fails → document save (order/bill/voucher/...) breaks app-wide.
+    //
+    // Fix: at the start of every AUTHENTICATED request, open the EF connection ONCE (this
+    // DOES fire the interceptor → tenant context is set) and keep it open for the whole
+    // request. Now `conn.State == Open` is already true everywhere, so the raw paths reuse
+    // the SAME context-carrying connection instead of opening a fresh context-less one.
+    // RLS isolation is fully preserved — the context is simply now applied consistently.
+    app.Use(async (ctx, next) =>
+    {
+        if (ctx.User?.Identity?.IsAuthenticated == true)
+        {
+            var db = ctx.RequestServices.GetRequiredService<AppDbContext>();
+            await db.Database.OpenConnectionAsync();
+            try { await next(); }
+            finally { await db.Database.CloseConnectionAsync(); }
+        }
+        else
+        {
+            await next();
+        }
+    });
+
     app.MapControllers();
 
     // Health endpoints

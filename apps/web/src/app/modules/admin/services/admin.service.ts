@@ -48,6 +48,7 @@ export interface FirmDetail extends FirmListItem {
   supplierCount: number;
   lifetimeSpend: number;
   lifetimeRevenue: number;
+  theme: string;
 }
 
 export interface WalletTxn {
@@ -176,6 +177,9 @@ export class AdminService {
   suspend(id: string) { return this.http.post(`${this.base}/firms/${id}/suspend`, {}); }
   activate(id: string) { return this.http.post(`${this.base}/firms/${id}/activate`, {}); }
   changePlan(id: string, planId: string) { return this.http.post(`${this.base}/firms/${id}/change-plan`, { planId }); }
+  setFirmTheme(firmId: string, theme: string) {
+    return this.http.post<{ success: boolean; theme: string }>(`${this.base}/firms/${firmId}/theme`, { theme });
+  }
 
   // ---- Firm login users (super-admin) ----
   listFirmUsers(firmId: string) { return this.http.get<FirmUser[]>(`${this.base}/firms/${firmId}/users`); }

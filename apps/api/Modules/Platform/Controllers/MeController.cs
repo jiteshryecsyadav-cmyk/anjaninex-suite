@@ -167,6 +167,7 @@ public class MeController : ControllerBase
                 f.PanNumber,
                 f.City,
                 f.State,
+                f.Theme,
                 f.EnabledModules,
                 f.PlanCode,
                 f.UserLimit,
@@ -205,6 +206,7 @@ public class MeController : ControllerBase
             firmPan = firm.PanNumber,
             firmCity = firm.City,
             firmState = firm.State,
+            firmTheme = string.IsNullOrWhiteSpace(firm.Theme) ? "classic" : firm.Theme,
             modules = enabled,
             planCode = firm.PlanCode ?? "starter",
             limits = new

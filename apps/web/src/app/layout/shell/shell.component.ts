@@ -1,4 +1,4 @@
-import { Component, inject, signal, HostListener } from '@angular/core';
+import { Component, inject, signal, effect, HostListener } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
@@ -143,12 +143,7 @@ import { environment } from '../../../environments/environment';
               </a>
             }
             }
-
-            <!-- 🎨 Theme Color — menu item (Changelog/Wallet ke theek neeche) -->
-            <button (click)="themePickerOpen.set(true)"
-                    class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-semibold text-white/75 hover:text-white hover:bg-white/10 text-left">
-              <span class="w-5 text-center">🎨</span> Theme Color
-            </button>
+            <!-- Theme Color picker removed — theme is now fixed per-firm (set by Anjaninex super-admin). -->
           </nav>
 
           <!-- ⏻ Logout (glossy square button — power icon SVG) -->
@@ -377,28 +372,7 @@ import { environment } from '../../../environments/environment';
       </div>
     }
 
-    <!-- 🎨 Theme Color picker popup -->
-    @if (themePickerOpen()) {
-      <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" (click)="themePickerOpen.set(false)">
-        <div class="bg-white rounded-2xl p-6 w-full max-w-sm text-anjaninex-navy-dark" (click)="$event.stopPropagation()">
-          <h3 class="font-display font-bold text-lg mb-4">🎨 Theme Color choose karo</h3>
-          @for (t of colorThemes; track t.key) {
-            <button (click)="setColorTheme(t.key)"
-                    class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl mb-2 border-2 transition text-left"
-                    [style.borderColor]="colorTheme() === t.key ? '#5c1a8b' : '#eee'"
-                    [style.background]="colorTheme() === t.key ? '#faf5ff' : '#fff'">
-              <span class="w-8 h-8 rounded-lg shrink-0 border border-black/10" [style.background]="t.color"></span>
-              <span class="flex-1 text-sm font-semibold">{{ t.name }}</span>
-              @if (colorTheme() === t.key) { <span class="text-[#5c1a8b] font-black">✓</span> }
-            </button>
-          }
-          <p class="text-xs text-gray-400 mt-1">Select karte hi apply + save ho jata hai.</p>
-          <div class="flex justify-end mt-3">
-            <button (click)="themePickerOpen.set(false)" class="px-4 py-2 border rounded text-sm">Done</button>
-          </div>
-        </div>
-      </div>
-    }
+    <!-- Theme Color picker popup removed — theme is fixed per-firm by super-admin. -->
     }
   `,
   styles: [`
@@ -538,14 +512,9 @@ export class ShellComponent {
     { key: 'theme-violet', name: 'Neon Violet',   color: '#E040FB' },
     { key: 'theme-gold',   name: 'Royal Cherry Gold', color: 'linear-gradient(135deg,#5E1219,#D4AF37)' }
   ];
-  colorTheme = signal(localStorage.getItem('colorTheme') || 'classic');
-  themePickerOpen = signal(false);
+  // Theme now comes from the firm (set by super-admin), not localStorage / user picker.
+  colorTheme = signal('classic');
 
-  setColorTheme(k: string) {
-    this.colorTheme.set(k);
-    localStorage.setItem('colorTheme', k);
-    this.applyColorTheme(k);
-  }
   private applyColorTheme(k: string) {
     document.body.classList.remove(
       'theme-sunset', 'theme-aurora', 'theme-neon', 'theme-violet', 'theme-gold',
@@ -638,9 +607,17 @@ export class ShellComponent {
   anjaninexUrl = environment.anjaninexUrl;
 
   constructor() {
-    // Saved themes apply (day/night + color)
+    // Day/night dark-mode (user-controlled — unchanged).
     document.body.classList.toggle('dark-mode', this.dark());
-    this.applyColorTheme(this.colorTheme());
+
+    // UI color theme is FIXED per-firm (assigned by Anjaninex super-admin).
+    // firmTheme is a signal that fills in once /api/me/modules resolves, so apply
+    // it reactively — applies immediately if already loaded, and re-applies on load.
+    effect(() => {
+      const k = this.features.firmTheme() || 'classic';
+      this.colorTheme.set(k);
+      this.applyColorTheme(k);
+    });
 
     // Notification count (bell ka red dot)
     this.loadNotifs();

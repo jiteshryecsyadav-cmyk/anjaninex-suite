@@ -23,6 +23,7 @@ export interface MeModulesResponse {
   firmPan?: string;
   firmCity?: string;
   firmState?: string;
+  firmTheme?: string;
   modules: ModuleKey[];
   planCode: string;
   limits: {
@@ -66,6 +67,8 @@ export class FeatureService {
   firmPan = signal<string>('');
   firmCity = signal<string>('');
   firmState = signal<string>('');
+  /** Fixed UI theme color assigned by Anjaninex super-admin (users can't change). */
+  firmTheme = signal<string>('classic');
   planCode = signal<string>('starter');
   userLimit = signal<number>(3);
   branchLimit = signal<number>(1);
@@ -110,6 +113,7 @@ export class FeatureService {
         this.firmPan.set(r.firmPan || '');
         this.firmCity.set(r.firmCity || '');
         this.firmState.set(r.firmState || '');
+        this.firmTheme.set(r.firmTheme || 'classic');
         this.planCode.set(r.planCode);
         this.userLimit.set(r.limits.userLimit);
         this.branchLimit.set(r.limits.branchLimit);

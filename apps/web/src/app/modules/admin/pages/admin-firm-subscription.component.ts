@@ -275,6 +275,27 @@ const MODULE_LIST: Array<{ key: string; label: string; icon: string; description
           }
         </div>
 
+        <!-- 🎨 Theme Color (super-admin assigns; firm users can't change) -->
+        <div class="card mb-4">
+          <div class="card-head">🎨 Theme Color</div>
+          <p class="text-xs text-gray-500 mt-1">
+            Is firm ki fixed UI theme. Firm ke users ise change nahi kar sakte — sirf yahan se set hoti hai.
+            Select karte hi turant save ho jati hai.
+          </p>
+          <div class="flex flex-wrap gap-2 mt-3">
+            @for (t of themeOptions; track t.key) {
+              <button (click)="pickTheme(t.key)" [disabled]="themeBusy()"
+                      class="theme-swatch"
+                      [class.sel]="firmTheme() === t.key"
+                      [title]="t.name">
+                <span class="sw" [style.background]="t.color"></span>
+                <span class="nm">{{ t.name }}</span>
+                @if (firmTheme() === t.key) { <span class="tick">✓</span> }
+              </button>
+            }
+          </div>
+        </div>
+
         <!-- Save bar -->
         <div class="flex justify-end gap-3 sticky bottom-4 bg-white p-3 rounded-lg shadow-lg border border-purple-200">
           <span class="text-sm text-gray-600 self-center" *ngIf="dirty()">⚠️ Unsaved changes</span>
@@ -323,6 +344,14 @@ const MODULE_LIST: Array<{ key: string; label: string; icon: string; description
     .lnk.del { color: #dc2626; }
     .lnk.save { color: #16a34a; }
 
+    /* ===== Theme swatches ===== */
+    .theme-swatch { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px 6px 8px; border: 2px solid #eee; border-radius: 999px; background: #fff; cursor: pointer; font-size: 12px; font-weight: 700; color: #2d1040; }
+    .theme-swatch:hover { border-color: #ddc8f5; }
+    .theme-swatch.sel { border-color: #5c1a8b; background: #faf5ff; }
+    .theme-swatch:disabled { opacity: .5; cursor: not-allowed; }
+    .theme-swatch .sw { width: 22px; height: 22px; border-radius: 6px; border: 1px solid rgba(0,0,0,.1); display: inline-block; }
+    .theme-swatch .tick { color: #5c1a8b; font-weight: 900; }
+
     /* ===== MOBILE (<=640px) ===== */
     @media (max-width: 640px) {
       .card { padding: 12px; }
@@ -365,6 +394,36 @@ export class AdminFirmSubscriptionComponent implements OnInit {
   aiKeyInput = '';
   mapsKeyInput = '';
   savingKeys = signal(false);
+
+  // ---- Theme color (super-admin assigns; firm users can't change) ----
+  themeOptions = [
+    { key: 'classic',      name: 'Classic Navy',      color: '#1B2E5C' },
+    { key: 'theme-sunset', name: 'Sunset Blend',      color: 'linear-gradient(135deg,#7C3AED,#EC4899,#F97316)' },
+    { key: 'theme-aurora', name: 'Aurora Blend',      color: 'linear-gradient(135deg,#06B6D4,#3B82F6,#8B5CF6)' },
+    { key: 'theme-neon',   name: 'Neon Cyber',        color: '#00E676' },
+    { key: 'theme-violet', name: 'Neon Violet',       color: '#E040FB' },
+    { key: 'theme-gold',   name: 'Royal Cherry Gold', color: 'linear-gradient(135deg,#5E1219,#D4AF37)' }
+  ];
+  firmTheme = signal<string>('classic');
+  themeBusy = signal(false);
+
+  loadTheme() {
+    this.admin.getFirm(this.firmId).subscribe({
+      next: (f) => this.firmTheme.set(f.theme || 'classic'),
+      error: () => this.firmTheme.set('classic')
+    });
+  }
+
+  pickTheme(key: string) {
+    if (this.themeBusy() || this.firmTheme() === key) return;
+    const prev = this.firmTheme();
+    this.firmTheme.set(key);   // optimistic
+    this.themeBusy.set(true);
+    this.admin.setFirmTheme(this.firmId, key).subscribe({
+      next: () => { this.themeBusy.set(false); alert('✓ Theme set'); },
+      error: (e) => { this.themeBusy.set(false); this.firmTheme.set(prev); alert('❌ ' + (e?.error?.error ?? 'fail')); }
+    });
+  }
 
   // ---- Login / Users panel ----
   users = signal<FirmUser[]>([]);
@@ -508,6 +567,7 @@ export class AdminFirmSubscriptionComponent implements OnInit {
     this.reload();
     this.loadKeys();
     this.loadUsers();
+    this.loadTheme();
   }
 
   loadPlans() {

@@ -92,6 +92,12 @@ public class Firm
     public DateTimeOffset? AiQuotaResetAt { get; set; }
 
     public string? LogoUrl { get; set; }
+
+    // Fixed UI theme color — set ONLY by Anjaninex super-admin (migration 43).
+    // classic | theme-sunset | theme-aurora | theme-neon | theme-violet | theme-gold
+    [MaxLength(40)]
+    public string? Theme { get; set; }
+
     public string Timezone { get; set; } = "Asia/Kolkata";
     public string Locale { get; set; } = "en-IN";
     public string Currency { get; set; } = "INR";

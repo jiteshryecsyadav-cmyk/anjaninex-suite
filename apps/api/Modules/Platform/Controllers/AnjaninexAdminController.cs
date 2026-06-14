@@ -97,6 +97,19 @@ public class AnjaninexAdminController : ControllerBase
         return Ok();
     }
 
+    // Set the firm's fixed UI theme color (super-admin only). Normal users can't change it.
+    [HttpPost("firms/{id}/theme")]
+    [HasPermission("platform.firm.edit.platform")]
+    public async Task<IActionResult> SetTheme(Guid id, [FromBody] SetThemeDto dto)
+    {
+        try
+        {
+            await _svc.SetFirmTheme(id, dto.Theme ?? "");
+            return Ok(new { success = true, theme = dto.Theme });
+        }
+        catch (ArgumentException ex) { return BadRequest(new { error = ex.Message }); }
+    }
+
     // ---------------- AI Cost Monitor ----------------
     [HttpGet("ai/cost-breakdown")]
     [HasPermission("platform.firm.view.platform")]
@@ -257,4 +270,5 @@ public class AnjaninexAdminController : ControllerBase
 public record AdminRechargeDto(decimal Amount, string? Source, string? Reference);
 public record ResetPasswordDto(string? NewPassword);
 public record ChangePlanDto(Guid PlanId);
+public record SetThemeDto(string? Theme);
 public record SaveApiKeysDto(string? AiProvider, string? AiApiKey, string? AiModel, string? MapsApiKey);

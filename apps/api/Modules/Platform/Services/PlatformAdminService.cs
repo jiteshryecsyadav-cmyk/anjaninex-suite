@@ -61,7 +61,8 @@ public record FirmDetailDto(
     int VoucherCount,
     int SupplierCount,
     decimal LifetimeSpend,
-    decimal LifetimeRevenue);
+    decimal LifetimeRevenue,
+    string Theme);
 
 public record WalletTxnDto(
     long Id, string TxnType, decimal Amount, decimal BalanceAfter,
@@ -104,6 +105,7 @@ public interface IPlatformAdminService
     Task SuspendFirm(Guid firmId);
     Task ActivateFirm(Guid firmId);
     Task ChangePlan(Guid firmId, Guid newPlanId);
+    Task SetFirmTheme(Guid firmId, string theme);
 
     Task<List<AgentCostDto>> AiCostBreakdown(int days);
     Task<List<RevenuePointDto>> AiDailyRevenue(int days);
@@ -295,7 +297,8 @@ public class PlatformAdminService : IPlatformAdminService
             firm.Status, firm.WalletBalance, firm.CreditLimit,
             firm.TrialEndsAt, firm.ActivatedAt, firm.CreatedAt,
             branchCount, userCount, billCount, voucherCount, supplierCount,
-            lifetimeSpend, lifetimeRev);
+            lifetimeSpend, lifetimeRev,
+            string.IsNullOrWhiteSpace(firm.Theme) ? "classic" : firm.Theme);
     }
 
     public async Task<List<WalletTxnDto>> FirmWalletHistory(Guid firmId, int limit)
@@ -365,6 +368,24 @@ public class PlatformAdminService : IPlatformAdminService
     {
         var firm = await _db.Firms.IgnoreQueryFilters().SingleAsync(f => f.Id == firmId);
         firm.PlanId = newPlanId;
+        firm.UpdatedAt = DateTimeOffset.UtcNow;
+        await _db.SaveChangesAsync();
+    }
+
+    // Allowed UI theme keys (must match frontend shell.component colorThemes).
+    private static readonly HashSet<string> AllowedThemes = new()
+    {
+        "classic", "theme-sunset", "theme-aurora", "theme-neon", "theme-violet", "theme-gold"
+    };
+
+    public async Task SetFirmTheme(Guid firmId, string theme)
+    {
+        theme = (theme ?? "").Trim();
+        if (!AllowedThemes.Contains(theme))
+            throw new ArgumentException("Invalid theme. Allowed: " + string.Join(", ", AllowedThemes));
+
+        var firm = await _db.Firms.IgnoreQueryFilters().SingleAsync(f => f.Id == firmId);
+        firm.Theme = theme;
         firm.UpdatedAt = DateTimeOffset.UtcNow;
         await _db.SaveChangesAsync();
     }

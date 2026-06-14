@@ -379,7 +379,7 @@ body.theme-path1 {
 }
 body.theme-path1 app-shell aside,
 body.theme-path1 app-shell header {
-  background: linear-gradient(160deg, #009444 0%, #1565C0 62%, #29ABE2 118%) !important;
+  background: linear-gradient(160deg, #1565C0 0%, #29ABE2 115%) !important;   /* blue only — accent green */
 }
 
 /* 2) PATH Green–Gold */
@@ -391,7 +391,7 @@ body.theme-path2 {
 }
 body.theme-path2 app-shell aside,
 body.theme-path2 app-shell header {
-  background: linear-gradient(160deg, #009444 0%, #1B7A38 32%, #F7941E 95%, #FFCB05 122%) !important;
+  background: linear-gradient(160deg, #00A84D 0%, #009444 50%, #007A38 115%) !important;   /* green only — accent gold */
 }
 
 /* 3) PATH Magenta–Blue */
@@ -403,7 +403,7 @@ body.theme-path3 {
 }
 body.theme-path3 app-shell aside,
 body.theme-path3 app-shell header {
-  background: linear-gradient(160deg, #6A1B9A 0%, #E6007E 46%, #1565C0 112%) !important;
+  background: linear-gradient(160deg, #6A1B9A 0%, #E6007E 115%) !important;   /* magenta only — accent blue */
 }
 
 /* 4) PATH Magenta–Gold */
@@ -415,7 +415,7 @@ body.theme-path4 {
 }
 body.theme-path4 app-shell aside,
 body.theme-path4 app-shell header {
-  background: linear-gradient(160deg, #6A1B9A 0%, #E6007E 52%, #F7941E 102%, #FFCB05 122%) !important;
+  background: linear-gradient(160deg, #6A1B9A 0%, #E6007E 115%) !important;   /* magenta only — accent gold */
 }
 
 /* ============================================================
@@ -431,6 +431,15 @@ button:active::after, [class*="btn"]:active::after { height: 38%; opacity: .8; }
 /* in elements pe gloss NAHI (toggle switch, opt-out) */
 .switch::after, .no-shine::after, .switch::before { }
 .switch::after, .no-shine::after { display: none !important; }
+
+/* ✨ Sidebar ka ACTIVE (clicked) menu item — logout button jaisa glossy shine */
+.app-sidebar a { position: relative; overflow: hidden; }
+.app-sidebar a::after {
+  content: ''; position: absolute; inset: 0 0 auto 0; height: 50%;
+  border-radius: inherit; pointer-events: none; opacity: 0; transition: opacity .15s;
+  background: linear-gradient(180deg, rgba(255,255,255,.32), rgba(255,255,255,0));
+}
+.app-sidebar a.\!bg-anjaninex-red::after { opacity: 1; }   /* sirf active item par gloss */
 
    ============================================================ */
 @media (max-width: 640px) {

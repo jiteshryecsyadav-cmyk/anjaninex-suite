@@ -465,69 +465,127 @@ export class TransportersComponent {
     if (rows.length < 2) { alert('CSV khaali hai ya sirf header row hai.'); return; }
 
     const headers = rows[0].map(h => h.trim().toLowerCase());
-    const idx = (aliases: string[]) => headers.findIndex(h => aliases.includes(h));
-    const col = {
-      name: idx(['firm name', 'name', 'transport', 'transporter', 'transport name', 'transporter name', 'party', 'company', 'firm', 'transport details']),
-      gst: idx(['gst', 'gstin', 'gst no', 'gst no.', 'gst number', 'gstin no']),
-      mobile: idx(['mobile', 'phone', 'contact', 'mobile no', 'phone no', 'contact no', 'mobile number', 'number', 'mob', 'contact no.']),
-      whatsapp: idx(['whatsapp', 'wa', 'whatsapp no']),
-      city: idx(['city', 'place']),
-      state: idx(['state']),
-      pan: idx(['pan', 'pan no', 'pan number']),
-      pincode: idx(['pincode', 'pin', 'pin code', 'zip']),
-      email: idx(['email', 'e-mail', 'mail']),
-      address: idx(['address', 'add', 'addr']),
-      person: idx(['contact person', 'person', 'owner', 'contact name']),
-      landline: idx(['landline', 'std', 'office']),
-      remark: idx(['remark', 'remarks', 'note', 'notes']),
+    // Header me se koi keyword "contains" kare (order ke hisaab se), `avoid` wale skip
+    const findCol = (prefer: string[], avoid: string[] = []): number => {
+      for (const k of prefer) {
+        const i = headers.findIndex(h => h.includes(k) && !avoid.some(a => h.includes(a)));
+        if (i >= 0) return i;
+      }
+      return -1;
+    };
+    const col: any = {
+      name: findCol(['firm name', 'transporter name', 'transporter', 'transport name', 'transport', 'party', 'company', 'firm', 'name'], ['contact', 'person']),
+      gst: findCol(['gstin', 'gst']),
+      mobile: findCol(['mobile', 'phone', 'cell', 'mob', 'contact no', 'contact number', 'contact'], ['person', 'email', 'whatsapp']),
+      whatsapp: findCol(['whatsapp', 'wa no']),
+      city: findCol(['city', 'place']),
+      state: findCol(['state']),
+      pan: findCol(['pan']),
+      pincode: findCol(['pincode', 'pin code', 'pin', 'zip']),
+      email: findCol(['email', 'e-mail', 'mail']),
+      address: findCol(['address', 'addr']),
+      person: findCol(['contact person', 'person', 'owner', 'contact name']),
+      landline: findCol(['landline', 'std', 'telephone', 'office']),
+      remark: findCol(['remark', 'note']),
     };
     if (col.name < 0) {
-      alert('CSV ki pehli row me header chahiye — kam se kam ek column "Name" ya "Transport" naam ka. Headers: Name, GST, Mobile, City, State, PAN...');
+      alert('CSV ki pehli row me header chahiye — ek column transporter ke NAAM ka (Name / Transport / Firm). Baaki: GST, Mobile, City, State, PAN...');
       return;
     }
 
-    const existing = new Set(this.list().map(t => (t.firmName || '').trim().toLowerCase()));
     const get = (r: string[], i: number) => (i >= 0 ? (r[i] || '').trim() : '');
-    const toImport: CreateTransporter[] = [];
+
+    // Mobile column header se nahi mila? values dekh ke (10-12 digit) khud pakdo
+    if (col.mobile < 0) {
+      const skip = new Set<number>([col.name, col.gst, col.pan, col.pincode, col.email, col.address, col.person]);
+      let best = -1, bestHits = 0;
+      for (let c = 0; c < headers.length; c++) {
+        if (skip.has(c)) continue;
+        let hits = 0, total = 0;
+        for (let i = 1; i < rows.length; i++) {
+          const raw = (rows[i][c] || '').trim();
+          if (!raw) continue;
+          total++;
+          const d = raw.replace(/\D/g, '');
+          if (d.length >= 10 && d.length <= 12) hits++;
+        }
+        if (total > 0 && hits / total > 0.5 && hits > bestHits) { bestHits = hits; best = c; }
+      }
+      if (best >= 0) col.mobile = best;
+    }
+
+    // Pehle se maujood transporters (naam se) — taaki khaali fields update ho saken
+    const exByName = new Map<string, Transporter>();
+    this.list().forEach(t => exByName.set((t.firmName || '').trim().toLowerCase(), t));
+
+    const toCreate: CreateTransporter[] = [];
+    const toUpdate: { id: string; data: CreateTransporter }[] = [];
+    const seen = new Set<string>();
     for (let i = 1; i < rows.length; i++) {
       const r = rows[i];
       const nm = get(r, col.name);
       if (!nm) continue;
-      if (existing.has(nm.toLowerCase())) continue;   // duplicate skip
-      existing.add(nm.toLowerCase());
-      toImport.push({
-        firmName: nm,
-        gstNo: get(r, col.gst) || undefined,
-        mobile: get(r, col.mobile) || undefined,
-        whatsapp: get(r, col.whatsapp) || undefined,
-        city: get(r, col.city) || undefined,
-        state: get(r, col.state) || undefined,
-        pan: get(r, col.pan) || undefined,
-        pincode: get(r, col.pincode) || undefined,
-        email: get(r, col.email) || undefined,
-        address: get(r, col.address) || undefined,
-        contactPerson: get(r, col.person) || undefined,
-        landline: get(r, col.landline) || undefined,
-        remark: get(r, col.remark) || undefined,
-        isActive: true,
-      });
+      const key = nm.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const csv = {
+        gstNo: get(r, col.gst), mobile: get(r, col.mobile), whatsapp: get(r, col.whatsapp),
+        city: get(r, col.city), state: get(r, col.state), pan: get(r, col.pan),
+        pincode: get(r, col.pincode), email: get(r, col.email), address: get(r, col.address),
+        contactPerson: get(r, col.person), landline: get(r, col.landline), remark: get(r, col.remark),
+      };
+      const ex = exByName.get(key);
+      if (ex) {
+        // existing ke KHAALI fields CSV se bharo (existing value preferred)
+        const merged: CreateTransporter = {
+          firmName: ex.firmName,
+          gstNo: ex.gstNo || csv.gstNo || undefined,
+          mobile: ex.mobile || csv.mobile || undefined,
+          whatsapp: ex.whatsapp || csv.whatsapp || undefined,
+          city: ex.city || csv.city || undefined,
+          state: ex.state || csv.state || undefined,
+          pan: ex.pan || csv.pan || undefined,
+          pincode: ex.pincode || csv.pincode || undefined,
+          email: ex.email || csv.email || undefined,
+          address: ex.address || csv.address || undefined,
+          contactPerson: ex.contactPerson || csv.contactPerson || undefined,
+          landline: ex.landline || csv.landline || undefined,
+          remark: ex.remark || csv.remark || undefined,
+          isActive: ex.isActive,
+        };
+        const sig = (o: any) => JSON.stringify([o.gstNo, o.mobile, o.whatsapp, o.city, o.state, o.pan, o.pincode, o.email, o.address, o.contactPerson, o.landline, o.remark].map((x: any) => x || ''));
+        if (sig(ex) !== sig(merged)) toUpdate.push({ id: ex.id, data: merged });   // kuch naya bharaa to hi update
+      } else {
+        toCreate.push({
+          firmName: nm,
+          gstNo: csv.gstNo || undefined, mobile: csv.mobile || undefined, whatsapp: csv.whatsapp || undefined,
+          city: csv.city || undefined, state: csv.state || undefined, pan: csv.pan || undefined,
+          pincode: csv.pincode || undefined, email: csv.email || undefined, address: csv.address || undefined,
+          contactPerson: csv.contactPerson || undefined, landline: csv.landline || undefined, remark: csv.remark || undefined,
+          isActive: true,
+        });
+      }
     }
-    if (!toImport.length) { alert('Koi naya transporter nahi mila (sab pehle se hain ya naam khaali hai).'); return; }
-    if (!confirm(`${toImport.length} transporter import honge. Continue?`)) return;
+
+    if (!toCreate.length && !toUpdate.length) { alert('Koi naya ya update-layak transporter nahi mila.'); return; }
+    if (!confirm(`${toCreate.length} naye add + ${toUpdate.length} update honge. Continue?`)) return;
 
     this.importing.set(true);
-    let ok = 0, fail = 0;
-    for (let i = 0; i < toImport.length; i++) {
-      this.importMsg.set(`⏳ Importing ${i + 1} / ${toImport.length} ...`);
-      try { await firstValueFrom(this.svc.createTransporter(toImport[i])); ok++; }
-      catch { fail++; }
+    let ok = 0, upd = 0, fail = 0;
+    for (let i = 0; i < toCreate.length; i++) {
+      this.importMsg.set(`⏳ Add ${i + 1} / ${toCreate.length} ...`);
+      try { await firstValueFrom(this.svc.createTransporter(toCreate[i])); ok++; } catch { fail++; }
+    }
+    for (let i = 0; i < toUpdate.length; i++) {
+      this.importMsg.set(`⏳ Update ${i + 1} / ${toUpdate.length} ...`);
+      try { await firstValueFrom(this.svc.updateTransporter(toUpdate[i].id, toUpdate[i].data)); upd++; } catch { fail++; }
     }
     this.importing.set(false);
-    const msg = `✅ ${ok} transporter add hue${fail ? `, ${fail} fail` : ''}.`;
+    const msg = `✅ ${ok} add, ${upd} update${fail ? `, ${fail} fail` : ''}.`;
     this.importMsg.set(msg);
     alert('Import complete — ' + msg);
     this.load();
-    setTimeout(() => this.importMsg.set(''), 7000);
+    setTimeout(() => this.importMsg.set(''), 8000);
   }
 
   openAdd() {

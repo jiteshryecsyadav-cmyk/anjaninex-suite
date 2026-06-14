@@ -366,7 +366,72 @@ body.theme-neon app-shell header {
 }
 
 /* ============================================================
-   MOBILE FIT — phone responsiveness (enhanced)
+   PATH RECHARGE BRAND THEMES (4) — Green / Gold / Blue / Magenta blends
+   structure = navy var, accent (buttons) = red var, sidebar/header = gradient
+   ============================================================ */
+
+/* 1) PATH Green–Blue */
+body.theme-path1 {
+  --ax-navy-rgb: 21 101 192;  --ax-navy-dark-rgb: 13 71 161;  --ax-navy-soft-rgb: 224 242 255;
+  --ax-red-rgb: 0 148 68;     --ax-red-dark-rgb: 0 110 50;    --ax-red-soft-rgb: 220 245 230;
+  --anjaninex-navy: #1565C0;  --anjaninex-navy-dark: #0D47A1; --anjaninex-navy-soft: #E0F2FF;
+  --anjaninex-red: #009444;   --anjaninex-red-dark: #006E32;  --anjaninex-red-soft: #DCF5E6;
+}
+body.theme-path1 app-shell aside,
+body.theme-path1 app-shell header {
+  background: linear-gradient(160deg, #009444 0%, #1565C0 62%, #29ABE2 118%) !important;
+}
+
+/* 2) PATH Green–Gold */
+body.theme-path2 {
+  --ax-navy-rgb: 0 148 68;    --ax-navy-dark-rgb: 0 90 42;    --ax-navy-soft-rgb: 220 245 230;
+  --ax-red-rgb: 247 148 30;   --ax-red-dark-rgb: 214 122 12;  --ax-red-soft-rgb: 255 244 214;
+  --anjaninex-navy: #009444;  --anjaninex-navy-dark: #005A2A; --anjaninex-navy-soft: #DCF5E6;
+  --anjaninex-red: #F7941E;   --anjaninex-red-dark: #D67A0C;  --anjaninex-red-soft: #FFF4D6;
+}
+body.theme-path2 app-shell aside,
+body.theme-path2 app-shell header {
+  background: linear-gradient(160deg, #009444 0%, #1B7A38 32%, #F7941E 95%, #FFCB05 122%) !important;
+}
+
+/* 3) PATH Magenta–Blue */
+body.theme-path3 {
+  --ax-navy-rgb: 106 27 154;  --ax-navy-dark-rgb: 74 16 112;  --ax-navy-soft-rgb: 245 225 255;
+  --ax-red-rgb: 21 101 192;   --ax-red-dark-rgb: 13 71 161;   --ax-red-soft-rgb: 224 242 255;
+  --anjaninex-navy: #6A1B9A;  --anjaninex-navy-dark: #4A1070; --anjaninex-navy-soft: #F5E1FF;
+  --anjaninex-red: #1565C0;   --anjaninex-red-dark: #0D47A1;  --anjaninex-red-soft: #E0F2FF;
+}
+body.theme-path3 app-shell aside,
+body.theme-path3 app-shell header {
+  background: linear-gradient(160deg, #6A1B9A 0%, #E6007E 46%, #1565C0 112%) !important;
+}
+
+/* 4) PATH Magenta–Gold */
+body.theme-path4 {
+  --ax-navy-rgb: 106 27 154;  --ax-navy-dark-rgb: 74 16 112;  --ax-navy-soft-rgb: 245 225 255;
+  --ax-red-rgb: 247 148 30;   --ax-red-dark-rgb: 214 122 12;  --ax-red-soft-rgb: 255 244 214;
+  --anjaninex-navy: #6A1B9A;  --anjaninex-navy-dark: #4A1070; --anjaninex-navy-soft: #F5E1FF;
+  --anjaninex-red: #F7941E;   --anjaninex-red-dark: #D67A0C;  --anjaninex-red-soft: #FFF4D6;
+}
+body.theme-path4 app-shell aside,
+body.theme-path4 app-shell header {
+  background: linear-gradient(160deg, #6A1B9A 0%, #E6007E 52%, #F7941E 102%, #FFCB05 122%) !important;
+}
+
+/* ============================================================
+   ✨ GLOSSY SHINE — saare buttons (logout-button jaisa) — har theme me
+   ============================================================ */
+button, [class*="btn"] { position: relative; }
+button::after, [class*="btn"]::after {
+  content: ''; position: absolute; inset: 0 0 auto 0; height: 46%;
+  border-radius: inherit; pointer-events: none;
+  background: linear-gradient(180deg, rgba(255,255,255,.30), rgba(255,255,255,0));
+}
+button:active::after, [class*="btn"]:active::after { height: 38%; opacity: .8; }   /* press par halka */
+/* in elements pe gloss NAHI (toggle switch, opt-out) */
+.switch::after, .no-shine::after, .switch::before { }
+.switch::after, .no-shine::after { display: none !important; }
+
    ============================================================ */
 @media (max-width: 640px) {
   /* thoda top space taaki dashboard ka pehla row topbar ke neeche na chhupe */

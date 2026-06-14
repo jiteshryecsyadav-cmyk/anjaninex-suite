@@ -399,7 +399,11 @@ export class AdminFirmSubscriptionComponent implements OnInit {
     { key: 'theme-aurora', name: 'Aurora Blend',      color: 'linear-gradient(135deg,#06B6D4,#3B82F6,#8B5CF6)' },
     { key: 'theme-neon',   name: 'Neon Cyber',        color: '#00E676' },
     { key: 'theme-violet', name: 'Neon Violet',       color: '#E040FB' },
-    { key: 'theme-gold',   name: 'Royal Cherry Gold', color: 'linear-gradient(135deg,#5E1219,#D4AF37)' }
+    { key: 'theme-gold',   name: 'Royal Cherry Gold', color: 'linear-gradient(135deg,#5E1219,#D4AF37)' },
+    { key: 'theme-path1',  name: 'PATH Green–Blue',   color: 'linear-gradient(135deg,#009444,#1565C0,#29ABE2)' },
+    { key: 'theme-path2',  name: 'PATH Green–Gold',   color: 'linear-gradient(135deg,#009444,#F7941E,#FFCB05)' },
+    { key: 'theme-path3',  name: 'PATH Magenta–Blue', color: 'linear-gradient(135deg,#6A1B9A,#E6007E,#1565C0)' },
+    { key: 'theme-path4',  name: 'PATH Magenta–Gold', color: 'linear-gradient(135deg,#6A1B9A,#E6007E,#F7941E,#FFCB05)' }
   ];
   firmTheme = signal<string>('classic');
   themeBusy = signal(false);

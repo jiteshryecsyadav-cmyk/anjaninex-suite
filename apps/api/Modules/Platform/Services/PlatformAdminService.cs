@@ -375,7 +375,8 @@ public class PlatformAdminService : IPlatformAdminService
     // Allowed UI theme keys (must match frontend shell.component colorThemes).
     private static readonly HashSet<string> AllowedThemes = new()
     {
-        "classic", "theme-sunset", "theme-aurora", "theme-neon", "theme-violet", "theme-gold"
+        "classic", "theme-sunset", "theme-aurora", "theme-neon", "theme-violet", "theme-gold",
+        "theme-path1", "theme-path2", "theme-path3", "theme-path4"
     };
 
     public async Task SetFirmTheme(Guid firmId, string theme)

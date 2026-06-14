@@ -518,6 +518,7 @@ export class ShellComponent {
   private applyColorTheme(k: string) {
     document.body.classList.remove(
       'theme-sunset', 'theme-aurora', 'theme-neon', 'theme-violet', 'theme-gold',
+      'theme-path1', 'theme-path2', 'theme-path3', 'theme-path4',
       'theme-royal', 'theme-forest', 'theme-ocean', 'theme-midnight'   // purane keys cleanup
     );
     if (k !== 'classic') document.body.classList.add(k);

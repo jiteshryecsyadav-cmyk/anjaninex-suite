@@ -168,7 +168,7 @@ const subNav = `
           <div class="p-8 text-center text-gray-500">No sales matching the filters</div>
         } @else {
           <table class="w-full text-sm">
-            <thead class="bg-[#1B2E5C] text-white uppercase text-xs">
+            <thead class="bg-anjaninex-navy text-white uppercase text-xs">
               <tr>
                 <th class="px-2 py-3 text-left">S.NO</th>
                 <th class="px-2 py-3 text-left">Bill No</th>

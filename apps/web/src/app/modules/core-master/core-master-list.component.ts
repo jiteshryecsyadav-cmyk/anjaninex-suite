@@ -76,7 +76,7 @@ interface CoreContact {
       } @else {
         <div class="card p-0 overflow-hidden">
           <table class="w-full text-sm">
-            <thead class="bg-[#1B2E5C] text-white uppercase text-xs">
+            <thead class="bg-anjaninex-navy text-white uppercase text-xs">
               <tr>
                 <th class="px-3 py-3 text-left">Name</th>
                 <th class="px-3 py-3 text-left">Phone</th>

@@ -46,7 +46,7 @@ import { BackButtonComponent } from '../../../shared/back-button.component';
         } @else {
           <div class="card p-0 overflow-hidden">
             <table class="w-full text-sm">
-              <thead class="bg-[#1B2E5C] text-white uppercase text-xs">
+              <thead class="bg-anjaninex-navy text-white uppercase text-xs">
                 <tr>
                   <th class="px-3 py-3 text-left">Type</th>
                   <th class="px-3 py-3 text-left">Name</th>

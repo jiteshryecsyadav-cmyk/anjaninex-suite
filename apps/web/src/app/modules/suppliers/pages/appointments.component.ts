@@ -51,7 +51,7 @@ import { InDatePipe } from '../../../shared/in-date.pipe';
       } @else {
         <div class="card p-0 overflow-x-auto">
           <table class="w-full text-sm">
-            <thead class="bg-[#1B2E5C] text-white uppercase text-xs">
+            <thead class="bg-anjaninex-navy text-white uppercase text-xs">
               <tr>
                 <th class="px-3 py-3 text-left">S.NO</th>
                 <th class="px-3 py-3 text-left">Date / Time</th>

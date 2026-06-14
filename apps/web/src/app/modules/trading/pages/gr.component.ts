@@ -46,7 +46,7 @@ import { FeatureService } from '../../../shared/feature.service';
           </div>
         } @else {
           <table class="w-full text-sm">
-            <thead class="bg-[#1B2E5C] text-white text-xs uppercase">
+            <thead class="bg-anjaninex-navy text-white text-xs uppercase">
               <tr>
                 <th class="px-3 py-3 text-center w-12">#</th>
                 <th class="px-3 py-3 text-left">GR NO</th>

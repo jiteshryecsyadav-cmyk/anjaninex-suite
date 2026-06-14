@@ -479,7 +479,7 @@ import { PaginatorComponent } from '../../../shared/paginator.component';
     @keyframes pulse { 0%{box-shadow:0 0 0 0 rgba(16,185,129,0.6)} 70%{box-shadow:0 0 0 5px rgba(16,185,129,0)} 100%{box-shadow:0 0 0 0 rgba(16,185,129,0)} }
 
     .role-pill { display:inline-block; padding:3px 9px; font-size:11px; font-weight:700;
-      background:#1B2E5C; color:#fff; border-radius:6px; }
+      background:var(--anjaninex-navy, #1B2E5C); color:#fff; border-radius:6px; }
     .status-pill { display:inline-block; padding:3px 9px; font-size:11px; font-weight:700; border-radius:6px; }
     .status-green { background:#D1FAE5; color:#065F46; }
     .status-grey { background:#E5E7EB; color:#4B5563; }

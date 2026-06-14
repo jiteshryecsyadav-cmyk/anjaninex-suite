@@ -46,7 +46,7 @@ interface InvoiceRow {
         @else if (filtered().length === 0) { <div class="p-8 text-center text-gray-400">Koi invoice nahi — pehla payment approve hote hi yahan aayega.</div> }
         @else {
           <table class="w-full text-sm">
-            <thead class="bg-[#1B2E5C] text-white uppercase text-xs">
+            <thead class="bg-anjaninex-navy text-white uppercase text-xs">
               <tr>
                 <th class="px-3 py-3 text-left">S.No</th>
                 <th class="px-3 py-3 text-left">Invoice No</th>

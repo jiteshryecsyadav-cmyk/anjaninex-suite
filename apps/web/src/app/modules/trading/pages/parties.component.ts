@@ -431,7 +431,7 @@ import { IndiaPincodeService } from '../../../shared/india-pincode.service';
     :host { display: block; background: #FAF7F0; min-height: 100vh; padding: 16px 24px; }
 
     .pm-header {
-      background: #1B2E5C; color: #fff; padding: 14px 22px; border-radius: 12px;
+      background: var(--anjaninex-navy, #1B2E5C); color: #fff; padding: 14px 22px; border-radius: 12px;
       display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;
       box-shadow: 0 2px 8px rgba(27,46,92,0.12);
     }
@@ -476,7 +476,7 @@ import { IndiaPincodeService } from '../../../shared/india-pincode.service';
       background: #FAF7F0; border: 1.5px solid; color: #1B2E5C;
     }
     .city-chip strong {
-      background: #1B2E5C; color: #fff; border-radius: 999px;
+      background: var(--anjaninex-navy, #1B2E5C); color: #fff; border-radius: 999px;
       padding: 1px 7px; font-size: 10px;
     }
     .city-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
@@ -498,7 +498,7 @@ import { IndiaPincodeService } from '../../../shared/india-pincode.service';
       background: #fff; border: 1px solid #D6DDEA; color: #4A5878; cursor: pointer; font-family: inherit;
     }
     .ft-btn:hover { border-color: #1B2E5C; }
-    .ft-active { background: #1B2E5C !important; color: #fff !important; border-color: #1B2E5C !important; }
+    .ft-active { background: var(--anjaninex-navy, #1B2E5C) !important; color: #fff !important; border-color: var(--anjaninex-navy, #1B2E5C) !important; }
     .btn-add {
       padding: 10px 20px; background: #DC2626; color: #fff; border-radius: 999px;
       font-size: 13px; font-weight: 800; border: 0; cursor: pointer; font-family: inherit;
@@ -508,7 +508,7 @@ import { IndiaPincodeService } from '../../../shared/india-pincode.service';
 
     /* Table */
     .party-table { width: 100%; font-size: 12px; border-collapse: collapse; background: #fff; }
-    .party-table thead { background: #1B2E5C; color: #fff; }
+    .party-table thead { background: var(--anjaninex-navy, #1B2E5C); color: #fff; }
     .party-table th { padding: 10px 8px; text-align: left; font-size: 10px; font-weight: 700; letter-spacing: 0.3px; text-transform: uppercase; }
     .party-table th.text-right { text-align: right; }
     .party-table th.text-center { text-align: center; }
@@ -531,7 +531,7 @@ import { IndiaPincodeService } from '../../../shared/india-pincode.service';
     .type-sup { background: #FED7AA; color: #C2410C; }
     .type-buy { background: #DBEAFE; color: #1E40AF; }
     .type-both { background: #EDE9FE; color: #5c1a8b; }
-    .rate-badge { display: inline-block; padding: 2px 6px; background: #1B2E5C; color: #fff; border-radius: 4px; font-size: 10px; font-weight: 800; margin-right: 4px; }
+    .rate-badge { display: inline-block; padding: 2px 6px; background: var(--anjaninex-navy, #1B2E5C); color: #fff; border-radius: 4px; font-size: 10px; font-weight: 800; margin-right: 4px; }
     .stars { color: #FCD34D; font-size: 11px; }
     .rate-note { font-size: 10px; color: #047857; margin-top: 4px; background: #D1FAE5; padding: 2px 6px; border-radius: 4px; display: inline-block; }
     .credit-bar { width: 100%; max-width: 100px; height: 4px; background: #E5E9F2; border-radius: 2px; margin-top: 4px; overflow: hidden; }
@@ -568,7 +568,7 @@ import { IndiaPincodeService } from '../../../shared/india-pincode.service';
       box-shadow: 0 24px 64px rgba(0,0,0,0.3);
     }
     .modal-header {
-      background: #1B2E5C; color: #fff; padding: 16px 24px;
+      background: var(--anjaninex-navy, #1B2E5C); color: #fff; padding: 16px 24px;
       display: flex; justify-content: space-between; align-items: center;
     }
     .modal-title { font-size: 18px; font-weight: 800; }
@@ -622,7 +622,7 @@ import { IndiaPincodeService } from '../../../shared/india-pincode.service';
     select.ip { cursor: pointer; }
     textarea.ip { resize: vertical; }
     .btn-fetch {
-      padding: 8px 12px; background: #1B2E5C; color: #fff; border: 0; border-radius: 6px;
+      padding: 8px 12px; background: var(--anjaninex-navy, #1B2E5C); color: #fff; border: 0; border-radius: 6px;
       font-size: 11px; font-weight: 700; cursor: pointer; white-space: nowrap;
     }
     .btn-fetch:hover { background: #142347; }

@@ -89,7 +89,7 @@ import { RouterLink, RouterLinkActive, Router } from '@angular/router';
       transition: all 0.15s;
     }
     .trading-sub-nav .tn-link:hover { background: #FAF7F0; color: #1B2E5C; }
-    .trading-sub-nav .tn-active { background: #1B2E5C !important; color: #fff !important; }
+    .trading-sub-nav .tn-active { background: var(--anjaninex-navy, #1B2E5C) !important; color: #fff !important; }
     .trading-sub-nav .tn-dd {
       position: relative !important; display: inline-block !important;
     }
@@ -101,7 +101,7 @@ import { RouterLink, RouterLinkActive, Router } from '@angular/router';
     }
     .trading-sub-nav .tn-btn:hover { background: #FAF7F0; color: #1B2E5C; }
     .trading-sub-nav .tn-caret { font-size: 9px; opacity: 0.7; transition: transform 0.2s; }
-    .trading-sub-nav .tn-open .tn-btn { background: #1B2E5C !important; color: #fff !important; }
+    .trading-sub-nav .tn-open .tn-btn { background: var(--anjaninex-navy, #1B2E5C) !important; color: #fff !important; }
     .trading-sub-nav .tn-open .tn-caret { transform: rotate(180deg); }
     .trading-sub-nav .tn-menu {
       position: absolute !important; top: calc(100% + 4px) !important; left: 0 !important;

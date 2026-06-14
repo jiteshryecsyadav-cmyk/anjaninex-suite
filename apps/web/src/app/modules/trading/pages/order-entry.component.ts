@@ -424,13 +424,13 @@ interface LineRow {
               <div class="flex gap-2 mt-2">
                 <button type="button" (click)="setCdType('before')"
                         [class]="cdType() === 'before'
-                          ? 'px-3 py-1.5 rounded-lg text-xs font-bold bg-[#1B2E5C] text-white'
+                          ? 'px-3 py-1.5 rounded-lg text-xs font-bold bg-anjaninex-navy text-white'
                           : 'px-3 py-1.5 rounded-lg text-xs font-semibold bg-white border border-gray-300 text-gray-600'">
                   Before GST
                 </button>
                 <button type="button" (click)="setCdType('after')"
                         [class]="cdType() === 'after'
-                          ? 'px-3 py-1.5 rounded-lg text-xs font-bold bg-[#1B2E5C] text-white'
+                          ? 'px-3 py-1.5 rounded-lg text-xs font-bold bg-anjaninex-navy text-white'
                           : 'px-3 py-1.5 rounded-lg text-xs font-semibold bg-white border border-gray-300 text-gray-600'">
                   After GST
                 </button>
@@ -468,7 +468,7 @@ interface LineRow {
                   }
                 </select>
                 <button type="button" (click)="quickAddTransporter()"
-                        class="px-3 rounded-lg text-xs font-bold bg-[#1B2E5C] text-white hover:bg-[#2a4178] whitespace-nowrap"
+                        class="px-3 rounded-lg text-xs font-bold bg-anjaninex-navy text-white hover:bg-[#2a4178] whitespace-nowrap"
                         title="Naya transporter add karo">+ New</button>
               </div>
             </div>
@@ -702,7 +702,7 @@ interface LineRow {
 
     /* HEADER */
     .ord-header {
-      background: #1B2E5C; color: #fff; padding: 14px 22px; border-radius: 12px 12px 0 0;
+      background: var(--anjaninex-navy, #1B2E5C); color: #fff; padding: 14px 22px; border-radius: 12px 12px 0 0;
       display: flex; justify-content: space-between; align-items: center;
       margin-bottom: 16px; box-shadow: 0 2px 8px rgba(27,46,92,0.12);
     }
@@ -761,7 +761,7 @@ interface LineRow {
 
     /* ITEM TABLE */
     .btn-add-item {
-      background: #1B2E5C; color: #fff; padding: 8px 16px; border-radius: 8px;
+      background: var(--anjaninex-navy, #1B2E5C); color: #fff; padding: 8px 16px; border-radius: 8px;
       font-size: 13px; font-weight: 700; border: 0; cursor: pointer; font-family: inherit;
     }
     .btn-add-item:hover { background: #142347; }
@@ -773,7 +773,7 @@ interface LineRow {
     /* Desktop: columns apni poori readable width me; table LEFT-RIGHT scroll karti hai */
     .item-table th:nth-child(2), .item-table td:nth-child(2){ min-width: 170px; }  /* Item Name */
     .item-table th:nth-child(3), .item-table td:nth-child(3){ min-width: 160px; }  /* Description */
-    .item-table thead { background: #1B2E5C; color: #fff; }
+    .item-table thead { background: var(--anjaninex-navy, #1B2E5C); color: #fff; }
     .item-table th {
       padding: 8px 6px; text-align: left; font-weight: 700; font-size: 10px;
       letter-spacing: 0.3px; text-transform: uppercase; white-space: nowrap;
@@ -842,7 +842,7 @@ interface LineRow {
     .sum-divider { height: 1px; background: #D6DDEA; margin: 8px 0; }
     .sum-grand {
       display: flex; justify-content: space-between; padding: 10px 14px;
-      background: #1B2E5C; color: #fff; border-radius: 8px; margin: 8px 0;
+      background: var(--anjaninex-navy, #1B2E5C); color: #fff; border-radius: 8px; margin: 8px 0;
       font-size: 14px; font-weight: 800;
     }
     .sum-words {
@@ -1019,7 +1019,7 @@ interface LineRow {
       }
       .item-table tbody td .tip { flex: 1; min-width: 0; font-size: 14px; padding: 9px 10px; }
       .item-table tbody td.sno-cell {
-        justify-content: flex-start; background: #1B2E5C; color: #fff;
+        justify-content: flex-start; background: var(--anjaninex-navy, #1B2E5C); color: #fff;
         margin: -6px -10px 6px; padding: 8px 12px; border-radius: 10px 10px 0 0;
         font-weight: 800; border-bottom: 0; text-align: left;
       }

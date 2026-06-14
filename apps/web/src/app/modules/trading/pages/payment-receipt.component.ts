@@ -657,7 +657,7 @@ interface PartyBehavior {
 
     /* HEADER */
     .rcpt-header {
-      background: #1B2E5C; color: #fff; padding: 14px 22px; border-radius: 12px 12px 0 0;
+      background: var(--anjaninex-navy, #1B2E5C); color: #fff; padding: 14px 22px; border-radius: 12px 12px 0 0;
       display: flex; justify-content: space-between; align-items: center;
       margin-bottom: 16px; box-shadow: 0 2px 8px rgba(27,46,92,0.12);
     }
@@ -714,7 +714,7 @@ interface PartyBehavior {
       display: flex; align-items: center; justify-content: center; padding: 16px; }
     .bp-modal { background: #fff; border-radius: 14px; width: 100%; max-width: 560px;
       max-height: 80vh; overflow: auto; box-shadow: 0 20px 60px rgba(0,0,0,.3); }
-    .bp-head { background: #1B2E5C; color: #fff; padding: 13px 18px; font-weight: 800; font-size: 14px;
+    .bp-head { background: var(--anjaninex-navy, #1B2E5C); color: #fff; padding: 13px 18px; font-weight: 800; font-size: 14px;
       display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0;
       border-radius: 14px 14px 0 0; }
     .bp-close { background: rgba(255,255,255,.15); border: 0; color: #fff; width: 26px; height: 26px;
@@ -768,12 +768,12 @@ interface PartyBehavior {
       width: 44px; height: 44px; border-radius: 50%; display: inline-flex;
       align-items: center; justify-content: center; color: #fff; font-weight: 800; font-size: 18px;
     }
-    .bc-avatar-sup { background: #1B2E5C; }
+    .bc-avatar-sup { background: var(--anjaninex-navy, #1B2E5C); }
     .bc-avatar-buy { background: #DC2626; }
     .bc-name { font-size: 14px; font-weight: 700; color: #1B2E5C; }
     .bc-rating { display: flex; align-items: center; gap: 6px; margin-top: 2px; }
     .rate-badge {
-      background: #1B2E5C; color: #fff; padding: 2px 6px; border-radius: 4px;
+      background: var(--anjaninex-navy, #1B2E5C); color: #fff; padding: 2px 6px; border-radius: 4px;
       font-size: 10px; font-weight: 800;
     }
     .stars { color: #FCD34D; font-size: 11px; letter-spacing: 1px; }
@@ -795,7 +795,7 @@ interface PartyBehavior {
 
     /* PAYMENT TXN TABLE */
     .btn-add {
-      background: #1B2E5C; color: #fff; padding: 8px 16px; border-radius: 8px;
+      background: var(--anjaninex-navy, #1B2E5C); color: #fff; padding: 8px 16px; border-radius: 8px;
       font-size: 13px; font-weight: 700; border: 0; cursor: pointer; font-family: inherit;
     }
     .btn-add:hover { background: #142347; }
@@ -803,9 +803,9 @@ interface PartyBehavior {
     /* Thick, always-visible horizontal scrollbar */
     .item-table-wrap::-webkit-scrollbar { height: 12px; }
     .item-table-wrap::-webkit-scrollbar-track { background: #EEF1F7; border-radius: 8px; }
-    .item-table-wrap::-webkit-scrollbar-thumb { background: #1B2E5C; border-radius: 8px; }
+    .item-table-wrap::-webkit-scrollbar-thumb { background: var(--anjaninex-navy, #1B2E5C); border-radius: 8px; }
     .item-table { width: 100%; min-width: 1000px; font-size: 12px; border-collapse: collapse; background: #fff; }
-    .item-table thead { background: #1B2E5C; color: #fff; }
+    .item-table thead { background: var(--anjaninex-navy, #1B2E5C); color: #fff; }
     .item-table th { padding: 8px 6px; text-align: left; font-weight: 700; font-size: 10px; letter-spacing: 0.3px; text-transform: uppercase; }
     .item-table td { padding: 4px 4px; border-bottom: 1px solid #F5EFE3; vertical-align: middle; }
     .item-table tfoot { background: #F5EFE3; font-weight: 800; color: #1B2E5C; }
@@ -853,7 +853,7 @@ interface PartyBehavior {
 
     .type-tag {
       display: inline-block; padding: 2px 6px; border-radius: 4px;
-      font-size: 9.5px; font-weight: 700; background: #1B2E5C; color: #fff;
+      font-size: 9.5px; font-weight: 700; background: var(--anjaninex-navy, #1B2E5C); color: #fff;
     }
     .el-tag {
       display: inline-block; padding: 2px 6px; border-radius: 4px;

@@ -82,7 +82,7 @@ import { FeatureService } from '../../../shared/feature.service';
         }
         @else {
           <table class="w-full text-sm">
-            <thead class="bg-[#1B2E5C] text-white uppercase text-xs">
+            <thead class="bg-anjaninex-navy text-white uppercase text-xs">
               <tr>
                 <th class="px-3 py-3 text-center w-12">NO.</th>
                 <th class="px-3 py-3 text-left">BILL ENTRY NO.</th>

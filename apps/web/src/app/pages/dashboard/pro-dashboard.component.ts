@@ -771,7 +771,7 @@ interface DonutSeg { label: string; color: string; value: number; pct: number; d
 
     /* HEADER */
     .pd-header {
-      background: #1B2E5C; color: #fff; padding: 16px 24px; border-radius: 12px;
+      background: var(--anjaninex-navy, #1B2E5C); color: #fff; padding: 16px 24px; border-radius: 12px;
       display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;
       box-shadow: 0 4px 12px rgba(27,46,92,0.15);
     }
@@ -810,7 +810,7 @@ interface DonutSeg { label: string; color: string; value: number; pct: number; d
       transition: all 0.15s;
     }
     .tab-btn:hover { background: #F5EFE3; color: #1B2E5C; }
-    .tab-active { background: #1B2E5C !important; color: #fff !important; }
+    .tab-active { background: var(--anjaninex-navy, #1B2E5C) !important; color: #fff !important; }
 
     /* FILTERS */
     .filter-row {
@@ -825,9 +825,9 @@ interface DonutSeg { label: string; color: string; value: number; pct: number; d
       transition: all 0.15s;
     }
     .pt-btn:hover { border-color: #1B2E5C; }
-    .pt-active { background: #1B2E5C !important; color: #fff !important; border-color: #1B2E5C !important; }
+    .pt-active { background: var(--anjaninex-navy, #1B2E5C) !important; color: #fff !important; border-color: var(--anjaninex-navy, #1B2E5C) !important; }
     .branch-select {
-      padding: 7px 14px; border: 1px solid #1B2E5C; background: #1B2E5C; color: #fff;
+      padding: 7px 14px; border: 1px solid var(--anjaninex-navy, #1B2E5C); background: var(--anjaninex-navy, #1B2E5C); color: #fff;
       border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer;
     }
 
@@ -957,7 +957,7 @@ interface DonutSeg { label: string; color: string; value: number; pct: number; d
 
     /* TRENDING TABLE */
     .trend-table { width: 100%; font-size: 12px; border-collapse: collapse; }
-    .trend-table thead { background: #1B2E5C; color: #fff; }
+    .trend-table thead { background: var(--anjaninex-navy, #1B2E5C); color: #fff; }
     .trend-table th { padding: 8px; text-align: left; font-size: 10px; font-weight: 700; letter-spacing: 0.3px; text-transform: uppercase; }
     .trend-table th.text-right { text-align: right; }
     .trend-table th.text-center { text-align: center; }

@@ -59,7 +59,7 @@ import { amountInWords } from '../../../shared/amount-in-words.util';
       <!-- Per-plan rows -->
       <div class="bg-white rounded-xl border border-gray-200 overflow-hidden mb-4">
         <table class="w-full text-sm">
-          <thead class="bg-[#1B2E5C] text-white uppercase text-xs">
+          <thead class="bg-anjaninex-navy text-white uppercase text-xs">
             <tr>
               <th class="px-3 py-3 text-left">PLAN</th>
               <th class="px-3 py-3 text-right">PRICE/MO (₹)</th>

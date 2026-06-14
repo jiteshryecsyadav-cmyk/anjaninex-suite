@@ -307,7 +307,7 @@ export interface PreviewData {
     .ip-paper { background:#fff; max-width:900px; width:100%; border-radius:14px;
       box-shadow:0 30px 80px rgba(0,0,0,0.4); overflow:hidden; }
 
-    .ip-toolbar { background:#1B2E5C; color:#fff; padding:14px 20px; display:flex;
+    .ip-toolbar { background:var(--anjaninex-navy, #1B2E5C); color:#fff; padding:14px 20px; display:flex;
       justify-content:space-between; align-items:center; }
     .tb-left { display:flex; align-items:center; gap:8px; font-size:15px; }
     .tb-icon { font-size:20px; }
@@ -329,7 +329,7 @@ export interface PreviewData {
 
     /* Premium header band */
     .inv-band { display:flex; justify-content:space-between; align-items:flex-start;
-      background:linear-gradient(120deg,#1B2E5C 0%,#2a4180 60%,#5c1a8b 100%);
+      background:linear-gradient(120deg,var(--anjaninex-navy, #1B2E5C) 0%,#2a4180 60%,#5c1a8b 100%);
       color:#fff; padding:24px 40px; }
     .ib-firm { font-size:26px; font-weight:900; letter-spacing:.3px; color:#fff; }
     .ib-tag { font-size:11.5px; color:#cdd6ec; margin-top:3px; }
@@ -358,7 +358,7 @@ export interface PreviewData {
     .pay-row { display:flex; justify-content:space-between; padding:9px 16px; font-size:12.5px; color:#56607a; border-bottom:1px solid #EEF1F7; }
     .pay-row strong { color:#1B2E5C; font-family:'JetBrains Mono',monospace; }
     .pay-total { display:flex; justify-content:space-between; align-items:center; padding:13px 16px;
-      background:linear-gradient(120deg,#1B2E5C,#5c1a8b); color:#fff; }
+      background:linear-gradient(120deg,var(--anjaninex-navy, #1B2E5C),#5c1a8b); color:#fff; }
     .pay-total span { font-size:11px; font-weight:800; letter-spacing:1px; }
     .pay-total strong { font-size:19px; font-weight:900; font-family:'JetBrains Mono',monospace; }
     .pay-comm { display:flex; justify-content:space-between; padding:9px 16px; font-size:12px; background:#FFF7ED; color:#9a3412; border-top:1px dashed #fed7aa; }
@@ -385,7 +385,7 @@ export interface PreviewData {
     .pmt-txn-table td { padding:6px 8px; border-bottom:1px solid #D1FAE5; }
 
     .lines-table { width:calc(100% - 80px); border-collapse:collapse; font-size:11px; margin:18px 40px 0; }
-    .lines-table th { background:#1B2E5C; color:#fff; padding:8px 6px; text-align:left;
+    .lines-table th { background:var(--anjaninex-navy, #1B2E5C); color:#fff; padding:8px 6px; text-align:left;
       font-size:10px; font-weight:700; letter-spacing:0.3px; }
     .lines-table th.t-right { text-align:right; }
     .lines-table th.t-c { text-align:center; }

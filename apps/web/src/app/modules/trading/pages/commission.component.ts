@@ -357,7 +357,7 @@ import { FeatureService } from '../../../shared/feature.service';
     :host { display: block; background: #FAF7F0; min-height: 100vh; padding: 16px 0; }
 
     .comm-header {
-      background: #1B2E5C; color: #fff; padding: 14px 22px; border-radius: 12px 12px 0 0;
+      background: var(--anjaninex-navy, #1B2E5C); color: #fff; padding: 14px 22px; border-radius: 12px 12px 0 0;
       display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;
       box-shadow: 0 2px 8px rgba(27,46,92,0.12);
     }
@@ -422,7 +422,7 @@ import { FeatureService } from '../../../shared/feature.service';
       transition: background 0.15s, color 0.15s;
     }
     .tab-btn:hover { background: #F5EFE3; }
-    .tab-active { background: #1B2E5C; color: #fff; }
+    .tab-active { background: var(--anjaninex-navy, #1B2E5C); color: #fff; }
     .tab-count { background: rgba(255,255,255,0.2); padding: 2px 8px; border-radius: 999px; margin-left: 6px; font-size: 11px; }
     .tab-btn:not(.tab-active) .tab-count { background: #E5E9F2; color: #4A5878; }
 
@@ -430,7 +430,7 @@ import { FeatureService } from '../../../shared/feature.service';
     .base-toggle { display: inline-flex; align-items: center; gap: 0; border: 1px solid #D6DDEA; border-radius: 8px; overflow: hidden; background: #fff; }
     .base-toggle .bt-lbl { font-size: 9px; font-weight: 800; color: #8a93ad; letter-spacing: 0.5px; padding: 0 8px; }
     .base-toggle button { padding: 6px 12px; font-size: 11px; font-weight: 700; color: #4A5878; background: #fff; border: 0; border-left: 1px solid #D6DDEA; cursor: pointer; font-family: inherit; }
-    .base-toggle button.active { background: #1B2E5C; color: #fff; }
+    .base-toggle button.active { background: var(--anjaninex-navy, #1B2E5C); color: #fff; }
 
     /* LEGEND ROW */
     .legend-row { display: flex; gap: 12px; font-size: 11px; color: #4A5878; }
@@ -442,7 +442,7 @@ import { FeatureService } from '../../../shared/feature.service';
     /* BILL TABLE */
     .bill-table-wrap { overflow-x: auto; border: 1px solid #D6DDEA; border-radius: 8px; }
     .bill-table { width: 100%; font-size: 11.5px; border-collapse: collapse; background: #fff; }
-    .bill-table thead { background: #1B2E5C; color: #fff; }
+    .bill-table thead { background: var(--anjaninex-navy, #1B2E5C); color: #fff; }
     .bill-table th {
       padding: 8px 6px; text-align: left; font-weight: 700; font-size: 10px;
       letter-spacing: 0.3px; text-transform: uppercase; white-space: nowrap;
@@ -453,7 +453,7 @@ import { FeatureService } from '../../../shared/feature.service';
     .bill-table tbody tr:hover { background: #FAF7F0; }
     .row-overdue { background: #FEE2E2 !important; }
     .row-soon { background: #FEF3C7 !important; }
-    .bill-table tfoot { background: #1B2E5C; color: #fff; font-weight: 800; }
+    .bill-table tfoot { background: var(--anjaninex-navy, #1B2E5C); color: #fff; font-weight: 800; }
     .bill-table tfoot td { padding: 8px 6px; }
 
     .empty-row { text-align: center; padding: 30px; color: #9CA3AF; font-size: 13px; }

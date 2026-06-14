@@ -527,7 +527,7 @@ interface ReturnRow {
 
     /* HEADER */
     .gr-header {
-      background: #1B2E5C; color: #fff; padding: 14px 22px; border-radius: 12px 12px 0 0;
+      background: var(--anjaninex-navy, #1B2E5C); color: #fff; padding: 14px 22px; border-radius: 12px 12px 0 0;
       display: flex; justify-content: space-between; align-items: center;
       margin-bottom: 0; box-shadow: 0 2px 8px rgba(27,46,92,0.12);
     }
@@ -625,21 +625,21 @@ interface ReturnRow {
 
     /* ITEM TABLE */
     .btn-add-item {
-      background: #1B2E5C; color: #fff; padding: 8px 16px; border-radius: 8px;
+      background: var(--anjaninex-navy, #1B2E5C); color: #fff; padding: 8px 16px; border-radius: 8px;
       font-size: 13px; font-weight: 700; border: 0; cursor: pointer; font-family: inherit;
     }
     .btn-add-item:hover { background: #142347; }
 
     .item-table-wrap { overflow-x: auto; border: 1px solid #D6DDEA; border-radius: 8px; }
     .item-table { width: 100%; font-size: 11.5px; border-collapse: collapse; background: #fff; }
-    .item-table thead { background: #1B2E5C; color: #fff; }
+    .item-table thead { background: var(--anjaninex-navy, #1B2E5C); color: #fff; }
     .item-table th { padding: 8px 6px; text-align: left; font-weight: 700; font-size: 10px; letter-spacing: 0.3px; text-transform: uppercase; white-space: nowrap; }
     .item-table th.text-right { text-align: right; }
     .item-table th.text-center { text-align: center; }
     .item-table td { padding: 4px 4px; border-bottom: 1px solid #F5EFE3; vertical-align: middle; }
     .item-table tbody tr:hover { background: #FAF7F0; }
     .row-selected { background: #ECFDF5 !important; }
-    .item-table tfoot { background: #1B2E5C; color: #fff; font-weight: 800; }
+    .item-table tfoot { background: var(--anjaninex-navy, #1B2E5C); color: #fff; font-weight: 800; }
     .item-table tfoot td { padding: 8px 6px; }
     .total-cell { color: #DC2626; font-weight: 800; }
     .check-tick { display: inline-block; background: #10B981; color: #fff; width: 18px; height: 18px; border-radius: 4px; text-align: center; margin-right: 4px; font-size: 11px; line-height: 18px; }

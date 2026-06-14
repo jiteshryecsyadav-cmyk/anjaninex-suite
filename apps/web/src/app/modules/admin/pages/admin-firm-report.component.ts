@@ -47,7 +47,7 @@ import autoTable from 'jspdf-autotable';
       } @else {
         <div class="card p-0 overflow-x-auto">
           <table class="w-full text-sm">
-            <thead class="bg-[#1B2E5C] text-white uppercase text-xs">
+            <thead class="bg-anjaninex-navy text-white uppercase text-xs">
               <tr>
                 <th class="px-3 py-3 text-left">Firm</th>
                 <th class="px-3 py-3 text-left">Plan</th>

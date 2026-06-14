@@ -226,7 +226,7 @@ import { IndiaPincodeService } from '../../../shared/india-pincode.service';
   `,
   styles: [`
     :host { display: block; background: #FAF7F0; min-height: 100vh; padding: 16px 24px; }
-    .tm-header { background: #1B2E5C; color: #fff; padding: 14px 22px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+    .tm-header { background: var(--anjaninex-navy, #1B2E5C); color: #fff; padding: 14px 22px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
     .tmh-left { display: flex; align-items: center; gap: 12px; }
     .tmh-ico { font-size: 26px; }
     .tmh-title { font-size: 19px; font-weight: 800; margin: 0; }
@@ -247,7 +247,7 @@ import { IndiaPincodeService } from '../../../shared/india-pincode.service';
     .kpi-lbl { font-size: 10px; font-weight: 700; color: #4A5878; letter-spacing: 0.3px; text-transform: uppercase; margin-top: 4px; }
     .card-wrap { background: #fff; border: 1px solid #D6DDEA; border-radius: 12px; overflow: auto; }
     .t-table { width: 100%; font-size: 12px; border-collapse: collapse; min-width: 1200px; }
-    .t-table thead { background: #1B2E5C; color: #fff; }
+    .t-table thead { background: var(--anjaninex-navy, #1B2E5C); color: #fff; }
     .t-table th { padding: 10px 8px; text-align: left; font-size: 10px; font-weight: 700; letter-spacing: 0.3px; text-transform: uppercase; }
     .t-table th.text-center { text-align: center; }
     .t-table td { padding: 12px 8px; border-bottom: 1px solid #F5EFE3; vertical-align: middle; }
@@ -274,7 +274,7 @@ import { IndiaPincodeService } from '../../../shared/india-pincode.service';
     .link { color: #DC2626; text-decoration: underline; cursor: pointer; }
     .modal-backdrop { position: fixed; inset: 0; background: rgba(27,46,92,0.6); z-index: 100; display: flex; align-items: center; justify-content: center; padding: 20px; }
     .modal-box { background: #fff; border-radius: 14px; width: 100%; max-width: 800px; max-height: 90vh; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 24px 64px rgba(0,0,0,0.3); }
-    .modal-header { background: #1B2E5C; color: #fff; padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; }
+    .modal-header { background: var(--anjaninex-navy, #1B2E5C); color: #fff; padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; }
     .modal-title { font-size: 18px; font-weight: 800; }
     .modal-close { background: #DC2626; color: #fff; border: 0; width: 32px; height: 32px; border-radius: 8px; cursor: pointer; font-size: 16px; }
     .modal-body { padding: 20px 24px; overflow-y: auto; flex: 1; }
@@ -284,7 +284,7 @@ import { IndiaPincodeService } from '../../../shared/india-pincode.service';
     .ip { width: 100%; padding: 8px 10px; border: 1px solid #D6DDEA; border-radius: 6px; font-size: 13px; color: #1B2E5C; background: #FAF7F0; font-family: inherit; }
     .ip:focus { outline: none; border-color: #DC2626; box-shadow: 0 0 0 2px rgba(220,38,38,0.1); }
     .ip-req { background: #FFFBEB; border-color: #FCD34D; }
-    .btn-fetch { padding: 8px 12px; background: #1B2E5C; color: #fff; border: 0; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+    .btn-fetch { padding: 8px 12px; background: var(--anjaninex-navy, #1B2E5C); color: #fff; border: 0; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; white-space: nowrap; }
     .btn-cancel { padding: 9px 20px; background: #fff; border: 1px solid #D6DDEA; color: #4A5878; border-radius: 8px; font-weight: 700; cursor: pointer; }
     .btn-save { padding: 9px 24px; background: #DC2626; color: #fff; border: 0; border-radius: 8px; font-weight: 800; cursor: pointer; box-shadow: 0 2px 6px rgba(220,38,38,0.3); }
     .btn-save:hover:not(:disabled) { background: #B91C1C; }

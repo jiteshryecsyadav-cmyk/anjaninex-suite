@@ -41,7 +41,7 @@ import { ToastService } from '../../../shared/toast.service';
       } @else {
         <div class="card p-0 overflow-x-auto">
           <table class="w-full text-sm">
-            <thead class="bg-[#1B2E5C] text-white uppercase text-xs">
+            <thead class="bg-anjaninex-navy text-white uppercase text-xs">
               <tr>
                 <th class="px-3 py-3 text-left">#</th>
                 <th class="px-3 py-3 text-left">Business Name</th>

@@ -169,7 +169,7 @@ import { IndiaPincodeService } from '../../../shared/india-pincode.service';
     :host { display: block; background: #FAF7F0; min-height: 100vh; padding: 16px 24px; }
 
     .bm-header {
-      background: #1B2E5C; color: #fff; padding: 14px 22px; border-radius: 12px;
+      background: var(--anjaninex-navy, #1B2E5C); color: #fff; padding: 14px 22px; border-radius: 12px;
       display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;
     }
     .bmh-left { display: flex; align-items: center; gap: 12px; }
@@ -207,7 +207,7 @@ import { IndiaPincodeService } from '../../../shared/india-pincode.service';
 
     .card-wrap { background: #fff; border: 1px solid #D6DDEA; border-radius: 12px; overflow: hidden; }
     .br-table { width: 100%; font-size: 13px; border-collapse: collapse; }
-    .br-table thead { background: #1B2E5C; color: #fff; }
+    .br-table thead { background: var(--anjaninex-navy, #1B2E5C); color: #fff; }
     .br-table th { padding: 12px 10px; text-align: left; font-size: 10px; font-weight: 700; letter-spacing: 0.3px; text-transform: uppercase; }
     .br-table th.text-center { text-align: center; }
     .br-table td { padding: 14px 10px; border-bottom: 1px solid #F5EFE3; vertical-align: middle; }
@@ -245,7 +245,7 @@ import { IndiaPincodeService } from '../../../shared/india-pincode.service';
       box-shadow: 0 24px 64px rgba(0,0,0,0.3);
     }
     .modal-header {
-      background: #1B2E5C; color: #fff; padding: 16px 24px;
+      background: var(--anjaninex-navy, #1B2E5C); color: #fff; padding: 16px 24px;
       display: flex; justify-content: space-between; align-items: center;
     }
     .modal-title { font-size: 18px; font-weight: 800; }

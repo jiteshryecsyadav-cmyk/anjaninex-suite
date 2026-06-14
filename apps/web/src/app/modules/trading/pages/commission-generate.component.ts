@@ -109,7 +109,7 @@ interface CommRow {
     <!-- STEP 2 — BILLS PREVIEW -->
     @if (rows().length > 0) {
       <div class="card p-0 mb-4 overflow-hidden">
-        <div class="px-4 py-3 bg-[#1B2E5C] text-white text-xs font-bold uppercase tracking-wide flex justify-between items-center">
+        <div class="px-4 py-3 bg-anjaninex-navy text-white text-xs font-bold uppercase tracking-wide flex justify-between items-center">
           <span>STEP 2 — REVIEW &amp; SELECT BILLS ({{ selectedCount() }} of {{ rows().length }} selected)</span>
           <div class="flex gap-2">
             <button (click)="selectAll(true)" class="text-xs px-2 py-1 bg-white text-[#1B2E5C] rounded font-bold">Select All</button>
@@ -156,7 +156,7 @@ interface CommRow {
               </tr>
             }
           </tbody>
-          <tfoot class="bg-[#1B2E5C] text-white">
+          <tfoot class="bg-anjaninex-navy text-white">
             <tr>
               <td colspan="4" class="px-3 py-3 text-right font-bold text-xs uppercase">Selected Totals →</td>
               <td class="px-3 py-3 text-right font-mono font-bold">{{ selectedBillTotal() | number:'1.2-2' }}</td>
@@ -403,7 +403,7 @@ interface CommRow {
     .btn-primary { padding:9px 16px; background:#DC2626; color:#fff; border:0; border-radius:6px; font-weight:700; font-size:13px; cursor:pointer; }
     .btn-primary:disabled { background:#9CA3AF; cursor:not-allowed; }
     .btn-primary:hover:not(:disabled) { background:#B91C1C; }
-    .btn-fetch { padding:9px 16px; background:#1B2E5C; color:#fff; border:0; border-radius:6px; font-weight:700; font-size:13px; cursor:pointer; }
+    .btn-fetch { padding:9px 16px; background:var(--anjaninex-navy, #1B2E5C); color:#fff; border:0; border-radius:6px; font-weight:700; font-size:13px; cursor:pointer; }
     .btn-fetch:disabled { background:#9CA3AF; cursor:not-allowed; }
     .btn-cancel { padding:9px 16px; background:#fff; color:#1B2E5C; border:1px solid #D6DDEA; border-radius:6px; font-weight:700; font-size:13px; cursor:pointer; }
     .summary-card { background:#FAF7F0; border:1px solid #D6DDEA; border-radius:8px; padding:10px 12px; }
@@ -415,7 +415,7 @@ interface CommRow {
     .base-toggle button { padding:8px 16px; font-size:12px; font-weight:700; color:#4A5878; background:#fff; border:0; cursor:pointer; border-right:1px solid #D6DDEA; }
     .base-toggle button:last-child { border-right:0; }
     .base-toggle button small { display:block; font-size:9px; font-weight:600; opacity:0.7; margin-top:1px; }
-    .base-toggle button.active { background:#1B2E5C; color:#fff; }
+    .base-toggle button.active { background:var(--anjaninex-navy, #1B2E5C); color:#fff; }
 
     /* MODAL */
     .modal-overlay { position:fixed; inset:0; background:rgba(27,46,92,0.55); z-index:1000; display:flex; align-items:flex-start; justify-content:center; padding:30px 20px; overflow:auto; }
@@ -430,7 +430,7 @@ interface CommRow {
 
     /* Premium header band */
     .inv-band { display:flex; justify-content:space-between; align-items:flex-start;
-      background:linear-gradient(120deg,#1B2E5C 0%,#2a4180 60%,#5c1a8b 100%);
+      background:linear-gradient(120deg,var(--anjaninex-navy, #1B2E5C) 0%,#2a4180 60%,#5c1a8b 100%);
       color:#fff; padding:24px 36px; }
     .ib-firm { font-size:26px; font-weight:900; letter-spacing:.3px; color:#fff; }
     .ib-tag { font-size:11.5px; color:#cdd6ec; margin-top:3px; letter-spacing:.4px; }
@@ -452,7 +452,7 @@ interface CommRow {
 
     /* Table refinements */
     .inv-table { margin:18px 36px 0; width:calc(100% - 72px); }
-    .inv-table thead th { background:#1B2E5C; }
+    .inv-table thead th { background:var(--anjaninex-navy, #1B2E5C); }
     .inv-table tfoot td { background:#FAF7F0; padding:9px 6px; font-size:11.5px; border-top:2px solid #1B2E5C; }
 
     /* Payable + bank row */
@@ -465,7 +465,7 @@ interface CommRow {
     .pay-row { display:flex; justify-content:space-between; padding:9px 16px; font-size:12.5px; color:#56607a; border-bottom:1px solid #EEF1F7; }
     .pay-row strong { color:#1B2E5C; font-family:'JetBrains Mono',monospace; }
     .pay-total { display:flex; justify-content:space-between; align-items:center; padding:13px 16px;
-      background:linear-gradient(120deg,#1B2E5C,#5c1a8b); color:#fff; }
+      background:linear-gradient(120deg,var(--anjaninex-navy, #1B2E5C),#5c1a8b); color:#fff; }
     .pay-total span { font-size:11px; font-weight:800; letter-spacing:1px; }
     .pay-total strong { font-size:20px; font-weight:900; font-family:'JetBrains Mono',monospace; }
 
@@ -487,7 +487,7 @@ interface CommRow {
     .bt-line { font-size:12px; color:#4A5878; margin-top:2px; }
     .inv-table { width:calc(100% - 72px); border-collapse:collapse; font-size:12px; margin-bottom:16px; table-layout:fixed; }
     .inv-table th, .inv-table td { overflow:hidden; text-overflow:ellipsis; }
-    .inv-table th { background:#1B2E5C; color:#fff; padding:8px 6px; text-align:left; font-size:11px; font-weight:700; }
+    .inv-table th { background:var(--anjaninex-navy, #1B2E5C); color:#fff; padding:8px 6px; text-align:left; font-size:11px; font-weight:700; }
     .inv-table td { border-bottom:1px solid #E5E7EB; padding:7px 6px; }
     .inv-table .t-sr { width:30px; text-align:center; }
     .inv-table .t-right { text-align:right; }

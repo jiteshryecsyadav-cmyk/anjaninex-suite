@@ -143,7 +143,7 @@ import { IndiaPincodeService } from './india-pincode.service';
     .tqa-btn { padding: 9px 18px; border-radius: 9px; font-size: 13px; font-weight: 700;
       cursor: pointer; font-family: inherit; border: 0; }
     .tqa-btn-cancel { background: #fff; border: 1px solid #d1d5db; color: #374151; }
-    .tqa-btn-save { background: #1B2E5C; color: #fff; }
+    .tqa-btn-save { background: var(--anjaninex-navy, #1B2E5C); color: #fff; }
     .tqa-btn-save:disabled { opacity: .6; cursor: not-allowed; }
   `]
 })

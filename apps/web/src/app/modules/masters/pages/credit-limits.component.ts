@@ -242,7 +242,7 @@ interface CreditRow {
 
     /* TABLE */
     .cl-table { width:100%; border-collapse:collapse; font-size:13px; }
-    .cl-table th { background:#1B2E5C; color:#fff; padding:10px 12px; text-align:left;
+    .cl-table th { background:var(--anjaninex-navy, #1B2E5C); color:#fff; padding:10px 12px; text-align:left;
       font-size:11px; font-weight:700; letter-spacing:0.3px; }
     .cl-table .t-num { width:40px; text-align:center; }
     .cl-table .t-right { text-align:right; }
@@ -272,7 +272,7 @@ interface CreditRow {
     .preset-btn { padding:2px 6px; font-size:10px; font-weight:700; border:1px solid #D6DDEA;
       background:#fff; color:#4A5878; border-radius:4px; cursor:pointer; font-family:monospace; }
     .preset-btn:hover { background:#FAF7F0; border-color:#1B2E5C; color:#1B2E5C; }
-    .preset-btn.preset-active { background:#1B2E5C; color:#fff; border-color:#1B2E5C; }
+    .preset-btn.preset-active { background:var(--anjaninex-navy, #1B2E5C); color:#fff; border-color:var(--anjaninex-navy, #1B2E5C); }
     .preset-btn.preset-clear { background:#FEE2E2; color:#991B1B; border-color:#FCA5A5; }
     .preset-btn.preset-clear:hover { background:#FEE2E2; }
 

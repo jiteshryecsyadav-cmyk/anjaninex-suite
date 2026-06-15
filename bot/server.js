@@ -86,11 +86,30 @@ async function start() {
 
   sock.ev.on('creds.update', saveCreds);
 
-  sock.ev.on('connection.update', (u) => {
+  // PAIRING CODE option: agar WA_PAIR_NUMBER .env me set hai to QR ke bajaye 8-char
+  // code milega — WhatsApp → Linked Devices → Link a Device → "Link with phone number" →
+  // ye code daalo. Number international format me bina + (jaise 919511540583).
+  const PAIR_NUMBER = (process.env.WA_PAIR_NUMBER || '').replace(/\D/g, '');
+  let pairingRequested = false;
+
+  sock.ev.on('connection.update', async (u) => {
     const { connection, lastDisconnect, qr } = u;
     if (qr) {
-      console.log('\n📱 WhatsApp se ye QR scan karein (Linked Devices):\n');
-      qrcode.generate(qr, { small: true });
+      if (PAIR_NUMBER && !pairingRequested && !sock.authState.creds.registered) {
+        pairingRequested = true;
+        try {
+          const code = await sock.requestPairingCode(PAIR_NUMBER);
+          const pretty = code.match(/.{1,4}/g)?.join('-') || code;
+          console.log('\n========================================');
+          console.log('🔢 WhatsApp PAIRING CODE: ' + pretty);
+          console.log('   WhatsApp → Linked Devices → Link a Device →');
+          console.log('   "Link with phone number instead" → ye code daalo');
+          console.log('========================================\n');
+        } catch (e) { console.error('pairing code fail:', e.message); }
+      } else {
+        console.log('\n📱 WhatsApp se ye QR scan karein (Linked Devices):\n');
+        qrcode.generate(qr, { small: true });
+      }
     }
     if (connection === 'open') console.log('✅ WhatsApp connected! Bot ready.');
     if (connection === 'close') {

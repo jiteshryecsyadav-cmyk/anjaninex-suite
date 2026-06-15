@@ -12,12 +12,14 @@ import { SuspendedLockoutComponent } from '../../modules/subscription/suspended-
 import { FeatureService } from '../../shared/feature.service';
 import { UpgradeNudgeComponent } from '../../shared/upgrade-nudge.component';
 import { WalletIconComponent } from '../../shared/wallet-icon.component';
+import { AnjiHelpComponent } from '../../shared/help/anji-help.component';
+import { CalculatorComponent } from '../../shared/calculator.component';
 import { environment } from '../../../environments/environment';
 
 @Component({
   selector: 'app-shell',
   standalone: true,
-  imports: [CommonModule, FormsModule, DatePipe, RouterOutlet, RouterLink, RouterLinkActive, RechargeModalComponent, TrialBannerComponent, SuspendedLockoutComponent, UpgradeNudgeComponent, WalletIconComponent],
+  imports: [CommonModule, FormsModule, DatePipe, RouterOutlet, RouterLink, RouterLinkActive, RechargeModalComponent, TrialBannerComponent, SuspendedLockoutComponent, UpgradeNudgeComponent, WalletIconComponent, AnjiHelpComponent, CalculatorComponent],
   template: `
     <!-- Suspended firms see ONLY the lockout screen — nothing else accessible -->
     @if (subscription.isLocked()) {
@@ -145,6 +147,12 @@ import { environment } from '../../../environments/environment';
             }
             <!-- Theme Color picker removed — theme is now fixed per-firm (set by Anjaninex super-admin). -->
           </nav>
+
+          <!-- 🧮 Calculator (har user, har page) -->
+          <button (click)="calcOpen.set(true)" class="calc-side-btn" title="Calculator">
+            <span style="font-size:18px">🧮</span>
+            <span style="font-size:13px;font-weight:700">Calculator</span>
+          </button>
 
           <!-- ⏻ Logout (glossy square button — power icon SVG) -->
           <button (click)="logout()" class="logout-btn" title="Logout">
@@ -301,6 +309,14 @@ import { environment } from '../../../environments/environment';
       </div>
     </div>
 
+    <!-- Anji Help Desk — har page par (self-contained floating button) -->
+    <app-anji-help></app-anji-help>
+
+    <!-- Calculator (sidebar button se khulta hai) -->
+    @if (calcOpen()) {
+      <app-calculator (closed)="calcOpen.set(false)"></app-calculator>
+    }
+
     <!-- Recharge modal mount -->
     @if (rechargeOpen()) {
       <app-recharge-modal (closed)="rechargeOpen.set(false)"></app-recharge-modal>
@@ -382,6 +398,12 @@ import { environment } from '../../../environments/environment';
     .m-btn:disabled { opacity:.5; }
 
     /* Glossy LOGOUT button (image jaisa — power symbol + shine) */
+    .calc-side-btn {
+      display: flex; align-items: center; gap: 8px; margin: 6px 12px 8px;
+      padding: 9px 12px; border: 0; border-radius: 10px; cursor: pointer; color: #fff;
+      background: rgba(255,255,255,.12); transition: background .15s;
+    }
+    .calc-side-btn:hover { background: rgba(255,255,255,.22); }
     .logout-btn {
       position: relative; overflow: hidden;
       margin: 0 auto 14px; display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -604,6 +626,7 @@ export class ShellComponent {
     });
   }
   rechargeOpen = signal(false);
+  calcOpen = signal(false);   // sidebar Calculator
   version = (window as any).__APP_VERSION__ ?? '1.0.0';
   anjaninexUrl = environment.anjaninexUrl;
 

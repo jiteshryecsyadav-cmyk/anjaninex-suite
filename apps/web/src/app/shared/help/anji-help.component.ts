@@ -1,0 +1,258 @@
+import { Component, computed, inject, signal } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { Router, NavigationEnd } from '@angular/router';
+import { filter } from 'rxjs/operators';
+import { findHelp, LANG_LABEL, LANG_BCP, Lang, HelpPage } from './help-content';
+
+/**
+ * Anji — per-page Help Desk. No AI: hand-written help per page in 3 languages, with
+ * browser Web Speech API for 🔊 listen (TTS) and 🎤 speak (STT). Mic input is
+ * keyword-matched against the page's FAQs/steps to speak the best answer.
+ */
+@Component({
+  selector: 'app-anji-help',
+  standalone: true,
+  imports: [CommonModule, FormsModule],
+  template: `
+    <!-- Floating launcher -->
+    @if (!open()) {
+      <button class="anji-fab" (click)="openPanel()" title="Anji — Help Desk">
+        <span class="anji-face">🙋</span>
+        <span class="anji-fab-txt">Anji</span>
+      </button>
+    }
+
+    @if (open()) {
+      <div class="anji-wrap">
+        <!-- Header -->
+        <div class="anji-head">
+          <div class="anji-id"><span class="anji-face">🙋</span> <b>Anji</b> <small>Help Desk</small></div>
+          <button class="anji-x" (click)="open.set(false); stopAll()">×</button>
+        </div>
+
+        <!-- Language tabs -->
+        <div class="anji-langs">
+          @for (l of langs; track l) {
+            <button class="anji-lang" [class.on]="lang()===l" (click)="setLang(l)">{{ label(l) }}</button>
+          }
+        </div>
+
+        <!-- Body -->
+        <div class="anji-body">
+          <div class="anji-title">{{ page().title }}</div>
+          <p class="anji-intro">{{ page().intro }}</p>
+
+          <!-- Spoken Q&A result -->
+          @if (askedQ()) {
+            <div class="anji-qa">
+              <div class="anji-q">🗣️ {{ askedQ() }}</div>
+              <div class="anji-a">💬 {{ answer() }}</div>
+            </div>
+          }
+          @if (listening()) { <div class="anji-listening">🎤 Sun raha hoon… boliye</div> }
+
+          <div class="anji-sec">Steps</div>
+          <ol class="anji-steps">
+            @for (s of page().steps; track s) { <li (click)="speak(s)">{{ s }}</li> }
+          </ol>
+
+          <div class="anji-sec">Common sawaal (dabाo / pucho)</div>
+          <div class="anji-faqs">
+            @for (f of page().faqs; track f.q) {
+              <button class="anji-faq" (click)="speakFaq(f.a)">❓ {{ f.q }}</button>
+            }
+          </div>
+        </div>
+
+        <!-- Controls -->
+        <div class="anji-ctrl">
+          <input class="anji-input" [(ngModel)]="typed" (keyup.enter)="askTyped()"
+                 [placeholder]="placeholder()">
+          <button class="anji-mic" [class.on]="listening()" (click)="toggleMic()" title="Bol kar pucho">🎤</button>
+          <button class="anji-spk" (click)="speakAll()" title="Pura padh kar sunao">🔊</button>
+          @if (speaking()) { <button class="anji-stop" (click)="stopAll()" title="Stop">⏹</button> }
+        </div>
+        @if (err()) { <div class="anji-err">{{ err() }}</div> }
+      </div>
+    }
+  `,
+  styles: [`
+    .anji-fab {
+      position: fixed; right: 18px; bottom: 18px; z-index: 1190;
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
+      width: 60px; height: 60px; border: 0; border-radius: 50%; cursor: pointer; color: #fff;
+      background: var(--anjaninex-navy, #1B2E5C); box-shadow: 0 8px 22px rgba(0,0,0,.35);
+      transition: transform .12s;
+    }
+    .anji-fab:hover { transform: scale(1.08); }
+    .anji-fab::after { content: ''; position: absolute; inset: 0; border-radius: 50%;
+      background: linear-gradient(180deg, rgba(255,255,255,.30), transparent 55%); pointer-events: none; }
+    .anji-face { font-size: 22px; line-height: 1; }
+    .anji-fab-txt { font-size: 10px; font-weight: 900; letter-spacing: .5px; }
+
+    .anji-wrap {
+      position: fixed; right: 18px; bottom: 18px; z-index: 1191;
+      width: 360px; max-width: calc(100vw - 24px); max-height: 82vh; display: flex; flex-direction: column;
+      background: #fff; border-radius: 16px; overflow: hidden; box-shadow: 0 18px 55px rgba(0,0,0,.4);
+      font-family: system-ui, sans-serif;
+    }
+    .anji-head { display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 14px; background: var(--anjaninex-navy, #1B2E5C); color: #fff; }
+    .anji-id { display: flex; align-items: center; gap: 6px; } .anji-id small { opacity: .8; font-weight: 600; }
+    .anji-x { background: transparent; border: 0; color: #fff; font-size: 24px; cursor: pointer; line-height: 1; }
+
+    .anji-langs { display: flex; gap: 6px; padding: 8px 12px; background: #f4f6fb; }
+    .anji-lang { flex: 1; padding: 6px 4px; border: 1px solid #d6def0; background: #fff; border-radius: 8px;
+      font-size: 12px; font-weight: 700; cursor: pointer; color: #475569; }
+    .anji-lang.on { background: var(--anjaninex-navy, #1B2E5C); color: #fff; border-color: transparent; }
+
+    .anji-body { padding: 12px 14px; overflow-y: auto; }
+    .anji-title { font-size: 16px; font-weight: 800; color: var(--anjaninex-navy, #1B2E5C); }
+    .anji-intro { font-size: 13px; color: #475569; margin: 4px 0 10px; line-height: 1.45; }
+    .anji-qa { background: #eef4ff; border: 1px solid #cfe0ff; border-radius: 10px; padding: 8px 10px; margin-bottom: 10px; }
+    .anji-q { font-size: 12px; font-weight: 700; color: #1e3a8a; }
+    .anji-a { font-size: 13px; color: #111827; margin-top: 3px; line-height: 1.45; }
+    .anji-listening { font-size: 12px; color: #b91c1c; font-weight: 700; margin-bottom: 8px; }
+    .anji-sec { font-size: 11px; font-weight: 800; text-transform: uppercase; color: #94a3b8; margin: 10px 0 4px; }
+    .anji-steps { margin: 0; padding-left: 18px; }
+    .anji-steps li { font-size: 13px; color: #334155; margin-bottom: 5px; line-height: 1.4; cursor: pointer; }
+    .anji-steps li:hover { color: var(--anjaninex-navy, #1B2E5C); }
+    .anji-faqs { display: flex; flex-direction: column; gap: 5px; }
+    .anji-faq { text-align: left; font-size: 12.5px; padding: 7px 9px; border: 1px solid #e2e8f0; background: #f8fafc;
+      border-radius: 8px; cursor: pointer; color: #334155; }
+    .anji-faq:hover { background: #eef4ff; border-color: #cfe0ff; }
+
+    .anji-ctrl { display: flex; align-items: center; gap: 6px; padding: 10px 12px; border-top: 1px solid #eef0f4; }
+    .anji-input { flex: 1; padding: 9px 10px; border: 1px solid #d6def0; border-radius: 10px; font-size: 13px; }
+    .anji-mic, .anji-spk, .anji-stop { width: 40px; height: 38px; border: 0; border-radius: 10px; cursor: pointer; font-size: 17px; }
+    .anji-mic { background: #ffe9e9; } .anji-mic.on { background: #dc2626; animation: anjipulse 1s infinite; }
+    .anji-spk { background: #e6ecff; } .anji-stop { background: #fde68a; }
+    @keyframes anjipulse { 0%,100% { box-shadow: 0 0 0 0 rgba(220,38,38,.5); } 50% { box-shadow: 0 0 0 6px rgba(220,38,38,0); } }
+    .anji-err { padding: 6px 14px 10px; font-size: 11.5px; color: #b91c1c; }
+  `]
+})
+export class AnjiHelpComponent {
+  private router = inject(Router);
+  langs: Lang[] = ['hinglish', 'english', 'gujarati'];
+
+  open = signal(false);
+  lang = signal<Lang>(this.loadLang());
+  url = signal<string>(this.router.url);
+
+  typed = '';
+  askedQ = signal('');
+  answer = signal('');
+  listening = signal(false);
+  speaking = signal(false);
+  err = signal('');
+
+  private recog: any = null;
+
+  entry = computed(() => findHelp(this.url()));
+  page = computed<HelpPage>(() => this.entry()[this.lang()]);
+  placeholder = computed(() =>
+    this.lang() === 'gujarati' ? 'પ્રશ્ન લખો કે 🎤 બોલો…'
+    : this.lang() === 'english' ? 'Type or 🎤 ask a question…'
+    : 'Sawaal likho ya 🎤 bolo…');
+
+  constructor() {
+    this.router.events.pipe(filter(e => e instanceof NavigationEnd))
+      .subscribe(() => { this.url.set(this.router.url); this.askedQ.set(''); this.answer.set(''); });
+  }
+
+  label(l: Lang) { return LANG_LABEL[l]; }
+  setLang(l: Lang) { this.lang.set(l); try { localStorage.setItem('anji_lang', l); } catch {} this.stopAll(); }
+  private loadLang(): Lang {
+    try { const v = localStorage.getItem('anji_lang') as Lang; if (v) return v; } catch {}
+    return 'hinglish';
+  }
+
+  openPanel() { this.open.set(true); this.err.set(''); }
+
+  // ---------- TTS ----------
+  speak(text: string) {
+    try {
+      const synth = window.speechSynthesis;
+      if (!synth) { this.err.set('Is browser me speaker support nahi. Chrome use karein.'); return; }
+      synth.cancel();
+      const u = new SpeechSynthesisUtterance(text);
+      const bcp = LANG_BCP[this.lang()];
+      u.lang = bcp;
+      const voices = synth.getVoices();
+      // best voice for lang, fallback to hi-IN, then en-IN
+      u.voice = voices.find(v => v.lang === bcp)
+             || voices.find(v => v.lang?.startsWith(bcp.split('-')[0]))
+             || voices.find(v => v.lang === 'hi-IN')
+             || voices.find(v => v.lang?.startsWith('en')) || null;
+      u.rate = 0.96; u.pitch = 1;
+      u.onstart = () => this.speaking.set(true);
+      u.onend = () => this.speaking.set(false);
+      u.onerror = () => this.speaking.set(false);
+      synth.speak(u);
+    } catch { this.err.set('Speaker chalu nahi ho paya.'); }
+  }
+  speakFaq(a: string) { this.askedQ.set(''); this.answer.set(a); this.speak(a); }
+  speakAll() {
+    const p = this.page();
+    const text = [p.title, p.intro, ...p.steps].join('. ');
+    this.speak(text);
+  }
+  stopAll() {
+    try { window.speechSynthesis?.cancel(); } catch {}
+    this.speaking.set(false);
+    try { this.recog?.stop(); } catch {}
+    this.listening.set(false);
+  }
+
+  // ---------- STT ----------
+  toggleMic() {
+    if (this.listening()) { this.stopAll(); return; }
+    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SR) { this.err.set('Is browser me mic support nahi. Chrome use karein.'); return; }
+    this.err.set('');
+    try {
+      const r = new SR();
+      this.recog = r;
+      r.lang = LANG_BCP[this.lang()];
+      r.interimResults = false; r.maxAlternatives = 1; r.continuous = false;
+      r.onstart = () => this.listening.set(true);
+      r.onerror = (e: any) => { this.listening.set(false); this.err.set('Mic: ' + (e?.error || 'error') + ' — mic permission allow karein.'); };
+      r.onend = () => this.listening.set(false);
+      r.onresult = (e: any) => {
+        const t = e?.results?.[0]?.[0]?.transcript || '';
+        this.listening.set(false);
+        if (t) this.ask(t);
+      };
+      r.start();
+    } catch { this.listening.set(false); this.err.set('Mic chalu nahi ho paya.'); }
+  }
+
+  askTyped() { const t = this.typed.trim(); if (t) { this.ask(t); this.typed = ''; } }
+
+  // ---------- keyword match ----------
+  ask(query: string) {
+    this.askedQ.set(query);
+    const a = this.bestAnswer(query);
+    this.answer.set(a);
+    this.speak(a);
+  }
+  private norm(s: string) { return (s || '').toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, ' ').replace(/\s+/g, ' ').trim(); }
+  private bestAnswer(query: string): string {
+    const p = this.page();
+    const qWords = this.norm(query).split(' ').filter(w => w.length > 2);
+    let best = { score: 0, text: '' };
+    const consider = (text: string, hay: string) => {
+      let s = 0; for (const w of qWords) if (hay.includes(w)) s++;
+      if (s > best.score) best = { score: s, text };
+    };
+    for (const f of p.faqs) consider(f.a, this.norm(f.q + ' ' + f.a));
+    for (const st of p.steps) consider(st, this.norm(st));
+    if (best.score === 0) {
+      return this.lang() === 'gujarati' ? 'માફ કરશો, બરાબર સમજાયું નહીં. નીચે Common સવાલ જુઓ કે ફરી પૂછો.'
+        : this.lang() === 'english' ? "Sorry, I didn't catch that. See the common questions below or ask again."
+        : 'Maaf kijiye, theek se samajh nahi aaya. Niche common sawaal dekho ya dobara pucho.';
+    }
+    return best.text;
+  }
+}

@@ -67,6 +67,7 @@ interface BotMetrics {
         <button (click)="tab.set('orders')" [class]="tabCls('orders')">🛒 Orders ({{ orders().length }})</button>
         <button (click)="tab.set('inbox')" [class]="tabCls('inbox')">📥 WA Inbox ({{ inbox().length }})</button>
         <button (click)="tab.set('metrics')" [class]="tabCls('metrics')">📊 Metrics</button>
+        <button (click)="tab.set('device'); startPairPolling()" [class]="tabCls('device')">📱 Link Device</button>
       </div>
 
       <!-- ORDERS -->
@@ -173,6 +174,43 @@ interface BotMetrics {
           <div class="card text-center"><div class="text-3xl">💰</div><div class="text-2xl font-black text-green-700">₹{{ metrics().commission | number:'1.0-0' }}</div><div class="text-xs text-gray-500 uppercase">Commission</div></div>
         </div>
       }
+
+      <!-- LINK DEVICE (WhatsApp Web jaisा QR + phone-code) -->
+      @if (tab() === 'device') {
+        <div class="card max-w-md mx-auto text-center">
+          @if (pair().connected) {
+            <div class="text-5xl mb-2">✅</div>
+            <div class="font-bold text-green-700 text-lg">Device Linked</div>
+            <div class="text-sm text-gray-500 mt-1">WhatsApp bot connected hai. Re-link karna ho to neeche dabao.</div>
+          } @else {
+            <div class="font-bold text-[#5c1a8b] text-lg mb-1">📱 Link WhatsApp Device</div>
+            <div class="text-sm text-gray-500 mb-3">WhatsApp Web jaisा — QR scan karo, ya phone-code daalo.</div>
+            @if (pair().qr) {
+              <img [src]="pair().qr" width="280" height="280" class="mx-auto border rounded-lg" alt="WhatsApp QR">
+              <div class="text-xs text-gray-500 mt-2">WhatsApp → Linked Devices → Link a Device → ye QR scan karo</div>
+            }
+            @if (pair().code) {
+              <div class="mt-3 p-3 bg-purple-50 rounded-lg inline-block">
+                <div class="text-xs text-gray-500">Ya "Link with phone number instead" me ye code daalo:</div>
+                <div class="font-mono font-black text-2xl tracking-widest text-[#5c1a8b]">{{ pair().code }}</div>
+              </div>
+            }
+            @if (!pair().qr && !pair().code) {
+              <div class="text-sm text-gray-400 py-6">
+                @if (pair().offline) { ⚠️ Bot service offline hai (VPS pe bot band hai?). }
+                @else { QR/code laaya ja raha hai… 2-3 sec ruko ya "Re-link" dabao. }
+              </div>
+            }
+          }
+          <div class="mt-4">
+            <button (click)="relink()" [disabled]="relinking()"
+                    class="px-4 py-2 rounded-lg bg-[#5c1a8b] text-white text-sm font-semibold disabled:opacity-50">
+              {{ relinking() ? 'Restarting…' : '🔄 Re-link Device (naya QR/code)' }}
+            </button>
+          </div>
+          <div class="text-[11px] text-gray-400 mt-2">QR/code 2-3 min me expire hota hai. Na aaye to Re-link dabao.</div>
+        </div>
+      }
     </div>
 
     <!-- Lightbox: bada photo (watermark ke saath) + QR code -->
@@ -199,7 +237,10 @@ export class BotComponent {
   private http = inject(HttpClient);
   private base = `${environment.apiUrl}/api/bot`;
 
-  tab = signal<'orders' | 'inbox' | 'metrics'>('orders');
+  tab = signal<'orders' | 'inbox' | 'metrics' | 'device'>('orders');
+  pair = signal<{ connected: boolean; qr: string | null; code: string | null; offline?: boolean }>({ connected: false, qr: null, code: null });
+  relinking = signal(false);
+  private pairTimer: any = null;
   orders = signal<BotOrder[]>([]);
   inbox = signal<BotInbox[]>([]);
   metrics = signal<BotMetrics>({ photos: 0, processed: 0, awaiting: 0, orders: 0, pending: 0, accepted: 0, commission: 0, forwards: 0 });
@@ -240,6 +281,30 @@ export class BotComponent {
   }
   loadMetrics() {
     this.http.get<BotMetrics>(`${this.base}/metrics`).subscribe({ next: m => this.metrics.set(m), error: () => {} });
+  }
+
+  // ---- Link Device (WhatsApp Web jaisा QR + phone-code) ----
+  loadPair() {
+    this.http.get<any>(`${this.base}/pair`).subscribe({
+      next: p => { this.pair.set(p); if (p.connected) this.stopPairPolling(); },
+      error: () => {}
+    });
+  }
+  startPairPolling() {
+    this.loadPair();
+    this.stopPairPolling();
+    this.pairTimer = setInterval(() => this.loadPair(), 3000);
+  }
+  stopPairPolling() { if (this.pairTimer) { clearInterval(this.pairTimer); this.pairTimer = null; } }
+  ngOnDestroy() { this.stopPairPolling(); }
+
+  relink() {
+    if (!confirm('Device re-link karein? Purana WhatsApp link hat jayega, naya QR/code aayega.')) return;
+    this.relinking.set(true);
+    this.http.post(`${this.base}/pair/restart`, {}).subscribe({
+      next: () => setTimeout(() => { this.relinking.set(false); this.startPairPolling(); }, 4000),
+      error: () => { this.relinking.set(false); alert('Bot service reachable nahi. VPS pe bot chal raha hai?'); }
+    });
   }
 
   // Track code ka QR (free qrserver — browser me render).

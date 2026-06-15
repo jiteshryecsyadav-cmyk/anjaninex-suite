@@ -8,6 +8,7 @@ const fs = require('fs');
 const path = require('path');
 const express = require('express');
 const qrcode = require('qrcode-terminal');
+const QRCode = require('qrcode');           // QR ko data-URL image banane ke liye (Suite UI)
 const pino = require('pino');
 const {
   default: makeWASocket,
@@ -31,6 +32,11 @@ async function saveImage(buffer, hash) {
 }
 
 let sock = null;
+
+// Pairing state — Suite ke Bot tab me dikhane ke liye (GET /pair-status).
+let botConnected = false;
+let latestQrDataUrl = null;   // <img src> ke liye data-URL
+let latestPairCode = null;    // "Link with phone number" wala 8-char code
 
 // Bheje gaye messages ka store (id -> content). Ye ZAROORI hai: jab recipient bot ka
 // reply decrypt nahi kar pata to wo "retry receipt" bhejta hai; getMessage isi store se
@@ -95,13 +101,16 @@ async function start() {
   sock.ev.on('connection.update', async (u) => {
     const { connection, lastDisconnect, qr } = u;
     if (qr) {
+      botConnected = false;
+      // UI ke liye QR ko data-URL image bana ke rakho
+      try { latestQrDataUrl = await QRCode.toDataURL(qr, { width: 300, margin: 1 }); } catch { latestQrDataUrl = null; }
       if (PAIR_NUMBER && !pairingRequested && !sock.authState.creds.registered) {
         pairingRequested = true;
         try {
           const code = await sock.requestPairingCode(PAIR_NUMBER);
-          const pretty = code.match(/.{1,4}/g)?.join('-') || code;
+          latestPairCode = code.match(/.{1,4}/g)?.join('-') || code;
           console.log('\n========================================');
-          console.log('🔢 WhatsApp PAIRING CODE: ' + pretty);
+          console.log('🔢 WhatsApp PAIRING CODE: ' + latestPairCode);
           console.log('   WhatsApp → Linked Devices → Link a Device →');
           console.log('   "Link with phone number instead" → ye code daalo');
           console.log('========================================\n');
@@ -111,8 +120,12 @@ async function start() {
         qrcode.generate(qr, { small: true });
       }
     }
-    if (connection === 'open') console.log('✅ WhatsApp connected! Bot ready.');
+    if (connection === 'open') {
+      botConnected = true; latestQrDataUrl = null; latestPairCode = null;
+      console.log('✅ WhatsApp connected! Bot ready.');
+    }
     if (connection === 'close') {
+      botConnected = false;
       const code = lastDisconnect?.error?.output?.statusCode;
       const reconnect = code !== DisconnectReason.loggedOut;
       console.log(`⚠️ Connection closed (${code}). Reconnect: ${reconnect}`);
@@ -154,6 +167,23 @@ async function start() {
 // Tiny health + uploads server.
 const app = express();
 app.get('/health', (_req, res) => res.json({ ok: true, connected: !!sock?.user }));
+
+// Pairing status — Suite ke Bot tab me dikhane ke liye.
+// { connected, qr: dataUrl|null, code: 'XXXX-XXXX'|null }
+app.get('/pair-status', (_req, res) => {
+  res.json({ connected: botConnected, qr: latestQrDataUrl, code: latestPairCode });
+});
+
+// Re-pair / re-link — admin ke "Pair Device" button se. Purana session hata ke bot
+// restart (systemd Restart=always wapas le aayega) → naya QR/code ban jayega.
+app.post('/pair-restart', (_req, res) => {
+  res.json({ ok: true });
+  setTimeout(() => {
+    try { fs.rmSync(SESSION_DIR, { recursive: true, force: true }); } catch {}
+    process.exit(0);   // systemd auto-restart → fresh QR/code
+  }, 400);
+});
+
 // Suite me photo dikhane ke liye uploads serve karo (img tag, koi CORS issue nahi).
 app.use('/uploads', express.static(UPLOAD_DIR));
 app.listen(+(process.env.PORT || 5050), () =>

@@ -211,4 +211,42 @@ public class BotController : ControllerBase
 
         return Ok(new { connected, lastSeen, healthUrl = url });
     }
+
+    private string BotBase =>
+        (Environment.GetEnvironmentVariable("BOT_BASE_URL") ?? "http://localhost:5050").TrimEnd('/');
+
+    // ---- Pairing status (QR / phone-code) — Bot tab me "Pair Device" ke liye ----
+    [HttpGet("pair")]
+    public async Task<IActionResult> Pair()
+    {
+        try
+        {
+            var http = _httpFactory.CreateClient();
+            http.Timeout = TimeSpan.FromSeconds(4);
+            var resp = await http.GetAsync($"{BotBase}/pair-status");
+            var json = await resp.Content.ReadAsStringAsync();
+            return Content(json, "application/json");
+        }
+        catch
+        {
+            return Ok(new { connected = false, qr = (string?)null, code = (string?)null, offline = true });
+        }
+    }
+
+    // ---- Re-link / re-pair device (admin) — bot ko fresh QR/code banane ko bolo ----
+    [HttpPost("pair/restart")]
+    public async Task<IActionResult> PairRestart()
+    {
+        try
+        {
+            var http = _httpFactory.CreateClient();
+            http.Timeout = TimeSpan.FromSeconds(4);
+            await http.PostAsync($"{BotBase}/pair-restart", null);
+            return Ok(new { ok = true });
+        }
+        catch
+        {
+            return StatusCode(503, new { error = "Bot service reachable nahi hai. VPS pe bot chal raha hai?" });
+        }
+    }
 }

@@ -103,6 +103,7 @@ export const HELP_PAGES: HelpEntry[] = [
         { q: 'gst kaise lagta hai', a: 'Same state ho to CGST+SGST, doosre state ka ho to IGST apne aap lagega.' },
         { q: 'entry date kya hai', a: 'Entry Date = aaj ki date (jab entry kar rahe ho), apne aap aati hai. Supplier Bill Date = bill par chhapi date.' },
         { q: 'eway bill date', a: 'Agar e-Way Bill No diya hai par date khali, to bill ki date hi e-Way date maan li jayegी.' },
+        { q: 'AI scan mera data yaad rakhta hai? safe hai?', a: 'AI sirf bill ko padh kar uska data extract karta hai — bus, aur kuch nahi karta. Wo aapka data yaad ya store nahi rakhta, kyunki Anjaninex ne poori security laga rakhi hai. Aapka data bilkul safe hai.' },
       ],
     },
     english: {
@@ -121,6 +122,7 @@ export const HELP_PAGES: HelpEntry[] = [
         { q: 'how is gst applied', a: 'Same state = CGST+SGST, different state = IGST, applied automatically.' },
         { q: 'what is entry date', a: 'Entry Date = today (when you enter), auto-filled. Supplier Bill Date = the date printed on the bill.' },
         { q: 'eway bill date', a: 'If an e-Way Bill No is given but the date is empty, the bill date is used as the e-Way date.' },
+        { q: 'Does AI scan store or remember my data? Is it safe?', a: 'The AI only reads the bill and extracts the data — nothing else. It does not remember or store your data, because Anjaninex has full security in place. Your data is completely safe.' },
       ],
     },
     gujarati: {
@@ -137,6 +139,7 @@ export const HELP_PAGES: HelpEntry[] = [
         { q: 'બિલ સ્કેન કેવી રીતે', a: 'ઉપર "Scan Bill" દબાવો, બિલનો ફોટો કે PDF અપલોડ કરો — AI બધું ભરી દેશે. પછી તપાસીને Submit.' },
         { q: 'સપ્લાયર મળતો નથી', a: 'સપ્લાયર બોક્સમાં નામ/GST થી શોધો. નવો હોય તો "+ New" થી ઉમેરો.' },
         { q: 'GST કેવી રીતે લાગે', a: 'એક જ રાજ્ય હોય તો CGST+SGST, બીજા રાજ્યનું હોય તો IGST આપમેળે લાગે.' },
+        { q: 'AI સ્કેન મારો ડેટા યાદ રાખે છે? સુરક્ષિત છે?', a: 'AI ફક્ત બિલ વાંચીને ડેટા કાઢે છે — બસ, બીજું કંઈ નહીં. તે તમારો ડેટા યાદ કે સ્ટોર રાખતું નથી, કારણ કે Anjaninex એ પૂરી સિક્યુરિટી રાખી છે. તમારો ડેટા સંપૂર્ણ સુરક્ષિત છે.' },
       ],
     },
   },
@@ -203,6 +206,7 @@ export const HELP_PAGES: HelpEntry[] = [
         { q: 'order number kaha hai', a: 'Order No save par apne aap ban jata hai (Auto — save par milega).' },
         { q: 'order scan', a: 'Upar "Scan Order" se PO ka photo/PDF daalo, AI fields bhar dega.' },
         { q: 'order save nahi ho raha', a: 'Supplier aur kam se kam 1 item zaroori hai. Sab * fields bharo phir Submit.' },
+        { q: 'AI scan mera data yaad rakhta hai? safe hai?', a: 'AI sirf order ko padh kar data extract karta hai — bus, aur kuch nahi karta. Wo aapka data yaad ya store nahi rakhta, kyunki Anjaninex ne poori security laga rakhi hai. Aapka data bilkul safe hai.' },
       ],
     },
     english: {
@@ -217,6 +221,7 @@ export const HELP_PAGES: HelpEntry[] = [
       faqs: [
         { q: 'where is the order number', a: 'Order No is generated automatically on save.' },
         { q: 'order scan', a: 'Use "Scan Order" on top to upload the PO photo/PDF; AI fills the fields.' },
+        { q: 'Does AI scan store or remember my data? Is it safe?', a: 'The AI only reads the order and extracts the data — nothing else. It does not remember or store your data, because Anjaninex has full security in place. Your data is completely safe.' },
       ],
     },
     gujarati: {
@@ -230,6 +235,7 @@ export const HELP_PAGES: HelpEntry[] = [
       ],
       faqs: [
         { q: 'ઓર્ડર નંબર ક્યાં', a: 'Order No સેવ કરતી વખતે આપમેળે બને છે.' },
+        { q: 'AI સ્કેન મારો ડેટા યાદ રાખે છે? સુરક્ષિત છે?', a: 'AI ફક્ત ઓર્ડર વાંચીને ડેટા કાઢે છે — બસ, બીજું કંઈ નહીં. તે તમારો ડેટા યાદ કે સ્ટોર રાખતું નથી, કારણ કે Anjaninex એ પૂરી સિક્યુરિટી રાખી છે. તમારો ડેટા સંપૂર્ણ સુરક્ષિત છે.' },
       ],
     },
   },
@@ -590,6 +596,7 @@ export const GENERIC_HELP: HelpEntry = {
       { q: 'naya kaise banau', a: 'Page ke upar dayi taraf "+ New" ya "Add" button hota hai, usse naya record banao.' },
       { q: 'search kaise', a: 'Page ke upar search box ya filter se dhundo.' },
       { q: 'bill kaise banau', a: 'Trading → Bills → New Bill Entry par jao.' },
+      { q: 'AI scan mera data yaad rakhta hai? safe hai?', a: 'AI sirf bill/order ko padh kar data extract karta hai — bus, aur kuch nahi karta. Wo aapka data yaad ya store nahi rakhta, kyunki Anjaninex ne poori security laga rakhi hai. Aapka data bilkul safe hai.' },
     ],
   },
   english: {
@@ -604,6 +611,7 @@ export const GENERIC_HELP: HelpEntry = {
     faqs: [
       { q: 'how to add new', a: 'There is usually a "+ New" or "Add" button at the top right.' },
       { q: 'how to search', a: 'Use the search box or filter at the top of the page.' },
+      { q: 'Does AI scan store or remember my data? Is it safe?', a: 'The AI only reads the bill/order and extracts the data — nothing else. It does not remember or store your data, because Anjaninex has full security in place. Your data is completely safe.' },
     ],
   },
   gujarati: {
@@ -618,6 +626,7 @@ export const GENERIC_HELP: HelpEntry = {
     faqs: [
       { q: 'નવું કેવી રીતે', a: 'પેજની ઉપર જમણે "+ New" કે "Add" બટન હોય છે.' },
       { q: 'શોધ કેવી રીતે', a: 'પેજની ઉપર સર્ચ બોક્સ કે ફિલ્ટર વાપરો.' },
+      { q: 'AI સ્કેન મારો ડેટા યાદ રાખે છે? સુરક્ષિત છે?', a: 'AI ફક્ત બિલ/ઓર્ડર વાંચીને ડેટા કાઢે છે — બસ, બીજું કંઈ નહીં. તે તમારો ડેટા યાદ કે સ્ટોર રાખતું નથી, કારણ કે Anjaninex એ પૂરી સિક્યુરિટી રાખી છે. તમારો ડેટા સંપૂર્ણ સુરક્ષિત છે.' },
     ],
   },
 };

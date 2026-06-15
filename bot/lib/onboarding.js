@@ -4,6 +4,10 @@ const db = require('./db');
 
 const FIRM_ID = process.env.FIRM_ID || null;
 
+// GSTIN format — core.contacts ke check constraint jaisा. Galat GST DB save par crash deta
+// hai, isliye yahin validate karte hain.
+const GSTIN_RE = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/;
+
 async function getState(phone) {
   const r = await db.query('SELECT state, context FROM wa.conversations WHERE phone = $1', [phone]);
   if (r.rows[0]) return { state: r.rows[0].state, ctx: r.rows[0].context || {} };
@@ -69,7 +73,9 @@ async function resolveCategoryIds(names) {
 // Ek contact + supplier/buyer profile banao/update karo (Core Master + AD).
 async function registerParty(phone, c) {
   const { type, name, gst, city, min, max } = c;
-  const gstClean = gst ? gst.trim().toUpperCase() : null;
+  // Safety: invalid GST ko null karo (DB ka gstin_format check crash na ho)
+  const gstUp = gst ? gst.trim().toUpperCase().replace(/\s/g, '') : null;
+  const gstClean = (gstUp && GSTIN_RE.test(gstUp)) ? gstUp : null;
   const catIds = await resolveCategoryIds(c.categories);
   const catJson = JSON.stringify(catIds);
 
@@ -185,7 +191,14 @@ async function handleOnboarding(phone, text) {
   }
 
   if (state === 'ASK_GST') {
-    ctx.gst = (['skip', 'no', 'nahi', '-'].includes(low)) ? null : t;
+    if (['skip', 'no', 'nahi', '-'].includes(low)) {
+      ctx.gst = null;
+    } else {
+      const g = t.toUpperCase().replace(/\s/g, '');
+      if (!GSTIN_RE.test(g))
+        return '⚠️ GST sahi format me nahi laga (15-char, jaise 24AAVFR8700R2ZC). Dobara daalein ya "skip" likhein.';
+      ctx.gst = g;
+    }
     await setState(phone, 'ASK_CITY', ctx);
     return 'Aapka CITY (shehar) kaunsa hai?';
   }

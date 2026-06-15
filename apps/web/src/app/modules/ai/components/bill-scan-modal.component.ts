@@ -15,7 +15,7 @@ type ScanState = 'idle' | 'camera' | 'preview' | 'analyzing' | 'result' | 'error
            (click)="$event.stopPropagation()">
 
         <!-- Header -->
-        <div class="flex items-center justify-between px-5 py-4 border-b bg-gradient-to-r from-[#3d0070] to-[#f57c00] text-white">
+        <div class="flex items-center justify-between px-5 py-4 border-b text-white" style="background: var(--anjaninex-navy)">
           <h3 class="font-display font-bold text-lg flex items-center gap-2">
             🤖 Bill Scanner
           </h3>

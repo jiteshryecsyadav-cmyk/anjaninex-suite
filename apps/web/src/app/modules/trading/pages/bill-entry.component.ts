@@ -626,7 +626,7 @@ interface LineRow {
             </div>
             <div>
               <label class="lbl">E-WAY BILL NO</label>
-              <input [(ngModel)]="ewayBillNo" type="text" placeholder="12-digit eWay No" maxlength="20" class="ip">
+              <input [(ngModel)]="ewayBillNo" (blur)="syncEwayDate()" type="text" placeholder="12-digit eWay No" maxlength="20" class="ip">
             </div>
             <div>
               <label class="lbl">E-WAY BILL DATE</label>
@@ -2313,6 +2313,7 @@ export class BillEntryComponent {
     if (data.transport?.name)       this.transporter = data.transport.name;
     if ((data.transport as any)?.ewayBillNo) this.ewayBillNo = (data.transport as any).ewayBillNo;
     if ((data.transport as any)?.ewayBillDate) this.ewayBillDate = (data.transport as any).ewayBillDate;
+    this.syncEwayDate();   // e-Way No hai par date nahi → bill ki date hi e-Way date
 
     // SMART TRANSPORTER MATCH — GST first, then name
     const tName = data.transport?.name ?? '';
@@ -2460,6 +2461,13 @@ export class BillEntryComponent {
     alert(`📄 Preview\n\nSupplier: ${this.parties().find(p => p.id === this.supplierId)?.displayName ?? '—'}\nBuyer: ${this.parties().find(p => p.id === this.buyerId)?.displayName ?? '—'}\nItems: ${this.lines().filter(l => l.itemName).length}\nGross: ₹${this.grossAmt().toFixed(2)}\nE-Invoice Amt: ₹${this.eInvoiceAmt().toFixed(2)}\n\n(Full PDF preview coming soon)`);
   }
 
+  /** e-Way Bill No diya hai par e-Way date khali → bill ki date hi e-Way date maan lo. */
+  syncEwayDate() {
+    if (this.ewayBillNo?.trim() && !this.ewayBillDate && this.billDate) {
+      this.ewayBillDate = this.billDate;
+    }
+  }
+
   // ============ SAVE ============
   save() {
     this.submitted.set(true);    // turn on red borders / hint for missing fields
@@ -2522,7 +2530,8 @@ export class BillEntryComponent {
       supplierBillNo: this.supplierBillNo?.trim() || undefined,
       deliveryDate: this.lrDate || undefined,
       ewayBillNo: this.ewayBillNo?.trim() || undefined,
-      ewayBillDate: this.ewayBillDate?.trim() || undefined,
+      // e-Way No diya hai par date khali → bill ki date hi e-Way date
+      ewayBillDate: (this.ewayBillDate?.trim() || (this.ewayBillNo?.trim() ? this.billDate : '')) || undefined,
       transporterId: this.transporterId || undefined,
       lrNo: this.lrNo?.trim() || undefined,
       lrDate: this.lrDate || undefined,

@@ -47,10 +47,31 @@ function num(t) {
   return m ? parseFloat(m[1]) : null;
 }
 
+// Category naam(on) ko suppliers.categories me find-or-create karke unke IDs lao.
+// Bot text se naam aata hai (jaise "Cotton, Rayon") — app me bhi yahi category dikhe.
+async function resolveCategoryIds(names) {
+  const ids = [];
+  for (const raw of (names || [])) {
+    const nm = String(raw || '').trim();
+    if (!nm) continue;
+    const r = await db.query(
+      `INSERT INTO suppliers.categories (id, firm_id, name, created_at)
+       VALUES (gen_random_uuid(), $1, $2, now())
+       ON CONFLICT (firm_id, name) DO UPDATE SET name = EXCLUDED.name
+       RETURNING id`,
+      [FIRM_ID, nm]
+    );
+    if (r.rows[0]) ids.push(r.rows[0].id);
+  }
+  return ids;
+}
+
 // Ek contact + supplier/buyer profile banao/update karo (Core Master + AD).
 async function registerParty(phone, c) {
   const { type, name, gst, city, min, max } = c;
   const gstClean = gst ? gst.trim().toUpperCase() : null;
+  const catIds = await resolveCategoryIds(c.categories);
+  const catJson = JSON.stringify(catIds);
 
   // 1) contact — phone se dedup; mile to update, warna naya
   let contactId;
@@ -79,30 +100,40 @@ async function registerParty(phone, c) {
   if (type === 'supplier') {
     const has = await db.query('SELECT id FROM suppliers.supplier_profiles WHERE firm_id=$1 AND contact_id=$2', [FIRM_ID, contactId]);
     if (has.rows[0]) {
-      await db.query('UPDATE suppliers.supplier_profiles SET rate_min=$2, rate_max=$3, is_active=TRUE, updated_at=now() WHERE id=$1',
-        [has.rows[0].id, min, max]);
+      await db.query(
+        `UPDATE suppliers.supplier_profiles
+            SET rate_min=$2, rate_max=$3, is_active=TRUE,
+                categories = CASE WHEN $4::jsonb <> '[]'::jsonb THEN $4::jsonb ELSE categories END,
+                updated_at=now()
+          WHERE id=$1`,
+        [has.rows[0].id, min, max, catJson]);
     } else {
       const cnt = await db.query('SELECT COUNT(*)::int AS n FROM suppliers.supplier_profiles WHERE firm_id=$1', [FIRM_ID]);
       const code = 'SUP-' + String((cnt.rows[0].n || 0) + 1).padStart(3, '0');
       await db.query(
         `INSERT INTO suppliers.supplier_profiles (id, firm_id, contact_id, supplier_code, business_type, categories, rate_unit, rate_min, rate_max, is_active, created_at, updated_at)
-         VALUES (gen_random_uuid(), $1, $2, $3, 'trader', '[]', 'mtr', $4, $5, TRUE, now(), now())`,
-        [FIRM_ID, contactId, code, min, max]
+         VALUES (gen_random_uuid(), $1, $2, $3, 'trader', $6::jsonb, 'mtr', $4, $5, TRUE, now(), now())`,
+        [FIRM_ID, contactId, code, min, max, catJson]
       );
     }
     await db.query('UPDATE core.contacts SET wa_supplier=$1, updated_at=now() WHERE id=$2', [phone, contactId]);
   } else {
     const has = await db.query('SELECT id FROM suppliers.buyer_profiles WHERE firm_id=$1 AND contact_id=$2', [FIRM_ID, contactId]);
     if (has.rows[0]) {
-      await db.query('UPDATE suppliers.buyer_profiles SET budget_min=$2, budget_max=$3, is_active=TRUE, updated_at=now() WHERE id=$1',
-        [has.rows[0].id, min, max]);
+      await db.query(
+        `UPDATE suppliers.buyer_profiles
+            SET budget_min=$2, budget_max=$3, is_active=TRUE,
+                categories = CASE WHEN $4::jsonb <> '[]'::jsonb THEN $4::jsonb ELSE categories END,
+                updated_at=now()
+          WHERE id=$1`,
+        [has.rows[0].id, min, max, catJson]);
     } else {
       const cnt = await db.query('SELECT COUNT(*)::int AS n FROM suppliers.buyer_profiles WHERE firm_id=$1', [FIRM_ID]);
       const code = 'BUY-' + String((cnt.rows[0].n || 0) + 1).padStart(3, '0');
       await db.query(
         `INSERT INTO suppliers.buyer_profiles (id, firm_id, contact_id, buyer_code, categories, budget_min, budget_max, budget_unit, is_active, created_at, updated_at)
-         VALUES (gen_random_uuid(), $1, $2, $3, '[]', $4, $5, 'mtr', TRUE, now(), now())`,
-        [FIRM_ID, contactId, code, min, max]
+         VALUES (gen_random_uuid(), $1, $2, $3, $6::jsonb, $4, $5, 'mtr', TRUE, now(), now())`,
+        [FIRM_ID, contactId, code, min, max, catJson]
       );
     }
     await db.query('UPDATE core.contacts SET wa_buyer=$1, updated_at=now() WHERE id=$2', [phone, contactId]);
@@ -161,6 +192,16 @@ async function handleOnboarding(phone, text) {
 
   if (state === 'ASK_CITY') {
     ctx.city = t;
+    await setState(phone, 'ASK_CATEGORY', ctx);
+    return ctx.type === 'supplier'
+      ? 'Aap kaun-kaunsi CATEGORY / maal BECHTE ho? (jaise Cotton, Rayon, Silk — ek ya comma se zyada)'
+      : 'Aapko kaun-kaunsi CATEGORY / maal chahiye? (jaise Cotton, Rayon — ek ya comma se zyada)';
+  }
+
+  if (state === 'ASK_CATEGORY') {
+    const cats = t.split(',').map(s => s.trim()).filter(Boolean);
+    if (cats.length === 0) return 'Kam se kam ek category likhein (jaise Cotton).';
+    ctx.categories = cats;
     await setState(phone, 'ASK_MIN', ctx);
     return ctx.type === 'supplier'
       ? 'Aap kis rate se maal BECHTE ho? (MINIMUM rate ₹, jaise 80)'
@@ -183,6 +224,7 @@ async function handleOnboarding(phone, text) {
     await clearState(phone);
     const label = ctx.type === 'supplier' ? 'Supplier' : 'Buyer';
     return `✅ Registration ho gaya!\n${label}: ${ctx.name} (${ctx.city})\n` +
+      (ctx.categories?.length ? `Category: ${ctx.categories.join(', ')}\n` : '') +
       `Rate range: ₹${ctx.min}–₹${ctx.max}` + (ctx.gst ? `\nGST: ${ctx.gst}` : '') + '\n\n' +
       (ctx.type === 'supplier'
         ? 'Ab fabric ki photo + "Rate 150" bhej sakte hain.'

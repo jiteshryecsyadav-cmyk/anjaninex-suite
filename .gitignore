@@ -72,3 +72,8 @@ logs/
 
 # Uploads (local dev)
 uploads/
+
+bot/auth/
+bot/.env
+bot/uploads/
+bot/node_modules/

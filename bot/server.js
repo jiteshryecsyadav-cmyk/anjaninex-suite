@@ -8,6 +8,7 @@ const fs = require('fs');
 const path = require('path');
 const express = require('express');
 const qrcode = require('qrcode-terminal');
+const pino = require('pino');
 const {
   default: makeWASocket,
   useMultiFileAuthState,
@@ -31,6 +32,20 @@ async function saveImage(buffer, hash) {
 
 let sock = null;
 
+// Bheje gaye messages ka store (id -> content). Ye ZAROORI hai: jab recipient bot ka
+// reply decrypt nahi kar pata to wo "retry receipt" bhejta hai; getMessage isi store se
+// message lautata hai taaki bot dobara bhej sake. Iske bina recipient pe "Waiting for
+// this message" atak jaata hai. (Last 500 messages yaad rakho, memory leak na ho.)
+const sentMsgStore = new Map();
+function storeSent(sent) {
+  try {
+    if (sent?.key?.id && sent.message) {
+      sentMsgStore.set(sent.key.id, sent.message);
+      if (sentMsgStore.size > 500) sentMsgStore.delete(sentMsgStore.keys().next().value);
+    }
+  } catch {}
+}
+
 // Kisi bhi phone (10-digit) ko message bhejo — broadcast / order routing ke liye.
 async function send(phone, msg) {
   if (!sock || !phone) return;
@@ -47,8 +62,8 @@ async function send(phone, msg) {
     }
   } catch (e) { /* check fail ho to bhej do (legit number na chhoot jaye) */ }
 
-  if (msg.image) await sock.sendMessage(jid, { image: msg.image, caption: msg.caption || '' });
-  else if (msg.text) await sock.sendMessage(jid, { text: msg.text });
+  if (msg.image) storeSent(await sock.sendMessage(jid, { image: msg.image, caption: msg.caption || '' }));
+  else if (msg.text) storeSent(await sock.sendMessage(jid, { text: msg.text }));
 }
 
 async function start() {
@@ -62,7 +77,11 @@ async function start() {
     version,
     auth: state,
     printQRInTerminal: false,
-    browser: Browsers.ubuntu('Chrome')
+    browser: Browsers.ubuntu('Chrome'),
+    logger: pino({ level: 'warn' }),          // kam shor (session crypto dumps band)
+    defaultQueryTimeoutMs: 60000,             // init-queries timeout se bachne ke liye
+    // FIX "Waiting for this message": retry-receipt aane par bot dobara bhej sake
+    getMessage: async (key) => sentMsgStore.get(key.id) || undefined
   });
 
   sock.ev.on('creds.update', saveCreds);
@@ -105,7 +124,7 @@ async function start() {
         }
 
         const reply = await handleMessage({ fromPhone, text, imageBuffer, saveImage, watermark, send });
-        if (reply && reply.text) await sock.sendMessage(jid, { text: reply.text });
+        if (reply && reply.text) storeSent(await sock.sendMessage(jid, { text: reply.text }));
       } catch (e) {
         console.error('[msg] error:', e.message);
       }

@@ -365,7 +365,9 @@ public class OrderService : IOrderService
 
     private async Task<string> GenerateOrderNo(string orderType, Guid firmId, Guid branchId)
     {
-        var branch = await _db.Branches.SingleAsync(b => b.Id == branchId);
+        var branch = await _db.Branches.FirstOrDefaultAsync(b => b.Id == branchId)
+                  ?? await _db.Branches.FirstOrDefaultAsync(b => b.FirmId == firmId)
+                  ?? throw new InvalidOperationException("Is firm ka koi branch nahi mila. Team → Branches me ek branch banayein.");
         var prefix = branch.Code ?? "ORD";
 
         // Race-safe atomic counter (platform.voucher_counters) — same as BillService.

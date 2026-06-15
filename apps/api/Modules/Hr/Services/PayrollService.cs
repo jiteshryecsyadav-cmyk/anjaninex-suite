@@ -226,7 +226,9 @@ public class PayrollService : IPayrollService
             bankLedger = await FindOrCreateLedger(firmId, "Cash", "Cash-in-Hand");
 
         // P0-3: atomic voucher_no via voucher_counters
-        var branch = await _db.Branches.SingleAsync(b => b.Id == branchId);
+        var branch = await _db.Branches.FirstOrDefaultAsync(b => b.Id == branchId)
+                  ?? await _db.Branches.FirstOrDefaultAsync(b => b.FirmId == firmId)
+                  ?? throw new InvalidOperationException("Is firm ka koi branch nahi mila. Team → Branches me ek branch banayein.");
         var prefix = branch.VoucherPrefix ?? $"{branch.Code}-V-";
         var voucherSeq = await ReserveCounterAsync(firmId, branchId, "voucher.journal", GetFyYear());
         var voucherNo = $"{prefix}J{voucherSeq:D4}";

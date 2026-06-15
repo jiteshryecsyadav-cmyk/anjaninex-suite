@@ -303,7 +303,9 @@ public class BillService : IBillService
         {
             // Determine inter-state vs intra-state by comparing GST state codes
             // (first 2 digits of GSTIN; e.g., '08' = Rajasthan, '07' = Delhi)
-            var branch = await _db.Branches.SingleAsync(b => b.Id == branchId);
+            var branch = await _db.Branches.FirstOrDefaultAsync(b => b.Id == branchId)
+                  ?? await _db.Branches.FirstOrDefaultAsync(b => b.FirmId == firmId)
+                  ?? throw new InvalidOperationException("Is firm ka koi branch nahi mila. Team → Branches me ek branch banayein.");
             var party = await _db.PartyProfiles
                 .Where(p => p.Id == dto.PartyId)
                 .Select(p => new { p.LedgerId, p.ContactId })
@@ -952,7 +954,9 @@ public class BillService : IBillService
     {
         // P0-3 fix: atomic counter via voucher_counters table (UPDATE...RETURNING)
         // prevents race condition where concurrent inserts get duplicate voucher_no.
-        var branch = await _db.Branches.SingleAsync(b => b.Id == branchId);
+        var branch = await _db.Branches.FirstOrDefaultAsync(b => b.Id == branchId)
+                  ?? await _db.Branches.FirstOrDefaultAsync(b => b.FirmId == firmId)
+                  ?? throw new InvalidOperationException("Is firm ka koi branch nahi mila. Team → Branches me ek branch banayein.");
         var prefix = branch.VoucherPrefix ?? $"{branch.Code}-V-";
         var typeSuffix = voucherType switch
         {
@@ -995,7 +999,9 @@ RETURNING next_no;";
 
     public async Task<string> GenerateBillNo(string billType, Guid firmId, Guid branchId)
     {
-        var branch = await _db.Branches.SingleAsync(b => b.Id == branchId);
+        var branch = await _db.Branches.FirstOrDefaultAsync(b => b.Id == branchId)
+                  ?? await _db.Branches.FirstOrDefaultAsync(b => b.FirmId == firmId)
+                  ?? throw new InvalidOperationException("Is firm ka koi branch nahi mila. Team → Branches me ek branch banayein.");
         // Format: JPR-1, JPR-2 ... (chhota saaf number — "BILL" text nahi)
         var prefix = branch.BillPrefix ?? $"{branch.Code}-";
         if (prefix.EndsWith("-BILL-", StringComparison.OrdinalIgnoreCase))

@@ -451,7 +451,9 @@ public class PaymentService : IPaymentService
 
     private async Task<string> GeneratePaymentNo(string type, Guid firmId, Guid branchId)
     {
-        var branch = await _db.Branches.SingleAsync(b => b.Id == branchId);
+        var branch = await _db.Branches.FirstOrDefaultAsync(b => b.Id == branchId)
+                  ?? await _db.Branches.FirstOrDefaultAsync(b => b.FirmId == firmId)
+                  ?? throw new InvalidOperationException("Is firm ka koi branch nahi mila. Team → Branches me ek branch banayein.");
         // Short format: JPR-R1 (Receipt) / JPR-P1 (Payment)
         var prefix = type == "receipt" ? $"{branch.Code}-R" : $"{branch.Code}-P";
 
@@ -476,7 +478,9 @@ public class PaymentService : IPaymentService
 
     private async Task<string> GenerateVoucherNoForPayment(string voucherType, Guid branchId, Guid firmId)
     {
-        var branch = await _db.Branches.SingleAsync(b => b.Id == branchId);
+        var branch = await _db.Branches.FirstOrDefaultAsync(b => b.Id == branchId)
+                  ?? await _db.Branches.FirstOrDefaultAsync(b => b.FirmId == firmId)
+                  ?? throw new InvalidOperationException("Is firm ka koi branch nahi mila. Team → Branches me ek branch banayein.");
         var prefix = branch.VoucherPrefix ?? $"{branch.Code}-V-";
         var typeCode = voucherType == "receipt" ? "R" : "P";
 

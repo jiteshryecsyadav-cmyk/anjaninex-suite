@@ -400,7 +400,11 @@ public class GoodsReturnService : IGoodsReturnService
 
     private async Task<string> GenerateGrNo(Guid firmId, Guid branchId)
     {
-        var branch = await _db.Branches.SingleAsync(b => b.Id == branchId);
+        // branchId galat/empty ho (naye firm me claim mismatch) to firm ke branch pe
+        // fallback — warna SingleAsync "Sequence contains no elements" crash deta tha.
+        var branch = await _db.Branches.FirstOrDefaultAsync(b => b.Id == branchId)
+                  ?? await _db.Branches.FirstOrDefaultAsync(b => b.FirmId == firmId)
+                  ?? throw new InvalidOperationException("Is firm ka koi branch nahi mila. Team → Branches me ek branch banayein.");
 
         // Race-safe atomic counter (platform.voucher_counters) — same as BillService.
         // Pehle "CountAsync(...) + 1" tha jo concurrent inserts par DUPLICATE gr_no de sakta tha.

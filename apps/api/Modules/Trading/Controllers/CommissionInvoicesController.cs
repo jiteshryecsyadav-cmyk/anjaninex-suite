@@ -171,7 +171,9 @@ public class CommissionInvoicesController : ControllerBase
             try
             {
                 // Short format: JPR-C1, JPR-C2 ... (C = Commission) — FY-wise race-safe counter
-                var branchRow = await _db.Branches.SingleAsync(b => b.Id == branchId);
+                var branchRow = await _db.Branches.FirstOrDefaultAsync(b => b.Id == branchId)
+                          ?? await _db.Branches.FirstOrDefaultAsync(b => b.FirmId == firmId)
+                          ?? throw new InvalidOperationException("Is firm ka koi branch nahi mila. Team → Branches me ek branch banayein.");
                 var fyYear = DateTime.UtcNow.Month >= 4 ? DateTime.UtcNow.Year : DateTime.UtcNow.Year - 1;
                 var nextNo = await ReserveCounterAsync(firmId, branchId, "commission", fyYear);
                 var invoiceNo = $"{branchRow.Code}-C{nextNo}";

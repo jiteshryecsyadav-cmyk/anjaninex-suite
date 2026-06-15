@@ -110,22 +110,26 @@ import { environment } from '../../../environments/environment';
                 <span class="w-5 text-center">📒</span> Accounting
               </a>
             }
-            <!-- Bazaar Link — Coming Soon (disabled) -->
-            <div class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-semibold text-white/40 cursor-not-allowed select-none" title="Coming soon">
-              <span class="w-5 flex justify-center">
-                <svg viewBox="0 0 24 24" fill="currentColor" style="width:16px;height:16px;">
-                  <path d="M3 5h6l2 2h10v2H3z"/>
-                  <path d="M3 10h18v8H3z" opacity=".25"/>
-                  <circle cx="12" cy="14" r="3" fill="none" stroke="currentColor" stroke-width="1.5"/>
-                </svg>
-              </span> Bazaar Link
-              <span class="ml-auto text-[9px] font-bold px-1.5 py-0.5 rounded bg-white/15 text-white/70">SOON</span>
-            </div>
-            <!-- HR — Coming Soon (disabled) -->
-            <div class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-semibold text-white/40 cursor-not-allowed select-none" title="Coming soon">
-              <span class="w-5 text-center">👥</span> HR
-              <span class="ml-auto text-[9px] font-bold px-1.5 py-0.5 rounded bg-white/15 text-white/70">SOON</span>
-            </div>
+            <!-- Bazaar Link (Active Directory / Suppliers) -->
+            @if (features.has('active_directory')) {
+              <a routerLink="/suppliers" routerLinkActive="!bg-anjaninex-red !text-white"
+                 class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-semibold text-white/75 hover:text-white hover:bg-white/10">
+                <span class="w-5 flex justify-center">
+                  <svg viewBox="0 0 24 24" fill="currentColor" style="width:16px;height:16px;">
+                    <path d="M3 5h6l2 2h10v2H3z"/>
+                    <path d="M3 10h18v8H3z" opacity=".25"/>
+                    <circle cx="12" cy="14" r="3" fill="none" stroke="currentColor" stroke-width="1.5"/>
+                  </svg>
+                </span> Bazaar Link
+              </a>
+            }
+            <!-- HR -->
+            @if (features.has('hr')) {
+              <a routerLink="/hr" routerLinkActive="!bg-anjaninex-red !text-white"
+                 class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-semibold text-white/75 hover:text-white hover:bg-white/10">
+                <span class="w-5 text-center">👥</span> HR
+              </a>
+            }
             @if (features.hasAny('reports_core', 'reports_advanced')) {
               <a routerLink="/reports" routerLinkActive="!bg-anjaninex-red !text-white"
                  class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-semibold text-white/75 hover:text-white hover:bg-white/10">

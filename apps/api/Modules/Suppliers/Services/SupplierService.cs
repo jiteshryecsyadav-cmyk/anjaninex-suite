@@ -316,19 +316,26 @@ public class SupplierService : ISupplierService
         {
             // Find/create contact
             Contact contact;
+            bool isNewContact;
             if (!string.IsNullOrEmpty(dto.Gst))
             {
                 var existing = await _db.Contacts
                     .FirstOrDefaultAsync(c => c.FirmId == firmId && c.GstNumber == dto.Gst);
-                contact = existing ?? CreateContact(dto, firmId, userId);
+                if (existing != null) { contact = existing; isNewContact = false; }
+                else { contact = CreateContact(dto, firmId, userId); isNewContact = true; }
             }
             else
             {
                 contact = CreateContact(dto, firmId, userId);
+                isNewContact = true;
             }
-            if (contact.Id == Guid.Empty)
+            // BUG FIX: CreateContact pehle se Id assign karta hai, isliye purana
+            // `Id == Guid.Empty` check kabhi true nahi hota tha → naya contact INSERT hi
+            // nahi hota tha → supplier insert par FK violation. Ab newly-created contact
+            // ko hamesha add+save karo (BuyerService jaisा).
+            if (isNewContact)
             {
-                contact.Id = Guid.NewGuid();
+                if (contact.Id == Guid.Empty) contact.Id = Guid.NewGuid();
                 _db.Contacts.Add(contact);
                 await _db.SaveChangesAsync();
             }
@@ -357,7 +364,7 @@ public class SupplierService : ISupplierService
                 SupplierCode = await GenerateSupplierCode(firmId),
                 BusinessType = dto.BusinessType,
                 Categories = JsonSerializer.Serialize(dto.CategoryIds),
-                RateUnit = dto.RateUnit,
+                RateUnit = string.IsNullOrWhiteSpace(dto.RateUnit) ? "mtr" : dto.RateUnit,
                 WaPhone = dto.WaPhone,
                 MinOrderValue = dto.MinOrderValue,
                 DeliveryLeadDays = dto.DeliveryLeadDays,
@@ -407,7 +414,7 @@ public class SupplierService : ISupplierService
 
         sp.BusinessType = dto.BusinessType;
         sp.Categories = JsonSerializer.Serialize(dto.CategoryIds);
-        sp.RateUnit = dto.RateUnit;
+        sp.RateUnit = string.IsNullOrWhiteSpace(dto.RateUnit) ? "mtr" : dto.RateUnit;
         sp.WaPhone = dto.WaPhone;
         sp.MinOrderValue = dto.MinOrderValue;
         sp.DeliveryLeadDays = dto.DeliveryLeadDays;

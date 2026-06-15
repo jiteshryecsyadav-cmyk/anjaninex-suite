@@ -350,9 +350,14 @@ public class AttendanceService : IAttendanceService
 
     public AttendanceService(AppDbContext db) => _db = db;
 
+    // Server VPS UTC pe chalta hai — attendance time IST (UTC+5:30) me hona chahiye warna
+    // sab "late" mark ho jate the. Saari time/date IST se lo.
+    private static readonly TimeSpan IST = new TimeSpan(5, 30, 0);
+    private static DateTimeOffset NowIst() => DateTimeOffset.UtcNow.ToOffset(IST);
+
     public async Task<AttendanceLogDto> CheckIn(Guid employeeId, CheckInOutDto dto, Guid firmId)
     {
-        var today = DateOnly.FromDateTime(DateTime.Now);
+        var today = DateOnly.FromDateTime(NowIst().DateTime);
         var existing = await _db.AttendanceLogs
             .FirstOrDefaultAsync(a => a.EmployeeId == employeeId && a.LogDate == today);
 
@@ -363,7 +368,7 @@ public class AttendanceService : IAttendanceService
             .Where(p => p.FirmId == firmId && p.IsActive)
             .FirstOrDefaultAsync();
 
-        var now = DateTimeOffset.Now;
+        var now = NowIst();
         var isLate = false;
         if (policy != null)
         {
@@ -430,7 +435,7 @@ public class AttendanceService : IAttendanceService
 
     public async Task<AttendanceLogDto> CheckOut(Guid employeeId, CheckInOutDto dto)
     {
-        var today = DateOnly.FromDateTime(DateTime.Now);
+        var today = DateOnly.FromDateTime(NowIst().DateTime);
         var log = await _db.AttendanceLogs
             .FirstOrDefaultAsync(a => a.EmployeeId == employeeId && a.LogDate == today);
 
@@ -440,7 +445,13 @@ public class AttendanceService : IAttendanceService
         if (log.CheckOutAt != null)
             throw new InvalidOperationException("Already checked out");
 
-        var now = DateTimeOffset.Now;
+        var now = NowIst();
+        // Early-out: policy ke work-end-time se pehle nikla to mark karo
+        var coPolicy = await _db.AttendancePolicies
+            .Where(p => p.FirmId == log.FirmId && p.IsActive)
+            .FirstOrDefaultAsync();
+        if (coPolicy != null)
+            log.IsEarlyOut = TimeOnly.FromDateTime(now.DateTime) < coPolicy.WorkEndTime;
         log.CheckOutAt = now;
         log.CheckOutLat = dto.Latitude;
         log.CheckOutLng = dto.Longitude;

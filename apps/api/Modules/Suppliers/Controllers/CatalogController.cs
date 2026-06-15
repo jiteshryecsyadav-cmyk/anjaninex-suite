@@ -30,6 +30,9 @@ public class CatalogController : ControllerBase
     {
         var conn = (NpgsqlConnection)_db.Database.GetDbConnection();
         if (conn.State != ConnectionState.Open) await conn.OpenAsync();
+        // RLS: raw connection EF interceptor ko bypass karta hai — tenant context set karo
+        // warna catalog tables (ab RLS-protected) par 42501 aayega.
+        await Namokara.Api.Common.Db.TenantContextSetter.ApplyAsync(conn, CurrentFirmId, Guid.Empty);
         var cmd = conn.CreateCommand();
         cmd.CommandText = sql;
         return cmd;
@@ -176,6 +179,12 @@ public class CatalogController : ControllerBase
     public async Task<IActionResult> UploadPhoto(Guid vid, IFormFile file)
     {
         if (file == null || file.Length == 0) return BadRequest(new { error = "File nahi mili." });
+        // SECURITY: sirf image hi allow karo (extension + content-type) — non-image upload block.
+        var allowedExt = new[] { ".jpg", ".jpeg", ".png", ".webp" };
+        var uext = Path.GetExtension(file.FileName).ToLowerInvariant();
+        var ctype = (file.ContentType ?? "").ToLowerInvariant();
+        if (!allowedExt.Contains(uext) || !ctype.StartsWith("image/"))
+            return BadRequest(new { error = "Sirf image file (JPG/PNG/WEBP) allowed hai." });
         // variety firm ki hai?
         await using (var chk = await CmdAsync("SELECT 1 FROM suppliers.varieties WHERE id=@v AND firm_id=@f"))
         {

@@ -229,6 +229,9 @@ public class AppDbContext : DbContext
         {
             e.ToTable("leave_balances", "hr");
             e.HasKey(x => new { x.EmployeeId, x.Year, x.LeaveType });
+            // available DB me GENERATED ALWAYS (total_allocated - used) hai — EF isse
+            // INSERT/UPDATE me na bheje warna 428C9 crash (employee-add + leave-approve).
+            e.Property(x => x.Available).HasComputedColumnSql("total_allocated - used", stored: true);
         });
         modelBuilder.Entity<LeaveRequest>().ToTable("leave_requests", "hr");
         modelBuilder.Entity<PayrollRecord>().ToTable("payroll_records", "hr");

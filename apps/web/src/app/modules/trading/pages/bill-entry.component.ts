@@ -595,16 +595,32 @@ interface LineRow {
                   </span>
                 }
               </label>
-              <div class="flex gap-2">
-                <select [(ngModel)]="transporterId" class="ip" style="flex:1">
-                  <option value="">— Select Transporter —</option>
-                  @for (t of transporters(); track t.id) {
-                    <option [value]="t.id">{{ t.firmName }} {{ t.gstNo ? '— ' + t.gstNo : '' }}</option>
-                  }
-                </select>
-                <button type="button" (click)="quickAddTransporter()"
-                        class="px-3 rounded-lg text-xs font-bold bg-anjaninex-navy text-white hover:bg-[#2a4178] whitespace-nowrap"
-                        title="Naya transporter add karo">+ New</button>
+              <div class="combo-wrap">
+                <div class="flex gap-2">
+                  <input type="text" [ngModel]="transporterFilter()"
+                         (ngModelChange)="transporterFilter.set($event); transporterDropdownOpen.set(true); onTransporterTyped($event)"
+                         (focus)="transporterDropdownOpen.set(true)"
+                         (blur)="closeTransporterDropdownSoon()"
+                         placeholder="🔍 Transporter name ya GST se search..." class="ip flex-1">
+                  <button type="button" (click)="quickAddTransporter()"
+                          class="px-3 rounded-lg text-xs font-bold bg-anjaninex-navy text-white hover:bg-[#2a4178] whitespace-nowrap"
+                          title="Naya transporter add karo">+ New</button>
+                </div>
+                @if (transporterDropdownOpen() && filteredTransporters().length > 0) {
+                  <div class="combo-dropdown">
+                    @for (t of filteredTransporters(); track t.id) {
+                      <div class="combo-option" (mousedown)="selectTransporterFromCombo(t)">
+                        <div class="combo-name">{{ t.firmName }}</div>
+                        <div class="combo-sub">GST: {{ t.gstNo || '—' }} {{ t.mobile ? '· ' + t.mobile : '' }}</div>
+                      </div>
+                    }
+                  </div>
+                }
+                @if (transporterDropdownOpen() && transporterFilter() && filteredTransporters().length === 0) {
+                  <div class="combo-dropdown combo-empty">
+                    ⚠️ No transporter found. <b class="text-green-600">+ New</b> se add karein.
+                  </div>
+                }
               </div>
               @if (transporterMatchLevel() === 'none' && lastAiFill()) {
                 <div class="hint-empty">
@@ -1562,7 +1578,7 @@ export class BillEntryComponent {
         }
 
         // Transporter bhi order se
-        if (od.transporterId) this.transporterId = od.transporterId;
+        if (od.transporterId) { this.transporterId = od.transporterId; this.syncTransporterName(); }
 
         // Payment terms order se — bill me wahi dikhega jo order me hai
         if (od.paymentTerms) { this.paymentTerms = od.paymentTerms; this.onTermsChange(); }
@@ -1771,6 +1787,36 @@ export class BillEntryComponent {
   aiTransporterName = signal('');
   aiTransporterGst  = signal('');
 
+  // Searchable transporter combobox (type karke filter)
+  transporterFilter = signal('');
+  transporterDropdownOpen = signal(false);
+  filteredTransporters = computed(() => {
+    const q = this.transporterFilter().trim().toLowerCase();
+    const list = this.transporters();
+    if (!q) return list.slice(0, 50);
+    return list.filter(t =>
+      (t.firmName || '').toLowerCase().includes(q) ||
+      (t.gstNo || '').toLowerCase().includes(q) ||
+      (t.mobile || '').toLowerCase().includes(q)
+    ).slice(0, 50);
+  });
+  selectTransporterFromCombo(t: Transporter) {
+    this.transporterId = t.id;
+    this.transporterFilter.set(t.firmName);
+    this.transporterMatchLevel.set('name');
+    this.transporterDropdownOpen.set(false);
+  }
+  onTransporterTyped(v: string) {
+    // text khali/badla — selection clear (dobara list se chuno)
+    if (!v?.trim()) this.transporterId = '';
+  }
+  closeTransporterDropdownSoon() { setTimeout(() => this.transporterDropdownOpen.set(false), 200); }
+  /** transporterId set hone par display naam sync karo (scan/edit ke baad). */
+  private syncTransporterName() {
+    const t = this.transporters().find(x => x.id === this.transporterId);
+    if (t) this.transporterFilter.set(t.firmName);
+  }
+
   /** Smart matcher — 5 priority levels (GST > full name > prefix > fuzzy > none). */
   private matchTransporter(aiName: string, aiGst: string): { id: string; level: 'gst'|'name'|'prefix'|'none' } {
     const list = this.transporters();
@@ -1836,6 +1882,7 @@ export class BillEntryComponent {
   onTransporterCreated(t: any) {
     this.transporters.update(arr => [t, ...arr]);
     this.transporterId = t.id;
+    this.transporterFilter.set(t.firmName || '');
     this.transporterMatchLevel.set('name');
   }
 
@@ -1973,7 +2020,7 @@ export class BillEntryComponent {
       error: () => this.orders.set([])
     });
     this.svc.listTransporters().subscribe({
-      next: t => this.transporters.set(t),
+      next: t => { this.transporters.set(t); this.syncTransporterName(); },
       error: () => this.transporters.set([])    // soft-fail if endpoint missing
     });
 
@@ -2336,9 +2383,11 @@ export class BillEntryComponent {
       const match = this.matchTransporter(tName, tGst);
       if (match.id) {
         this.transporterId = match.id;
+        this.syncTransporterName();
         this.transporterMatchLevel.set(match.level);
       } else {
         this.transporterMatchLevel.set('none');
+        this.transporterFilter.set(this.aiTransporterName());   // AI ne jo padha wo dikhe
       }
     }
 
@@ -2440,7 +2489,7 @@ export class BillEntryComponent {
     this.svc.getOrder(row.id).subscribe({
       next: (od) => {
         if (od.paymentTerms) { this.paymentTerms = od.paymentTerms; this.onTermsChange(); }
-        if (od.transporterId && !this.transporterId) this.transporterId = od.transporterId;
+        if (od.transporterId && !this.transporterId) { this.transporterId = od.transporterId; this.syncTransporterName(); }
       },
       error: () => {}
     });
@@ -2457,7 +2506,7 @@ export class BillEntryComponent {
     this.paymentTerms = ''; this.days = 45;
     this.cdPct.set(0); this.cdAmountOverride.set(null); this.cdEnabled.set(true);
     this.sweetLs = 0; this.interestAmt = 0; this.insuranceAmt = 0; this.tcsAmt = 0;
-    this.lrNo = ''; this.lrDate = ''; this.transporter = ''; this.transporterId = '';
+    this.lrNo = ''; this.lrDate = ''; this.transporter = ''; this.transporterId = ''; this.transporterFilter.set('');
     this.ewayBillNo = ''; this.ewayBillDate = ''; this.transporterMatchLevel.set(null);
     this.aiTransporterName.set(''); this.aiTransporterGst.set('');
     this.supplierMatchLevel.set(null); this.buyerMatchLevel.set(null);

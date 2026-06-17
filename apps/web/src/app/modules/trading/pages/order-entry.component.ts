@@ -460,16 +460,32 @@ interface LineRow {
             </div>
             <div>
               <label class="lbl">TRANSPORTER</label>
-              <div class="flex gap-2">
-                <select [(ngModel)]="transporterId" class="ip" style="flex:1">
-                  <option value="">— Select Transporter —</option>
-                  @for (t of transporters(); track t.id) {
-                    <option [value]="t.id">{{ t.firmName }}{{ t.city ? ' (' + t.city + ')' : '' }}</option>
-                  }
-                </select>
-                <button type="button" (click)="quickAddTransporter()"
-                        class="px-3 rounded-lg text-xs font-bold bg-anjaninex-navy text-white hover:bg-[#2a4178] whitespace-nowrap"
-                        title="Naya transporter add karo">+ New</button>
+              <div class="combo-wrap">
+                <div class="flex gap-2">
+                  <input type="text" [ngModel]="transporterFilter()"
+                         (ngModelChange)="transporterFilter.set($event); transporterDropdownOpen.set(true); onTransporterTyped($event)"
+                         (focus)="transporterDropdownOpen.set(true)"
+                         (blur)="closeTransporterDropdownSoon()"
+                         placeholder="🔍 Transporter name ya GST se search..." class="ip flex-1">
+                  <button type="button" (click)="quickAddTransporter()"
+                          class="px-3 rounded-lg text-xs font-bold bg-anjaninex-navy text-white hover:bg-[#2a4178] whitespace-nowrap"
+                          title="Naya transporter add karo">+ New</button>
+                </div>
+                @if (transporterDropdownOpen() && filteredTransporters().length > 0) {
+                  <div class="combo-dropdown">
+                    @for (t of filteredTransporters(); track t.id) {
+                      <div class="combo-option" (mousedown)="selectTransporterFromCombo(t)">
+                        <div class="combo-name">{{ t.firmName }}</div>
+                        <div class="combo-sub">GST: {{ t.gstNo || '—' }} {{ t.mobile ? '· ' + t.mobile : (t.city ? '· ' + t.city : '') }}</div>
+                      </div>
+                    }
+                  </div>
+                }
+                @if (transporterDropdownOpen() && transporterFilter() && filteredTransporters().length === 0) {
+                  <div class="combo-dropdown combo-empty">
+                    ⚠️ No transporter found. <b class="text-green-600">+ New</b> se add karein.
+                  </div>
+                }
               </div>
             </div>
             <div>
@@ -1336,6 +1352,31 @@ export class OrderEntryComponent {
   transporterId = '';
   transporters = signal<Transporter[]>([]);
 
+  // Searchable transporter combobox
+  transporterFilter = signal('');
+  transporterDropdownOpen = signal(false);
+  filteredTransporters = computed(() => {
+    const q = this.transporterFilter().trim().toLowerCase();
+    const list = this.transporters();
+    if (!q) return list.slice(0, 50);
+    return list.filter(t =>
+      (t.firmName || '').toLowerCase().includes(q) ||
+      (t.gstNo || '').toLowerCase().includes(q) ||
+      (t.mobile || '').toLowerCase().includes(q)
+    ).slice(0, 50);
+  });
+  selectTransporterFromCombo(t: Transporter) {
+    this.transporterId = t.id;
+    this.transporterFilter.set(t.firmName);
+    this.transporterDropdownOpen.set(false);
+  }
+  onTransporterTyped(v: string) { if (!v?.trim()) this.transporterId = ''; }
+  closeTransporterDropdownSoon() { setTimeout(() => this.transporterDropdownOpen.set(false), 200); }
+  private syncTransporterName() {
+    const t = this.transporters().find(x => x.id === this.transporterId);
+    if (t) this.transporterFilter.set(t.firmName);
+  }
+
   /** WhatsApp kholo — number ke last 10 digit par (91 ke saath) */
   openWhatsApp(phone: string | null | undefined) {
     const digits = (phone || '').replace(/\D/g, '');
@@ -1355,6 +1396,7 @@ export class OrderEntryComponent {
   onTransporterCreated(t: any) {
     this.transporters.update(arr => [t, ...arr]);
     this.transporterId = t.id;
+    this.transporterFilter.set(t.firmName || '');
   }
 
   // Item lines
@@ -1469,7 +1511,7 @@ export class OrderEntryComponent {
     this.loadScanUse();
     this.svc.listItems().subscribe(i => this.items.set(i));
     this.svc.listTransporters().subscribe({
-      next: t => this.transporters.set(t.filter(x => x.isActive !== false)),
+      next: t => { this.transporters.set(t.filter(x => x.isActive !== false)); this.syncTransporterName(); },
       error: () => this.transporters.set([])
     });
 

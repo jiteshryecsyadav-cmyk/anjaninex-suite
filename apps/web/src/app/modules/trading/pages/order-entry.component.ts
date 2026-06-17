@@ -509,6 +509,10 @@ interface LineRow {
               <label class="lbl">REMARK</label>
               <input [(ngModel)]="remark" type="text" placeholder="Optional remark" class="ip">
             </div>
+            <div>
+              <label class="lbl">INSURANCE</label>
+              <input [(ngModel)]="insuranceAmt" type="number" step="0.01" class="ip">
+            </div>
           </div>
         </div>
 
@@ -534,6 +538,12 @@ interface LineRow {
               <span>💵 CD Discount ({{ cdType() === 'before' ? 'Before GST' : 'After GST' }})</span>
               <span class="font-mono text-red-600">- ₹ {{ cdAmount() | number:'1.2-2' }}</span>
             </div>
+            @if (insuranceAmt > 0) {
+              <div class="sum-row">
+                <span>Insurance</span>
+                <span class="font-mono">+ ₹ {{ insuranceAmt | number:'1.2-2' }}</span>
+              </div>
+            }
             <div class="sum-divider"></div>
             <div class="sum-row">
               <span>Net Total</span>
@@ -1314,6 +1324,7 @@ export class OrderEntryComponent {
   paymentTerms = '';
   orderStatus = 'pending';
   remark = '';
+  insuranceAmt = 0;   // INSURANCE — additive charge (net me jud kar)
   transporterId = '';
   transporters = signal<Transporter[]>([]);
 
@@ -1406,12 +1417,13 @@ export class OrderEntryComponent {
   effTax = computed(() => this.effSgst() + this.effCgst() + this.effIgst());
 
   netTotal = computed(() => {
+    const ins = (+this.insuranceAmt || 0);
     if (this.cdType() === 'before') {
-      // (taxable − CD) + tax-on-discounted
-      return (this.totalTaxable() - this.cdAmount()) + this.effTax();
+      // (taxable − CD) + tax-on-discounted + insurance
+      return (this.totalTaxable() - this.cdAmount()) + this.effTax() + ins;
     }
-    // After GST: poora tax, discount total par
-    return this.totalAmount() - this.cdAmount();
+    // After GST: poora tax, discount total par + insurance
+    return this.totalAmount() - this.cdAmount() + ins;
   });
 
   /** Net amount = Net Total rounded to nearest whole rupee. */
@@ -1488,7 +1500,12 @@ export class OrderEntryComponent {
         this.supplierOrderNo = o.supplierOrderNo || '';
         this.paymentTerms = o.paymentTerms || '';
         this.orderStatus = o.status || 'pending';
-        this.remark = o.notes || '';
+        {
+          const n = o.notes || '';
+          const insM = n.match(/Insurance:\s*₹?([\d.]+)/);
+          if (insM) this.insuranceAmt = +insM[1] || 0;
+          this.remark = n.replace(/\s*\|?\s*Insurance:\s*₹?[\d.]+/, '').trim();
+        }
         // Lines
         if (o.lines && o.lines.length > 0) {
           this.lines.set(o.lines.map(l => ({
@@ -1702,7 +1719,7 @@ export class OrderEntryComponent {
       transporterId: this.transporterId || null,
       paymentTerms: this.paymentTerms || undefined,
       status: this.orderStatus,
-      notes: this.remark || undefined,
+      notes: [this.remark, this.insuranceAmt ? `Insurance: ₹${this.insuranceAmt}` : ''].filter(Boolean).join(' | ') || undefined,
       lines: validLines
     };
 

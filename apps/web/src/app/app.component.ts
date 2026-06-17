@@ -30,7 +30,7 @@ export class AppComponent implements OnInit {
       const t = localStorage.getItem('ax_firm_theme');
       document.body.classList.remove(
         'theme-sunset', 'theme-aurora', 'theme-neon', 'theme-violet', 'theme-gold',
-        'theme-path1', 'theme-path2', 'theme-path3', 'theme-path4'
+        'theme-path1', 'theme-path2', 'theme-path3', 'theme-path4', 'theme-anjaninex'
       );
       if (t && t !== 'classic') document.body.classList.add(t);
     } catch {}

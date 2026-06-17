@@ -403,7 +403,8 @@ export class AdminFirmSubscriptionComponent implements OnInit {
     { key: 'theme-path1',  name: 'PATH Green–Blue',   color: 'linear-gradient(135deg,#009444,#1565C0,#29ABE2)' },
     { key: 'theme-path2',  name: 'PATH Green–Gold',   color: 'linear-gradient(135deg,#009444,#F7941E,#FFCB05)' },
     { key: 'theme-path3',  name: 'PATH Magenta–Blue', color: 'linear-gradient(135deg,#6A1B9A,#E6007E,#1565C0)' },
-    { key: 'theme-path4',  name: 'PATH Magenta–Gold', color: 'linear-gradient(135deg,#6A1B9A,#E6007E,#F7941E,#FFCB05)' }
+    { key: 'theme-path4',  name: 'PATH Magenta–Gold', color: 'linear-gradient(135deg,#6A1B9A,#E6007E,#F7941E,#FFCB05)' },
+    { key: 'theme-anjaninex', name: 'Anjaninex (Navy–Red)', color: 'linear-gradient(135deg,#0F2751,#EA0912)' }
   ];
   firmTheme = signal<string>('classic');
   themeBusy = signal(false);

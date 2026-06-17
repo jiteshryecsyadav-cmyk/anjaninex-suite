@@ -376,7 +376,7 @@ public class PlatformAdminService : IPlatformAdminService
     private static readonly HashSet<string> AllowedThemes = new()
     {
         "classic", "theme-sunset", "theme-aurora", "theme-neon", "theme-violet", "theme-gold",
-        "theme-path1", "theme-path2", "theme-path3", "theme-path4"
+        "theme-path1", "theme-path2", "theme-path3", "theme-path4", "theme-anjaninex"
     };
 
     public async Task SetFirmTheme(Guid firmId, string theme)

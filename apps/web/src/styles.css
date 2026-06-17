@@ -418,6 +418,19 @@ body.theme-path4 app-shell header {
   background: linear-gradient(160deg, #6A1B9A 0%, #E6007E 115%) !important;   /* magenta only — accent gold */
 }
 
+/* Anjaninex Brand — Navy #0F2751 + Red #EA0912 + Cream #FBFAF9 (solid, no blend) */
+body.theme-anjaninex {
+  --ax-navy-rgb: 15 39 81;    --ax-navy-dark-rgb: 8 24 54;    --ax-navy-soft-rgb: 224 230 242;
+  --ax-red-rgb: 234 9 18;     --ax-red-dark-rgb: 193 8 16;    --ax-red-soft-rgb: 253 226 227;
+  --anjaninex-navy: #0F2751;  --anjaninex-navy-dark: #081836; --anjaninex-navy-soft: #E0E6F2;
+  --anjaninex-red: #EA0912;   --anjaninex-red-dark: #C10810;  --anjaninex-red-soft: #FDE2E3;
+  --anjaninex-cream: #FBFAF9; --anjaninex-cream-2: #F3F1EE;
+}
+body.theme-anjaninex app-shell aside,
+body.theme-anjaninex app-shell header {
+  background: #0F2751 !important;
+}
+
 /* ============================================================
    🚫 NO BLEND — har theme ka sidebar/header SOLID single colour (koi gradient nahi).
    Ye rule sabhi theme gradients ko override karta hai (equal specificity + later source).

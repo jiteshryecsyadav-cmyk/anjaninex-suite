@@ -598,9 +598,10 @@ interface LineRow {
               <div class="combo-wrap">
                 <div class="flex gap-2">
                   <input type="text" [ngModel]="transporterFilter()"
-                         (ngModelChange)="transporterFilter.set($event); transporterDropdownOpen.set(true); onTransporterTyped($event)"
+                         (ngModelChange)="transporterFilter.set($event); transporterDropdownOpen.set(true); transporterKbIdx.set(0); onTransporterTyped($event)"
                          (focus)="transporterDropdownOpen.set(true)"
                          (blur)="closeTransporterDropdownSoon()"
+                         (keydown)="transporterKey($event)"
                          placeholder="🔍 Transporter name ya GST se search..." class="ip flex-1">
                   <button type="button" (click)="quickAddTransporter()"
                           class="px-3 rounded-lg text-xs font-bold bg-anjaninex-navy text-white hover:bg-[#2a4178] whitespace-nowrap"
@@ -608,8 +609,9 @@ interface LineRow {
                 </div>
                 @if (transporterDropdownOpen() && filteredTransporters().length > 0) {
                   <div class="combo-dropdown">
-                    @for (t of filteredTransporters(); track t.id) {
-                      <div class="combo-option" (mousedown)="selectTransporterFromCombo(t)">
+                    @for (t of filteredTransporters(); track t.id; let i = $index) {
+                      <div class="combo-option" [class.kb-active]="i === transporterKbIdx()"
+                           (mousedown)="selectTransporterFromCombo(t)">
                         <div class="combo-name">{{ t.firmName }}</div>
                         <div class="combo-sub">GST: {{ t.gstNo || '—' }} {{ t.mobile ? '· ' + t.mobile : '' }}</div>
                       </div>
@@ -1790,6 +1792,15 @@ export class BillEntryComponent {
   // Searchable transporter combobox (type karke filter)
   transporterFilter = signal('');
   transporterDropdownOpen = signal(false);
+  transporterKbIdx = signal(0);
+  transporterKey(e: KeyboardEvent) {
+    const list = this.filteredTransporters();
+    if (!this.transporterDropdownOpen() || list.length === 0) return;
+    if (e.key === 'ArrowDown') { e.preventDefault(); this.transporterKbIdx.set(Math.min(this.transporterKbIdx() + 1, list.length - 1)); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); this.transporterKbIdx.set(Math.max(this.transporterKbIdx() - 1, 0)); }
+    else if (e.key === 'Enter') { e.preventDefault(); const t = list[this.transporterKbIdx()]; if (t) this.selectTransporterFromCombo(t); }
+    else if (e.key === 'Escape') { this.transporterDropdownOpen.set(false); }
+  }
   filteredTransporters = computed(() => {
     const q = this.transporterFilter().trim().toLowerCase();
     const list = this.transporters();

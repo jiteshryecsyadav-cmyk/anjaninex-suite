@@ -93,11 +93,21 @@
 
 body {
   margin: 0;
-  font-family: 'DM Sans', system-ui, sans-serif;
+  font-family: 'Inter', 'DM Sans', system-ui, sans-serif;
   background: var(--bg);
   color: var(--text);
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
+}
+
+/* ============================================================
+   0 (ZERO) vs O (LETTER) — poore app me saaf farak
+   Inter ka 'zero' feature zero pe ek dot/slash daal deta hai,
+   jisse GSTIN/PAN/amount/code me 0 aur O turant alag dikhte hain.
+   ============================================================ */
+html, body, input, textarea, select, button, table, th, td, .ip, .ip-auto {
+  font-feature-settings: 'zero' 1, 'tnum' 1;
+  font-variant-numeric: slashed-zero tabular-nums;
 }
 
 /* ---------- BRAND HELPERS (solid, no gradient) ---------- */

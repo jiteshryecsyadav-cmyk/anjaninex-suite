@@ -1691,12 +1691,14 @@ export class BillEntryComponent {
 
   /** User clicked an option in the supplier dropdown — set ID, fill display name, close dropdown. */
   selectSupplierFromCombo(p: Party) {
+    this.aiGstTypeOverride.set(null);   // manual select → GST type state-code se decide ho
     this.supplierId = p.id;
     this.supplierFilter.set(p.displayName);
     this.supplierDropdownOpen.set(false);
     this.onSupplierChange(p.id);
   }
   selectBuyerFromCombo(p: Party) {
+    this.aiGstTypeOverride.set(null);   // manual select → GST type state-code se decide ho
     this.buyerId = p.id;
     this.buyerFilter.set(p.displayName);
     this.buyerDropdownOpen.set(false);
@@ -2209,8 +2211,15 @@ export class BillEntryComponent {
   }
 
   // ============ GST STATE LOGIC (intra vs inter-state) ============
+  /** AI scan ne bill se jo ASLI tax type padha (IGST vs CGST/SGST) — state-code se UPAR.
+   *  Kyunki kabhi same-state par bhi IGST hota hai (place-of-supply alag). Scan ke time set,
+   *  manual party change ya reset par clear. */
+  aiGstTypeOverride = signal<'inter' | 'intra' | null>(null);
   /** Compare firm GSTIN state-code (first 2 chars) vs counterparty GSTIN. Default intra-state. */
   isInterState(): boolean {
+    // Scan ne bill se jo padha wahi sahi — state-code guess se pehle.
+    const o = this.aiGstTypeOverride();
+    if (o) return o === 'inter';
     const firm = (this.features.firmGst() || '').trim();
     const other = ((this.buyerGstin || '').trim() || (this.supplierGstin || '').trim());
     if (firm.length < 2 || other.length < 2) return false;
@@ -2287,6 +2296,18 @@ export class BillEntryComponent {
     if (data.invoice?.date) this.billDate = data.invoice.date;
     if (data.invoice?.poNumber) this.orderNo = data.invoice.poNumber;
     if (data.invoice?.number) this.supplierBillNo = data.invoice.number;
+
+    // ============ TAX TYPE — bill se padho (IGST vs CGST/SGST), state-code se UPAR ============
+    // Bill par IGST amount hai aur CGST/SGST nahi → inter-state (IGST). Warna intra (CGST+SGST).
+    // Ye onSupplierChange/redistributeGst se PEHLE set karna zaroori hai taaki wo isi ko maane.
+    {
+      const ig = +(data.totals?.igst ?? 0);
+      const cg = +(data.totals?.cgst ?? 0);
+      const sg = +(data.totals?.sgst ?? 0);
+      if (ig > 0 && cg === 0 && sg === 0) this.aiGstTypeOverride.set('inter');
+      else if (cg > 0 || sg > 0)          this.aiGstTypeOverride.set('intra');
+      else                                this.aiGstTypeOverride.set(null); // pata nahi → state-code par chhodo
+    }
 
     // ============ SUPPLIER smart match (5 levels — same as transporter) ============
     if (data.supplier?.name || data.supplier?.gst) {
@@ -2522,6 +2543,7 @@ export class BillEntryComponent {
     this.aiTransporterName.set(''); this.aiTransporterGst.set('');
     this.supplierMatchLevel.set(null); this.buyerMatchLevel.set(null);
     this.aiSupplier = null; this.aiBuyer = null;
+    this.aiGstTypeOverride.set(null);   // GST type override bhi clear
     this.remark = '';
     this.billDocName.set(''); this.billDocFile = null;
     this.lrDocName.set(''); this.lrDocFile = null;

@@ -1155,12 +1155,14 @@ export class OrderEntryComponent {
   closeBuyerDropdownSoon()    { setTimeout(() => this.buyerDropdownOpen.set(false), 200); }
 
   selectSupplierFromCombo(p: Party) {
+    this.aiGstTypeOverride.set(null);   // manual select → GST type state-code se decide ho
     this.supplierId = p.id;
     this.supplierFilter.set(p.displayName);
     this.supplierDropdownOpen.set(false);
     this.onSupplierChange(p.id);
   }
   selectBuyerFromCombo(p: Party) {
+    this.aiGstTypeOverride.set(null);   // manual select → GST type state-code se decide ho
     this.buyerId = p.id;
     this.buyerFilter.set(p.displayName);
     this.buyerDropdownOpen.set(false);
@@ -1230,6 +1232,16 @@ export class OrderEntryComponent {
 
     if (data.invoice?.date) this.orderDate = data.invoice.date;
     if (data.invoice?.poNumber) this.supplierOrderNo = data.invoice.poNumber;
+
+    // ============ TAX TYPE — bill/order se padho (IGST vs CGST/SGST), state-code se UPAR ============
+    {
+      const ig = +(data.totals?.igst ?? 0);
+      const cg = +(data.totals?.cgst ?? 0);
+      const sg = +(data.totals?.sgst ?? 0);
+      if (ig > 0 && cg === 0 && sg === 0) this.aiGstTypeOverride.set('inter');
+      else if (cg > 0 || sg > 0)          this.aiGstTypeOverride.set('intra');
+      else                                this.aiGstTypeOverride.set(null);
+    }
 
     // Match supplier in master
     if (data.supplier?.name) {
@@ -1678,7 +1690,12 @@ export class OrderEntryComponent {
 
   // ============ GST STATE LOGIC (intra vs inter-state) ============
   /** Compare firm GSTIN state-code (first 2 chars) vs counterparty GSTIN. Default intra-state. */
+  /** AI scan ne bill/order se jo ASLI tax type padha (IGST vs CGST/SGST) — state-code se UPAR.
+   *  Scan ke time set, manual party change ya reset par clear. */
+  aiGstTypeOverride = signal<'inter' | 'intra' | null>(null);
   isInterState(): boolean {
+    const o = this.aiGstTypeOverride();
+    if (o) return o === 'inter';
     const firm = (this.features.firmGst() || '').trim();
     const other = ((this.buyerGstin || '').trim() || (this.supplierGstin || '').trim());
     if (firm.length < 2 || other.length < 2) return false;

@@ -1630,8 +1630,8 @@ export class BillEntryComponent {
     const cleanGst  = (gst  || '').trim().toUpperCase().replace(/\s/g, '');
     const cleanName = (name || '').trim().toUpperCase().replace(/[^A-Z0-9 ]/g, '');
 
-    const normGst = (g: string) => (g || '').trim().toUpperCase().replace(/\s/g, '');
-    const normNm  = (n: string) => (n || '').trim().toUpperCase().replace(/[^A-Z0-9 ]/g, '').replace(/\s+/g, ' ').trim();
+    const normGst = (g: string | null | undefined) => (g || '').trim().toUpperCase().replace(/\s/g, '');
+    const normNm  = (n: string | null | undefined) => (n || '').trim().toUpperCase().replace(/[^A-Z0-9 ]/g, '').replace(/\s+/g, ' ').trim();
 
     // 🥇 GST exact (15) — sabse bharosemand
     if (cleanGst.length >= 15) {

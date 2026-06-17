@@ -9,6 +9,7 @@ import { InvoicePreviewComponent, PreviewData } from '../../../shared/invoice-pr
 import { InDatePipe } from '../../../shared/in-date.pipe';
 import { PaginatorComponent } from '../../../shared/paginator.component';
 import { FeatureService } from '../../../shared/feature.service';
+import { amountInWords } from '../../../shared/amount-in-words.util';
 
 @Component({
   selector: 'app-orders',
@@ -38,6 +39,9 @@ import { FeatureService } from '../../../shared/feature.service';
         <div class="kpi-card" style="border-left:4px solid #16a34a; background:#16a34a0d;">
           <div class="kpi-lbl">💰 TOTAL ORDER AMOUNT</div>
           <div class="kpi-val" style="color:#16a34a;">₹ {{ liveAmount() | number:'1.2-2' }}</div>
+          @if (inWords(liveAmount())) {
+            <div class="kpi-words">{{ inWords(liveAmount()) }}</div>
+          }
           <div class="kpi-sub">sirf active orders ka total</div>
         </div>
       </div>
@@ -162,6 +166,7 @@ import { FeatureService } from '../../../shared/feature.service';
     .kpi-lbl { font-size: 10px; font-weight: 800; color: #6b7280; text-transform: uppercase; letter-spacing: .5px; }
     .kpi-val { font-size: 24px; font-weight: 900; color: #1B2E5C; font-family: 'JetBrains Mono', monospace; margin-top: 2px; }
     .kpi-sub { font-size: 10px; color: #9ca3af; }
+    .kpi-words { font-size: 11px; font-weight: 600; color: #16a34a; font-style: italic; margin-top: 2px; line-height: 1.3; }
 
     .ai-btn { display:inline-block; width:28px; height:28px; border:0; background:transparent;
       border-radius:6px; cursor:pointer; font-size:13px; transition:background 0.15s; margin:0 1px; }
@@ -176,6 +181,7 @@ import { FeatureService } from '../../../shared/feature.service';
   `]
 })
 export class OrdersComponent {
+  readonly inWords = amountInWords;   // card amount → words (Indian Lakh/Crore)
   private svc = inject(TradingService);
   features = inject(FeatureService);
   orders = signal<OrderListItem[]>([]);

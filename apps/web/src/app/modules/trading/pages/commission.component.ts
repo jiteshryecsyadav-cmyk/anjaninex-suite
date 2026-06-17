@@ -30,6 +30,7 @@ import { BackButtonComponent } from '../../../shared/back-button.component';
 import { InDatePipe } from '../../../shared/in-date.pipe';
 import { PaginatorComponent } from '../../../shared/paginator.component';
 import { FeatureService } from '../../../shared/feature.service';
+import { amountInWords } from '../../../shared/amount-in-words.util';
 
 @Component({
   selector: 'app-commission',
@@ -91,18 +92,22 @@ import { FeatureService } from '../../../shared/feature.service';
         <div class="stat-card stat-purple">
           <div class="stat-label">TOTAL BILL AMT</div>
           <div class="stat-value">₹{{ totalBillAmt() | number:'1.0-0' }}</div>
+          @if (inWords(totalBillAmt())) { <div class="stat-words">{{ inWords(totalBillAmt()) }}</div> }
         </div>
         <div class="stat-card stat-green">
           <div class="stat-label">✅ PAID</div>
           <div class="stat-value">₹{{ paidAmt() | number:'1.0-0' }}</div>
+          @if (inWords(paidAmt())) { <div class="stat-words">{{ inWords(paidAmt()) }}</div> }
         </div>
         <div class="stat-card stat-red">
           <div class="stat-label">⚪ UNPAID</div>
           <div class="stat-value">₹{{ unpaidAmt() | number:'1.0-0' }}</div>
+          @if (inWords(unpaidAmt())) { <div class="stat-words">{{ inWords(unpaidAmt()) }}</div> }
         </div>
         <div class="stat-card stat-yellow">
           <div class="stat-label">🪙 COMMISSION</div>
           <div class="stat-value">₹{{ totalComm() | number:'1.0-0' }}</div>
+          @if (inWords(totalComm())) { <div class="stat-words">{{ inWords(totalComm()) }}</div> }
         </div>
       </div>
 
@@ -404,6 +409,7 @@ import { FeatureService } from '../../../shared/feature.service';
     .stat-yellow { background: #FFFBEB; border-color: #FCD34D; }
     .stat-label { font-size: 10px; font-weight: 700; color: #4A5878; letter-spacing: 0.5px; text-transform: uppercase; }
     .stat-value { font-size: 22px; font-weight: 800; color: #1B2E5C; margin-top: 6px; font-family: 'JetBrains Mono', monospace; }
+    .stat-words { font-size: 10px; font-weight: 600; color: #4A5878; font-style: italic; margin-top: 4px; line-height: 1.3; }
 
     /* CHARTS */
     .chart-title { font-size: 10px; font-weight: 800; color: #4A5878; letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 6px; }
@@ -519,6 +525,7 @@ import { FeatureService } from '../../../shared/feature.service';
   `]
 })
 export class CommissionComponent {
+  readonly inWords = amountInWords;   // card amount → words (Indian Lakh/Crore)
   private svc = inject(TradingService);
   features = inject(FeatureService);
 

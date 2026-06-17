@@ -181,6 +181,21 @@ public class PartyService : IPartyService
         var gstClean = string.IsNullOrWhiteSpace(dto.Gst) ? null : dto.Gst.Trim().ToUpperInvariant();
         var phoneClean = NormalizePhone(dto.Phone);
 
+        // GST/PAN ka format PEHLE validate karo — warna DB CHECK constraint (23514) cryptic
+        // "violates check constraint" error deta hai. Galat ho to user ko SAAF batao ki kya
+        // galat hai (aksar AI scan me 0/O ya ek extra char aa jaata hai) taaki wo turant theek kare.
+        if (gstClean != null && !System.Text.RegularExpressions.Regex.IsMatch(
+                gstClean, "^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$"))
+            throw new ArgumentException(
+                $"GST number ka format galat hai: \"{gstClean}\" ({gstClean.Length} characters). " +
+                "Sahi 15-char GSTIN daalein (jaise 24ABCDE1234F1Z5). GST nahi hai to khaali chhod kar URP party banayein.");
+
+        var panCheck = string.IsNullOrWhiteSpace(dto.Pan) ? null : dto.Pan.Trim().ToUpperInvariant();
+        if (panCheck != null && !System.Text.RegularExpressions.Regex.IsMatch(
+                panCheck, "^[A-Z]{5}[0-9]{4}[A-Z]$"))
+            throw new ArgumentException(
+                $"PAN number ka format galat hai: \"{panCheck}\". Sahi PAN daalein (jaise AABCO5612R), ya khaali chhod dein.");
+
         Contact? existingContactToReuse = null;
         if (gstClean != null || phoneClean != null)
         {

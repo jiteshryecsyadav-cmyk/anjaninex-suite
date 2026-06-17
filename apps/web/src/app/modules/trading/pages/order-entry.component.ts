@@ -1214,10 +1214,15 @@ export class OrderEntryComponent {
 
     // Match supplier in master
     if (data.supplier?.name) {
-      const match = this.parties().find(p =>
-        p.displayName.toLowerCase() === data.supplier.name.toLowerCase()
-        || p.gst === data.supplier.gst
-      );
+      // SAFE match: GST exact (15-char) YA naam exact. Loose/khali-GST match nahi
+      // (warna "Sagar Lace" galti se "Sagar Cloth Store" utha leta tha).
+      const sGst = (data.supplier.gst || '').trim().toUpperCase().replace(/\s/g, '');
+      const sNm  = (data.supplier.name || '').trim().toLowerCase().replace(/\s+/g, ' ');
+      const match = this.parties().find(p => {
+        const pGst = (p.gst || '').trim().toUpperCase().replace(/\s/g, '');
+        const pNm  = (p.displayName || '').trim().toLowerCase().replace(/\s+/g, ' ');
+        return (sGst.length >= 15 && pGst === sGst) || (!!sNm && pNm === sNm);
+      });
       if (match) {
         this.supplierId = match.id;
         this.onSupplierChange(match.id);
@@ -1242,10 +1247,13 @@ export class OrderEntryComponent {
 
     // Match buyer
     if (data.buyer?.name) {
-      const match = this.parties().find(p =>
-        p.displayName.toLowerCase() === data.buyer.name.toLowerCase()
-        || p.gst === data.buyer.gst
-      );
+      const bGst = (data.buyer.gst || '').trim().toUpperCase().replace(/\s/g, '');
+      const bNm  = (data.buyer.name || '').trim().toLowerCase().replace(/\s+/g, ' ');
+      const match = this.parties().find(p => {
+        const pGst = (p.gst || '').trim().toUpperCase().replace(/\s/g, '');
+        const pNm  = (p.displayName || '').trim().toLowerCase().replace(/\s+/g, ' ');
+        return (bGst.length >= 15 && pGst === bGst) || (!!bNm && pNm === bNm);
+      });
       if (match) {
         this.buyerId = match.id;
         this.onBuyerChange(match.id);

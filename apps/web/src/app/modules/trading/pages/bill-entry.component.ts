@@ -1630,30 +1630,29 @@ export class BillEntryComponent {
     const cleanGst  = (gst  || '').trim().toUpperCase().replace(/\s/g, '');
     const cleanName = (name || '').trim().toUpperCase().replace(/[^A-Z0-9 ]/g, '');
 
-    // 🥇 GST exact
+    const normGst = (g: string) => (g || '').trim().toUpperCase().replace(/\s/g, '');
+    const normNm  = (n: string) => (n || '').trim().toUpperCase().replace(/[^A-Z0-9 ]/g, '').replace(/\s+/g, ' ').trim();
+
+    // 🥇 GST exact (15) — sabse bharosemand
     if (cleanGst.length >= 15) {
-      const byGst = list.find(p => (p.gst || '').trim().toUpperCase() === cleanGst);
+      const byGst = list.find(p => normGst(p.gst) === cleanGst);
       if (byGst) return { id: byGst.id, level: 'gst' };
     }
-    // 🥈 GST prefix (7 chars)
-    if (cleanGst.length >= 7) {
-      const byGstPfx = list.find(p => (p.gst || '').trim().toUpperCase().startsWith(cleanGst.substring(0, 7)));
-      if (byGstPfx) return { id: byGstPfx.id, level: 'gst' };
+    // 🥈 Same PAN (GST ke first 12 = state+PAN) — branch / OCR last-3 mismatch ke liye.
+    //    (Purana 7-char prefix HATAYA — wo alag party utha leta tha.)
+    if (cleanGst.length >= 12) {
+      const pan12 = cleanGst.substring(0, 12);
+      const byPan = list.find(p => { const g = normGst(p.gst); return g.length >= 12 && g.substring(0, 12) === pan12; });
+      if (byPan) return { id: byPan.id, level: 'gst' };
     }
-    if (!cleanName) return { id: '', level: 'none' };
 
-    // 🥉 name exact
-    const byName = list.find(p => (p.displayName || '').trim().toUpperCase() === cleanName);
-    if (byName) return { id: byName.id, level: 'name' };
-
-    // 🤖 prefix (first 5 chars)
-    const prefix = cleanName.substring(0, Math.min(5, cleanName.length));
-    const pre = list.filter(p => (p.displayName || '').trim().toUpperCase().startsWith(prefix));
-    if (pre.length === 1) return { id: pre[0].id, level: 'prefix' };
-
-    // contains
-    const contains = list.find(p => (p.displayName || '').trim().toUpperCase().includes(prefix));
-    if (contains) return { id: contains.id, level: 'prefix' };
+    // 🥉 Naam EXACT match hi (loose prefix/contains HATAYA — "Sagar Lace" galti se
+    //    "Sagar Cloth Store" utha leta tha). Match na mile to scanned naam+GST waisा rahe.
+    const nm = normNm(name);
+    if (nm) {
+      const byName = list.find(p => normNm(p.displayName) === nm);
+      if (byName) return { id: byName.id, level: 'name' };
+    }
 
     return { id: '', level: 'none' };
   }

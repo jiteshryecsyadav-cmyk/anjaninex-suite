@@ -122,8 +122,24 @@ public static class FriendlyError
             case "57014":
                 return "Operation me zyada time lag gaya (timeout). Dobara try karein.";
 
+            // ── 42501: insufficient_privilege (RLS / row-level security block) ──
+            case "42501":
+                return "Security policy ne ye save block kiya (firm permission). Ek baar logout-login karke try karein; phir bhi ho to support ko batayein. (code 42501)";
+
+            // ── P0001: custom trigger error (raise exception) — usually a clear message ──
+            case "P0001":
+                return string.IsNullOrWhiteSpace(pg.MessageText)
+                    ? "Save rule ne rok diya. Check karke dobara try karein."
+                    : pg.MessageText;
+
+            // ── 42P01 / 42703: missing table/column (system update needed) ──
+            case "42P01":
+            case "42703":
+                return "System update chahiye (database table/column missing). Support/admin ko batayein. (code " + pg.SqlState + ")";
+
             default:
-                return "Data save karne me dikkat aayi. Check karke dobara try karein.";
+                // Code dikhao taaki support turant root cause pakad sake (SQLSTATE sensitive nahi hota).
+                return $"Data save karne me dikkat aayi (code {pg.SqlState}). Check karke dobara try karein. Agar baar baar ho to ye code support ko batayein.";
         }
     }
 }

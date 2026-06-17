@@ -273,7 +273,7 @@ interface LineRow {
                 <th>DESCRIPTION</th>
                 <th class="w-16">QTY.</th>
                 <th class="w-20">UNIT</th>
-                <th class="w-20">PRICE</th>
+                <th class="w-28">PRICE</th>
                 <th class="w-16">RD</th>
                 <th class="w-20">HSN</th>
                 <th class="w-16">SGST%</th>

@@ -840,9 +840,15 @@ public class BillService : IBillService
     /// </summary>
     private async Task AddBalancingRoundOffAsync(Voucher voucher, Guid firmId, int order)
     {
+        // CRITICAL: har line ko pehle 2-decimal pe round karo — bilkul jaise DB NUMERIC(14,2)
+        // store karta hai (half AWAY FROM ZERO, banker's-rounding nahi). Warna in-memory sum
+        // aur DB-stored sum alag ho jaate hain aur trigger ka Dr=Cr check 1 paisa se fail hota hai.
+        foreach (var l in voucher.Lines)
+            l.Amount = Math.Round(l.Amount, 2, MidpointRounding.AwayFromZero);
+
         decimal dr = voucher.Lines.Where(l => l.DebitCredit == "Dr").Sum(l => l.Amount);
         decimal cr = voucher.Lines.Where(l => l.DebitCredit == "Cr").Sum(l => l.Amount);
-        decimal diff = Math.Round(dr - cr, 2);
+        decimal diff = Math.Round(dr - cr, 2, MidpointRounding.AwayFromZero);
         if (diff == 0) return;
         Guid roundOffLedger = await FindOrCreateRoundOffLedger(firmId);
         voucher.Lines.Add(new VoucherLine

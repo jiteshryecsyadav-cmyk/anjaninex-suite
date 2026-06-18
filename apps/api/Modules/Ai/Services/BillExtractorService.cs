@@ -157,7 +157,9 @@ public class BillExtractorService : IBillExtractorService
         var inputSizeKb = (int)(image.Length / 1024);
 
         // 2. Check cache — but skip poisoned cache entries (low confidence / empty extraction)
-        var cacheKey = $"bill:{firmId}:{hash}";
+        //    PromptVersion key me hai → jab bhi AI prompt badle, version bump karo (neeche
+        //    BillPrompt ke paas) → purana cache apne aap ignore (auto-bust), fresh scan hoga.
+        var cacheKey = $"bill:{PromptVersion}:{firmId}:{hash}";
         var cached = await _db.AiCache
             .FirstOrDefaultAsync(c => c.CacheKey == cacheKey && c.ExpiresAt > DateTimeOffset.UtcNow);
         if (cached != null)
@@ -455,6 +457,10 @@ public class BillExtractorService : IBillExtractorService
     //             invoice{number,date}, items{name,hsnSac,qty,unit,rate,taxRate},
     //             totals (for verification), transport{lrNo,ewayBillNo}.
     // Shared by ALL providers (Gemini / Claude / OpenAI).
+    // AI prompt badalne par ye version bump karo (v2 → v3 ...) — purana cache auto-bust ho jata hai,
+    // taaki naya prompt turant chale aur manual cache-clear ki zaroorat na pade.
+    private const string PromptVersion = "v3";
+
     private static readonly string BillPrompt = @"You are an expert Indian GST invoice parser. Extract ONLY the fields in the schema below and return ONLY valid JSON. No prose, no markdown, no extra keys.
 
 IMPORTANT — read these fields very carefully, they matter most:

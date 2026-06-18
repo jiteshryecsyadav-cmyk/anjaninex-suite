@@ -754,22 +754,8 @@ public class BillService : IBillService
         if (bill.Igst > 0)
             voucher.Lines.Add(new VoucherLine { Id = Guid.NewGuid(), VoucherId = voucher.Id, LedgerId = igstLedger, DebitCredit = "Cr", Amount = bill.Igst, Narration = "IGST Output (inter-state)", SortOrder = order++ });
 
-        // ROUND OFF — balancing entry so Dr (party = net amount) = Cr (sales + tax + roundoff)
-        // bill.RoundOff > 0 → income (Cr Round Off), bill.RoundOff < 0 → expense (Dr Round Off)
-        if (bill.RoundOff != 0)
-        {
-            Guid roundOffLedger = await FindOrCreateRoundOffLedger(firmId);
-            voucher.Lines.Add(new VoucherLine
-            {
-                Id = Guid.NewGuid(),
-                VoucherId = voucher.Id,
-                LedgerId = roundOffLedger,
-                DebitCredit = bill.RoundOff > 0 ? "Cr" : "Dr",
-                Amount = Math.Abs(bill.RoundOff),
-                Narration = "Round Off",
-                SortOrder = order++
-            });
-        }
+        // ROUND OFF — Dr/Cr ka exact antar plug karo (1-paisa rounding drift bhi safe)
+        await AddBalancingRoundOffAsync(voucher, firmId, order++);
 
         _db.Vouchers.Add(voucher);
         await _db.SaveChangesAsync();
@@ -831,22 +817,6 @@ public class BillService : IBillService
             voucher.Lines.Add(new VoucherLine { Id = Guid.NewGuid(), VoucherId = voucher.Id, LedgerId = sgstInputLedger, DebitCredit = "Dr", Amount = bill.Sgst, Narration = "SGST Input (ITC)", SortOrder = order++ });
         if (bill.Igst > 0)
             voucher.Lines.Add(new VoucherLine { Id = Guid.NewGuid(), VoucherId = voucher.Id, LedgerId = igstInputLedger, DebitCredit = "Dr", Amount = bill.Igst, Narration = "IGST Input (ITC, inter-state)", SortOrder = order++ });
-        // ROUND OFF on Dr side for purchase: roundoff > 0 (we owe more due to rounding up)
-        // gets Dr (expense), roundoff < 0 gets Cr (income).
-        if (bill.RoundOff != 0)
-        {
-            Guid roundOffLedger = await FindOrCreateRoundOffLedger(firmId);
-            voucher.Lines.Add(new VoucherLine
-            {
-                Id = Guid.NewGuid(),
-                VoucherId = voucher.Id,
-                LedgerId = roundOffLedger,
-                DebitCredit = bill.RoundOff > 0 ? "Dr" : "Cr",
-                Amount = Math.Abs(bill.RoundOff),
-                Narration = "Round Off",
-                SortOrder = order++
-            });
-        }
         // Cr Party (full bill total)
         voucher.Lines.Add(new VoucherLine
         {
@@ -855,10 +825,36 @@ public class BillService : IBillService
             Amount = bill.Total,
             Narration = $"Bill {bill.BillNo}", SortOrder = order++
         });
+        // ROUND OFF — Dr/Cr ka exact antar plug karo (1-paisa rounding drift bhi safe)
+        await AddBalancingRoundOffAsync(voucher, firmId, order++);
 
         _db.Vouchers.Add(voucher);
         await _db.SaveChangesAsync();
         return voucher.Id;
+    }
+
+    /// <summary>
+    /// Voucher ko HAMESHA exactly balance karo: Dr aur Cr ke actual sum ka antar (1 paisa
+    /// rounding drift / discount / insurance etc.) Round Off line me daal do. Isse voucher
+    /// kabhi "unbalanced: Dr != Cr" se reject nahi hoga.
+    /// </summary>
+    private async Task AddBalancingRoundOffAsync(Voucher voucher, Guid firmId, int order)
+    {
+        decimal dr = voucher.Lines.Where(l => l.DebitCredit == "Dr").Sum(l => l.Amount);
+        decimal cr = voucher.Lines.Where(l => l.DebitCredit == "Cr").Sum(l => l.Amount);
+        decimal diff = Math.Round(dr - cr, 2);
+        if (diff == 0) return;
+        Guid roundOffLedger = await FindOrCreateRoundOffLedger(firmId);
+        voucher.Lines.Add(new VoucherLine
+        {
+            Id = Guid.NewGuid(),
+            VoucherId = voucher.Id,
+            LedgerId = roundOffLedger,
+            DebitCredit = diff > 0 ? "Cr" : "Dr",   // Dr zyada → Cr chahiye balance ke liye
+            Amount = Math.Abs(diff),
+            Narration = "Round Off",
+            SortOrder = order
+        });
     }
 
     /// <summary>

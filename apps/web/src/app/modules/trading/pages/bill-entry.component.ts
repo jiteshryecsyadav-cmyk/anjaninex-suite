@@ -62,7 +62,7 @@ interface LineRow {
             }
           </button>
           <a routerLink="/trading/bills" class="bh-btn-list">📄 Bill List</a>
-          <button type="button" (click)="reset()" class="bh-btn-new">+ New Bill Entry</button>
+          <button type="button" (click)="newEntry()" class="bh-btn-new">+ New Bill Entry</button>
         </div>
       </div>
 
@@ -2543,8 +2543,24 @@ export class BillEntryComponent {
     this.toast.success(`Bill order ${row.orderNo} se jud gaya — save par order BILLED ho jayega`);
   }
 
+  // ============ NEW ENTRY ============
+  /** "+ New Bill Entry" — form ko 100% fresh karo. Edit-mode/scan/party-name sab clear ho jaye.
+   *  Agar abhi edit URL par hain to /new par jao; warna component ko dobara load karke
+   *  bilkul khaali form do (navigate-away-and-back trick). */
+  newEntry() {
+    this.reset();
+    this.router.navigateByUrl('/trading/bills', { skipLocationChange: true })
+      .then(() => this.router.navigate(['/trading/bills/new']));
+  }
+
   // ============ RESET / PREVIEW ============
   reset() {
+    // Edit/scan/order-link state bhi clear — warna purana data atka rehta hai
+    this.editMode = false; this.editId = null;
+    this.selectedOrderId = ''; this.editBillNo = '';
+    this.lastAiFill.set(null); this.duplicateBill.set(null);
+    this.supplierFilter.set(''); this.buyerFilter.set('');
+    this.billDate = todayLocal(); this.recDate = todayLocal();
     this.lines.set([this.newLine()]);
     this.supplierId = ''; this.buyerId = '';
     this.supplierGstin = ''; this.supplierAddress = ''; this.supplierPhone = '';

@@ -15,6 +15,12 @@ import { ToastService } from '../../../shared/toast.service';
 import { AuthService } from '../../../core/auth/auth.service';
 import { FeatureService } from '../../../shared/feature.service';
 
+interface RateOpt { qty: number; unit: string; rate: number; }
+interface RateChoice {
+  idx: number; name: string; taxable: number;
+  optA: RateOpt; optB: RateOpt | null; raw: RateOpt;
+}
+
 interface LineRow {
   itemId: string | null;
   itemName: string;
@@ -688,6 +694,40 @@ interface LineRow {
         </div>
       </div>
 
+      <!-- RATE CHOICE popup — bill par rate clear nahi tha, user decide kare qty/rate -->
+      @if (rateChoiceOpen() && rateChoiceItems().length) {
+        <div class="rc-overlay" (click)="closeRateChoice()">
+          <div class="rc-modal" (click)="$event.stopPropagation()">
+            <div class="rc-head">⚠️ Rate bill par nahi hai</div>
+            <p class="rc-sub">Is bill par item ka <b>RATE nahi chhpa</b>. Aap decide karein <b>Qty</b> kya leni hai —
+              rate apne aap (Taxable ÷ Qty) lag jayega. (Dono option ka amount bill se match karega.)</p>
+            @for (rc of rateChoiceItems(); track rc.idx) {
+              <div class="rc-item">
+                <div class="rc-name">{{ rc.name }} <span class="rc-tax">Taxable: ₹{{ rc.taxable | number:'1.2-2' }}</span></div>
+                <div class="rc-opts">
+                  @if (rc.optB) {
+                    <button type="button" class="rc-opt" (click)="applyRateChoice(rc.idx, rc.optB!)">
+                      <b>Qty {{ rc.optB.qty }} {{ rc.optB.unit }}</b> × ₹{{ rc.optB.rate }}
+                      <span class="rc-hint">option 1</span>
+                    </button>
+                  }
+                  <button type="button" class="rc-opt" (click)="applyRateChoice(rc.idx, rc.optA)">
+                    <b>Qty {{ rc.optA.qty }} {{ rc.optA.unit }}</b> × ₹{{ rc.optA.rate }}
+                    <span class="rc-hint">option 2</span>
+                  </button>
+                  <button type="button" class="rc-opt rc-raw" (click)="applyRateChoice(rc.idx, rc.raw)">
+                    Jaisa AI ne padha: Qty {{ rc.raw.qty }} {{ rc.raw.unit }} × ₹{{ rc.raw.rate }}
+                  </button>
+                </div>
+              </div>
+            }
+            <div class="rc-actions">
+              <button type="button" class="rc-close" (click)="closeRateChoice()">Band karo — main khud bharunga</button>
+            </div>
+          </div>
+        </div>
+      }
+
       <!-- Quick-Add Transporter modal (pura form) -->
       @if (showAddTransporter()) {
         <app-transporter-quick-add
@@ -794,6 +834,24 @@ interface LineRow {
       background: #FEF3C7; border: 1px solid #FBBF24; color: #92400E;
       font-size: 12px; font-weight: 600; line-height: 1.4;
     }
+    .rc-overlay { position: fixed; inset: 0; background: rgba(15,30,64,.55); z-index: 1000;
+      display: flex; align-items: center; justify-content: center; padding: 16px; }
+    .rc-modal { background: #fff; border-radius: 14px; max-width: 520px; width: 100%;
+      padding: 20px; box-shadow: 0 20px 60px rgba(0,0,0,.3); max-height: 86vh; overflow-y: auto; }
+    .rc-head { font-size: 17px; font-weight: 800; color: #1B2E5C; margin-bottom: 6px; }
+    .rc-sub { font-size: 12.5px; color: #4A5878; margin-bottom: 14px; line-height: 1.5; }
+    .rc-item { border: 1px solid #E5E9F2; border-radius: 10px; padding: 12px; margin-bottom: 12px; }
+    .rc-name { font-weight: 700; color: #1B2E5C; margin-bottom: 8px; font-size: 14px; }
+    .rc-tax { font-weight: 600; color: #16A34A; font-size: 12px; margin-left: 6px; }
+    .rc-opts { display: flex; flex-direction: column; gap: 8px; }
+    .rc-opt { text-align: left; padding: 10px 12px; border-radius: 8px; cursor: pointer;
+      border: 1.5px solid #1B2E5C; background: #F5F7FB; color: #1B2E5C; font-size: 14px; transition: all .12s; }
+    .rc-opt:hover { background: #1B2E5C; color: #fff; }
+    .rc-opt .rc-hint { display: block; font-size: 11px; font-weight: 600; opacity: .8; margin-top: 2px; }
+    .rc-raw { border-color: #9CA3AF; background: #fff; color: #6B7280; font-size: 12.5px; }
+    .rc-raw:hover { background: #6B7280; color: #fff; }
+    .rc-actions { text-align: center; margin-top: 6px; }
+    .rc-close { background: none; border: 0; color: #6B7280; font-size: 12.5px; cursor: pointer; text-decoration: underline; }
     select.ip { cursor: pointer; }
 
     /* ITEM TABLE */
@@ -1341,36 +1399,28 @@ export class OrderEntryComponent {
 
     // Items → order lines
     if (data.items?.length) {
-      const reconciled: string[] = [];
-      this.lines.set(data.items.map(item => {
+      const choices: RateChoice[] = [];
+      this.lines.set(data.items.map((item, idx) => {
         const half = (item.taxRate || 5) / 2;
-        let qty  = item.qty || 0;
-        let rate = item.rate || 0;
-        let unit = item.unit || 'MTR';
-        let rd = item.discountPercent ? +(rate * item.discountPercent / 100).toFixed(2) : 0;
-        // RECONCILE: qty × rate, bill ke printed TAXABLE se match hona chahiye. Na ho to:
+        const qty  = item.qty || 0;
+        const rate = item.rate || 0;
+        const unit = item.unit || 'MTR';
+        const rd = item.discountPercent ? +(rate * item.discountPercent / 100).toFixed(2) : 0;
         const tx = +(item.taxableAmount || 0);
         if (qty > 0 && tx > 0 && Math.abs(qty * rate - qty * rd - tx) > 1) {
-          if (rate > qty && (tx / rate) < rate) {
-            // Bill me rate column nahi — AI ne quantity (meters) ko "rate" me daal diya
-            qty = rate;
-            rate = +(tx / qty).toFixed(4);
-            unit = 'MTR';
-          } else {
-            rate = +(tx / qty).toFixed(4);
-          }
-          rd = 0;
-          reconciled.push(`${item.name || 'Item'} (Qty ${qty} ${unit} × ₹${rate})`);
+          choices.push({
+            idx, name: item.name || `Item ${idx + 1}`, taxable: tx,
+            optA: { qty, unit, rate: +(tx / qty).toFixed(4) },
+            optB: rate > 0 ? { qty: rate, unit: 'MTR', rate: +(tx / rate).toFixed(4) } : null,
+            raw:  { qty, unit, rate }
+          });
         }
         return {
           itemId: null,
           itemName: item.name,
           description: '',
           hsnSac: item.hsnSac,
-          qty,
-          unit,
-          rate,
-          rd,
+          qty, unit, rate, rd,
           sgstPct: half,
           cgstPct: half,
           igstPct: 0,
@@ -1379,8 +1429,10 @@ export class OrderEntryComponent {
         };
       }));
       this.redistributeGst();
-      this.reconcileNote.set(reconciled.length
-        ? `Is bill par alag rate column nahi tha — Taxable Amount se rate nikaala gaya: ${reconciled.join('; ')}. Qty/rate ek baar verify kar lein.`
+      this.rateChoiceItems.set(choices);
+      this.rateChoiceOpen.set(choices.length > 0);
+      this.reconcileNote.set(choices.length
+        ? 'Kuch items par rate bill se clear nahi tha — popup me qty/rate choose karein (ya manually bharein).'
         : '');
     }
 
@@ -1756,6 +1808,17 @@ export class OrderEntryComponent {
    *  Scan ke time set, manual party change ya reset par clear. */
   aiGstTypeOverride = signal<'inter' | 'intra' | null>(null);
   reconcileNote = signal<string>('');   // scan ne rate taxable se nikaala → warning note
+  rateChoiceOpen = signal(false);
+  rateChoiceItems = signal<RateChoice[]>([]);
+  applyRateChoice(idx: number, opt: RateOpt) {
+    this.updateLine(idx, 'qty', opt.qty);
+    this.updateLine(idx, 'unit', opt.unit);
+    this.updateLine(idx, 'rd', 0);
+    this.updateLine(idx, 'rate', opt.rate);
+    this.rateChoiceItems.update(arr => arr.filter(r => r.idx !== idx));
+    if (!this.rateChoiceItems().length) { this.rateChoiceOpen.set(false); this.reconcileNote.set(''); }
+  }
+  closeRateChoice() { this.rateChoiceOpen.set(false); }
   isInterState(): boolean {
     const o = this.aiGstTypeOverride();
     if (o) return o === 'inter';

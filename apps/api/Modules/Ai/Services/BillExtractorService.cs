@@ -461,7 +461,10 @@ IMPORTANT — read these fields very carefully, they matter most:
 - supplier = the SELLER / manufacturer printed at the TOP of the bill (with its GSTIN).
 - buyer = the party the bill is billed TO (Name & Address of Buyer / Bill To).
 - GSTIN = exactly 15 characters (e.g. 24AYXP38534B1Z7). Read each char carefully (0 vs O, 1 vs I). Capture BOTH supplier and buyer GSTIN if printed.
-- Each item row: name (Description of Goods), hsnSac, qty (Pcs/Mtr), unit, rate, taxRate %.
+- Each item row: name (Description of Goods), hsnSac, qty, unit, rate, taxRate %, taxableAmount, totalAmount.
+  * qty = the main quantity printed (Pcs / Mtr). If the row prints TWO quantities (e.g. 35 Pcs AND 688.50 Mtr), put one in qty and the OTHER numeric quantity in the rate field — DO NOT discard either number (the app will let the user pick which is qty). Set unit from what is printed.
+  * rate = the per-unit PRICE only IF a real Rate/Price column is printed. If NO rate/price column exists, leave rate as the other quantity value (per the line above) or 0 — do NOT invent or compute a price.
+  * ALWAYS fill taxableAmount and totalAmount exactly as printed on the row — these are the source of truth; the app uses them.
 - invoice number + invoice date (top right of bill).
 - phone = ONLY a 10-digit Indian MOBILE number (starting 6-9), digits only. NO labels like 'Ph:'/'Accounts'/'Payment', NO landline/STD numbers like (0261)2331456, NO email. If no mobile is printed, leave it """".
 - GSTIN STRICT RULE: take a GSTIN ONLY from that party's OWN section. The Transport/Transporter/LR section often prints the TRANSPORTER's GSTIN — NEVER put it in supplier.gst or buyer.gst. If the buyer's (or supplier's) own GSTIN is NOT printed, leave gst = """" — do NOT borrow a GSTIN from anywhere else on the bill.

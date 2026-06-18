@@ -2313,12 +2313,23 @@ export class BillEntryComponent {
     // Bill par IGST amount hai aur CGST/SGST nahi → inter-state (IGST). Warna intra (CGST+SGST).
     // Ye onSupplierChange/redistributeGst se PEHLE set karna zaroori hai taaki wo isi ko maane.
     {
-      const ig = +(data.totals?.igst ?? 0);
-      const cg = +(data.totals?.cgst ?? 0);
-      const sg = +(data.totals?.sgst ?? 0);
-      if (ig > 0 && cg === 0 && sg === 0) this.aiGstTypeOverride.set('inter');
-      else if (cg > 0 || sg > 0)          this.aiGstTypeOverride.set('intra');
-      else                                this.aiGstTypeOverride.set(null); // pata nahi → state-code par chhodo
+      // Sabse reliable: dono party ke GSTIN ke STATE-CODE (pehle 2 digit) — alag = IGST.
+      // (AI ka totals.igst bharosa-mand nahi, isliye GSTIN states ko authority banaya.)
+      const supGst  = (data.supplier?.gst || '').replace(/\s/g, '').toUpperCase();
+      const buyGst  = (data.buyer?.gst    || '').replace(/\s/g, '').toUpperCase();
+      const firmGst = (this.features.firmGst() || '').replace(/\s/g, '').toUpperCase();
+      const ig = +(data.totals?.igst ?? 0), cg = +(data.totals?.cgst ?? 0), sg = +(data.totals?.sgst ?? 0);
+      const st = (g: string) => g.length >= 2 ? g.substring(0, 2) : '';
+      let inter: boolean | null = null;
+      if (st(supGst) && st(buyGst))       inter = st(supGst) !== st(buyGst);
+      else if (st(supGst) && st(firmGst)) inter = st(supGst) !== st(firmGst);
+      else if (st(buyGst) && st(firmGst)) inter = st(buyGst) !== st(firmGst);
+      if (inter === null) {
+        if (ig > 0 && cg === 0 && sg === 0) inter = true;
+        else if (cg > 0 || sg > 0)          inter = false;
+      }
+      if (ig > 0 && cg === 0 && sg === 0)  inter = true;   // bill par clearly IGST = final authority
+      this.aiGstTypeOverride.set(inter === null ? null : (inter ? 'inter' : 'intra'));
     }
 
     // ============ SUPPLIER smart match (5 levels — same as transporter) ============

@@ -1247,14 +1247,23 @@ export class OrderEntryComponent {
     if (data.invoice?.number || data.invoice?.poNumber)
       this.supplierOrderNo = data.invoice.number || data.invoice.poNumber || this.supplierOrderNo;
 
-    // ============ TAX TYPE — bill/order se padho (IGST vs CGST/SGST), state-code se UPAR ============
+    // ============ TAX TYPE — IGST vs CGST/SGST, scan se reliably decide ============
     {
-      const ig = +(data.totals?.igst ?? 0);
-      const cg = +(data.totals?.cgst ?? 0);
-      const sg = +(data.totals?.sgst ?? 0);
-      if (ig > 0 && cg === 0 && sg === 0) this.aiGstTypeOverride.set('inter');
-      else if (cg > 0 || sg > 0)          this.aiGstTypeOverride.set('intra');
-      else                                this.aiGstTypeOverride.set(null);
+      const supGst  = (data.supplier?.gst || '').replace(/\s/g, '').toUpperCase();
+      const buyGst  = (data.buyer?.gst    || '').replace(/\s/g, '').toUpperCase();
+      const firmGst = (this.features.firmGst() || '').replace(/\s/g, '').toUpperCase();
+      const ig = +(data.totals?.igst ?? 0), cg = +(data.totals?.cgst ?? 0), sg = +(data.totals?.sgst ?? 0);
+      const st = (g: string) => g.length >= 2 ? g.substring(0, 2) : '';
+      let inter: boolean | null = null;
+      if (st(supGst) && st(buyGst))       inter = st(supGst) !== st(buyGst);
+      else if (st(supGst) && st(firmGst)) inter = st(supGst) !== st(firmGst);
+      else if (st(buyGst) && st(firmGst)) inter = st(buyGst) !== st(firmGst);
+      if (inter === null) {
+        if (ig > 0 && cg === 0 && sg === 0) inter = true;
+        else if (cg > 0 || sg > 0)          inter = false;
+      }
+      if (ig > 0 && cg === 0 && sg === 0)  inter = true;
+      this.aiGstTypeOverride.set(inter === null ? null : (inter ? 'inter' : 'intra'));
     }
 
     // Match supplier in master

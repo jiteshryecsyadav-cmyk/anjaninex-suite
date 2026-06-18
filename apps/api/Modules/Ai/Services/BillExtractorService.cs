@@ -117,7 +117,7 @@ public class InsufficientWalletException : Exception
 // =============================================================================
 public interface IBillExtractorService
 {
-    Task<ExtractedBillDto> ExtractBill(IFormFile image, Guid firmId, Guid userId, CancellationToken ct, string source = "bill");
+    Task<ExtractedBillDto> ExtractBill(IReadOnlyList<IFormFile> images, Guid firmId, Guid userId, CancellationToken ct, string source = "bill");
     Task<List<AiExtractionLog>> RecentExtractions(Guid firmId, int limit);
     Task MarkCorrected(Guid extractionId, object correctionDiff);
 }
@@ -147,14 +147,14 @@ public class BillExtractorService : IBillExtractorService
         _log = log;
     }
 
-    public async Task<ExtractedBillDto> ExtractBill(IFormFile image, Guid firmId, Guid userId, CancellationToken ct, string source = "bill")
+    public async Task<ExtractedBillDto> ExtractBill(IReadOnlyList<IFormFile> images, Guid firmId, Guid userId, CancellationToken ct, string source = "bill")
     {
         var settings = _opts.CurrentValue;
         var sw = System.Diagnostics.Stopwatch.StartNew();
 
-        // 1. Compute hash
-        var hash = await ComputeHashAsync(image);
-        var inputSizeKb = (int)(image.Length / 1024);
+        // 1. Compute hash over ALL pages combined → multi-page set gets its own cache key.
+        var hash = await ComputeHashAsync(images);
+        var inputSizeKb = (int)(images.Sum(i => i.Length) / 1024);
 
         // 2. Check cache — but skip poisoned cache entries (low confidence / empty extraction)
         //    PromptVersion key me hai → jab bhi AI prompt badle, version bump karo (neeche
@@ -258,9 +258,9 @@ public class BillExtractorService : IBillExtractorService
                     {
                         result = provider switch
                         {
-                            "claude" => await CallClaudeAsync(image, apiKey, model, ct),
-                            "openai" => await CallOpenAiAsync(image, apiKey, model, ct),
-                            _ => await CallGeminiAsync(image, apiKey, model, ct)
+                            "claude" => await CallClaudeAsync(images, apiKey, model, ct),
+                            "openai" => await CallOpenAiAsync(images, apiKey, model, ct),
+                            _ => await CallGeminiAsync(images, apiKey, model, ct)
                         };
                         break;
                     }
@@ -501,13 +501,24 @@ Schema (extract ONLY these keys):
 }
 ";
 
-    private async Task<ExtractedBillDto> CallGeminiAsync(IFormFile image, string apiKey, string model, CancellationToken ct)
+    private async Task<ExtractedBillDto> CallGeminiAsync(IReadOnlyList<IFormFile> images, string apiKey, string model, CancellationToken ct)
     {
         var url = $"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={apiKey}";
 
-        using var ms = new MemoryStream();
-        await image.CopyToAsync(ms, ct);
-        var imageBase64 = Convert.ToBase64String(ms.ToArray());
+        // MULTI-PAGE: one inlineData entry per page, followed by the text instruction.
+        var parts = new List<object>();
+        foreach (var image in images)
+        {
+            using var ms = new MemoryStream();
+            await image.CopyToAsync(ms, ct);
+            var imageBase64 = Convert.ToBase64String(ms.ToArray());
+            parts.Add(new { inlineData = new { mimeType = image.ContentType ?? "image/jpeg", data = imageBase64 } });
+        }
+
+        var pageNote = images.Count > 1
+            ? " These images are multiple pages of the SAME single invoice — combine all line items from every page into one items array; supplier/buyer/invoice/totals appear once."
+            : "";
+        parts.Add(new { text = "Extract this Indian GST invoice as JSON." + pageNote });
 
         var requestBody = new
         {
@@ -516,11 +527,7 @@ Schema (extract ONLY these keys):
             {
                 new
                 {
-                    parts = new object[]
-                    {
-                        new { inlineData = new { mimeType = image.ContentType ?? "image/jpeg", data = imageBase64 } },
-                        new { text = "Extract this Indian GST invoice as JSON." }
-                    }
+                    parts = parts.ToArray()
                 }
             },
             generationConfig = new
@@ -550,8 +557,8 @@ Schema (extract ONLY these keys):
 
         // DEBUG: log first 500 chars of raw response so we can diagnose extraction issues
         var snippet = responseText.Length > 500 ? responseText.Substring(0, 500) + "...[truncated]" : responseText;
-        _log.LogInformation("Gemini raw response (image type={ContentType}, size={SizeKb}KB): {Snippet}",
-            image.ContentType, image.Length / 1024, snippet);
+        _log.LogInformation("Gemini raw response (pages={PageCount}, firstType={ContentType}, totalSize={SizeKb}KB): {Snippet}",
+            images.Count, images[0].ContentType, images.Sum(i => i.Length) / 1024, snippet);
 
         var parsed = JsonDocument.Parse(responseText);
         var candidate = parsed.RootElement.GetProperty("candidates")[0];
@@ -580,8 +587,10 @@ Schema (extract ONLY these keys):
     // =================================================
     // Claude (Anthropic) API call — firm's own key (BYOK)
     // =================================================
-    private async Task<ExtractedBillDto> CallClaudeAsync(IFormFile image, string apiKey, string model, CancellationToken ct)
+    private async Task<ExtractedBillDto> CallClaudeAsync(IReadOnlyList<IFormFile> images, string apiKey, string model, CancellationToken ct)
     {
+        // BYOK fallback: Claude path uses only the FIRST page (single-page).
+        var image = images[0];
         using var ms = new MemoryStream();
         await image.CopyToAsync(ms, ct);
         var imageBase64 = Convert.ToBase64String(ms.ToArray());
@@ -629,8 +638,10 @@ Schema (extract ONLY these keys):
     // =================================================
     // OpenAI API call — firm's own key (BYOK)
     // =================================================
-    private async Task<ExtractedBillDto> CallOpenAiAsync(IFormFile image, string apiKey, string model, CancellationToken ct)
+    private async Task<ExtractedBillDto> CallOpenAiAsync(IReadOnlyList<IFormFile> images, string apiKey, string model, CancellationToken ct)
     {
+        // BYOK fallback: OpenAI path uses only the FIRST page (single-page).
+        var image = images[0];
         using var ms = new MemoryStream();
         await image.CopyToAsync(ms, ct);
         var imageBase64 = Convert.ToBase64String(ms.ToArray());
@@ -816,12 +827,20 @@ Schema (extract ONLY these keys):
     // =================================================
     // Helpers
     // =================================================
-    private static async Task<string> ComputeHashAsync(IFormFile file)
+    // Hash over ALL pages combined so a multi-page set has its own distinct cache key
+    // (incremental SHA-256 over each page's bytes in order).
+    private static async Task<string> ComputeHashAsync(IReadOnlyList<IFormFile> files)
     {
         using var sha = SHA256.Create();
-        using var stream = file.OpenReadStream();
-        var hash = await sha.ComputeHashAsync(stream);
-        return Convert.ToHexString(hash);
+        for (var i = 0; i < files.Count; i++)
+        {
+            using var ms = new MemoryStream();
+            await files[i].CopyToAsync(ms);
+            var bytes = ms.ToArray();
+            sha.TransformBlock(bytes, 0, bytes.Length, null, 0);
+        }
+        sha.TransformFinalBlock(Array.Empty<byte>(), 0, 0);
+        return Convert.ToHexString(sha.Hash!);
     }
 
     // JSON string ke ANDAR aaye unescaped quotes ko \" me badlo.

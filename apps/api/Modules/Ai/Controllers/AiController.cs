@@ -35,21 +35,31 @@ public class AiController : ControllerBase
 
     [HttpPost("extract-bill")]
     [HasPermission("ai.bill_scan.use.branch")]
-    [RequestSizeLimit(10 * 1024 * 1024)]    // 10 MB
-    public async Task<IActionResult> ExtractBill(IFormFile image, CancellationToken ct)
+    [RequestSizeLimit(25 * 1024 * 1024)]    // 25 MB — multi-page bill set (max 5 pages)
+    public async Task<IActionResult> ExtractBill(CancellationToken ct)
     {
-        if (image == null || image.Length == 0)
+        // Multi-page: read ALL uploaded files (works for single + multiple).
+        // Frontend appends each page under the same 'image' field name.
+        var images = Request.Form.Files.ToList();
+
+        if (images.Count == 0 || images.All(f => f.Length == 0))
             return BadRequest(new { error = "Image file required" });
 
-        if (image.Length > 5 * 1024 * 1024)
-            return BadRequest(new { error = "Image too large (max 5 MB)" });
+        if (images.Count > 5)
+            return BadRequest(new { error = "Too many pages (max 5)" });
+
+        if (images.Any(f => f.Length > 5 * 1024 * 1024))
+            return BadRequest(new { error = "A page is too large (max 5 MB each)" });
+
+        if (images.Sum(f => f.Length) > 12 * 1024 * 1024)
+            return BadRequest(new { error = "Total upload too large (max 12 MB)" });
 
         // bill ya order — scan report me alag dikhane ke liye
         var source = Request.Form["source"].FirstOrDefault() == "order" ? "order" : "bill";
 
         try
         {
-            var result = await _billExtractor.ExtractBill(image, CurrentFirmId, CurrentUserId, ct, source);
+            var result = await _billExtractor.ExtractBill(images, CurrentFirmId, CurrentUserId, ct, source);
             return Ok(result);
         }
         catch (InsufficientWalletException ex)

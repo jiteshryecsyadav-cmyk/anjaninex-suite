@@ -4,6 +4,13 @@ import { AiService, ExtractedBill } from '../services/ai.service';
 
 type ScanState = 'idle' | 'camera' | 'preview' | 'analyzing' | 'result' | 'error';
 
+interface ScanPage {
+  file: File;
+  url: string;       // object URL for thumbnail / preview
+  name: string;
+  isImage: boolean;
+}
+
 @Component({
   selector: 'app-bill-scan-modal',
   standalone: true,
@@ -22,7 +29,7 @@ type ScanState = 'idle' | 'camera' | 'preview' | 'analyzing' | 'result' | 'error
           <button (click)="close()" class="text-2xl hover:opacity-70">×</button>
         </div>
 
-        <!-- IDLE: Upload options -->
+        <!-- IDLE: Upload options + multi-page list -->
         @if (state() === 'idle') {
           <div class="p-8">
             <div class="grid grid-cols-2 gap-4 mb-4">
@@ -30,17 +37,58 @@ type ScanState = 'idle' | 'camera' | 'preview' | 'analyzing' | 'result' | 'error
                       class="border-2 border-dashed border-[#5c1a8b] rounded-xl p-8 text-center hover:bg-[#f0e6ff] transition cursor-pointer">
                 <div class="text-5xl mb-2">📸</div>
                 <div class="font-bold text-[#5c1a8b]">Use Camera</div>
-                <div class="text-xs text-gray-500 mt-1">Snap bill directly</div>
+                <div class="text-xs text-gray-500 mt-1">Snap a page</div>
               </button>
               <button (click)="filePicker.click()"
                       class="border-2 border-dashed border-[#5c1a8b] rounded-xl p-8 text-center hover:bg-[#f0e6ff] transition cursor-pointer">
                 <div class="text-5xl mb-2">📤</div>
-                <div class="font-bold text-[#5c1a8b]">Upload File</div>
-                <div class="text-xs text-gray-500 mt-1">JPG, PNG, PDF · Max 5 MB</div>
+                <div class="font-bold text-[#5c1a8b]">Upload File(s)</div>
+                <div class="text-xs text-gray-500 mt-1">JPG, PNG, PDF · Max 5 MB each</div>
               </button>
-              <input #filePicker type="file" hidden accept="image/*,application/pdf"
+              <input #filePicker type="file" hidden multiple accept="image/*,application/pdf"
                      (change)="onFileSelected($event)">
             </div>
+
+            <!-- Added pages -->
+            @if (pages().length > 0) {
+              <div class="mb-4">
+                <div class="flex items-center justify-between mb-2">
+                  <h4 class="text-xs font-bold text-[#6b3fa0] uppercase">
+                    Pages ({{ pages().length }})
+                  </h4>
+                  <span class="text-xs text-gray-400">Multi-page bill? Add every page — sab ek saath scan honge</span>
+                </div>
+                <div class="grid grid-cols-3 sm:grid-cols-4 gap-3">
+                  @for (p of pages(); track p.url) {
+                    <div class="relative border border-[#ddc8f5] rounded-lg overflow-hidden bg-gray-50">
+                      <div class="absolute top-1 left-1 bg-[#5c1a8b] text-white text-[10px] font-bold px-1.5 py-0.5 rounded z-10">
+                        Page {{ $index + 1 }}
+                      </div>
+                      <button (click)="removePage($index)"
+                              title="Remove this page"
+                              class="absolute top-1 right-1 bg-red-600 text-white w-5 h-5 rounded-full text-xs leading-none flex items-center justify-center hover:bg-red-700 z-10">✕</button>
+                      @if (p.isImage) {
+                        <img [src]="p.url" class="w-full h-24 object-cover" draggable="false">
+                      } @else {
+                        <div class="w-full h-24 flex flex-col items-center justify-center text-gray-400">
+                          <div class="text-3xl">📄</div>
+                          <div class="text-[10px] px-1 truncate w-full text-center">{{ p.name }}</div>
+                        </div>
+                      }
+                    </div>
+                  }
+                </div>
+                <div class="flex items-center justify-center gap-3 mt-4">
+                  <button (click)="filePicker.click()"
+                          class="px-4 py-2 border border-[#5c1a8b] text-[#5c1a8b] rounded text-sm font-semibold hover:bg-[#f0e6ff]">
+                    + Add another page
+                  </button>
+                  <button (click)="analyze()" [disabled]="pages().length === 0" class="btn-primary disabled:opacity-50">
+                    🤖 Scan {{ pages().length }} page{{ pages().length === 1 ? '' : 's' }}
+                  </button>
+                </div>
+              </div>
+            }
 
             <div class="text-center text-xs text-gray-500 mt-4">
               <strong>💰 Cost:</strong> ₹0.15 per bill scan (debited from wallet)<br>
@@ -87,7 +135,7 @@ type ScanState = 'idle' | 'camera' | 'preview' | 'analyzing' | 'result' | 'error
             </div>
             <div class="flex justify-center gap-3 mt-4">
               <button (click)="retake()" class="px-4 py-2 border border-gray-300 rounded text-sm">↺ Retake</button>
-              <button (click)="analyze()" class="btn-primary">🤖 Analyze</button>
+              <button (click)="confirmPage()" class="btn-primary">✓ Add this page</button>
             </div>
           </div>
         }
@@ -240,7 +288,12 @@ type ScanState = 'idle' | 'camera' | 'preview' | 'analyzing' | 'result' | 'error
             <div class="text-5xl mb-3">⚠️</div>
             <h4 class="font-bold text-red-600 mb-2">Extraction Failed</h4>
             <p class="text-sm text-gray-600 mb-4">{{ errorMsg() }}</p>
-            <button (click)="reset()" class="btn-primary">Try Again</button>
+            <div class="flex justify-center gap-3">
+              @if (pages().length > 0) {
+                <button (click)="backToPages()" class="px-4 py-2 border border-gray-300 rounded text-sm">↩ Back to pages</button>
+              }
+              <button (click)="reset()" class="btn-primary">Start Over</button>
+            </div>
           </div>
         }
       </div>
@@ -255,6 +308,10 @@ export class BillScanModalComponent implements OnDestroy {
   extracted = signal<ExtractedBill | null>(null);
   progressStep = signal('Uploading image...');
   errorMsg = signal('');
+
+  // Multi-page: all pages added so far (camera snaps + uploaded files), scanned together.
+  pages = signal<ScanPage[]>([]);
+  private readonly MAX_PAGES = 5;
 
   // ── Preview zoom + pan ──
   zoom = signal(1);
@@ -320,7 +377,7 @@ export class BillScanModalComponent implements OnDestroy {
 
     canvas.toBlob((blob) => {
       if (!blob) return;
-      this.file = new File([blob], 'capture.jpg', { type: 'image/jpeg' });
+      this.file = new File([blob], `capture-${Date.now()}.jpg`, { type: 'image/jpeg' });
       this.previewUrl.set(URL.createObjectURL(blob));
       this.stopCamera();
       this.resetZoom();
@@ -337,19 +394,45 @@ export class BillScanModalComponent implements OnDestroy {
 
   async onFileSelected(event: Event) {
     const input = event.target as HTMLInputElement;
-    const f = input.files?.[0];
-    if (!f) return;
+    const files = Array.from(input.files ?? []);
+    // Reset the input so re-selecting the same file fires (change) again.
+    input.value = '';
+    if (files.length === 0) return;
 
-    if (f.size > 5 * 1024 * 1024) {
-      this.errorMsg.set('File too large. Max 5 MB allowed.');
-      this.state.set('error');
-      return;
+    for (const f of files) {
+      if (this.pages().length >= this.MAX_PAGES) {
+        this.errorMsg.set(`Max ${this.MAX_PAGES} pages allowed per bill.`);
+        this.state.set('error');
+        return;
+      }
+      if (f.size > 5 * 1024 * 1024) {
+        this.errorMsg.set(`"${f.name}" too large. Max 5 MB per page.`);
+        this.state.set('error');
+        return;
+      }
+      const compressed = await this.compress(f);
+      this.addPage(compressed);
     }
+    this.state.set('idle');
+  }
 
-    this.file = await this.compress(f);
-    this.previewUrl.set(URL.createObjectURL(this.file));
-    this.resetZoom();
-    this.state.set('preview');
+  // Append a file as a new page (camera snap or uploaded file).
+  private addPage(file: File) {
+    const isImage = file.type.startsWith('image/');
+    this.pages.update(list => [...list, {
+      file,
+      url: URL.createObjectURL(file),
+      name: file.name,
+      isImage
+    }]);
+  }
+
+  removePage(index: number) {
+    this.pages.update(list => {
+      const removed = list[index];
+      if (removed) URL.revokeObjectURL(removed.url);
+      return list.filter((_, i) => i !== index);
+    });
   }
 
   private async compress(file: File): Promise<File> {
@@ -391,7 +474,24 @@ export class BillScanModalComponent implements OnDestroy {
     });
   }
 
+  // Camera preview confirmed → append captured photo as a page, back to idle.
+  confirmPage() {
+    if (this.file) {
+      if (this.pages().length >= this.MAX_PAGES) {
+        this.errorMsg.set(`Max ${this.MAX_PAGES} pages allowed per bill.`);
+        this.state.set('error');
+        return;
+      }
+      this.addPage(this.file);
+    }
+    this.file = null;
+    this.previewUrl.set(null);
+    this.resetZoom();
+    this.state.set('idle');
+  }
+
   retake() {
+    // Discard the just-captured (unconfirmed) photo, back to idle page list.
     this.state.set('idle');
     this.previewUrl.set(null);
     this.file = null;
@@ -399,15 +499,15 @@ export class BillScanModalComponent implements OnDestroy {
   }
 
   async analyze() {
-    const f = this.file;
-    if (!f) return;
+    const files = this.pages().map(p => p.file);
+    if (files.length === 0) return;
     this.state.set('analyzing');
-    this.progressStep.set('Uploading image...');
+    this.progressStep.set('Uploading pages...');
 
     setTimeout(() => this.progressStep.set('Processing scan...'), 800);
     setTimeout(() => this.progressStep.set('Extracting fields...'), 1800);
 
-    this.svc.extractBill(f, this.source()).subscribe({
+    this.svc.extractBill(files, this.source()).subscribe({
       next: (result) => {
         // AI fail hua? Koi sample/demo data nahi — seedha error screen.
         if (result.failureReason || result.modelUsed === 'failed' || result.modelUsed === 'mock_fallback') {
@@ -438,7 +538,19 @@ export class BillScanModalComponent implements OnDestroy {
     this.extracted.set(null);
     this.file = null;
     this.errorMsg.set('');
+    this.clearPages();
     this.resetZoom();
+  }
+
+  // From the error screen — keep the added pages so the user can fix/retry without re-adding.
+  backToPages() {
+    this.errorMsg.set('');
+    this.state.set('idle');
+  }
+
+  private clearPages() {
+    for (const p of this.pages()) URL.revokeObjectURL(p.url);
+    this.pages.set([]);
   }
 
   close() {
@@ -448,5 +560,6 @@ export class BillScanModalComponent implements OnDestroy {
 
   ngOnDestroy() {
     this.stopCamera();
+    this.clearPages();
   }
 }

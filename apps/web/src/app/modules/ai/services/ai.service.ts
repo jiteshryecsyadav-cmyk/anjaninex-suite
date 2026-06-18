@@ -83,9 +83,13 @@ export class AiService {
   private http = inject(HttpClient);
   private base = `${environment.apiUrl}/api/ai`;
 
-  extractBill(image: File, source: 'bill' | 'order' = 'bill') {
+  // Multi-page: accepts one File or an array of pages. Each page is appended under the
+  // same 'image' field name so the backend reads them all via Request.Form.Files.
+  // Single-page (1 File) behaves exactly as before.
+  extractBill(images: File | File[], source: 'bill' | 'order' = 'bill') {
     const fd = new FormData();
-    fd.append('image', image);
+    const pages = Array.isArray(images) ? images : [images];
+    for (const page of pages) fd.append('image', page);
     fd.append('source', source);
     return this.http.post<ExtractedBill>(`${this.base}/extract-bill`, fd);
   }

@@ -264,6 +264,10 @@ interface LineRow {
           <button type="button" (click)="addLine()" class="btn-add-item">+ Add Item</button>
         </div>
 
+        @if (reconcileNote()) {
+          <div class="reconcile-note">⚠️ {{ reconcileNote() }}</div>
+        }
+
         <div class="item-table-wrap mt-2">
           <table class="item-table">
             <thead>
@@ -784,6 +788,11 @@ interface LineRow {
     }
     .ip-auto {
       background: #ECFDF5; color: #047857; border-color: #A7F3D0; font-weight: 600;
+    }
+    .reconcile-note {
+      margin-top: 8px; padding: 8px 12px; border-radius: 8px;
+      background: #FEF3C7; border: 1px solid #FBBF24; color: #92400E;
+      font-size: 12px; font-weight: 600; line-height: 1.4;
     }
     select.ip { cursor: pointer; }
 
@@ -1332,18 +1341,35 @@ export class OrderEntryComponent {
 
     // Items → order lines
     if (data.items?.length) {
+      const reconciled: string[] = [];
       this.lines.set(data.items.map(item => {
         const half = (item.taxRate || 5) / 2;
-        // Line-discount % ko per-unit ₹ discount (rd) me convert (rd = rate × disc% / 100)
-        const rd = item.discountPercent ? +((item.rate || 0) * item.discountPercent / 100).toFixed(2) : 0;
+        let qty  = item.qty || 0;
+        let rate = item.rate || 0;
+        let unit = item.unit || 'MTR';
+        let rd = item.discountPercent ? +(rate * item.discountPercent / 100).toFixed(2) : 0;
+        // RECONCILE: qty × rate, bill ke printed TAXABLE se match hona chahiye. Na ho to:
+        const tx = +(item.taxableAmount || 0);
+        if (qty > 0 && tx > 0 && Math.abs(qty * rate - qty * rd - tx) > 1) {
+          if (rate > qty && (tx / rate) < rate) {
+            // Bill me rate column nahi — AI ne quantity (meters) ko "rate" me daal diya
+            qty = rate;
+            rate = +(tx / qty).toFixed(4);
+            unit = 'MTR';
+          } else {
+            rate = +(tx / qty).toFixed(4);
+          }
+          rd = 0;
+          reconciled.push(`${item.name || 'Item'} (Qty ${qty} ${unit} × ₹${rate})`);
+        }
         return {
           itemId: null,
           itemName: item.name,
           description: '',
           hsnSac: item.hsnSac,
-          qty: item.qty,
-          unit: item.unit || 'MTR',
-          rate: item.rate,
+          qty,
+          unit,
+          rate,
           rd,
           sgstPct: half,
           cgstPct: half,
@@ -1353,6 +1379,9 @@ export class OrderEntryComponent {
         };
       }));
       this.redistributeGst();
+      this.reconcileNote.set(reconciled.length
+        ? `Is bill par alag rate column nahi tha — Taxable Amount se rate nikaala gaya: ${reconciled.join('; ')}. Qty/rate ek baar verify kar lein.`
+        : '');
     }
 
     // Transporter — AI ne jo naam padha wo search box me dikhao (match ho to user select kar le)
@@ -1726,6 +1755,7 @@ export class OrderEntryComponent {
   /** AI scan ne bill/order se jo ASLI tax type padha (IGST vs CGST/SGST) — state-code se UPAR.
    *  Scan ke time set, manual party change ya reset par clear. */
   aiGstTypeOverride = signal<'inter' | 'intra' | null>(null);
+  reconcileNote = signal<string>('');   // scan ne rate taxable se nikaala → warning note
   isInterState(): boolean {
     const o = this.aiGstTypeOverride();
     if (o) return o === 'inter';

@@ -321,6 +321,12 @@ interface LineRow {
           <button type="button" (click)="addLine()" class="btn-add-item">+ Add Item</button>
         </div>
 
+        @if (reconcileNote()) {
+          <div class="reconcile-note">
+            ⚠️ {{ reconcileNote() }}
+          </div>
+        }
+
         <div class="item-table-wrap mt-2">
           <table class="item-table">
             <thead>
@@ -1137,6 +1143,11 @@ interface LineRow {
       color: #047857;
       border-color: #A7F3D0;
       font-weight: 600;
+    }
+    .reconcile-note {
+      margin-top: 8px; padding: 8px 12px; border-radius: 8px;
+      background: #FEF3C7; border: 1px solid #FBBF24; color: #92400E;
+      font-size: 12px; font-weight: 600; line-height: 1.4;
     }
     select.ip { cursor: pointer; }
 
@@ -2215,6 +2226,8 @@ export class BillEntryComponent {
    *  Kyunki kabhi same-state par bhi IGST hota hai (place-of-supply alag). Scan ke time set,
    *  manual party change ya reset par clear. */
   aiGstTypeOverride = signal<'inter' | 'intra' | null>(null);
+  /** Scan ne kis item ka rate taxable se nikaala (bill par rate column nahi tha) — warning note. */
+  reconcileNote = signal<string>('');
   /** Compare firm GSTIN state-code (first 2 chars) vs counterparty GSTIN. Default intra-state. */
   isInterState(): boolean {
     // Scan ne bill se jo padha wahi sahi — state-code guess se pehle.
@@ -2399,19 +2412,37 @@ export class BillEntryComponent {
 
     // Replace lines
     if (data.items?.length) {
+      const reconciled: string[] = [];   // jin items ka rate taxable se nikaala — user ko batane ke liye
       this.lines.set(data.items.map(item => {
         const half = (item.taxRate || 5) / 2;
-        // Bill par line-discount % hai to use per-unit ₹ discount (rd) me convert karo
-        // (rd = rate × disc% / 100). Warna taxable/total bill se zyada aata tha.
-        const rd = item.discountPercent ? +((item.rate || 0) * item.discountPercent / 100).toFixed(2) : 0;
+        let qty  = item.qty || 0;
+        let rate = item.rate || 0;
+        let unit = item.unit || 'MTR';
+        let rd = item.discountPercent ? +(rate * item.discountPercent / 100).toFixed(2) : 0;
+        // RECONCILE: qty × rate, bill ke printed TAXABLE se match hona chahiye. Na ho to:
+        const tx = +(item.taxableAmount || 0);
+        if (qty > 0 && tx > 0 && Math.abs(qty * rate - qty * rd - tx) > 1) {
+          if (rate > qty && (tx / rate) < rate) {
+            // Bill me alag rate column nahi tha — AI ne QUANTITY (meters) ko "rate" me daal diya.
+            // Sahi: qty = wahi value, rate = taxable / qty. (jaise 688.50 mtr × 48.116)
+            qty = rate;
+            rate = +(tx / qty).toFixed(4);
+            unit = 'MTR';
+          } else {
+            // qty theek, rate galat — rate ko taxable se derive karo.
+            rate = +(tx / qty).toFixed(4);
+          }
+          rd = 0;
+          reconciled.push(`${item.name || 'Item'} (Qty ${qty} ${unit} × ₹${rate})`);
+        }
         return {
           itemId: null,
           itemName: item.name,
           description: '',
           hsnSac: item.hsnSac,
-          qty: item.qty,
-          unit: item.unit || 'MTR',
-          rate: item.rate,
+          qty,
+          unit,
+          rate,
           rd,
           sgstPct: half,
           cgstPct: half,
@@ -2421,6 +2452,9 @@ export class BillEntryComponent {
         };
       }));
       this.redistributeGst();
+      this.reconcileNote.set(reconciled.length
+        ? `Is bill par alag rate column nahi tha — Taxable Amount se rate nikaala gaya: ${reconciled.join('; ')}. Qty/rate ek baar verify kar lein.`
+        : '');
     }
 
     // Transport
@@ -2586,6 +2620,7 @@ export class BillEntryComponent {
     this.supplierMatchLevel.set(null); this.buyerMatchLevel.set(null);
     this.aiSupplier = null; this.aiBuyer = null;
     this.aiGstTypeOverride.set(null);   // GST type override bhi clear
+    this.reconcileNote.set('');
     this.remark = '';
     this.billDocName.set(''); this.billDocFile = null;
     this.lrDocName.set(''); this.lrDocFile = null;

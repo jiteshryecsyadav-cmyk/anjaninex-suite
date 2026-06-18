@@ -13,6 +13,7 @@ import { BackButtonComponent } from '../../../shared/back-button.component';
 import { PaginatorComponent } from '../../../shared/paginator.component';
 import { INDIAN_STATES, citiesForState, matchIndiaState } from '../../../shared/india-data';
 import { IndiaPincodeService } from '../../../shared/india-pincode.service';
+import { amountInWords } from '../../../shared/amount-in-words.util';
 
 @Component({
   selector: 'app-parties',
@@ -48,8 +49,8 @@ import { IndiaPincodeService } from '../../../shared/india-pincode.service';
         <div class="kpi" style="border-left:4px solid #16a34a;background:#16a34a0d"><div class="kpi-ico">🛒</div><div class="kpi-num" style="color:#16a34a">{{ buyCount() }}</div><div class="kpi-lbl">BUYERS</div></div>
         <div class="kpi" style="border-left:4px solid #9333ea;background:#9333ea0d"><div class="kpi-ico">🔄</div><div class="kpi-num" style="color:#9333ea">{{ multiCount() }}</div><div class="kpi-lbl">MULTI-ROLE</div></div>
         <div class="kpi" style="border-left:4px solid #d97706;background:#d977060d"><div class="kpi-ico">👨‍💼</div><div class="kpi-num" style="color:#d97706">{{ staffCount() }}</div><div class="kpi-lbl">STAFF</div></div>
-        <div class="kpi kpi-money"><div class="kpi-money-v">{{ buyerOS() | number:'1.2-2' }}</div><div class="kpi-lbl">💰 BUYER OUTSTANDING</div></div>
-        <div class="kpi kpi-money kpi-money-r"><div class="kpi-money-v">{{ supplierPay() | number:'1.2-2' }}</div><div class="kpi-lbl">💸 SUPPLIER PAYABLE</div></div>
+        <div class="kpi kpi-money"><div class="kpi-money-v">{{ buyerOS() | number:'1.2-2' }}</div><div class="kpi-lbl">💰 BUYER OUTSTANDING</div>@if (inWords(buyerOS())) {<div class="kpi-words">{{ inWords(buyerOS()) }}</div>}</div>
+        <div class="kpi kpi-money kpi-money-r"><div class="kpi-money-v">{{ supplierPay() | number:'1.2-2' }}</div><div class="kpi-lbl">💸 SUPPLIER PAYABLE</div>@if (inWords(supplierPay())) {<div class="kpi-words">{{ inWords(supplierPay()) }}</div>}</div>
       </div>
 
       <!-- ============ 3 CHARTS ============ -->
@@ -458,6 +459,7 @@ import { IndiaPincodeService } from '../../../shared/india-pincode.service';
     .kpi-money-r { border-top-color: #F97316; }
     .kpi-money-v { font-size: 17px; font-weight: 800; color: #DC2626; font-family: 'JetBrains Mono', monospace; }
     .kpi-money-r .kpi-money-v { color: #F97316; }
+    .kpi-words { font-size: 10px; font-weight: 600; color: #4A5878; font-style: italic; margin-top: 3px; line-height: 1.3; }
 
     /* Widgets */
     .widget { background: #fff; border: 1px solid #D6DDEA; border-radius: 12px; padding: 14px; }
@@ -661,6 +663,7 @@ import { IndiaPincodeService } from '../../../shared/india-pincode.service';
   `]
 })
 export class PartiesComponent {
+  readonly inWords = amountInWords;   // card amount → words (Indian Lakh/Crore)
   private svc = inject(TradingService);
   private fb = inject(FormBuilder);
   private pinSvc = inject(IndiaPincodeService);

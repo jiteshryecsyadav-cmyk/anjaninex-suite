@@ -1225,13 +1225,27 @@ export class OrderEntryComponent {
     alert(`📎 "${file.name}" attached. File will be uploaded when order is saved.\n\nTip: Click "🤖 Scan Order" to auto-fill from this document.`);
   }
 
+  /** AI se aayi date (dd/mm/yyyy ya dd-mm-yyyy) ko <input type=date> ke liye yyyy-mm-dd banao. */
+  private toIsoDate(s: string | null | undefined): string {
+    const d = (s || '').trim();
+    if (!d) return '';
+    if (/^\d{4}-\d{2}-\d{2}$/.test(d)) return d;
+    let m = d.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})$/);
+    if (m) return `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`;
+    m = d.match(/^(\d{4})[\/\-.](\d{1,2})[\/\-.](\d{1,2})$/);
+    if (m) return `${m[1]}-${m[2].padStart(2, '0')}-${m[3].padStart(2, '0')}`;
+    return d;
+  }
+
   /** AI extraction handler — same logic as bill-entry, mapped to order fields. */
   applyAiExtraction(data: ExtractedBill) {
     this.lastAiFill.set(data);
     this.loadScanUse();   // scan count + time turant refresh
 
-    if (data.invoice?.date) this.orderDate = data.invoice.date;
-    if (data.invoice?.poNumber) this.supplierOrderNo = data.invoice.poNumber;
+    if (data.invoice?.date) this.orderDate = this.toIsoDate(data.invoice.date) || this.orderDate;
+    // Order/PO par jo number chhapa hai (invoice.number) wo supplier order no me — warna PO number
+    if (data.invoice?.number || data.invoice?.poNumber)
+      this.supplierOrderNo = data.invoice.number || data.invoice.poNumber || this.supplierOrderNo;
 
     // ============ TAX TYPE — bill/order se padho (IGST vs CGST/SGST), state-code se UPAR ============
     {
@@ -1269,6 +1283,7 @@ export class OrderEntryComponent {
         };
         this.supplierFilter.set(data.supplier.name);
         this.supplierGstin = data.supplier.gst ?? '';
+        this.supplierPan = (data.supplier as any).pan ?? '';
         this.supplierAddress = data.supplier.address ?? data.supplier.city ?? '';
         this.supplierMobile = data.supplier.phone ?? '';
         this.supplierWhatsapp = data.supplier.phone ?? '';
@@ -1299,7 +1314,8 @@ export class OrderEntryComponent {
         };
         this.buyerFilter.set(data.buyer.name);
         this.buyerGstin = data.buyer.gst ?? '';
-        this.buyerAddress = data.buyer.address ?? '';
+        this.buyerPan = (data.buyer as any).pan ?? '';
+        this.buyerAddress = data.buyer.address ?? data.buyer.city ?? '';
         this.buyerMobile = data.buyer.phone ?? '';
         this.buyerWhatsapp = data.buyer.phone ?? '';
       }
@@ -1309,6 +1325,8 @@ export class OrderEntryComponent {
     if (data.items?.length) {
       this.lines.set(data.items.map(item => {
         const half = (item.taxRate || 5) / 2;
+        // Line-discount % ko per-unit ₹ discount (rd) me convert (rd = rate × disc% / 100)
+        const rd = item.discountPercent ? +((item.rate || 0) * item.discountPercent / 100).toFixed(2) : 0;
         return {
           itemId: null,
           itemName: item.name,
@@ -1317,7 +1335,7 @@ export class OrderEntryComponent {
           qty: item.qty,
           unit: item.unit || 'MTR',
           rate: item.rate,
-          rd: 0,
+          rd,
           sgstPct: half,
           cgstPct: half,
           igstPct: 0,
@@ -1326,6 +1344,12 @@ export class OrderEntryComponent {
         };
       }));
       this.redistributeGst();
+    }
+
+    // Transporter — AI ne jo naam padha wo search box me dikhao (match ho to user select kar le)
+    if (data.transport?.name) {
+      this.transporterFilter.set(data.transport.name);
+      this.onTransporterTyped(data.transport.name);
     }
   }
 

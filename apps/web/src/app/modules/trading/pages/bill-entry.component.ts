@@ -2289,11 +2289,23 @@ export class BillEntryComponent {
   }
 
   // ============ AI EXTRACTION ============
+  /** AI se aayi date (dd/mm/yyyy ya dd-mm-yyyy) ko <input type=date> ke liye yyyy-mm-dd banao.
+   *  Pehle se ISO ho to waise hi. Parse na ho to original (taaki data loss na ho). */
+  private toIsoDate(s: string | null | undefined): string {
+    const d = (s || '').trim();
+    if (!d) return '';
+    if (/^\d{4}-\d{2}-\d{2}$/.test(d)) return d;                         // already ISO
+    let m = d.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})$/);        // dd/mm/yyyy
+    if (m) return `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`;
+    m = d.match(/^(\d{4})[\/\-.](\d{1,2})[\/\-.](\d{1,2})$/);            // yyyy/mm/dd
+    if (m) return `${m[1]}-${m[2].padStart(2, '0')}-${m[3].padStart(2, '0')}`;
+    return d;
+  }
   applyAiExtraction(data: ExtractedBill) {
     this.lastAiFill.set(data);
     this.loadScanUse();   // scan count turant refresh
 
-    if (data.invoice?.date) this.billDate = data.invoice.date;
+    if (data.invoice?.date) this.billDate = this.toIsoDate(data.invoice.date) || this.billDate;
     if (data.invoice?.poNumber) this.orderNo = data.invoice.poNumber;
     if (data.invoice?.number) this.supplierBillNo = data.invoice.number;
 
@@ -2378,6 +2390,9 @@ export class BillEntryComponent {
     if (data.items?.length) {
       this.lines.set(data.items.map(item => {
         const half = (item.taxRate || 5) / 2;
+        // Bill par line-discount % hai to use per-unit ₹ discount (rd) me convert karo
+        // (rd = rate × disc% / 100). Warna taxable/total bill se zyada aata tha.
+        const rd = item.discountPercent ? +((item.rate || 0) * item.discountPercent / 100).toFixed(2) : 0;
         return {
           itemId: null,
           itemName: item.name,
@@ -2386,7 +2401,7 @@ export class BillEntryComponent {
           qty: item.qty,
           unit: item.unit || 'MTR',
           rate: item.rate,
-          rd: 0,
+          rd,
           sgstPct: half,
           cgstPct: half,
           igstPct: 0,
@@ -2400,10 +2415,10 @@ export class BillEntryComponent {
     // Transport
     // Transport / e-Way auto-fill (migration 19 additions)
     if (data.transport?.lrNo)       this.lrNo = data.transport.lrNo;
-    if (data.transport?.lrDate)     this.lrDate = data.transport.lrDate;
+    if (data.transport?.lrDate)     this.lrDate = this.toIsoDate(data.transport.lrDate);
     if (data.transport?.name)       this.transporter = data.transport.name;
     if ((data.transport as any)?.ewayBillNo) this.ewayBillNo = (data.transport as any).ewayBillNo;
-    if ((data.transport as any)?.ewayBillDate) this.ewayBillDate = (data.transport as any).ewayBillDate;
+    if ((data.transport as any)?.ewayBillDate) this.ewayBillDate = this.toIsoDate((data.transport as any).ewayBillDate);
     this.syncEwayDate();   // e-Way No hai par date nahi → bill ki date hi e-Way date
 
     // SMART TRANSPORTER MATCH — GST first, then name

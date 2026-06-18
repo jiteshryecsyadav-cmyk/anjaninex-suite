@@ -462,9 +462,11 @@ IMPORTANT — read these fields very carefully, they matter most:
 - buyer = the party the bill is billed TO (Name & Address of Buyer / Bill To).
 - GSTIN = exactly 15 characters (e.g. 24AYXP38534B1Z7). Read each char carefully (0 vs O, 1 vs I). Capture BOTH supplier and buyer GSTIN if printed.
 - Each item row: name (Description of Goods), hsnSac, qty, unit, rate, taxRate %, taxableAmount, totalAmount.
-  * qty = the main quantity printed (Pcs / Mtr). If the row prints TWO quantities (e.g. 35 Pcs AND 688.50 Mtr), put one in qty and the OTHER numeric quantity in the rate field — DO NOT discard either number (the app will let the user pick which is qty). Set unit from what is printed.
-  * rate = the per-unit PRICE only IF a real Rate/Price column is printed. If NO rate/price column exists, leave rate as the other quantity value (per the line above) or 0 — do NOT invent or compute a price.
-  * ALWAYS fill taxableAmount and totalAmount exactly as printed on the row — these are the source of truth; the app uses them.
+  * Read each column carefully. taxableAmount/totalAmount = the row's Amount as printed (source of truth).
+  * rate = the value in the Rate / Price / Rate Rs column IF such a column is printed. Read it exactly (e.g. 35.50).
+  * qty = the quantity that, multiplied by rate, equals the row Amount. For cloth/textile a row often shows a piece count (Pcs / Than) AND meters (Mtr / Mts / Meter) — the BILLED qty is the METERS (e.g. Mts 1390.62), unit=""MTR"". The piece count (e.g. 12) is only packaging — do NOT use it as qty.
+  * SELF-CHECK every row: qty × rate MUST be approximately equal to the row Amount/taxableAmount. If it does not match, you picked the wrong column — choose the quantity column (usually meters) that makes qty × rate equal the amount.
+  * ONLY if there is genuinely NO Rate/Price column anywhere on the bill (just quantity + amount): set rate=0 — do NOT invent or compute a rate (the app will ask the user).
 - invoice number + invoice date (top right of bill).
 - phone = ONLY a 10-digit Indian MOBILE number (starting 6-9), digits only. NO labels like 'Ph:'/'Accounts'/'Payment', NO landline/STD numbers like (0261)2331456, NO email. If no mobile is printed, leave it """".
 - GSTIN STRICT RULE: take a GSTIN ONLY from that party's OWN section. The Transport/Transporter/LR section often prints the TRANSPORTER's GSTIN — NEVER put it in supplier.gst or buyer.gst. If the buyer's (or supplier's) own GSTIN is NOT printed, leave gst = """" — do NOT borrow a GSTIN from anywhere else on the bill.

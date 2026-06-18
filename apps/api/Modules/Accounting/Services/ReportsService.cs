@@ -42,11 +42,17 @@ public interface IReportsService
     Task<ProfitLossReport> ProfitLoss(DateOnly from, DateOnly to, Guid? firmId = null);
     Task<BalanceSheetReport> BalanceSheet(DateOnly asOf, Guid? firmId = null);
     Task<List<LedgerTransactionDto>> LedgerStatement(Guid ledgerId, DateOnly from, DateOnly to);
+    // Party Master shortcut → resolve the accounting ledger for a trading party.
+    // Returns null if the party has no ledger yet (no bill/payment booked).
+    Task<PartyLedgerDto?> ResolvePartyLedger(Guid partyId, Guid firmId);
 }
 
 public record LedgerTransactionDto(
     DateOnly Date, string VoucherNo, string VoucherType, string? Narration,
     decimal Debit, decimal Credit, decimal Balance, string BalanceType);
+
+// Party Master "📒 Ledger" shortcut payload.
+public record PartyLedgerDto(Guid LedgerId, string LedgerName);
 
 public class ReportsService : IReportsService
 {
@@ -208,5 +214,34 @@ public class ReportsService : IReportsService
         }
 
         return rows;
+    }
+
+    public async Task<PartyLedgerDto?> ResolvePartyLedger(Guid partyId, Guid firmId)
+    {
+        // 1) Trading party → its profile (firm-scoped; RLS also enforces firm).
+        var party = await _db.PartyProfiles
+            .Where(p => p.Id == partyId && p.FirmId == firmId)
+            .Select(p => new { p.LedgerId, p.ContactId })
+            .FirstOrDefaultAsync();
+
+        if (party == null) return null;
+
+        // 2) Preferred link: party.LedgerId (set by BillService.FindOrCreatePartyLedger).
+        if (party.LedgerId.HasValue)
+        {
+            var byId = await _db.Ledgers
+                .Where(l => l.Id == party.LedgerId.Value && l.FirmId == firmId)
+                .Select(l => new PartyLedgerDto(l.Id, l.Name))
+                .FirstOrDefaultAsync();
+            if (byId != null) return byId;
+        }
+
+        // 3) Fallback: ledger linked to the same contact (party-ledgers carry contact_id).
+        var byContact = await _db.Ledgers
+            .Where(l => l.FirmId == firmId && l.ContactId == party.ContactId)
+            .Select(l => new PartyLedgerDto(l.Id, l.Name))
+            .FirstOrDefaultAsync();
+
+        return byContact; // null = no accounting entry yet → friendly message on the UI
     }
 }

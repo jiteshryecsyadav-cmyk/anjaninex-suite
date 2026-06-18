@@ -4,11 +4,12 @@ import { FormsModule, ReactiveFormsModule, FormBuilder, Validators } from '@angu
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { AccountingService, Ledger, SubGroup } from '../services/accounting.service';
 import { BackButtonComponent } from '../../../shared/back-button.component';
+import { LedgerStatementComponent } from '../components/ledger-statement.component';
 
 @Component({
   selector: 'app-ledgers',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterLink, RouterLinkActive, DecimalPipe, BackButtonComponent],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterLink, RouterLinkActive, DecimalPipe, BackButtonComponent, LedgerStatementComponent],
   template: `
     <div class="max-w-7xl mx-auto">
       <div class="page-top-bar"><app-back-button></app-back-button></div>
@@ -113,7 +114,7 @@ import { BackButtonComponent } from '../../../shared/back-button.component';
                   </td>
                   <td class="px-4 py-2 text-center">
                     <button class="text-blue-600 text-xs hover:underline mr-2"
-                            (click)="viewStatement(l.id)">Statement</button>
+                            (click)="viewStatement(l)">📒 Statement</button>
                     <button class="text-[#5c1a8b] text-xs hover:underline mr-2"
                             (click)="edit(l)">Edit</button>
                     <button class="text-red-600 text-xs hover:underline"
@@ -191,6 +192,15 @@ import { BackButtonComponent } from '../../../shared/back-button.component';
           </div>
         </div>
       }
+
+      <!-- Ledger Statement / Khata modal -->
+      @if (statementLedgerId()) {
+        <app-ledger-statement
+          [ledgerId]="statementLedgerId()!"
+          [initialName]="statementLedgerName()"
+          (close)="statementLedgerId.set(null)">
+        </app-ledger-statement>
+      }
     </div>
   `
 })
@@ -207,6 +217,10 @@ export class LedgersComponent {
   error = signal('');
   searchQuery = '';
   selectedSubGroup = '';
+
+  // Ledger statement / khata modal
+  statementLedgerId = signal<string | null>(null);
+  statementLedgerName = signal<string | null>(null);
 
   totalDr = computed(() => this.ledgers().filter(l => l.currentBalanceType === 'Dr').reduce((s, l) => s + l.currentBalance, 0));
   totalCr = computed(() => this.ledgers().filter(l => l.currentBalanceType === 'Cr').reduce((s, l) => s + l.currentBalance, 0));
@@ -290,8 +304,8 @@ export class LedgersComponent {
     this.svc.deleteLedger(id).subscribe(() => this.loadLedgers());
   }
 
-  viewStatement(id: string) {
-    // Navigate to ledger statement page (could add later)
-    alert('Ledger statement view coming soon');
+  viewStatement(l: Ledger) {
+    this.statementLedgerName.set(l.name);
+    this.statementLedgerId.set(l.id);
   }
 }

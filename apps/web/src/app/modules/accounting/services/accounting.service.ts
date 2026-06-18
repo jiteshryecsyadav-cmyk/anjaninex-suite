@@ -135,6 +135,25 @@ export interface BalanceSheet {
   totalLiabilities: number;
 }
 
+// One row of a ledger statement / khata. First row (voucherType '—') is Opening;
+// `balance` is the running balance (abs) and `balanceType` is 'Dr' | 'Cr'.
+export interface LedgerTransaction {
+  date: string;
+  voucherNo: string;
+  voucherType: string;
+  narration: string | null;
+  debit: number;
+  credit: number;
+  balance: number;
+  balanceType: 'Dr' | 'Cr';
+}
+
+// Party Master shortcut → which accounting ledger belongs to a party.
+export interface PartyLedger {
+  ledgerId: string;
+  ledgerName: string;
+}
+
 // =============================================================================
 // Service
 // =============================================================================
@@ -233,6 +252,11 @@ export class AccountingService {
     const params: any = {};
     if (from) params.from = from;
     if (to) params.to = to;
-    return this.http.get<any[]>(`${this.base}/reports/ledger-statement/${ledgerId}`, { params });
+    return this.http.get<LedgerTransaction[]>(`${this.base}/reports/ledger-statement/${ledgerId}`, { params });
+  }
+
+  // Resolve a trading party → its accounting ledger (Party Master "📒 Ledger" shortcut).
+  partyLedger(partyId: string) {
+    return this.http.get<PartyLedger>(`${this.base}/reports/party-ledger/${partyId}`);
   }
 }

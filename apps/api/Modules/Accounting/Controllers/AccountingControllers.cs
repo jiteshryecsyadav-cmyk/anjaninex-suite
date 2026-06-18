@@ -250,4 +250,15 @@ public class ReportsController : AccountingControllerBase
         var t = to ?? DateOnly.FromDateTime(DateTime.Now);
         return Ok(await _svc.LedgerStatement(ledgerId, f, t));
     }
+
+    // Party Master "📒 Ledger / Khata" shortcut.
+    // 200 + { ledgerId, ledgerName } if the party has an accounting ledger;
+    // 404 if no ledger exists yet (no bill/payment booked) → UI shows friendly hint.
+    [HttpGet("party-ledger/{partyId}")]
+    [HasPermission("accounting.report.view.firm")]
+    public async Task<IActionResult> PartyLedger(Guid partyId)
+    {
+        var dto = await _svc.ResolvePartyLedger(partyId, CurrentFirmId);
+        return dto is null ? NotFound() : Ok(dto);
+    }
 }

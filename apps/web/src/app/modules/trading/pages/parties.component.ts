@@ -14,11 +14,13 @@ import { PaginatorComponent } from '../../../shared/paginator.component';
 import { INDIAN_STATES, citiesForState, matchIndiaState } from '../../../shared/india-data';
 import { IndiaPincodeService } from '../../../shared/india-pincode.service';
 import { amountInWords } from '../../../shared/amount-in-words.util';
+import { AccountingService } from '../../accounting/services/accounting.service';
+import { LedgerStatementComponent } from '../../accounting/components/ledger-statement.component';
 
 @Component({
   selector: 'app-parties',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterLink, RouterLinkActive, DecimalPipe, TradingSubNavComponent, BackButtonComponent, PaginatorComponent],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterLink, RouterLinkActive, DecimalPipe, TradingSubNavComponent, BackButtonComponent, PaginatorComponent, LedgerStatementComponent],
   template: `
     <div class="max-w-7xl mx-auto">
       <div class="page-top-bar"><app-back-button></app-back-button></div>
@@ -201,6 +203,7 @@ import { amountInWords } from '../../../shared/amount-in-words.util';
                   </td>
                   <td class="text-center">
                     <button (click)="view(p)" class="act-btn act-view">👁</button>
+                    <button (click)="openLedger(p)" class="act-btn act-ledger" title="Ledger / Khata">📒</button>
                     <button (click)="edit(p)" class="act-btn act-edit">✏️</button>
                     <button (click)="chat(p)" class="act-btn act-chat">💬</button>
                     <button (click)="del(p.id)" class="act-btn act-del">🗑</button>
@@ -426,6 +429,15 @@ import { amountInWords } from '../../../shared/amount-in-words.util';
         </div>
       }
 
+      <!-- Ledger / Khata statement modal (Party Master shortcut) -->
+      @if (ledgerStmtId()) {
+        <app-ledger-statement
+          [ledgerId]="ledgerStmtId()!"
+          [initialName]="ledgerStmtName()"
+          (close)="ledgerStmtId.set(null)">
+        </app-ledger-statement>
+      }
+
     </div>
   `,
   styles: [`
@@ -546,6 +558,7 @@ import { amountInWords } from '../../../shared/amount-in-words.util';
     .tag-red { background: #FEE2E2; color: #DC2626; }
     .act-btn { background: #FEE2E2; border: 0; width: 26px; height: 26px; border-radius: 6px; cursor: pointer; margin: 0 2px; font-size: 12px; }
     .act-view { background: #DBEAFE; }
+    .act-ledger { background: #EDE9FE; }
     .act-edit { background: #FEF3C7; }
     .act-chat { background: #D1FAE5; }
     .act-del { background: #FEE2E2; }
@@ -667,6 +680,34 @@ export class PartiesComponent {
   private svc = inject(TradingService);
   private fb = inject(FormBuilder);
   private pinSvc = inject(IndiaPincodeService);
+  private acctSvc = inject(AccountingService);
+
+  // Ledger / Khata statement modal (per-party shortcut)
+  ledgerStmtId = signal<string | null>(null);
+  ledgerStmtName = signal<string | null>(null);
+
+  openLedger(p: Party) {
+    // Fast path: party already carries its ledgerId.
+    if (p.ledgerId) {
+      this.ledgerStmtName.set(p.displayName);
+      this.ledgerStmtId.set(p.ledgerId);
+      return;
+    }
+    // Else resolve on the backend (contact fallback / friendly 404 if none yet).
+    this.acctSvc.partyLedger(p.id).subscribe({
+      next: (res) => {
+        this.ledgerStmtName.set(res.ledgerName || p.displayName);
+        this.ledgerStmtId.set(res.ledgerId);
+      },
+      error: (e) => {
+        if (e?.status === 404) {
+          alert(`📒 ${p.displayName}\n\nIs party ka abhi koi accounting entry nahi — ledger tab banega jab pehla bill/payment hoga.`);
+        } else {
+          alert('Ledger load nahi ho paya: ' + (e?.error?.error ?? 'unknown'));
+        }
+      }
+    });
+  }
 
   // ===== India location helpers (Add Party form) =====
   indiaStates = INDIAN_STATES;

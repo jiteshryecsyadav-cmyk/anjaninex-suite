@@ -263,6 +263,10 @@ try
     builder.Services.AddScoped<Namokara.Api.Modules.Reports.Services.IReportsAggregateService,
         Namokara.Api.Modules.Reports.Services.ReportsAggregateService>();
 
+    // Import & Migration module — bulk-import purana data (Tally/Busy/Marg/Excel)
+    builder.Services.AddScoped<Namokara.Api.Modules.Migration.Services.IMigrationService,
+        Namokara.Api.Modules.Migration.Services.MigrationService>();
+
     // Suppliers module
     builder.Services.AddScoped<Namokara.Api.Modules.Suppliers.Services.ISupplierService,
         Namokara.Api.Modules.Suppliers.Services.SupplierService>();

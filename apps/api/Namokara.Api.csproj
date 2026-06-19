@@ -64,6 +64,9 @@
     <!-- File storage -->
     <PackageReference Include="Minio" Version="6.0.3" />
 
+    <!-- Excel import/export (Import & Migration feature) — MIT, works on .NET 8 Linux -->
+    <PackageReference Include="ClosedXML" Version="0.104.2" />
+
     <!-- Misc -->
     <PackageReference Include="Mapster" Version="7.4.0" />
     <PackageReference Include="FluentValidation.AspNetCore" Version="11.3.0" />

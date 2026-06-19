@@ -68,6 +68,12 @@ export const routes: Routes = [
         loadComponent: () => import('./modules/team/team.component').then(m => m.TeamComponent)
       },
       {
+        // Import & Migration — naye customer ka purana data bulk import (5 tabs).
+        path: 'migration',
+        canActivate: [requirePermission('trading.party.view.firm')],
+        loadComponent: () => import('./modules/migration/migration.component').then(m => m.MigrationComponent)
+      },
+      {
         // Core Master list — saare contacts ek jagah (Trading + AD + HR).
         path: 'core-master',
         loadComponent: () => import('./modules/core-master/core-master-list.component').then(m => m.CoreMasterListComponent)

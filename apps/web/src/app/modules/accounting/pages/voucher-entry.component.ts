@@ -213,15 +213,23 @@ interface LineRow {
                     @if (v.narration) {
                       <div class="text-gray-500 mt-1 truncate">{{ v.narration }}</div>
                     }
-                    <div class="flex gap-2 mt-2 pt-2 border-t border-[#f0e6ff]">
-                      <button (click)="startEdit(v.id)"
-                              class="flex-1 px-2 py-1 rounded bg-[#f0e6ff] text-[#5c1a8b] font-bold hover:bg-[#ddc8f5]">
-                        ✏️ Edit
-                      </button>
-                      <button (click)="deleteVoucher(v.id, v.voucherNo)"
-                              class="flex-1 px-2 py-1 rounded bg-red-50 text-red-600 font-bold hover:bg-red-100">
-                        🗑 Delete
-                      </button>
+                    <div class="flex gap-2 mt-2 pt-2 border-t border-[#f0e6ff] items-center">
+                      @if (isAutoPosted(v)) {
+                        <!-- Auto-posted (bill/payment/hr se) — yahan edit/delete band, warna source doc se accounting desync ho jaayega -->
+                        <span class="flex-1 px-2 py-1 rounded bg-amber-50 text-amber-700 font-bold text-center text-[10px] uppercase tracking-wide"
+                              [title]="'Auto-posted from ' + v.sourceModule + ' — edit/delete source document me karein'">
+                          🔒 Auto ({{ v.sourceModule }})
+                        </span>
+                      } @else {
+                        <button (click)="startEdit(v.id)"
+                                class="flex-1 px-2 py-1 rounded bg-[#f0e6ff] text-[#5c1a8b] font-bold hover:bg-[#ddc8f5]">
+                          ✏️ Edit
+                        </button>
+                        <button (click)="deleteVoucher(v.id, v.voucherNo)"
+                                class="flex-1 px-2 py-1 rounded bg-red-50 text-red-600 font-bold hover:bg-red-100">
+                          🗑 Delete
+                        </button>
+                      }
                     </div>
                   </div>
                 }
@@ -307,6 +315,13 @@ export class VoucherEntryComponent {
     this.error.set('');
     this.editingId.set(null);
     this.editingNo.set('');
+  }
+
+  /** Auto-posted vouchers (bill/payment/hr se) ko manual edit/delete se bachao —
+   *  warna source document ke saath accounting desync ho jaayegi. Manual vouchers
+   *  ka sourceModule 'accounting' (ya khaali) hota hai → wo editable rehte hain. */
+  isAutoPosted(v: VoucherListItem): boolean {
+    return !!v.sourceModule && v.sourceModule !== 'accounting';
   }
 
   // ===== Edit voucher =====

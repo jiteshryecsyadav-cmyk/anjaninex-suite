@@ -1688,6 +1688,9 @@ export class OrderEntryComponent {
         this.supplierOrderNo = o.supplierOrderNo || '';
         this.paymentTerms = o.paymentTerms || '';
         this.orderStatus = o.status || 'pending';
+        // Transporter restore (warna edit par blank ho jaata tha aur re-save par null chala jaata tha)
+        this.transporterId = o.transporterId || '';
+        this.syncTransporterName();
         {
           const n = o.notes || '';
           const insM = n.match(/Insurance:\s*₹?([\d.]+)/);

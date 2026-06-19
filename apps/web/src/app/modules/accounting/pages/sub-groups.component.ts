@@ -58,6 +58,7 @@ import { BackButtonComponent } from '../../../shared/back-button.component';
                   <td class="px-4 py-2 text-right">{{ s.ledgerCount }}</td>
                   <td class="px-4 py-2 text-center">
                     @if (!s.isSystem) {
+                      <button (click)="edit(s)" class="text-[#5c1a8b] text-xs hover:underline mr-2">✏️ Edit</button>
                       <button (click)="del(s.id)" class="text-red-600 text-xs hover:underline">Delete</button>
                     } @else {
                       <span class="text-xs text-gray-400">System</span>
@@ -73,7 +74,7 @@ import { BackButtonComponent } from '../../../shared/back-button.component';
       @if (showForm()) {
         <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" (click)="closeForm()">
           <div class="bg-white rounded-2xl p-6 w-full max-w-md" (click)="$event.stopPropagation()">
-            <h3 class="font-display font-bold text-lg text-[#5c1a8b] mb-4">New Sub Group</h3>
+            <h3 class="font-display font-bold text-lg text-[#5c1a8b] mb-4">{{ editingId() ? 'Edit Sub Group' : 'New Sub Group' }}</h3>
             <form [formGroup]="form" (ngSubmit)="save()" class="flex flex-col gap-3">
               <label class="text-xs font-bold text-[#6b3fa0] uppercase">Parent Group *</label>
               <select formControlName="groupId" class="input">
@@ -90,7 +91,7 @@ import { BackButtonComponent } from '../../../shared/back-button.component';
               <div class="flex justify-end gap-2 mt-2">
                 <button type="button" (click)="closeForm()" class="px-4 py-2 border border-gray-300 rounded text-sm">Cancel</button>
                 <button type="submit" class="btn-primary" [disabled]="form.invalid || saving()">
-                  {{ saving() ? 'Saving…' : 'Create' }}
+                  {{ saving() ? 'Saving…' : (editingId() ? 'Update' : 'Create') }}
                 </button>
               </div>
             </form>
@@ -109,6 +110,7 @@ export class SubGroupsComponent {
   loading = signal(true);
   saving = signal(false);
   showForm = signal(false);
+  editingId = signal<string | null>(null);
   error = signal('');
 
   form = this.fb.nonNullable.group({
@@ -129,11 +131,22 @@ export class SubGroupsComponent {
     });
   }
 
+  edit(s: SubGroup) {
+    if (s.isSystem) return;   // system sub-groups locked
+    this.editingId.set(s.id);
+    this.form.patchValue({ groupId: s.groupId, name: s.name });
+    this.showForm.set(true);
+  }
+
   save() {
     if (this.form.invalid) return;
     this.saving.set(true);
     this.error.set('');
-    this.svc.createSubGroup(this.form.getRawValue()).subscribe({
+    const v = this.form.getRawValue();
+    const obs = this.editingId()
+      ? this.svc.updateSubGroup(this.editingId()!, { groupId: v.groupId, name: v.name })
+      : this.svc.createSubGroup(v);
+    obs.subscribe({
       next: () => { this.load(); this.closeForm(); },
       error: (e) => {
         this.error.set(e?.error?.error ?? 'Failed');
@@ -144,6 +157,7 @@ export class SubGroupsComponent {
 
   closeForm() {
     this.showForm.set(false);
+    this.editingId.set(null);
     this.form.reset({ groupId: '', name: '' });
     this.saving.set(false);
     this.error.set('');

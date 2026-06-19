@@ -12,7 +12,8 @@ public record VoucherLineDto(Guid LedgerId, string LedgerName, string DebitCredi
 
 public record VoucherListItemDto(
     Guid Id, string VoucherType, string VoucherNo, DateOnly VoucherDate,
-    decimal TotalAmount, string? Narration, int LineCount, string CreatedBy);
+    decimal TotalAmount, string? Narration, int LineCount, string CreatedBy,
+    string? SourceModule = null);  // auto-posted (bill/payment/hr) vouchers ko UI me lock karne ke liye
 
 public record VoucherDetailDto(
     Guid Id, string VoucherType, string VoucherNo, DateOnly VoucherDate,
@@ -77,7 +78,8 @@ public class VoucherService : IVoucherService
                 v.Id, v.VoucherType, v.VoucherNo, v.VoucherDate,
                 v.TotalAmount, v.Narration,
                 LineCount = v.Lines.Count,
-                v.CreatedBy
+                v.CreatedBy,
+                v.SourceModule
             })
             .ToListAsync();
 
@@ -90,7 +92,8 @@ public class VoucherService : IVoucherService
         var items = rawItems.Select(r => new VoucherListItemDto(
             r.Id, r.VoucherType, r.VoucherNo, r.VoucherDate,
             r.TotalAmount, r.Narration, r.LineCount,
-            creators.GetValueOrDefault(r.CreatedBy, "—"))).ToList();
+            creators.GetValueOrDefault(r.CreatedBy, "—"),
+            r.SourceModule)).ToList();
 
         return (items, total);
     }
@@ -197,6 +200,7 @@ public class VoucherService : IVoucherService
                 .Include(v => v.Lines)
                 .SingleAsync(v => v.Id == id);
 
+            voucher.VoucherType = dto.VoucherType;   // type change ab save hota hai (pehle drop ho jaata tha)
             voucher.VoucherDate = dto.VoucherDate;
             voucher.Narration = dto.Narration;
             voucher.TotalAmount = dr;

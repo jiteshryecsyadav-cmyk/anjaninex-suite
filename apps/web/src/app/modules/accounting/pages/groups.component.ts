@@ -71,6 +71,7 @@ import { BackButtonComponent } from '../../../shared/back-button.component';
                   <td class="px-4 py-2 text-right">{{ g.ledgerCount }}</td>
                   <td class="px-4 py-2 text-center">
                     @if (!g.isSystem) {
+                      <button (click)="edit(g)" class="text-[#5c1a8b] text-xs hover:underline mr-2">✏️ Edit</button>
                       <button (click)="del(g.id)" class="text-red-600 text-xs hover:underline">Delete</button>
                     } @else {
                       <span class="text-xs text-gray-400">System</span>
@@ -86,7 +87,7 @@ import { BackButtonComponent } from '../../../shared/back-button.component';
       @if (showForm()) {
         <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" (click)="closeForm()">
           <div class="bg-white rounded-2xl p-6 w-full max-w-md" (click)="$event.stopPropagation()">
-            <h3 class="font-display font-bold text-lg text-[#5c1a8b] mb-4">New Group</h3>
+            <h3 class="font-display font-bold text-lg text-[#5c1a8b] mb-4">{{ editingId() ? 'Edit Group' : 'New Group' }}</h3>
             <form [formGroup]="form" (ngSubmit)="save()" class="flex flex-col gap-3">
               <label class="text-xs font-bold text-[#6b3fa0] uppercase">Under Head *</label>
               <select formControlName="headId" class="input">
@@ -103,7 +104,7 @@ import { BackButtonComponent } from '../../../shared/back-button.component';
               <div class="flex justify-end gap-2 mt-2">
                 <button type="button" (click)="closeForm()" class="px-4 py-2 border border-gray-300 rounded text-sm">Cancel</button>
                 <button type="submit" class="btn-primary" [disabled]="form.invalid || saving()">
-                  {{ saving() ? 'Saving…' : 'Create' }}
+                  {{ saving() ? 'Saving…' : (editingId() ? 'Update' : 'Create') }}
                 </button>
               </div>
             </form>
@@ -123,6 +124,7 @@ export class AccountGroupsComponent {
   loading = signal(true);
   saving = signal(false);
   showForm = signal(false);
+  editingId = signal<string | null>(null);
   error = signal('');
   filterHead = '';
 
@@ -145,11 +147,22 @@ export class AccountGroupsComponent {
     });
   }
 
+  edit(g: AccountGroup) {
+    if (g.isSystem) return;   // system groups locked
+    this.editingId.set(g.id);
+    this.form.patchValue({ headId: g.headId, name: g.name });
+    this.showForm.set(true);
+  }
+
   save() {
     if (this.form.invalid) return;
     this.saving.set(true);
     this.error.set('');
-    this.svc.createGroup(this.form.getRawValue()).subscribe({
+    const v = this.form.getRawValue();
+    const obs = this.editingId()
+      ? this.svc.updateGroup(this.editingId()!, { headId: v.headId, name: v.name })
+      : this.svc.createGroup(v);
+    obs.subscribe({
       next: () => { this.load(); this.closeForm(); },
       error: (e) => {
         this.error.set(e?.error?.error ?? 'Failed');
@@ -160,6 +173,7 @@ export class AccountGroupsComponent {
 
   closeForm() {
     this.showForm.set(false);
+    this.editingId.set(null);
     this.form.reset({ headId: '', name: '' });
     this.saving.set(false);
     this.error.set('');

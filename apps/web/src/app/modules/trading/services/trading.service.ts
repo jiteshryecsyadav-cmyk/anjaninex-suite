@@ -119,6 +119,10 @@ export interface BillDetail extends BillListItem {
   roundOff: number;
   voucherNo: string | null;
   notes: string | null;
+  // e-Way / transporter / LR — DB columns (Bill entity); Get ab seedha lautata hai
+  ewayBillDate?: string | null;
+  transporterId?: string | null;
+  lrDate?: string | null;
   lines: BillLine[];
 }
 

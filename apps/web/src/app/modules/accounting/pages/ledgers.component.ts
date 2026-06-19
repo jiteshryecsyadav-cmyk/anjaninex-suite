@@ -153,6 +153,9 @@ import { LedgerStatementComponent } from '../components/ledger-statement.compone
               <label class="text-xs font-bold text-[#6b3fa0] uppercase">Ledger Name *</label>
               <input formControlName="name" class="input" placeholder="e.g., HDFC Bank — 5678">
 
+              <label class="text-xs font-bold text-[#6b3fa0] uppercase">Code</label>
+              <input formControlName="code" class="input" placeholder="e.g., 1001 (optional)">
+
               <label class="text-xs font-bold text-[#6b3fa0] uppercase">Sub Group *</label>
               <select formControlName="subGroupId" class="input">
                 <option value="">Select sub group...</option>
@@ -174,6 +177,11 @@ import { LedgerStatementComponent } from '../components/ledger-statement.compone
                   </select>
                 </div>
               </div>
+
+              <label class="flex items-center gap-2 text-sm font-semibold text-[#6b3fa0] cursor-pointer select-none">
+                <input formControlName="isActive" type="checkbox" class="w-4 h-4">
+                Active (uncheck to deactivate / soft-delete; check to reactivate)
+              </label>
 
               @if (error()) {
                 <div class="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded text-sm">
@@ -228,8 +236,11 @@ export class LedgersComponent {
   form = this.fb.nonNullable.group({
     subGroupId: ['', Validators.required],
     name: ['', [Validators.required, Validators.minLength(2)]],
+    code: [''],                          // C3 — existing Code field ab editable
+    contactId: [''],                     // C1 — party link carry-through (hidden), warna edit par unlink ho jaata tha
     openingBalance: [0],
-    openingType: ['Dr']
+    openingType: ['Dr'],
+    isActive: [true]                     // C2 — inactive (soft-deleted) ledger ko wapas active kar sakein
   });
 
   ngOnInit() {
@@ -263,8 +274,11 @@ export class LedgersComponent {
     this.form.patchValue({
       subGroupId: l.subGroupId,
       name: l.name,
+      code: l.code || '',
+      contactId: l.contactId || '',   // existing party link carry karo — save par wipe na ho
       openingBalance: l.openingBalance,
-      openingType: l.openingType
+      openingType: l.openingType,
+      isActive: l.isActive
     });
     this.showForm.set(true);
   }
@@ -274,7 +288,17 @@ export class LedgersComponent {
     this.saving.set(true);
     this.error.set('');
 
-    const data = this.form.getRawValue();
+    const raw = this.form.getRawValue();
+    // Empty strings ko undefined karo — backend me contactId Guid? hai (khaali "" bind fail karega).
+    const data: any = {
+      subGroupId: raw.subGroupId,
+      name: raw.name,
+      code: raw.code || undefined,
+      contactId: raw.contactId || undefined,   // existing party link carry-through (C1)
+      openingBalance: raw.openingBalance,
+      openingType: raw.openingType,
+      isActive: raw.isActive
+    };
     const obs = this.editingId()
       ? this.svc.updateLedger(this.editingId()!, data)
       : this.svc.createLedger(data);
@@ -294,7 +318,7 @@ export class LedgersComponent {
   closeForm() {
     this.showForm.set(false);
     this.editingId.set(null);
-    this.form.reset({ subGroupId: '', name: '', openingBalance: 0, openingType: 'Dr' });
+    this.form.reset({ subGroupId: '', name: '', code: '', contactId: '', openingBalance: 0, openingType: 'Dr', isActive: true });
     this.saving.set(false);
     this.error.set('');
   }

@@ -73,6 +73,7 @@ export interface VoucherListItem {
   narration: string | null;
   lineCount: number;
   createdBy: string;
+  sourceModule?: string | null;   // auto-posted (bill/payment/hr) vouchers ko UI me lock karne ke liye
 }
 
 export interface VoucherDetail extends VoucherListItem {
@@ -175,6 +176,9 @@ export class AccountingService {
   createGroup(data: { headId: string; name: string; code?: string }) {
     return this.http.post<AccountGroup>(`${this.base}/groups`, data);
   }
+  updateGroup(id: string, data: { headId: string; name: string }) {
+    return this.http.put<AccountGroup>(`${this.base}/groups/${id}`, data);
+  }
   deleteGroup(id: string) {
     return this.http.delete(`${this.base}/groups/${id}`);
   }
@@ -186,6 +190,9 @@ export class AccountingService {
   }
   createSubGroup(data: { groupId: string; name: string; code?: string }) {
     return this.http.post<SubGroup>(`${this.base}/sub-groups`, data);
+  }
+  updateSubGroup(id: string, data: { groupId: string; name: string }) {
+    return this.http.put<SubGroup>(`${this.base}/sub-groups/${id}`, data);
   }
   deleteSubGroup(id: string) {
     return this.http.delete(`${this.base}/sub-groups/${id}`);

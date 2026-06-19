@@ -142,6 +142,10 @@ interface ReturnRow {
             </div>
           </div>
           <div>
+            <label class="lbl">TRANSPORT NAME</label>
+            <input [(ngModel)]="transport" type="text" placeholder="Transporter / Courier name" class="ip">
+          </div>
+          <div>
             <label class="lbl">TRANSPORT / LR NO.</label>
             <input [(ngModel)]="lrNo" type="text" placeholder="LR/Courier No." class="ip">
           </div>
@@ -914,6 +918,7 @@ export class GrEntryComponent {
       this.svc.getGoodsReturn(idParam).subscribe({
         next: (gr) => {
           if (gr.grNo) this.realGrNo.set(gr.grNo);   // show real GR number, not /0001 placeholder
+          this.grDate = gr.grDate || todayLocal();   // restore GR date (warna edit par aaj ki date reset ho jaati thi)
           this.supplierId = gr.supplierPartyId;
           this.buyerId = gr.buyerPartyId || '';
           this.reason = gr.reason || '';
@@ -1183,7 +1188,7 @@ export class GrEntryComponent {
       supplierPartyId: this.supplierId,
       buyerPartyId: this.buyerId || null,
       originalBillId: this.originalBillId || null,
-      transport: undefined,
+      transport: this.transport || undefined,
       lrNo: this.lrNo || undefined,
       reason: this.reason || undefined,
       remark: this.remark || undefined,

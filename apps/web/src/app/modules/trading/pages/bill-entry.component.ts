@@ -2164,14 +2164,14 @@ export class BillEntryComponent {
           // Supplier bill no — pehle DTO se (sahi source), warna notes se regex (legacy)
           const supBillMatch = notes.match(/Supplier Bill:\s*([^\n|]+)/);
           this.supplierBillNo = (b.supplierBillNo || (supBillMatch ? supBillMatch[1].trim() : '')) ?? '';
-          const transMatch = notes.match(/Transporter:\s*([^\n|]+)/);
-          this.transporter = transMatch ? transMatch[1].trim() : '';
-          const lrMatch = notes.match(/LR:\s*([^\s\(|]+)\s*\(?([\d-]*)\)?/);
-          this.lrNo = lrMatch ? lrMatch[1].trim() : '';
-          this.lrDate = lrMatch && lrMatch[2] ? lrMatch[2].trim() : '';
-          // E-Way bill no/date — structured fields from the loaded bill (if present)
-          this.ewayBillNo = (b as any).ewayBillNo || '';
-          this.ewayBillDate = (b as any).ewayBillDate || '';
+          // e-Way / transporter / LR — ab DB columns se SEEDHE (notes-regex scraping nahi).
+          // Backend Get ab in fields ko BillDetailDto me lautata hai (B3).
+          this.ewayBillNo = b.ewayBillNo || '';
+          this.ewayBillDate = b.ewayBillDate || '';
+          this.transporterId = b.transporterId || '';
+          this.lrNo = b.lrNo || '';
+          this.lrDate = b.lrDate || '';
+          this.syncTransporterName();
           // CD: "CD 2% = ₹500.00"
           const cdMatch = notes.match(/CD\s+([\d.]+)%/);
           if (cdMatch) {
@@ -2191,7 +2191,7 @@ export class BillEntryComponent {
             this.lines.set(b.lines.map(l => ({
               itemId: l.itemId || null,
               itemName: l.itemName,
-              description: '',
+              description: l.description || '',
               hsnSac: l.hsnSac || '',
               qty: l.qty,
               unit: l.unit || 'MTR',

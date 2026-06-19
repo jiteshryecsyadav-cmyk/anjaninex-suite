@@ -61,6 +61,20 @@ public class AccountGroupsController : AccountingControllerBase
     public async Task<IActionResult> Create([FromBody] CreateGroupDto dto)
         => Ok(await _svc.CreateGroup(dto, CurrentFirmId));
 
+    [HttpPut("{id}")]
+    [HasPermission("accounting.ledger.view.firm")]
+    public async Task<IActionResult> Update(Guid id, [FromBody] UpdateGroupDto dto)
+    {
+        try
+        {
+            return Ok(await _svc.UpdateGroup(id, dto));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { error = Namokara.Api.Common.Errors.FriendlyError.From(ex) });
+        }
+    }
+
     [HttpDelete("{id}")]
     [HasPermission("accounting.voucher.delete.branch")]
     public async Task<IActionResult> Delete(Guid id)
@@ -86,6 +100,20 @@ public class SubGroupsController : AccountingControllerBase
     [HasPermission("accounting.ledger.view.firm")]
     public async Task<IActionResult> Create([FromBody] CreateSubGroupDto dto)
         => Ok(await _svc.CreateSubGroup(dto, CurrentFirmId));
+
+    [HttpPut("{id}")]
+    [HasPermission("accounting.ledger.view.firm")]
+    public async Task<IActionResult> Update(Guid id, [FromBody] UpdateSubGroupDto dto)
+    {
+        try
+        {
+            return Ok(await _svc.UpdateSubGroup(id, dto));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { error = Namokara.Api.Common.Errors.FriendlyError.From(ex) });
+        }
+    }
 
     [HttpDelete("{id}")]
     [HasPermission("accounting.voucher.delete.branch")]

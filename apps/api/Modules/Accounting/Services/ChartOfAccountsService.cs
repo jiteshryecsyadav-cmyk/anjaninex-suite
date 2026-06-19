@@ -20,7 +20,11 @@ public record LedgerDto(
 
 public record CreateGroupDto(Guid HeadId, string Name, string? Code);
 public record CreateSubGroupDto(Guid GroupId, string Name, string? Code);
-public record CreateLedgerDto(Guid SubGroupId, string Name, string? Code, Guid? ContactId, decimal OpeningBalance, string OpeningType);
+public record CreateLedgerDto(Guid SubGroupId, string Name, string? Code, Guid? ContactId, decimal OpeningBalance, string OpeningType, bool IsActive = true);
+
+// Update DTOs — group/sub-group ke Name (+ parent) edit ke liye (D1/D2)
+public record UpdateGroupDto(Guid HeadId, string Name);
+public record UpdateSubGroupDto(Guid GroupId, string Name);
 
 // =============================================================================
 // Service interface
@@ -33,11 +37,13 @@ public interface IChartOfAccountsService
     // Groups
     Task<List<AccountGroupDto>> ListGroups(Guid? headId = null);
     Task<AccountGroupDto> CreateGroup(CreateGroupDto dto, Guid firmId);
+    Task<AccountGroupDto> UpdateGroup(Guid id, UpdateGroupDto dto);
     Task DeleteGroup(Guid id);
 
     // Sub groups
     Task<List<SubGroupDto>> ListSubGroups(Guid? groupId = null);
     Task<SubGroupDto> CreateSubGroup(CreateSubGroupDto dto, Guid firmId);
+    Task<SubGroupDto> UpdateSubGroup(Guid id, UpdateSubGroupDto dto);
     Task DeleteSubGroup(Guid id);
 
     // Ledgers
@@ -116,6 +122,23 @@ public class ChartOfAccountsService : IChartOfAccountsService
         return new AccountGroupDto(group.Id, group.HeadId, head.Name, group.Code, group.Name, group.IsSystem, 0, 0);
     }
 
+    public async Task<AccountGroupDto> UpdateGroup(Guid id, UpdateGroupDto dto)
+    {
+        var group = await _db.AccountGroups.SingleAsync(g => g.Id == id);
+        if (group.IsSystem) throw new InvalidOperationException("System groups cannot be edited");
+
+        group.Name = dto.Name;
+        group.HeadId = dto.HeadId;
+        await _db.SaveChangesAsync();
+
+        var head = await _db.AccountHeads.SingleAsync(h => h.Id == group.HeadId);
+        var subCount = await _db.SubGroups.CountAsync(s => s.GroupId == id);
+        var ledgerCount = await _db.Ledgers
+            .Where(l => l.SubGroup != null && l.SubGroup.GroupId == id)
+            .CountAsync();
+        return new AccountGroupDto(group.Id, group.HeadId, head.Name, group.Code, group.Name, group.IsSystem, subCount, ledgerCount);
+    }
+
     public async Task DeleteGroup(Guid id)
     {
         var group = await _db.AccountGroups.SingleAsync(g => g.Id == id);
@@ -171,6 +194,23 @@ public class ChartOfAccountsService : IChartOfAccountsService
 
         return new SubGroupDto(sg.Id, sg.GroupId, group.Name, group.Head?.Name ?? "",
             sg.Code, sg.Name, sg.IsSystem, 0);
+    }
+
+    public async Task<SubGroupDto> UpdateSubGroup(Guid id, UpdateSubGroupDto dto)
+    {
+        var sg = await _db.SubGroups.SingleAsync(s => s.Id == id);
+        if (sg.IsSystem) throw new InvalidOperationException("System sub-groups cannot be edited");
+
+        sg.Name = dto.Name;
+        sg.GroupId = dto.GroupId;
+        await _db.SaveChangesAsync();
+
+        var group = await _db.AccountGroups
+            .Include(g => g.Head)
+            .SingleAsync(g => g.Id == sg.GroupId);
+        var ledgerCount = await _db.Ledgers.CountAsync(l => l.SubGroupId == id);
+        return new SubGroupDto(sg.Id, sg.GroupId, group.Name, group.Head?.Name ?? "",
+            sg.Code, sg.Name, sg.IsSystem, ledgerCount);
     }
 
     public async Task DeleteSubGroup(Guid id)
@@ -253,13 +293,13 @@ public class ChartOfAccountsService : IChartOfAccountsService
             ContactId = dto.ContactId,
             OpeningBalance = dto.OpeningBalance,
             OpeningType = dto.OpeningType,
-            IsActive = true,
+            IsActive = dto.IsActive,
             CreatedAt = DateTimeOffset.UtcNow,
             UpdatedAt = DateTimeOffset.UtcNow
         };
         _db.Ledgers.Add(ledger);
         await _db.SaveChangesAsync();
-        return (await GetLedger(ledger.Id))!;
+        return await BuildLedgerDto(ledger.Id);
     }
 
     public async Task<LedgerDto> UpdateLedger(Guid id, CreateLedgerDto dto)
@@ -268,12 +308,53 @@ public class ChartOfAccountsService : IChartOfAccountsService
         ledger.SubGroupId = dto.SubGroupId;
         ledger.Name = dto.Name;
         ledger.Code = dto.Code;
-        ledger.ContactId = dto.ContactId;
+        ledger.ContactId = dto.ContactId;   // existing party link carry-through (frontend hidden field se aata hai)
         ledger.OpeningBalance = dto.OpeningBalance;
         ledger.OpeningType = dto.OpeningType;
+        ledger.IsActive = dto.IsActive;     // inactive ledger ko wapas active (ya active ko inactive) kar sakein
         ledger.UpdatedAt = DateTimeOffset.UtcNow;
         await _db.SaveChangesAsync();
-        return (await GetLedger(id))!;
+        return await BuildLedgerDto(id);
+    }
+
+    /// <summary>
+    /// LedgerDto banata hai ek single ledger ke liye — ListLedgers ke IsActive filter se SWATANTRA.
+    /// (Update inactive ledger ko bhi sahi DTO lautaye, NRE na ho.)
+    /// </summary>
+    private async Task<LedgerDto> BuildLedgerDto(Guid id)
+    {
+        var l = await _db.Ledgers
+            .Include(x => x.SubGroup)!.ThenInclude(s => s!.Group)!.ThenInclude(g => g!.Head)
+            .SingleAsync(x => x.Id == id);
+
+        var bal = await _db.VoucherLines
+            .Where(vl => vl.LedgerId == id)
+            .GroupBy(vl => vl.LedgerId)
+            .Select(g => new
+            {
+                Dr = g.Where(x => x.DebitCredit == "Dr").Sum(x => x.Amount),
+                Cr = g.Where(x => x.DebitCredit == "Cr").Sum(x => x.Amount)
+            })
+            .FirstOrDefaultAsync();
+
+        string? contactName = null;
+        if (l.ContactId.HasValue)
+            contactName = await _db.Contacts.Where(c => c.Id == l.ContactId.Value)
+                .Select(c => c.DisplayName).FirstOrDefaultAsync();
+
+        decimal currentBal = l.OpeningType == "Dr" ? l.OpeningBalance : -l.OpeningBalance;
+        if (bal != null) currentBal += (bal.Dr - bal.Cr);
+
+        return new LedgerDto(
+            l.Id, l.SubGroupId,
+            l.SubGroup?.Name ?? "",
+            l.SubGroup?.Group?.Name ?? "",
+            l.SubGroup?.Group?.Head?.Name ?? "",
+            l.ContactId, contactName,
+            l.Code, l.Name,
+            l.OpeningBalance, l.OpeningType,
+            Math.Abs(currentBal), currentBal >= 0 ? "Dr" : "Cr",
+            l.IsActive);
     }
 
     public async Task DeleteLedger(Guid id)

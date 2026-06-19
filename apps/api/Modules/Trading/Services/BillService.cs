@@ -81,7 +81,13 @@ public record BillDetailDto(
     string? BuyerName = null,
     string? BuyerGst = null,
     string? PartyGst = null,      // SUPPLIER ka GST
-    string? SupplierBillNo = null);  // supplier ka invoice no — edit me dikhane ke liye
+    string? SupplierBillNo = null,  // supplier ka invoice no — edit me dikhane ke liye
+    // Transport / E-Way — DB columns (Bill entity). Edit form ab notes-regex ke bajaye seedhe inhe load karta hai.
+    string? EwayBillNo = null,
+    DateOnly? EwayBillDate = null,
+    Guid? TransporterId = null,
+    string? LrNo = null,
+    DateOnly? LrDate = null);
 
 public record CreateBillDto(
     string BillType,
@@ -268,7 +274,12 @@ public class BillService : IBillService
             buyer?.Name,
             buyer?.GstNumber,
             party?.GstNumber,
-            bill.SupplierBillNo);
+            bill.SupplierBillNo,
+            bill.EwayBillNo,
+            bill.EwayBillDate,
+            bill.TransporterId,
+            bill.LrNo,
+            bill.LrDate);
     }
 
     public async Task<BillDetailDto> Create(CreateBillDto dto, Guid firmId, Guid branchId, Guid userId)

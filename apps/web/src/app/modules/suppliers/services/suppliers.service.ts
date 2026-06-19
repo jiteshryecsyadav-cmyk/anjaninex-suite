@@ -65,6 +65,22 @@ export interface SupplierDetail extends SupplierListItem {
   notes: string | null;
   photos: SupplierPhoto[];
   rates: SupplierRate[];
+  // Form gap-fill (migration 49)
+  website: string | null;
+  ownerName: string | null;
+  gpsLocation: string | null;
+  rateMin: number | null;
+  rateMax: number | null;
+}
+
+// Live duplicate-check result.
+export interface DuplicateMatch {
+  id: string;
+  contactId: string;
+  displayName: string;
+  gst: string | null;
+  phone: string | null;
+  matchOn: string;
 }
 
 export interface CreateSupplier {
@@ -86,6 +102,12 @@ export interface CreateSupplier {
   minOrderValue?: number;
   deliveryLeadDays?: number;
   notes?: string;
+  // Form gap-fill (migration 49)
+  website?: string;
+  ownerName?: string;
+  gpsLocation?: string;
+  rateMin?: number | null;
+  rateMax?: number | null;
 }
 
 export interface LinkableContact {
@@ -121,6 +143,11 @@ export class SuppliersService {
   create(data: CreateSupplier) { return this.http.post<SupplierDetail>(this.base, data); }
   update(id: string, data: CreateSupplier) { return this.http.put<SupplierDetail>(`${this.base}/${id}`, data); }
   delete(id: string) { return this.http.delete(`${this.base}/${id}`); }
+
+  // Live duplicate-check on GST / mobile (debounced from the form).
+  checkDuplicate(data: { gst?: string; phone?: string; excludeId?: string }) {
+    return this.http.post<DuplicateMatch[]>(`${this.base}/check-duplicate`, data);
+  }
 
   listCategories() { return this.http.get<SupplierCategory[]>(`${this.base}/categories`); }
   createCategory(name: string) { return this.http.post<SupplierCategory>(`${this.base}/categories`, { name }); }

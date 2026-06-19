@@ -32,6 +32,23 @@ export interface BuyerDetail extends BuyerListItem {
   targetCustomer: string | null;
   waPhone: string | null;
   notes: string | null;
+  // Form gap-fill (migration 49)
+  ownerName: string | null;
+  altPhone: string | null;
+  website: string | null;
+  instagram: string | null;
+  isSupplier: boolean;
+  gpsLocation: string | null;
+}
+
+// Live duplicate-check result.
+export interface BuyerDuplicateMatch {
+  id: string;
+  contactId: string;
+  displayName: string;
+  gst: string | null;
+  phone: string | null;
+  matchOn: string;
 }
 
 export interface CreateBuyer {
@@ -57,6 +74,13 @@ export interface CreateBuyer {
   targetCustomer?: string;
   waPhone?: string;
   notes?: string;
+  // Form gap-fill (migration 49)
+  ownerName?: string;
+  altPhone?: string;
+  website?: string;
+  instagram?: string;
+  isSupplier?: boolean;
+  gpsLocation?: string;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -73,4 +97,9 @@ export class BuyersService {
   create(data: CreateBuyer) { return this.http.post<BuyerDetail>(this.base, data); }
   update(id: string, data: CreateBuyer) { return this.http.put<BuyerDetail>(`${this.base}/${id}`, data); }
   delete(id: string) { return this.http.delete(`${this.base}/${id}`); }
+
+  // Live duplicate-check on GST / mobile (debounced from the form).
+  checkDuplicate(data: { gst?: string; phone?: string; excludeId?: string }) {
+    return this.http.post<BuyerDuplicateMatch[]>(`${this.base}/check-duplicate`, data);
+  }
 }

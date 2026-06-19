@@ -50,6 +50,19 @@ public class SupplierProfile
 
     public int? DeliveryLeadDays { get; set; }
     public string? Notes { get; set; }
+
+    // Rate range (migration 31). Surfaced in the form (Min/Max ₹ + RateUnit above).
+    [Column(TypeName = "numeric(12,2)")]
+    public decimal? RateMin { get; set; }
+
+    [Column(TypeName = "numeric(12,2)")]
+    public decimal? RateMax { get; set; }
+
+    // Form gap-fill (migration 49)
+    public string? Website { get; set; }
+    public string? OwnerName { get; set; }     // person/proprietor (separate from contact.LegalName)
+    public string? GpsLocation { get; set; }   // "lat, long"
+
     public bool IsActive { get; set; } = true;
 
     public DateTimeOffset CreatedAt { get; set; }
@@ -97,6 +110,15 @@ public class BuyerProfile
 
     public string? WaPhone { get; set; }
     public string? Notes { get; set; }
+
+    // Form gap-fill (migration 49)
+    public string? OwnerName { get; set; }     // contact person
+    public string? AltPhone { get; set; }      // alternate mobile
+    public string? Website { get; set; }
+    public string? Instagram { get; set; }     // instagram / social handle
+    public bool IsSupplier { get; set; }       // dual role — buyer also supplies
+    public string? GpsLocation { get; set; }   // "lat, long"
+
     public bool IsActive { get; set; } = true;
 
     public DateTimeOffset CreatedAt { get; set; }

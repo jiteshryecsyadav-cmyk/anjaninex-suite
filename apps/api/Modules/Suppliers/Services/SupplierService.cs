@@ -64,7 +64,12 @@ public record SupplierDetailDto(
     List<SupplierPhotoDto> Photos,
     List<SupplierRateDto> Rates,
     bool IsActive,
-    string? WaBuyer = null);
+    string? WaBuyer = null,
+    string? Website = null,
+    string? OwnerName = null,
+    string? GpsLocation = null,
+    decimal? RateMin = null,
+    decimal? RateMax = null);
 
 public record CreateSupplierDto(
     string DisplayName,
@@ -84,13 +89,21 @@ public record CreateSupplierDto(
     decimal? MinOrderValue,
     int? DeliveryLeadDays,
     string? Notes,
-    string? WaBuyer = null);
+    string? WaBuyer = null,
+    string? Website = null,
+    string? OwnerName = null,
+    string? GpsLocation = null,
+    decimal? RateMin = null,
+    decimal? RateMax = null);
 
 public record AddPhotoDto(string StorageUrl, string? Title, decimal? Rate, string? RateUnit);
 public record AddRateDto(Guid? CategoryId, string? CategoryName, decimal Rate, string RateUnit, decimal? MinQty);
 
 // A Core Master contact (e.g. a Trading party) that is NOT yet in the supplier directory.
 public record LinkableContactDto(Guid ContactId, string DisplayName, string? Gst, string? Phone, string? City);
+
+// Live duplicate-check result (GST / mobile typed in the form).
+public record DuplicateMatchDto(Guid Id, Guid ContactId, string DisplayName, string? Gst, string? Phone, string MatchOn);
 
 // =============================================================================
 // Service
@@ -108,6 +121,7 @@ public interface ISupplierService
     Task<SupplierDetailDto> AddFromContact(Guid contactId, Guid firmId, Guid userId);
     Task<SupplierDetailDto> Update(Guid id, CreateSupplierDto dto);
     Task Delete(Guid id);
+    Task<List<DuplicateMatchDto>> CheckDuplicate(Guid firmId, string? gst, string? phone, Guid? excludeId);
 
     Task<SupplierPhotoDto> AddPhoto(Guid supplierId, AddPhotoDto dto, Guid firmId);
     Task DeletePhoto(Guid photoId);
@@ -306,7 +320,9 @@ public class SupplierService : ISupplierService
             data.sp.BusinessType, catIds, data.sp.RateUnit,
             data.c.WaSupplier, data.sp.WaGroupId,
             data.sp.ReliabilityScore, data.sp.MinOrderValue, data.sp.DeliveryLeadDays,
-            data.sp.Notes, photos, rates, data.sp.IsActive, data.c.WaBuyer);
+            data.sp.Notes, photos, rates, data.sp.IsActive, data.c.WaBuyer,
+            data.sp.Website, data.sp.OwnerName, data.sp.GpsLocation,
+            data.sp.RateMin, data.sp.RateMax);
     }
 
     public async Task<SupplierDetailDto> Create(CreateSupplierDto dto, Guid firmId, Guid userId)
@@ -369,6 +385,11 @@ public class SupplierService : ISupplierService
                 MinOrderValue = dto.MinOrderValue,
                 DeliveryLeadDays = dto.DeliveryLeadDays,
                 Notes = dto.Notes,
+                Website = dto.Website,
+                OwnerName = dto.OwnerName,
+                GpsLocation = dto.GpsLocation,
+                RateMin = dto.RateMin,
+                RateMax = dto.RateMax,
                 IsActive = true,
                 CreatedAt = DateTimeOffset.UtcNow,
                 UpdatedAt = DateTimeOffset.UtcNow
@@ -419,6 +440,11 @@ public class SupplierService : ISupplierService
         sp.MinOrderValue = dto.MinOrderValue;
         sp.DeliveryLeadDays = dto.DeliveryLeadDays;
         sp.Notes = dto.Notes;
+        sp.Website = dto.Website;
+        sp.OwnerName = dto.OwnerName;
+        sp.GpsLocation = dto.GpsLocation;
+        sp.RateMin = dto.RateMin;
+        sp.RateMax = dto.RateMax;
         sp.UpdatedAt = DateTimeOffset.UtcNow;
 
         await _db.SaveChangesAsync();
@@ -430,6 +456,32 @@ public class SupplierService : ISupplierService
         var sp = await _db.SupplierProfiles.SingleAsync(s => s.Id == id);
         sp.IsActive = false;
         await _db.SaveChangesAsync();
+    }
+
+    // Live duplicate-check — match an existing supplier in this firm by GST or mobile.
+    // Excludes the current supplier when editing.
+    public async Task<List<DuplicateMatchDto>> CheckDuplicate(Guid firmId, string? gst, string? phone, Guid? excludeId)
+    {
+        var gstClean = string.IsNullOrWhiteSpace(gst) ? null : gst.Trim().ToUpperInvariant();
+        var phoneClean = string.IsNullOrWhiteSpace(phone) ? null : phone.Trim();
+        if (gstClean == null && phoneClean == null) return new();
+
+        var q = from sp in _db.SupplierProfiles
+                join c in _db.Contacts on sp.ContactId equals c.Id
+                where sp.FirmId == firmId && sp.IsActive
+                select new { sp, c };
+
+        if (excludeId.HasValue)
+            q = q.Where(x => x.sp.Id != excludeId.Value);
+
+        q = q.Where(x =>
+            (gstClean != null && x.c.GstNumber != null && x.c.GstNumber == gstClean)
+            || (phoneClean != null && x.c.PhonePrimary != null && x.c.PhonePrimary.Contains(phoneClean)));
+
+        var rows = await q.Take(10).ToListAsync();
+        return rows.Select(x => new DuplicateMatchDto(
+            x.sp.Id, x.c.Id, x.c.DisplayName, x.c.GstNumber, x.c.PhonePrimary,
+            (gstClean != null && x.c.GstNumber == gstClean) ? "gst" : "phone")).ToList();
     }
 
     private Contact CreateContact(CreateSupplierDto dto, Guid firmId, Guid userId)

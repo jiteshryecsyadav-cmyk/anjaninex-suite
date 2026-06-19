@@ -64,4 +64,12 @@ public class BuyersController : ControllerBase
         await _svc.Delete(id);
         return NoContent();
     }
+
+    // Live duplicate-check — buyer form GST/mobile par debounced call.
+    [HttpPost("check-duplicate")]
+    [HasPermission("suppliers.directory.view.firm")]
+    public async Task<IActionResult> CheckDuplicate([FromBody] BuyerCheckDuplicateDto dto)
+        => Ok(await _svc.CheckDuplicate(CurrentFirmId, dto.Gst, dto.Phone, dto.ExcludeId));
 }
+
+public record BuyerCheckDuplicateDto(string? Gst, string? Phone, Guid? ExcludeId);

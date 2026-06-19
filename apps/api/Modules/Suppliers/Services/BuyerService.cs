@@ -22,7 +22,10 @@ public record BuyerDetailDto(
     string? BuyerType, string? BrandName, List<Guid> CategoryIds,
     decimal? BudgetMin, decimal? BudgetMax, string BudgetUnit,
     string? OrderFrequency, string? PaymentTerms, string? QualityPref, string? TargetCustomer,
-    string? WaPhone, string? Notes, bool IsActive);
+    string? WaPhone, string? Notes, bool IsActive,
+    // Form gap-fill (migration 49)
+    string? OwnerName = null, string? AltPhone = null, string? Website = null,
+    string? Instagram = null, bool IsSupplier = false, string? GpsLocation = null);
 
 public record CreateBuyerDto(
     string DisplayName, string? LegalName, string? Phone, string? Email,
@@ -30,7 +33,13 @@ public record CreateBuyerDto(
     string? BuyerType, string? BrandName, List<Guid> CategoryIds,
     decimal? BudgetMin, decimal? BudgetMax, string? BudgetUnit,
     string? OrderFrequency, string? PaymentTerms, string? QualityPref, string? TargetCustomer,
-    string? WaPhone, string? Notes);
+    string? WaPhone, string? Notes,
+    // Form gap-fill (migration 49)
+    string? OwnerName = null, string? AltPhone = null, string? Website = null,
+    string? Instagram = null, bool IsSupplier = false, string? GpsLocation = null);
+
+// Live duplicate-check result (GST / mobile typed in the buyer form).
+public record BuyerDuplicateMatchDto(Guid Id, Guid ContactId, string DisplayName, string? Gst, string? Phone, string MatchOn);
 
 // =============================================================================
 // Service
@@ -42,6 +51,7 @@ public interface IBuyerService
     Task<BuyerDetailDto> Create(CreateBuyerDto dto, Guid firmId, Guid userId);
     Task<BuyerDetailDto> Update(Guid id, CreateBuyerDto dto);
     Task Delete(Guid id);
+    Task<List<BuyerDuplicateMatchDto>> CheckDuplicate(Guid firmId, string? gst, string? phone, Guid? excludeId);
 }
 
 public class BuyerService : IBuyerService
@@ -92,7 +102,9 @@ public class BuyerService : IBuyerService
             row.b.BuyerType, row.b.BrandName, cats,
             row.b.BudgetMin, row.b.BudgetMax, row.b.BudgetUnit,
             row.b.OrderFrequency, row.b.PaymentTerms, row.b.QualityPref, row.b.TargetCustomer,
-            row.b.WaPhone, row.b.Notes, row.b.IsActive);
+            row.b.WaPhone, row.b.Notes, row.b.IsActive,
+            row.b.OwnerName, row.b.AltPhone, row.b.Website,
+            row.b.Instagram, row.b.IsSupplier, row.b.GpsLocation);
     }
 
     public async Task<BuyerDetailDto> Create(CreateBuyerDto dto, Guid firmId, Guid userId)
@@ -156,6 +168,12 @@ public class BuyerService : IBuyerService
                 TargetCustomer = dto.TargetCustomer,
                 WaPhone = dto.WaPhone,
                 Notes = dto.Notes,
+                OwnerName = dto.OwnerName,
+                AltPhone = dto.AltPhone,
+                Website = dto.Website,
+                Instagram = dto.Instagram,
+                IsSupplier = dto.IsSupplier,
+                GpsLocation = dto.GpsLocation,
                 IsActive = true,
                 CreatedAt = DateTimeOffset.UtcNow,
                 UpdatedAt = DateTimeOffset.UtcNow
@@ -189,6 +207,12 @@ public class BuyerService : IBuyerService
         buyer.TargetCustomer = dto.TargetCustomer;
         buyer.WaPhone = dto.WaPhone;
         buyer.Notes = dto.Notes;
+        buyer.OwnerName = dto.OwnerName;
+        buyer.AltPhone = dto.AltPhone;
+        buyer.Website = dto.Website;
+        buyer.Instagram = dto.Instagram;
+        buyer.IsSupplier = dto.IsSupplier;
+        buyer.GpsLocation = dto.GpsLocation;
         buyer.UpdatedAt = DateTimeOffset.UtcNow;
         await _db.SaveChangesAsync();
         return (await Get(id))!;
@@ -200,6 +224,32 @@ public class BuyerService : IBuyerService
         buyer.IsActive = false;
         buyer.UpdatedAt = DateTimeOffset.UtcNow;
         await _db.SaveChangesAsync();
+    }
+
+    // Live duplicate-check — match an existing buyer in this firm by GST or mobile.
+    // Excludes the current buyer when editing.
+    public async Task<List<BuyerDuplicateMatchDto>> CheckDuplicate(Guid firmId, string? gst, string? phone, Guid? excludeId)
+    {
+        var gstClean = string.IsNullOrWhiteSpace(gst) ? null : gst.Trim().ToUpperInvariant();
+        var phoneClean = NormalizePhone(phone);
+        if (gstClean == null && phoneClean == null) return new();
+
+        var q = from b in _db.BuyerProfiles
+                join c in _db.Contacts on b.ContactId equals c.Id
+                where b.FirmId == firmId && b.IsActive
+                select new { b, c };
+
+        if (excludeId.HasValue)
+            q = q.Where(x => x.b.Id != excludeId.Value);
+
+        q = q.Where(x =>
+            (gstClean != null && x.c.GstNumber != null && x.c.GstNumber == gstClean)
+            || (phoneClean != null && x.c.PhonePrimary != null && x.c.PhonePrimary.Contains(phoneClean)));
+
+        var rows = await q.Take(10).ToListAsync();
+        return rows.Select(x => new BuyerDuplicateMatchDto(
+            x.b.Id, x.c.Id, x.c.DisplayName, x.c.GstNumber, x.c.PhonePrimary,
+            (gstClean != null && x.c.GstNumber == gstClean) ? "gst" : "phone")).ToList();
     }
 
     // ---- helpers ----

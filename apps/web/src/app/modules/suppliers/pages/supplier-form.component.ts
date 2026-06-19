@@ -2,7 +2,8 @@ import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, Validators, FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { SuppliersService, SupplierCategory } from '../services/suppliers.service';
+import { SuppliersService, SupplierCategory, DuplicateMatch } from '../services/suppliers.service';
+import { debounceTime } from 'rxjs/operators';
 import { BackButtonComponent } from '../../../shared/back-button.component';
 import { SupplierCatalogComponent } from './supplier-catalog.component';
 import { INDIAN_STATES, citiesForState, matchIndiaState } from '../../../shared/india-data';
@@ -38,6 +39,25 @@ import { IndiaPincodeService } from '../../../shared/india-pincode.service';
           </div>
         }
 
+        <!-- Live duplicate-check warning -->
+        @if (duplicates().length) {
+          <div class="bg-orange-50 border border-orange-300 rounded-lg px-3 py-2 text-xs text-orange-800">
+            <div class="font-bold mb-1">⚠️ Milti-julti party pehle se directory me hai:</div>
+            <ul class="list-disc ml-5 space-y-0.5">
+              @for (d of duplicates(); track d.id) {
+                <li>
+                  <a [routerLink]="['/suppliers', d.id]" class="font-bold underline">{{ d.displayName }}</a>
+                  <span class="text-orange-600">
+                    — {{ d.matchOn === 'gst' ? 'GST' : 'Mobile' }} match
+                    @if (d.gst) { · {{ d.gst }} }
+                    @if (d.phone) { · {{ d.phone }} }
+                  </span>
+                </li>
+              }
+            </ul>
+          </div>
+        }
+
         <!-- COMMON BLOCK (Core Master / Trading / AD — same) -->
         <h3 class="font-display font-bold text-sm text-[#5c1a8b] uppercase tracking-wider">Common Details</h3>
         <div class="grid grid-cols-2 gap-3">
@@ -50,6 +70,10 @@ import { IndiaPincodeService } from '../../../shared/india-pincode.service';
             <label class="text-xs font-bold text-[#6b3fa0] uppercase">Legal Name</label>
             <input formControlName="legalName" class="input" placeholder="Parvati Export Pvt Ltd"
                    [readonly]="lockCommon()" [class.bg-gray-100]="lockCommon()">
+          </div>
+          <div>
+            <label class="text-xs font-bold text-[#6b3fa0] uppercase">Owner / Proprietor Name</label>
+            <input formControlName="ownerName" class="input" placeholder="Sampark vyakti ka naam">
           </div>
           <div>
             <label class="text-xs font-bold text-[#6b3fa0] uppercase">Phone</label>
@@ -68,6 +92,10 @@ import { IndiaPincodeService } from '../../../shared/india-pincode.service';
             <label class="text-xs font-bold text-[#6b3fa0] uppercase">Email</label>
             <input formControlName="email" type="email" class="input"
                    [readonly]="lockCommon()" [class.bg-gray-100]="lockCommon()">
+          </div>
+          <div>
+            <label class="text-xs font-bold text-[#6b3fa0] uppercase">Website</label>
+            <input formControlName="website" class="input" placeholder="https://example.com">
           </div>
           <div>
             <label class="text-xs font-bold text-[#6b3fa0] uppercase">GST Number</label>
@@ -131,6 +159,23 @@ import { IndiaPincodeService } from '../../../shared/india-pincode.service';
               <option value="trader">Trader</option>
               <option value="wholesaler">Wholesaler</option>
               <option value="broker">Broker</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- RATE RANGE -->
+        <h3 class="font-display font-bold text-sm text-[#5c1a8b] uppercase tracking-wider mt-2">Rate Range</h3>
+        <div class="grid grid-cols-3 gap-3">
+          <div><label class="text-xs font-bold text-[#6b3fa0] uppercase">Min (₹)</label>
+            <input formControlName="rateMin" type="number" min="0" class="input" placeholder="0"></div>
+          <div><label class="text-xs font-bold text-[#6b3fa0] uppercase">Max (₹)</label>
+            <input formControlName="rateMax" type="number" min="0" class="input" placeholder="0"></div>
+          <div>
+            <label class="text-xs font-bold text-[#6b3fa0] uppercase">Unit</label>
+            <select formControlName="rateUnit" class="input">
+              <option value="mtr">Per Meter</option>
+              <option value="pc">Per Piece</option>
+              <option value="kg">Per Kg</option>
             </select>
           </div>
         </div>
@@ -245,10 +290,12 @@ export class SupplierFormComponent {
   form = this.fb.nonNullable.group({
     displayName: ['', [Validators.required, Validators.minLength(2)]],
     legalName: [''],
+    ownerName: [''],
     phone: [''],
     waPhone: [''],
     waBuyer: [''],
     email: [''],
+    website: [''],
     gst: [''],
     pan: [''],
     address: [''],
@@ -256,9 +303,15 @@ export class SupplierFormComponent {
     state: [''],
     pincode: [''],
     businessType: ['manufacturer'],
+    rateMin: [null as number | null],
+    rateMax: [null as number | null],
+    rateUnit: ['mtr'],
     gpsLocation: [''],
     notes: ['']
   });
+
+  // ===== Live duplicate-check (debounced) =====
+  duplicates = signal<DuplicateMatch[]>([]);
 
   gpsLoading = signal(false);
 
@@ -287,6 +340,10 @@ export class SupplierFormComponent {
   async ngOnInit() {
     this.svc.listCategories().subscribe(c => this.categories.set(c));
 
+    // Live duplicate-check — GST ya mobile badle to ~500ms baad check karo.
+    this.form.controls.gst.valueChanges.pipe(debounceTime(500)).subscribe(() => this.runDuplicateCheck());
+    this.form.controls.phone.valueChanges.pipe(debounceTime(500)).subscribe(() => this.runDuplicateCheck());
+
     this.editingId = this.route.snapshot.paramMap.get('id');
     if (this.editingId) {
       this.svc.get(this.editingId).subscribe(s => {
@@ -294,10 +351,12 @@ export class SupplierFormComponent {
         this.form.patchValue({
           displayName: s.displayName,
           legalName: s.legalName ?? '',
+          ownerName: (s as any).ownerName ?? '',
           phone: s.phone ?? '',
           waPhone: s.waPhone ?? '',
           waBuyer: s.waBuyer ?? '',
           email: s.email ?? '',
+          website: (s as any).website ?? '',
           gst: s.gst ?? '',
           pan: s.pan ?? '',
           address: s.address ?? '',
@@ -305,6 +364,9 @@ export class SupplierFormComponent {
           state: s.state ?? '',
           pincode: s.pincode ?? '',
           businessType: s.businessType ?? 'manufacturer',
+          rateMin: (s as any).rateMin ?? null,
+          rateMax: (s as any).rateMax ?? null,
+          rateUnit: s.rateUnit ?? 'mtr',
           gpsLocation: (s as any).gpsLocation ?? '',
           notes: s.notes ?? ''
         });
@@ -313,6 +375,21 @@ export class SupplierFormComponent {
         setTimeout(() => this.onCityInput());
       });
     }
+  }
+
+  /** GST/mobile par live duplicate-check — matches mile to warning banner dikhao. */
+  private runDuplicateCheck() {
+    const gst = (this.form.value.gst || '').trim();
+    const phone = (this.form.value.phone || '').trim();
+    if (!gst && !phone) { this.duplicates.set([]); return; }
+    this.svc.checkDuplicate({
+      gst: gst || undefined,
+      phone: phone || undefined,
+      excludeId: this.editingId || undefined
+    }).subscribe({
+      next: (m) => this.duplicates.set(m),
+      error: () => this.duplicates.set([])
+    });
   }
 
   toggleCategory(id: string) {

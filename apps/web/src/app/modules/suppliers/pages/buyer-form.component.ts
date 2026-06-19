@@ -2,8 +2,9 @@ import { Component, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { BuyersService } from '../services/buyers.service';
+import { BuyersService, BuyerDuplicateMatch } from '../services/buyers.service';
 import { SuppliersService, SupplierCategory } from '../services/suppliers.service';
+import { debounceTime } from 'rxjs/operators';
 import { BackButtonComponent } from '../../../shared/back-button.component';
 import { ToastService } from '../../../shared/toast.service';
 import { INDIAN_STATES, citiesForState, matchIndiaState } from '../../../shared/india-data';
@@ -31,6 +32,25 @@ import { IndiaPincodeService } from '../../../shared/india-pincode.service';
             <a [routerLink]="['/core-master', contactId]" class="font-bold text-[#5c1a8b] underline whitespace-nowrap ml-2">🗂️ Edit in Core Master</a>
           </div>
         }
+        <!-- Live duplicate-check warning -->
+        @if (duplicates().length) {
+          <div class="bg-orange-50 border border-orange-300 rounded-lg px-3 py-2 text-xs text-orange-800">
+            <div class="font-bold mb-1">⚠️ Milti-julti party pehle se directory me hai:</div>
+            <ul class="list-disc ml-5 space-y-0.5">
+              @for (d of duplicates(); track d.id) {
+                <li>
+                  <a [routerLink]="['/suppliers/buyers', d.id]" class="font-bold underline">{{ d.displayName }}</a>
+                  <span class="text-orange-600">
+                    — {{ d.matchOn === 'gst' ? 'GST' : 'Mobile' }} match
+                    @if (d.gst) { · {{ d.gst }} }
+                    @if (d.phone) { · {{ d.phone }} }
+                  </span>
+                </li>
+              }
+            </ul>
+          </div>
+        }
+
         <!-- Basic -->
         <h3 class="font-display font-bold text-sm text-[#5c1a8b] uppercase tracking-wider">Basic Info</h3>
         <div class="grid grid-cols-2 gap-3">
@@ -40,9 +60,13 @@ import { IndiaPincodeService } from '../../../shared/india-pincode.service';
                    [readonly]="lockCommon()" [class.bg-gray-100]="lockCommon()">
           </div>
           <div>
-            <label class="lbl">Contact / Owner Name</label>
+            <label class="lbl">Legal Name</label>
             <input formControlName="legalName" class="input"
                    [readonly]="lockCommon()" [class.bg-gray-100]="lockCommon()">
+          </div>
+          <div>
+            <label class="lbl">Contact Person</label>
+            <input formControlName="ownerName" class="input" placeholder="Sampark vyakti ka naam">
           </div>
           <div>
             <label class="lbl">Buyer Type</label>
@@ -69,6 +93,10 @@ import { IndiaPincodeService } from '../../../shared/india-pincode.service';
                    [readonly]="lockCommon()" [class.bg-gray-100]="lockCommon()">
           </div>
           <div>
+            <label class="lbl">Alternate Mobile</label>
+            <input formControlName="altPhone" class="input" placeholder="Doosra mobile no.">
+          </div>
+          <div>
             <label class="lbl">Buyer WhatsApp (bot)</label>
             <input formControlName="waPhone" class="input" placeholder="Khareed ke liye WhatsApp no.">
             <p class="text-[11px] text-gray-400 mt-0.5">Both firm ho to buyer ka alag WhatsApp — bot isse pehchaanega.</p>
@@ -87,6 +115,20 @@ import { IndiaPincodeService } from '../../../shared/india-pincode.service';
             <label class="lbl">PAN</label>
             <input formControlName="pan" class="input font-mono uppercase" maxlength="10"
                    [readonly]="lockCommon()" [class.bg-gray-100]="lockCommon()">
+          </div>
+          <div>
+            <label class="lbl">Website</label>
+            <input formControlName="website" class="input" placeholder="https://example.com">
+          </div>
+          <div>
+            <label class="lbl">Instagram / Social</label>
+            <input formControlName="instagram" class="input" placeholder="@handle ya link">
+          </div>
+          <div class="col-span-2">
+            <label class="flex items-center gap-2 px-2 py-2 rounded bg-[#f7f0ff] cursor-pointer text-sm font-bold text-[#5c1a8b]">
+              <input type="checkbox" formControlName="isSupplier">
+              Yeh buyer supplier bhi hai (dual role)
+            </label>
           </div>
         </div>
 
@@ -113,6 +155,17 @@ import { IndiaPincodeService } from '../../../shared/india-pincode.service';
             <datalist id="buyCityList">
               @for (c of cityOptions(); track c) { <option [value]="c"></option> }
             </datalist>
+          </div>
+          <!-- GPS location capture (supplier-form jaisa) -->
+          <div class="col-span-2 flex items-end gap-3">
+            <div class="flex-1">
+              <label class="lbl">📍 GPS Location (optional)</label>
+              <input formControlName="gpsLocation" class="input" placeholder="Get current location se auto-fill hoga" readonly>
+            </div>
+            <button type="button" (click)="getCurrentLocation()" [disabled]="gpsLoading()"
+                    class="btn-primary whitespace-nowrap">
+              {{ gpsLoading() ? '📍 Getting…' : '📍 Get Current Location' }}
+            </button>
           </div>
         </div>
 
@@ -258,15 +311,21 @@ export class BuyerFormComponent {
   form = this.fb.nonNullable.group({
     displayName: ['', [Validators.required, Validators.minLength(2)]],
     legalName: [''],
+    ownerName: [''],
     phone: [''],
+    altPhone: [''],
     waPhone: [''],
     email: [''],
+    website: [''],
+    instagram: [''],
     gst: [''],
     pan: [''],
     address: [''],
     city: [''],
     state: [''],
     pincode: [''],
+    gpsLocation: [''],
+    isSupplier: [false],
     buyerType: [''],
     brandName: [''],
     budgetMin: [null as number | null],
@@ -279,8 +338,56 @@ export class BuyerFormComponent {
     notes: ['']
   });
 
+  // ===== GPS capture (supplier-form se same) =====
+  gpsLoading = signal(false);
+
+  /** Capture device GPS and fill lat,long into the form (https / localhost). */
+  getCurrentLocation() {
+    if (!navigator.geolocation) {
+      this.error.set('Is device/browser par GPS available nahi hai.');
+      return;
+    }
+    this.gpsLoading.set(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const lat = pos.coords.latitude.toFixed(6);
+        const lng = pos.coords.longitude.toFixed(6);
+        this.form.patchValue({ gpsLocation: `${lat}, ${lng}` });
+        this.gpsLoading.set(false);
+      },
+      () => {
+        this.error.set('Location nahi mili. Browser me location permission allow karein.');
+        this.gpsLoading.set(false);
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  }
+
+  // ===== Live duplicate-check (debounced) =====
+  duplicates = signal<BuyerDuplicateMatch[]>([]);
+
+  /** GST/mobile par live duplicate-check — matches mile to warning banner. */
+  private runDuplicateCheck() {
+    const gst = (this.form.value.gst || '').trim();
+    const phone = (this.form.value.phone || '').trim();
+    if (!gst && !phone) { this.duplicates.set([]); return; }
+    this.svc.checkDuplicate({
+      gst: gst || undefined,
+      phone: phone || undefined,
+      excludeId: this.editingId || undefined
+    }).subscribe({
+      next: (m) => this.duplicates.set(m),
+      error: () => this.duplicates.set([])
+    });
+  }
+
   ngOnInit() {
     this.supSvc.listCategories().subscribe(c => this.categories.set(c));
+
+    // Live duplicate-check — GST ya mobile badle to ~500ms baad check karo.
+    this.form.controls.gst.valueChanges.pipe(debounceTime(500)).subscribe(() => this.runDuplicateCheck());
+    this.form.controls.phone.valueChanges.pipe(debounceTime(500)).subscribe(() => this.runDuplicateCheck());
+
     this.editingId = this.route.snapshot.paramMap.get('id');
     if (this.editingId) {
       this.svc.get(this.editingId).subscribe(b => {
@@ -288,15 +395,21 @@ export class BuyerFormComponent {
         this.form.patchValue({
           displayName: b.displayName,
           legalName: b.legalName ?? '',
+          ownerName: (b as any).ownerName ?? '',
           phone: b.phone ?? '',
+          altPhone: (b as any).altPhone ?? '',
           waPhone: b.waPhone ?? '',
           email: b.email ?? '',
+          website: (b as any).website ?? '',
+          instagram: (b as any).instagram ?? '',
           gst: b.gst ?? '',
           pan: b.pan ?? '',
           address: b.address ?? '',
           city: b.city ?? '',
           state: b.state ?? '',
           pincode: b.pincode ?? '',
+          gpsLocation: (b as any).gpsLocation ?? '',
+          isSupplier: (b as any).isSupplier ?? false,
           buyerType: b.buyerType ?? '',
           brandName: b.brandName ?? '',
           budgetMin: b.budgetMin,

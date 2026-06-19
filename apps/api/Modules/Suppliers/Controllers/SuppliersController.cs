@@ -70,6 +70,12 @@ public class SuppliersController : SuppliersControllerBase
         return NoContent();
     }
 
+    // Live duplicate-check — supplier form GST/mobile par debounced call.
+    [HttpPost("check-duplicate")]
+    [HasPermission("suppliers.directory.view.firm")]
+    public async Task<IActionResult> CheckDuplicate([FromBody] SupplierCheckDuplicateDto dto)
+        => Ok(await _svc.CheckDuplicate(CurrentFirmId, dto.Gst, dto.Phone, dto.ExcludeId));
+
     // -----------------------------------------------------------------------
     // Photos
     // -----------------------------------------------------------------------
@@ -136,3 +142,4 @@ public class SupplierCategoriesController : SuppliersControllerBase
 }
 
 public record CreateCategoryDto(string Name);
+public record SupplierCheckDuplicateDto(string? Gst, string? Phone, Guid? ExcludeId);

@@ -209,6 +209,90 @@ export class LedgerStatementComponent implements OnInit {
   totalDebit = computed(() => this.rows().slice(1).reduce((s, r) => s + (r.debit || 0), 0));
   totalCredit = computed(() => this.rows().slice(1).reduce((s, r) => s + (r.credit || 0), 0));
 
-  print() { window.print(); }
+  // Print: ek alag clean window me sirf khata table — SPA layout/global CSS ki wajah
+  // se window.print() blank aata tha. Ab self-contained HTML print hota hai.
+  print() {
+    const rws = this.rows();
+    if (!rws.length) { return; }
+
+    const name = this.ledgerName() || 'Ledger';
+    const period = `${this.fmtDate(this.from)} to ${this.fmtDate(this.to)}`;
+
+    const bodyRows = rws.map((r, i) => `
+      <tr${i === 0 ? ' class="op"' : ''}>
+        <td>${this.fmtDate(r.date)}</td>
+        <td>${this.esc(r.voucherNo)}</td>
+        <td>${this.esc(r.voucherType)}</td>
+        <td>${i === 0 ? 'Opening Balance' : this.esc(r.narration || '—')}</td>
+        <td class="r">${r.debit ? this.fmtNo(r.debit) : ''}</td>
+        <td class="r">${r.credit ? this.fmtNo(r.credit) : ''}</td>
+        <td class="r">${this.fmtNo(r.balance)} ${r.balanceType ?? ''}</td>
+      </tr>`).join('');
+
+    const footRow = `
+      <tr class="ft">
+        <td colspan="4" class="r">Period Total / Closing</td>
+        <td class="r">${this.fmtNo(this.totalDebit())}</td>
+        <td class="r">${this.fmtNo(this.totalCredit())}</td>
+        <td class="r">${this.fmtNo(this.closingBalance())} ${this.closingType()}</td>
+      </tr>`;
+
+    const words = this.closingWords() ? `<div class="words">(${this.esc(this.closingWords())})</div>` : '';
+
+    const html = `<!doctype html><html><head><meta charset="utf-8">
+      <title>${this.esc(name)} — Ledger Statement</title>
+      <style>
+        * { box-sizing: border-box; }
+        body { font-family: Arial, Helvetica, sans-serif; color: #1b2e5c; margin: 24px; }
+        h1 { font-size: 20px; margin: 0; }
+        h2 { font-size: 15px; margin: 4px 0; font-weight: 700; }
+        p.period { font-size: 12px; margin: 0 0 14px; color: #555; }
+        table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        th { background: #f0e6ff; color: #5c1a8b; padding: 7px 9px; text-align: left;
+             text-transform: uppercase; font-size: 10px; border-bottom: 1px solid #d9c6f5; }
+        td { padding: 6px 9px; border-bottom: 1px solid #eee; }
+        td.r, th.r { text-align: right; font-variant-numeric: tabular-nums; }
+        tr.op td { background: #fbf7ff; font-weight: 600; }
+        tr.ft td { border-top: 2px solid #5c1a8b; font-weight: 800; background: #f7f2ff; }
+        .closing { margin-top: 14px; font-size: 14px; font-weight: 800; }
+        .words { font-size: 11px; font-style: italic; color: #555; font-weight: 400; }
+      </style></head><body>
+        <h1>${this.esc(this.firmName)}</h1>
+        <h2>Ledger Statement — ${this.esc(name)}</h2>
+        <p class="period">Period: ${period}</p>
+        <table>
+          <thead><tr>
+            <th>Date</th><th>Voucher No</th><th>Type</th><th>Particulars</th>
+            <th class="r">Debit</th><th class="r">Credit</th><th class="r">Balance</th>
+          </tr></thead>
+          <tbody>${bodyRows}${footRow}</tbody>
+        </table>
+        <div class="closing">Closing / Net Balance: ₹${this.fmtNo(this.closingBalance())} ${this.closingType()}${words}</div>
+        <script>window.onload=function(){window.print();}<\/script>
+      </body></html>`;
+
+    const w = window.open('', '_blank', 'width=920,height=720');
+    if (!w) { window.print(); return; }   // popup blocked → fallback
+    w.document.open();
+    w.document.write(html);
+    w.document.close();
+  }
+
+  // ---- print helpers (no Angular pipes in raw HTML) ----
+  private esc(v: any): string {
+    return String(v ?? '').replace(/[&<>"]/g, c =>
+      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c] || c));
+  }
+  private fmtNo(n: number): string {
+    return (n ?? 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+  private fmtDate(d: any): string {
+    if (!d) return '';
+    const dt = new Date(d);
+    if (isNaN(dt.getTime())) return String(d);
+    const p = (x: number) => String(x).padStart(2, '0');
+    return `${p(dt.getDate())}-${p(dt.getMonth() + 1)}-${dt.getFullYear()}`;
+  }
+
   onClose() { this.close.emit(); }
 }

@@ -368,9 +368,16 @@ interface LineRow {
                            (change)="autoFillFromItem($index, $event)">
                   </td>
                   <td data-label="Description">
-                    <input [ngModel]="line.description"
-                           (ngModelChange)="updateLine($index, 'description', $event)"
-                           type="text" class="tip" placeholder="Description / Design">
+                    <select [ngModel]="line.description"
+                            (ngModelChange)="updateLine($index, 'description', $event)"
+                            (change)="onDescPick($index, $event)"
+                            class="tip">
+                      <option value="">— Select —</option>
+                      @for (it of items(); track it.id) {
+                        <option [value]="it.name">{{ it.name }}</option>
+                      }
+                      <option value="Other">Other</option>
+                    </select>
                   </td>
                   <td data-label="Qty">
                     <input [ngModel]="line.qty"

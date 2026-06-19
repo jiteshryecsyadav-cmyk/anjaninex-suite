@@ -256,7 +256,7 @@ export class BillsComponent {
     this.svc.getBill(id).subscribe(b => {
       const lines = b.lines.map(l => ({
         itemName: l.itemName,
-        description: null,
+        description: l.description ?? null,
         hsnSac: l.hsnSac,
         qty: l.qty,
         unit: l.unit,

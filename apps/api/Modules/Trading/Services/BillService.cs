@@ -20,7 +20,8 @@ public record BillLineDto(
     decimal DiscountPct,
     decimal TaxRate,
     decimal TaxableAmount,
-    decimal TotalAmount);
+    decimal TotalAmount,
+    string? Description = null);
 
 public record BillListItemDto(
     Guid Id,
@@ -261,7 +262,7 @@ public class BillService : IBillService
             bill.Lines.OrderBy(l => l.SortOrder).Select(l => new BillLineDto(
                 l.Id, l.ItemId, l.ItemName, l.HsnSac,
                 l.Qty, l.Unit, l.Rate, l.DiscountPct, l.TaxRate,
-                l.TaxableAmount, l.TotalAmount)).ToList(),
+                l.TaxableAmount, l.TotalAmount, l.Description)).ToList(),
             preparedBy,
             bill.BuyerPartyId,
             buyer?.Name,
@@ -393,6 +394,7 @@ public class BillService : IBillService
                     BillId = bill.Id,
                     ItemId = line.ItemId,
                     ItemName = line.ItemName,
+                    Description = line.Description,
                     HsnSac = line.HsnSac,
                     Qty = line.Qty,
                     Unit = line.Unit,
@@ -584,6 +586,7 @@ public class BillService : IBillService
             var newLines = dto.Lines.Select(line => new BillLine
             {
                 Id = Guid.NewGuid(), BillId = bill.Id, ItemId = line.ItemId, ItemName = line.ItemName,
+                Description = line.Description,
                 HsnSac = line.HsnSac, Qty = line.Qty, Unit = line.Unit, Rate = line.Rate,
                 DiscountPct = line.DiscountPct, TaxRate = line.TaxRate,
                 TaxableAmount = line.TaxableAmount, TotalAmount = line.TotalAmount, SortOrder = order++

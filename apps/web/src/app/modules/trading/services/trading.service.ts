@@ -64,6 +64,7 @@ export interface BillLine {
   id?: string | null;
   itemId?: string | null;
   itemName: string;
+  description?: string | null;
   hsnSac?: string | null;
   qty: number;
   unit?: string | null;

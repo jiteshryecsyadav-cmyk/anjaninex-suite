@@ -2731,6 +2731,7 @@ export class BillEntryComponent {
       .map((l, idx) => ({
         itemId: l.itemId,
         itemName: l.itemName,
+        description: l.description || null,
         hsnSac: l.hsnSac || null,
         qty: l.qty,
         unit: l.unit,

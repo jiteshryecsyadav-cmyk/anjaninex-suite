@@ -212,3 +212,60 @@ public class SupplierRate
     public string Source { get; set; } = "manual";
     public DateTimeOffset CreatedAt { get; set; }
 }
+
+// =============================================================================
+// BUYER PRODUCT CATALOG (Phase B) — mirrors supplier varieties/rates/photos but
+// for buyers, split by catalog_type: 'demand' (jo khareedna hai) / 'supply'
+// (jo banake bechta hai). Tables created in migration 49-ad-form-fields.sql.
+// All firm-isolated via RLS (firm_id on buyer_varieties).
+// =============================================================================
+public class BuyerVariety
+{
+    public Guid Id { get; set; }
+    public Guid FirmId { get; set; }
+    public Guid BuyerId { get; set; }
+
+    // 'demand' | 'supply'
+    [Required, MaxLength(20)]
+    public string CatalogType { get; set; } = "demand";
+
+    public Guid? CategoryId { get; set; }
+    public string? CategoryName { get; set; }
+
+    [Required]
+    public string Name { get; set; } = "";
+
+    public string? DNo { get; set; }
+
+    public DateTimeOffset CreatedAt { get; set; }
+    public DateTimeOffset UpdatedAt { get; set; }
+}
+
+public class BuyerVarietyRate
+{
+    public Guid Id { get; set; }
+    public Guid VarietyId { get; set; }
+
+    [Column(TypeName = "numeric(12,2)")]
+    public decimal? Rate { get; set; }
+
+    [MaxLength(20)]
+    public string? Unit { get; set; } = "mtr";
+
+    [Column(TypeName = "numeric(12,2)")]
+    public decimal? MinQty { get; set; }
+
+    public DateTimeOffset CreatedAt { get; set; }
+}
+
+public class BuyerVarietyPhoto
+{
+    public Guid Id { get; set; }
+    public Guid VarietyId { get; set; }
+
+    [Required]
+    public string Url { get; set; } = "";
+
+    public bool IsPrimary { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
+}

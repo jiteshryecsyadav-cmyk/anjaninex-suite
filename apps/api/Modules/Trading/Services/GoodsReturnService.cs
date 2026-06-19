@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Namokara.Api.Infrastructure.Persistence;
+using Namokara.Api.Modules.Accounting.Entities;
 using Namokara.Api.Modules.Trading.Entities;
 
 namespace Namokara.Api.Modules.Trading.Services;
@@ -184,6 +185,22 @@ public class GoodsReturnService : IGoodsReturnService
         if (dto.Lines is null || dto.Lines.Count == 0)
             throw new ArgumentException("At least one return item line is required");
 
+        using var tx = await _db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+        try
+        {
+            var result = await CreateInternal(dto, firmId, branchId, userId);
+            await tx.CommitAsync();
+            return result;
+        }
+        catch
+        {
+            try { await tx.RollbackAsync(); } catch { }
+            throw;
+        }
+    }
+
+    private async Task<GoodsReturnDetailDto> CreateInternal(CreateGoodsReturnDto dto, Guid firmId, Guid branchId, Guid userId)
+    {
         var grNo = await GenerateGrNo(firmId, branchId);
 
         var taxable = dto.Lines.Sum(l => l.TaxableAmount);
@@ -243,6 +260,13 @@ public class GoodsReturnService : IGoodsReturnService
 
         _db.GoodsReturns.Add(gr);
         await _db.SaveChangesAsync();
+
+        // ===== AUTO-POST GR ACCOUNTING VOUCHER =====
+        // Credits the bill's party (same party the bill debited) so the GR reflects in
+        // the party khata and reduces the balance. No-op if total is 0.
+        gr.VoucherId = await PostVoucherForGr(gr, firmId, branchId, userId);
+        await _db.SaveChangesAsync();
+
         return (await Get(gr.Id))!;
     }
 
@@ -302,7 +326,23 @@ public class GoodsReturnService : IGoodsReturnService
             SortOrder = idx
         }).ToList());
 
-        await _db.SaveChangesAsync();
+        using var tx = await _db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+        try
+        {
+            // Purana GR voucher hatao, naya post karo — mirror BillService.Update.
+            await RemoveGrVoucher(gr);
+            await _db.SaveChangesAsync();
+
+            gr.VoucherId = await PostVoucherForGr(gr, firmId, gr.BranchId, userId);
+            await _db.SaveChangesAsync();
+
+            await tx.CommitAsync();
+        }
+        catch
+        {
+            try { await tx.RollbackAsync(); } catch { }
+            throw;
+        }
         return await Get(gr.Id);
     }
 
@@ -368,6 +408,9 @@ public class GoodsReturnService : IGoodsReturnService
 
         if (wasApproved) await ReverseBillSettlement(gr);
 
+        // Rejected GR ka accounting effect bhi hatao (party khata se GR credit nikal jaye).
+        await RemoveGrVoucher(gr);
+
         await _db.SaveChangesAsync();
         return (await Get(id))!;
     }
@@ -380,6 +423,10 @@ public class GoodsReturnService : IGoodsReturnService
         // Approved GR delete ho raha hai to pehle bill se fold kiya amount reverse karo.
         if (gr.Status == "approved" && gr.DeletedAt == null)
             await ReverseBillSettlement(gr);
+
+        // GR ka accounting voucher bhi hatao taaki party khata se GR credit nikal jaye.
+        if (gr.DeletedAt == null)
+            await RemoveGrVoucher(gr);
 
         gr.DeletedAt = DateTimeOffset.UtcNow;
         await _db.SaveChangesAsync();
@@ -396,6 +443,262 @@ public class GoodsReturnService : IGoodsReturnService
         bill.Status = bill.PaidAmount >= bill.Total ? "paid"
                       : bill.PaidAmount > 0 ? "partial" : "pending";
         bill.UpdatedAt = DateTimeOffset.UtcNow;
+    }
+
+    // =========================================================================
+    // GR ACCOUNTING VOUCHER (the fix — GR was posting NO voucher at all)
+    //
+    // Broker model:
+    //   Sales bill  → Dr Party (= bill.PartyId, the supplier), Cr Sales + Cr Tax.
+    //   Sales GR    → REVERSE the party leg: Cr Party (supplier), Dr Sales Return + Dr Tax.
+    //                 Party khata me GR ab credit dikhega → balance ghatega.
+    //   Purchase GR → Dr Party, Cr Purchase Return + Cr Tax.
+    // Voucher ALWAYS exactly balanced (Round Off plug) — same as BillService.
+    // =========================================================================
+    private async Task<Guid?> PostVoucherForGr(GoodsReturn gr, Guid firmId, Guid branchId, Guid userId)
+    {
+        if (gr.TotalReturnAmount <= 0) return null;
+
+        // Original bill se decide karo: sales bill ka GR = sales_return, purchase ka = purchase_return.
+        // Bill ka party (bill.PartyId) wahi hai jise bill ne Dr/Cr kiya — usi ko reverse karenge.
+        // Agar GR kisi bill se linked nahi hai to fallback: GR ka supplier party + sales_return.
+        string billType = "sales";
+        Guid partyId = gr.SupplierPartyId;
+        if (gr.OriginalBillId.HasValue)
+        {
+            var bill = await _db.Bills.IgnoreQueryFilters()
+                .Where(b => b.Id == gr.OriginalBillId.Value)
+                .Select(b => new { b.BillType, b.PartyId })
+                .FirstOrDefaultAsync();
+            if (bill != null) { billType = bill.BillType; partyId = bill.PartyId; }
+        }
+
+        var partyLedgerId = await ResolvePartyLedgerId(partyId, firmId)
+            ?? throw new InvalidOperationException(
+                "GR party ka ledger nahi mila. Pehle Chart of Accounts initialize karein.");
+
+        var isSales = billType != "purchase";
+        var returnLedgerName = isSales ? "Sales Return" : "Purchase Return";
+        var returnLedgerId = await FindOrCreateReturnLedger(firmId, returnLedgerName, isSales);
+        var voucherType = isSales ? "sales_return" : "purchase_return";
+
+        var taxable = gr.TaxableAmount;
+        var tax = gr.TaxAmount;
+        // Agar split fields 0 hain par total > 0 (legacy), poora total taxable maano.
+        if (taxable + tax <= 0) { taxable = gr.TotalReturnAmount; tax = 0; }
+
+        var voucherNo = await GenerateVoucherNoForGr(voucherType, branchId, firmId);
+
+        var voucher = new Voucher
+        {
+            Id = Guid.NewGuid(),
+            FirmId = firmId,
+            BranchId = branchId,
+            VoucherType = voucherType,
+            VoucherNo = voucherNo,
+            VoucherDate = gr.GrDate,
+            Narration = $"Auto-posted from Goods Return {gr.GrNo}",
+            TotalAmount = gr.TotalReturnAmount,
+            SourceModule = "trading",
+            SourceRefId = gr.Id,
+            IsPosted = true,
+            CreatedBy = userId,
+            CreatedAt = DateTimeOffset.UtcNow,
+            UpdatedAt = DateTimeOffset.UtcNow
+        };
+
+        int order = 0;
+        if (isSales)
+        {
+            // Cr Party (reverse the bill's Dr) — full return amount
+            voucher.Lines.Add(new VoucherLine { Id = Guid.NewGuid(), VoucherId = voucher.Id, LedgerId = partyLedgerId, DebitCredit = "Cr", Amount = gr.TotalReturnAmount, Narration = $"GR {gr.GrNo}", SortOrder = order++ });
+            // Dr Sales Return (taxable) + Dr Tax (output reversal)
+            voucher.Lines.Add(new VoucherLine { Id = Guid.NewGuid(), VoucherId = voucher.Id, LedgerId = returnLedgerId, DebitCredit = "Dr", Amount = taxable, Narration = "Sales return (taxable)", SortOrder = order++ });
+            if (tax > 0)
+            {
+                var taxLedger = await FindOrCreateTaxLedger(firmId, "Output Tax Reversal");
+                voucher.Lines.Add(new VoucherLine { Id = Guid.NewGuid(), VoucherId = voucher.Id, LedgerId = taxLedger, DebitCredit = "Dr", Amount = tax, Narration = "Tax on sales return", SortOrder = order++ });
+            }
+        }
+        else
+        {
+            // Purchase GR: reverse the bill's Cr Party → Dr Party
+            voucher.Lines.Add(new VoucherLine { Id = Guid.NewGuid(), VoucherId = voucher.Id, LedgerId = partyLedgerId, DebitCredit = "Dr", Amount = gr.TotalReturnAmount, Narration = $"GR {gr.GrNo}", SortOrder = order++ });
+            voucher.Lines.Add(new VoucherLine { Id = Guid.NewGuid(), VoucherId = voucher.Id, LedgerId = returnLedgerId, DebitCredit = "Cr", Amount = taxable, Narration = "Purchase return (taxable)", SortOrder = order++ });
+            if (tax > 0)
+            {
+                var taxLedger = await FindOrCreateTaxLedger(firmId, "Input Tax Reversal");
+                voucher.Lines.Add(new VoucherLine { Id = Guid.NewGuid(), VoucherId = voucher.Id, LedgerId = taxLedger, DebitCredit = "Cr", Amount = tax, Narration = "Tax on purchase return", SortOrder = order++ });
+            }
+        }
+
+        // HAMESHA exact balance — Dr/Cr antar Round Off me plug (same as BillService).
+        await AddBalancingRoundOffAsync(voucher, firmId, order++);
+
+        _db.Vouchers.Add(voucher);
+        await _db.SaveChangesAsync();
+        return voucher.Id;
+    }
+
+    // GR ka linked voucher (+ cascade lines) hatao + reference clear.
+    private async Task RemoveGrVoucher(GoodsReturn gr)
+    {
+        if (!gr.VoucherId.HasValue) return;
+        var v = await _db.Vouchers.FirstOrDefaultAsync(x => x.Id == gr.VoucherId.Value);
+        if (v != null) _db.Vouchers.Remove(v);
+        gr.VoucherId = null;
+    }
+
+    // party.LedgerId resolve karo (bill ne isi ledger ko Dr/Cr kiya tha).
+    private async Task<Guid?> ResolvePartyLedgerId(Guid partyId, Guid firmId)
+    {
+        return await _db.PartyProfiles
+            .Where(p => p.Id == partyId && p.FirmId == firmId)
+            .Select(p => p.LedgerId)
+            .FirstOrDefaultAsync();
+    }
+
+    // Find-or-create Sales Return / Purchase Return ledger under a sensible income/expense
+    // sub-group (mirror BillService.FindOrCreateRoundOffLedger fallback chain).
+    private async Task<Guid> FindOrCreateReturnLedger(Guid firmId, string name, bool isSales)
+    {
+        var existing = await _db.Ledgers
+            .Where(l => l.FirmId == firmId && l.Name == name)
+            .Select(l => l.Id).FirstOrDefaultAsync();
+        if (existing != Guid.Empty) return existing;
+
+        // Sales Return → income-side reduction; Purchase Return → expense-side reduction.
+        var preferred = isSales
+            ? new[] { "Direct Income", "Sales Accounts", "Indirect Income", "Other Income" }
+            : new[] { "Direct Expenses", "Purchase Accounts", "Indirect Expenses", "Other Expenses" };
+
+        var subGroup = await _db.SubGroups
+            .FirstOrDefaultAsync(s => s.FirmId == firmId && preferred.Contains(s.Name));
+        subGroup ??= await _db.SubGroups
+            .Where(s => s.FirmId == firmId &&
+                (s.Name.ToLower().Contains(isSales ? "income" : "expense")))
+            .FirstOrDefaultAsync();
+        subGroup ??= await _db.SubGroups.FirstOrDefaultAsync(s => s.FirmId == firmId);
+        if (subGroup is null)
+            throw new InvalidOperationException(
+                "No sub groups found for this firm. Run accounting seed: Admin → Settings → Initialize Chart of Accounts.");
+
+        var ledger = new Ledger
+        {
+            Id = Guid.NewGuid(),
+            FirmId = firmId,
+            SubGroupId = subGroup.Id,
+            Name = name,
+            OpeningBalance = 0,
+            OpeningType = isSales ? "Dr" : "Cr",
+            IsActive = true,
+            CreatedAt = DateTimeOffset.UtcNow,
+            UpdatedAt = DateTimeOffset.UtcNow
+        };
+        _db.Ledgers.Add(ledger);
+        await _db.SaveChangesAsync();
+        return ledger.Id;
+    }
+
+    private async Task<Guid> FindOrCreateTaxLedger(Guid firmId, string name)
+    {
+        var existing = await _db.Ledgers
+            .Where(l => l.FirmId == firmId && l.Name == name)
+            .Select(l => l.Id).FirstOrDefaultAsync();
+        if (existing != Guid.Empty) return existing;
+
+        var subGroup = await _db.SubGroups
+            .FirstOrDefaultAsync(s => s.FirmId == firmId && s.Name == "Duties & Taxes")
+            ?? await _db.SubGroups.FirstOrDefaultAsync(s => s.FirmId == firmId)
+            ?? throw new InvalidOperationException("No sub groups found for this firm.");
+
+        var ledger = new Ledger
+        {
+            Id = Guid.NewGuid(),
+            FirmId = firmId,
+            SubGroupId = subGroup.Id,
+            Name = name,
+            OpeningBalance = 0,
+            OpeningType = "Cr",
+            IsActive = true,
+            CreatedAt = DateTimeOffset.UtcNow,
+            UpdatedAt = DateTimeOffset.UtcNow
+        };
+        _db.Ledgers.Add(ledger);
+        await _db.SaveChangesAsync();
+        return ledger.Id;
+    }
+
+    private async Task<Guid> FindOrCreateRoundOffLedger(Guid firmId)
+    {
+        var existing = await _db.Ledgers
+            .Where(l => l.FirmId == firmId && l.Name == "Round Off")
+            .Select(l => l.Id).FirstOrDefaultAsync();
+        if (existing != Guid.Empty) return existing;
+
+        var subGroup = await _db.SubGroups
+            .FirstOrDefaultAsync(s => s.FirmId == firmId &&
+                (s.Name == "Indirect Income" || s.Name == "Indirect Expenses"
+                 || s.Name == "Direct Income" || s.Name == "Direct Expenses"
+                 || s.Name == "Other Income" || s.Name == "Other Expenses"));
+        subGroup ??= await _db.SubGroups
+            .Where(s => s.FirmId == firmId &&
+                (s.Name.ToLower().Contains("income") || s.Name.ToLower().Contains("expense")))
+            .FirstOrDefaultAsync();
+        subGroup ??= await _db.SubGroups.FirstOrDefaultAsync(s => s.FirmId == firmId);
+        if (subGroup is null)
+            throw new InvalidOperationException("No sub groups found for this firm.");
+
+        var ledger = new Ledger
+        {
+            Id = Guid.NewGuid(),
+            FirmId = firmId,
+            SubGroupId = subGroup.Id,
+            Name = "Round Off",
+            OpeningBalance = 0,
+            OpeningType = "Cr",
+            IsActive = true,
+            CreatedAt = DateTimeOffset.UtcNow,
+            UpdatedAt = DateTimeOffset.UtcNow
+        };
+        _db.Ledgers.Add(ledger);
+        await _db.SaveChangesAsync();
+        return ledger.Id;
+    }
+
+    // Mirror BillService.AddBalancingRoundOffAsync — voucher ko HAMESHA exactly balance karo.
+    private async Task AddBalancingRoundOffAsync(Voucher voucher, Guid firmId, int order)
+    {
+        foreach (var l in voucher.Lines)
+            l.Amount = Math.Round(l.Amount, 2, MidpointRounding.AwayFromZero);
+
+        decimal dr = voucher.Lines.Where(l => l.DebitCredit == "Dr").Sum(l => l.Amount);
+        decimal cr = voucher.Lines.Where(l => l.DebitCredit == "Cr").Sum(l => l.Amount);
+        decimal diff = Math.Round(dr - cr, 2, MidpointRounding.AwayFromZero);
+        if (diff == 0) return;
+        Guid roundOffLedger = await FindOrCreateRoundOffLedger(firmId);
+        voucher.Lines.Add(new VoucherLine
+        {
+            Id = Guid.NewGuid(),
+            VoucherId = voucher.Id,
+            LedgerId = roundOffLedger,
+            DebitCredit = diff > 0 ? "Cr" : "Dr",
+            Amount = Math.Abs(diff),
+            Narration = "Round Off",
+            SortOrder = order
+        });
+    }
+
+    private async Task<string> GenerateVoucherNoForGr(string voucherType, Guid branchId, Guid firmId)
+    {
+        var branch = await _db.Branches.FirstOrDefaultAsync(b => b.Id == branchId)
+                  ?? await _db.Branches.FirstOrDefaultAsync(b => b.FirmId == firmId)
+                  ?? throw new InvalidOperationException("Is firm ka koi branch nahi mila. Team → Branches me ek branch banayein.");
+        var prefix = branch.VoucherPrefix ?? $"{branch.Code}-V-";
+        var typeCode = voucherType == "purchase_return" ? "PR" : "SR";
+        var fyYear = GetFyStart().Year;
+        var next = await ReserveCounterAsync(firmId, branchId, $"voucher.{voucherType}", fyYear);
+        return $"{prefix}{typeCode}{next:D4}";
     }
 
     private async Task<string> GenerateGrNo(Guid firmId, Guid branchId)

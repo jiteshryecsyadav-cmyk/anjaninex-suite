@@ -102,4 +102,49 @@ export class BuyersService {
   checkDuplicate(data: { gst?: string; phone?: string; excludeId?: string }) {
     return this.http.post<BuyerDuplicateMatch[]>(`${this.base}/check-duplicate`, data);
   }
+
+  // ---- Buyer Product Catalog (Phase B) — demand + supply ----
+  // Mirrors SuppliersService catalog methods; adds catalogType ('demand'|'supply').
+  private catBase = `${environment.apiUrl}/api/buyer-catalog`;
+
+  listBuyerVarieties(buyerId: string, catalogType?: 'demand' | 'supply') {
+    const params: any = {};
+    if (catalogType) params.catalogType = catalogType;
+    return this.http.get<BuyerVariety[]>(`${this.catBase}/${buyerId}`, { params });
+  }
+  addBuyerVariety(buyerId: string, data: {
+    catalogType: 'demand' | 'supply';
+    categoryId?: string | null;
+    categoryName?: string | null;
+    name: string;
+    dNo?: string | null;
+  }) {
+    return this.http.post<{ id: string }>(`${this.catBase}/${buyerId}/varieties`, data);
+  }
+  deleteBuyerVariety(id: string) { return this.http.delete(`${this.catBase}/varieties/${id}`); }
+
+  addBuyerVarietyRate(vid: string, data: { rate?: number | null; unit?: string; minQty?: number | null }) {
+    return this.http.post<{ id: string }>(`${this.catBase}/varieties/${vid}/rates`, data);
+  }
+  deleteBuyerVarietyRate(id: string) { return this.http.delete(`${this.catBase}/rates/${id}`); }
+
+  uploadBuyerPhoto(vid: string, file: File) {
+    const fd = new FormData();
+    fd.append('file', file);
+    return this.http.post<{ id: string; url: string }>(`${this.catBase}/varieties/${vid}/photo`, fd);
+  }
+  deleteBuyerPhoto(id: string) { return this.http.delete(`${this.catBase}/photos/${id}`); }
+}
+
+export interface BuyerVarietyRate { id: string; rate: number | null; unit: string | null; minQty: number | null; }
+export interface BuyerVarietyPhoto { id: string; url: string; }
+export interface BuyerVariety {
+  id: string;
+  catalogType: 'demand' | 'supply';
+  categoryId: string | null;
+  categoryName: string | null;
+  name: string;
+  dNo: string | null;
+  rates: BuyerVarietyRate[];
+  photos: BuyerVarietyPhoto[];
 }

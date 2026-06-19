@@ -70,6 +70,10 @@ public class AppDbContext : DbContext
     public DbSet<AppointmentStaff> AppointmentStaff => Set<AppointmentStaff>();
     public DbSet<SupplierPhoto> SupplierPhotos => Set<SupplierPhoto>();
     public DbSet<SupplierRate> SupplierRates => Set<SupplierRate>();
+    // Buyer product catalog (Phase B) — demand + supply
+    public DbSet<BuyerVariety> BuyerVarieties => Set<BuyerVariety>();
+    public DbSet<BuyerVarietyRate> BuyerVarietyRates => Set<BuyerVarietyRate>();
+    public DbSet<BuyerVarietyPhoto> BuyerVarietyPhotos => Set<BuyerVarietyPhoto>();
 
     // AI schema
     public DbSet<AiExtractionLog> AiExtractionLogs => Set<AiExtractionLog>();
@@ -208,6 +212,10 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<AppointmentStaff>().ToTable("appointment_staff", "suppliers");
         modelBuilder.Entity<SupplierPhoto>().ToTable("photos", "suppliers");
         modelBuilder.Entity<SupplierRate>().ToTable("rates", "suppliers");
+        // Buyer product catalog (Phase B) — migration 49 tables
+        modelBuilder.Entity<BuyerVariety>().ToTable("buyer_varieties", "suppliers");
+        modelBuilder.Entity<BuyerVarietyRate>().ToTable("buyer_variety_rates", "suppliers");
+        modelBuilder.Entity<BuyerVarietyPhoto>().ToTable("buyer_variety_photos", "suppliers");
 
         // AI
         modelBuilder.Entity<AiExtractionLog>().ToTable("extraction_logs", "ai");

@@ -320,13 +320,38 @@ public class PaymentService : IPaymentService
 
     private async Task<Guid> PostVoucherForPayment(Payment payment, Guid firmId, Guid branchId, Guid userId)
     {
-        var party = await _db.PartyProfiles
-            .Where(p => p.Id == payment.PartyId)
-            .Select(p => p.LedgerId).SingleAsync()
-            ?? throw new InvalidOperationException("Party has no linked ledger");
-
         var bankLedger = payment.BankLedgerId
             ?? throw new InvalidOperationException("Bank/Cash ledger not specified");
+
+        // ===== WHICH PARTY LEDGER does this voucher hit? =====
+        // CRITICAL (khata-balance fix): the BILL debits/credits bill.PartyId — in this
+        // broker model that's the SUPPLIER (PostSalesVoucherForBill: Dr partyLedger where
+        // partyLedger = supplier's ledger). The receipt screen, however, sends
+        // payment.PartyId = the BUYER. If we Cr the buyer's ledger, the supplier (bill)
+        // khata never gets the offsetting credit → bill stays Dr forever and the balance
+        // looks wrong (receipt appears to "add" instead of "subtract").
+        //
+        // FIX: settle on the SAME party the allocated bill(s) used (bill.PartyId). This
+        // keeps the bill-party khata netting to zero on full settlement. If the payment
+        // has no allocations (pure on-account advance) we fall back to payment.PartyId.
+        Guid partyId = payment.PartyId;
+        var allocBillIds = payment.Allocations.Select(a => a.BillId).Distinct().ToList();
+        if (allocBillIds.Count > 0)
+        {
+            var billPartyIds = await _db.Bills
+                .Where(b => allocBillIds.Contains(b.Id))
+                .Select(b => b.PartyId)
+                .Distinct()
+                .ToListAsync();
+            // All allocations should belong to one bill-party; if so, use it.
+            if (billPartyIds.Count == 1)
+                partyId = billPartyIds[0];
+        }
+
+        var party = await _db.PartyProfiles
+            .Where(p => p.Id == partyId)
+            .Select(p => p.LedgerId).SingleAsync()
+            ?? throw new InvalidOperationException("Party has no linked ledger");
 
         // Receipt: Dr Cash/Bank, Cr Party
         // Payment: Dr Party, Cr Cash/Bank

@@ -7,13 +7,14 @@ import { SuppliersService, SupplierCategory } from '../services/suppliers.servic
 import { debounceTime } from 'rxjs/operators';
 import { BackButtonComponent } from '../../../shared/back-button.component';
 import { ToastService } from '../../../shared/toast.service';
+import { BuyerCatalogComponent } from './buyer-catalog.component';
 import { INDIAN_STATES, citiesForState, matchIndiaState } from '../../../shared/india-data';
 import { IndiaPincodeService } from '../../../shared/india-pincode.service';
 
 @Component({
   selector: 'app-buyer-form',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterLink, BackButtonComponent],
+  imports: [CommonModule, ReactiveFormsModule, RouterLink, BackButtonComponent, BuyerCatalogComponent],
   template: `
     <div class="max-w-3xl mx-auto">
       <div class="page-top-bar"><app-back-button></app-back-button></div>
@@ -236,6 +237,30 @@ import { IndiaPincodeService } from '../../../shared/india-pincode.service';
           <textarea formControlName="notes" rows="2" class="input"></textarea>
         </div>
 
+        <!-- PRODUCT CATALOG (Phase B) — Demand (always) + Supply (only when isSupplier) -->
+        <h3 class="font-display font-bold text-sm text-[#5c1a8b] uppercase tracking-wider mt-2">📦 Product Catalog</h3>
+        @if (editingId) {
+          <!-- Demand Catalog — jo khareedna hai (hamesha) -->
+          <div>
+            <h4 class="font-bold text-xs text-[#6b3fa0] uppercase tracking-wider mb-2">🛒 Demand Catalog — jo khareedna hai</h4>
+            <app-buyer-catalog [buyerId]="editingId!" catalogType="demand" [categories]="categories()"></app-buyer-catalog>
+          </div>
+
+          <!-- Supply Catalog — jo banake bechta hai (sirf jab isSupplier on) -->
+          @if (isSupplier()) {
+            <div class="mt-3">
+              <h4 class="font-bold text-xs text-[#6b3fa0] uppercase tracking-wider mb-2">🏭 Supply Catalog — jo banake bechta hai</h4>
+              <app-buyer-catalog [buyerId]="editingId!" catalogType="supply" [categories]="categories()"></app-buyer-catalog>
+            </div>
+          } @else {
+            <p class="text-xs text-gray-400 mt-2">Supply Catalog dikhane ke liye upar "Yeh buyer supplier bhi hai" check karo.</p>
+          }
+        } @else {
+          <div class="border border-dashed border-[#ddc8f5] rounded-lg p-4 text-center text-sm text-gray-500">
+            Variety + photo + rate add karne ke liye pehle buyer <b>Create</b> karo — fir edit me catalog khulega.
+          </div>
+        }
+
         @if (error()) {
           <div class="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded text-sm">{{ error() }}</div>
         }
@@ -304,6 +329,8 @@ export class BuyerFormComponent {
   error = signal('');
   categories = signal<SupplierCategory[]>([]);
   selectedCategoryIds = signal<string[]>([]);
+  // Supply Catalog tab tabhi dikhao jab "isSupplier" checkbox on ho (live track).
+  isSupplier = signal(false);
 
   // Common fields lock tabhi jab edit mode + linked contact ho (Phase 2).
   lockCommon = () => !!(this.editingId && this.contactId);
@@ -383,6 +410,10 @@ export class BuyerFormComponent {
 
   ngOnInit() {
     this.supSvc.listCategories().subscribe(c => this.categories.set(c));
+
+    // Supply Catalog tab toggle ke saath live update (checkbox on/off).
+    this.isSupplier.set(this.form.controls.isSupplier.value);
+    this.form.controls.isSupplier.valueChanges.subscribe(v => this.isSupplier.set(!!v));
 
     // Live duplicate-check — GST ya mobile badle to ~500ms baad check karo.
     this.form.controls.gst.valueChanges.pipe(debounceTime(500)).subscribe(() => this.runDuplicateCheck());

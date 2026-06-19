@@ -290,6 +290,10 @@ public class GoodsReturn
     public DateTimeOffset? ApprovedAt { get; set; }
     public string? RejectionReason { get; set; }
 
+    // Accounting voucher auto-posted for this GR (migration 50). Credits the bill
+    // party + Dr Sales/Purchase Return ledger. Re-posted on Update, removed on delete/reject.
+    public Guid? VoucherId { get; set; }
+
     public Guid CreatedBy { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }

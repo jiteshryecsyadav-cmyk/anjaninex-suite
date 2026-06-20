@@ -247,9 +247,9 @@ export class BillsComponent {
       next: (res) => {
         // Deleted bills list me NAHI dikhenge (ye Activity Log report me hain)
         const live = res.items.filter(b => !b.isDeleted);
-        // Bill no ke number se sort — JPR-1, JPR-2, JPR-3... line se
+        // Bill no ke number se sort — NEWEST upar, oldest niche (descending)
         const num = (s: string | null) => { const m = (s || '').match(/(\d+)\s*$/); return m ? +m[1] : 0; };
-        this.bills.set([...live].sort((a, b) => num(a.billNo) - num(b.billNo)));
+        this.bills.set([...live].sort((a, b) => num(b.billNo) - num(a.billNo)));
         this.loading.set(false);
       },
       error: () => this.loading.set(false)

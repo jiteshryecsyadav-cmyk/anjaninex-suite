@@ -246,9 +246,9 @@ export class OrdersComponent {
       next: (res) => {
         // Deleted orders list me NAHI dikhenge (ye Activity Log report me hain)
         const live = res.items.filter(o => !o.isDeleted);
-        // Order no ke number se sort — JPR-O1, JPR-O2, JPR-O3... line se
+        // Order no ke number se sort — NEWEST upar (descending)
         const num = (s: string | null) => { const m = (s || '').match(/(\d+)\s*$/); return m ? +m[1] : 0; };
-        this.orders.set([...live].sort((a, b) => num(a.orderNo) - num(b.orderNo)));
+        this.orders.set([...live].sort((a, b) => num(b.orderNo) - num(a.orderNo)));
         this.loading.set(false);
       },
       error: () => this.loading.set(false)

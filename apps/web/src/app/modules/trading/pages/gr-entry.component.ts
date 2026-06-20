@@ -1018,6 +1018,13 @@ export class GrEntryComponent {
         },
         error: () => alert('❌ Failed to load goods return for editing')
       });
+    } else {
+      // Bills list ke "Create GR" button se aaye → bill no se supplier/buyer/original bill auto-fill
+      const billNoParam = this.route.snapshot.queryParamMap.get('billNo');
+      if (billNoParam) {
+        this.grBillNoSearch = billNoParam;
+        this.findBillBySupplierNo();
+      }
     }
   }
 

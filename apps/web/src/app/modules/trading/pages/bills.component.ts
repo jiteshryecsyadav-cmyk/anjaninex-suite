@@ -146,6 +146,10 @@ import { amountInWords } from '../../../shared/amount-in-words.util';
                     @if (b.isDeleted) {
                       <span class="text-xs text-gray-400">—</span>
                     } @else {
+                      <a [routerLink]="['/trading/gr/new']" [queryParams]="{ billNo: b.billNo }"
+                         class="ai-btn ai-gr" title="Create GR — bill auto-fill">📦</a>
+                      <a [routerLink]="['/trading/payments/new']" [queryParams]="{ billNo: b.billNo }"
+                         class="ai-btn ai-rcpt" title="Create Receipt — bill auto-fill">💰</a>
                       <button (click)="preview(b.id)" class="ai-btn" title="Preview & Print">👁</button>
                       <a [routerLink]="['/trading/bills', b.id, 'edit']" class="ai-btn" title="View / Attach Document">📎</a>
                       <a [routerLink]="['/trading/bills', b.id, 'edit']" class="ai-btn" title="Edit">✏️</a>

@@ -318,7 +318,10 @@ interface PartyBehavior {
                   </td>
                   <td>
                     <input [ngModel]="txn.bankName" (ngModelChange)="updateTxn($index, 'bankName', $event)"
-                           placeholder="Bank name" class="tip">
+                           list="indiaBanks" placeholder="Bank name — type/select" class="tip" autocomplete="off">
+                    <datalist id="indiaBanks">
+                      @for (bk of bankNames; track bk) { <option [value]="bk"></option> }
+                    </datalist>
                   </td>
                   <td>
                     <input [ngModel]="txn.refNo" (ngModelChange)="updateTxn($index, 'refNo', $event)"
@@ -1051,6 +1054,13 @@ export class PaymentReceiptComponent {
       this.editId = idParam;
       this.editMode = true;
       this.loadForEdit(idParam);
+    } else {
+      // Bills list ke "Create Receipt" button se aaye → bill no se supplier/buyer/bill auto-fill
+      const billNoParam = this.route.snapshot.queryParamMap.get('billNo');
+      if (billNoParam) {
+        this.billNoPick = billNoParam;
+        this.onBillNoPick();
+      }
     }
   }
 
@@ -1188,6 +1198,26 @@ export class PaymentReceiptComponent {
 
   // ============ BILLS ============
   billsError = signal('');
+
+  // India ke major banks — BANK NAME field ke datalist dropdown ke liye (type/search + arrow keys)
+  bankNames: string[] = [
+    'State Bank of India', 'Punjab National Bank', 'Bank of Baroda', 'Canara Bank',
+    'Union Bank of India', 'Bank of India', 'Indian Bank', 'Central Bank of India',
+    'Indian Overseas Bank', 'UCO Bank', 'Bank of Maharashtra', 'Punjab & Sind Bank',
+    'HDFC Bank', 'ICICI Bank', 'Axis Bank', 'Kotak Mahindra Bank', 'IndusInd Bank',
+    'Yes Bank', 'IDFC First Bank', 'Federal Bank', 'South Indian Bank', 'RBL Bank',
+    'Bandhan Bank', 'IDBI Bank', 'Karur Vysya Bank', 'City Union Bank',
+    'Karnataka Bank', 'Tamilnad Mercantile Bank', 'Jammu & Kashmir Bank', 'DCB Bank',
+    'Dhanlaxmi Bank', 'CSB Bank', 'Nainital Bank', 'AU Small Finance Bank',
+    'Equitas Small Finance Bank', 'Ujjivan Small Finance Bank', 'Jana Small Finance Bank',
+    'Suryoday Small Finance Bank', 'ESAF Small Finance Bank', 'Utkarsh Small Finance Bank',
+    'Bank of Rajasthan', 'Saraswat Co-operative Bank', 'Cosmos Co-operative Bank',
+    'Surat District Co-operative Bank', 'The Surat People\'s Co-operative Bank',
+    'Gujarat State Co-operative Bank', 'Rajkot Nagarik Sahakari Bank',
+    'Paytm Payments Bank', 'Airtel Payments Bank', 'India Post Payments Bank',
+    'Citibank', 'HSBC Bank', 'Standard Chartered Bank', 'DBS Bank', 'Deutsche Bank',
+    'Cash'
+  ];
 
   // ===== BILL NO direct entry — type karte hi bill select ho jata hai =====
   billNoPick = '';

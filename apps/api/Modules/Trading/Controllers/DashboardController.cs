@@ -221,17 +221,21 @@ public class DashboardController : ControllerBase
             amount = g.Sum(z => z.TotalAmount)
         }).OrderByDescending(x => x.orders).ThenByDescending(x => x.amount).Take(5).ToList();
 
-        // ---- Segment mix (sales bill lines by item category) ----
+        // ---- Segment mix (sales bill lines by DESCRIPTION / item name) ----
+        // Item-category aksar khali hoti thi → sab "Other" 100% dikhta tha. Ab line ki
+        // DESCRIPTION (jo Order/Bill me bharte ho) se group karte hain; description na ho
+        // to item name; wo bhi na ho to "Other".
         var blRows = await (from l in _db.BillLines
                             join b in _db.Bills on l.BillId equals b.Id
                             where b.FirmId == firmId && b.DeletedAt == null && b.BillType == "sales"
                                && b.BillDate >= start && b.BillDate <= end
                                && (branchId == null || b.BranchId == branchId.Value)
-                            select new { l.ItemName, l.TotalAmount }).ToListAsync();
+                            select new { l.ItemName, l.Description, l.TotalAmount }).ToListAsync();
         var segmentMix = blRows
-            .GroupBy(x => catMap.TryGetValue(x.ItemName, out var c) ? c : "Other")
+            .GroupBy(x => !string.IsNullOrWhiteSpace(x.Description) ? x.Description!.Trim()
+                          : (!string.IsNullOrWhiteSpace(x.ItemName) ? x.ItemName.Trim() : "Other"))
             .Select(g => new { segment = g.Key, amount = g.Sum(x => x.TotalAmount) })
-            .OrderByDescending(x => x.amount).Take(4).ToList();
+            .OrderByDescending(x => x.amount).Take(6).ToList();
 
         // ---- Outstanding sales bills (balance > 0) ----
         var outRaw = await _db.Bills

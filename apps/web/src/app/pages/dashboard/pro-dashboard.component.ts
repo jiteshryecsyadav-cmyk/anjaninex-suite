@@ -188,7 +188,7 @@ interface DonutSeg { label: string; color: string; value: number; pct: number; d
             <div class="widget-head">
               <div>
                 <h3>🎨 SEGMENT MIX</h3>
-                <p class="widget-sub">Item category-wise sales</p>
+                <p class="widget-sub">Description-wise sales</p>
               </div>
             </div>
             @if (segMix().length) {

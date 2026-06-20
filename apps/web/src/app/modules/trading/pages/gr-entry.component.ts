@@ -10,6 +10,7 @@ import { InvoicePreviewComponent, PreviewData } from '../../../shared/invoice-pr
 import { todayLocal } from '../../../shared/date.util';
 import { InDatePipe } from '../../../shared/in-date.pipe';
 import { FeatureService } from '../../../shared/feature.service';
+import { ToastService } from '../../../shared/toast.service';
 
 interface ReturnRow {
   selected: boolean;
@@ -200,6 +201,19 @@ interface ReturnRow {
             ✓ Direct mode ON — bill select karne ki zaroorat nahi. Sirf upar Supplier + Buyer rakho aur niche return items khud bharo.
           </div>
         } @else {
+          <!-- Quick lookup: supplier ka bill no daalte hi supplier+buyer+original bill auto-uth jaye -->
+          <div class="bill-lookup mt-3">
+            <label class="lbl">🔎 SUPPLIER BILL NO. (daalte hi supplier / buyer auto-uthenge)</label>
+            <div class="flex gap-2">
+              <input [(ngModel)]="grBillNoSearch" type="text" class="ip flex-1"
+                     placeholder="Supplier ka bill / invoice no — e.g. INV-2026/045 (ya internal bill no)"
+                     (keyup.enter)="findBillBySupplierNo()">
+              <button type="button" class="btn-find" [disabled]="billLookupBusy() || !grBillNoSearch.trim()"
+                      (click)="findBillBySupplierNo()">
+                {{ billLookupBusy() ? '…' : '🔎 Find Bill' }}
+              </button>
+            </div>
+          </div>
           <div class="grid grid-cols-3 gap-4 mt-3">
             <div>
               <label class="lbl">SELECT ORIGINAL BILL *</label>
@@ -589,6 +603,11 @@ interface ReturnRow {
 
     /* INPUTS */
     .lbl { display: block; font-size: 10px; font-weight: 700; color: #4A5878; letter-spacing: 0.5px; margin-bottom: 4px; text-transform: uppercase; }
+    .bill-lookup { background: #F0FDF4; border: 1px solid #BBF7D0; border-radius: 8px; padding: 10px 12px; }
+    .btn-find { padding: 8px 16px; background: #16a34a; color: #fff; border: 0; border-radius: 6px;
+      font-weight: 700; font-size: 13px; cursor: pointer; white-space: nowrap; }
+    .btn-find:hover { background: #15803d; }
+    .btn-find:disabled { opacity: .5; cursor: not-allowed; }
     .ip {
       width: 100%; padding: 8px 10px; border: 1px solid #D6DDEA; border-radius: 6px;
       font-size: 13px; color: #1B2E5C; background: #fff; font-family: inherit;
@@ -764,6 +783,47 @@ export class GrEntryComponent {
   features = inject(FeatureService);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
+  private toast = inject(ToastService);
+
+  // Supplier ka bill no. — daalte hi us bill se supplier+buyer+original bill auto-uth jaye
+  grBillNoSearch = '';
+  billLookupBusy = signal(false);
+
+  /** Supplier bill no (ya internal bill no) se bill dhoondo → supplier/buyer/original bill auto-fill. */
+  async findBillBySupplierNo() {
+    const q = (this.grBillNoSearch || '').trim().toLowerCase();
+    if (!q) return;
+    this.billLookupBusy.set(true);
+    try {
+      const res = await firstValueFrom(this.svc.listBills({ size: 500 }));
+      const items = (res.items || []).filter(b => !b.isDeleted);
+      const norm = (s: string | null | undefined) => (s || '').trim().toLowerCase();
+      const bill =
+        items.find(b => norm(b.supplierBillNo) === q || norm(b.billNo) === q) ||
+        items.find(b => norm(b.supplierBillNo).includes(q) || norm(b.billNo).includes(q));
+      if (!bill) {
+        this.toast.error(`"${this.grBillNoSearch}" se koi bill nahi mila. Sahi bill no daalein.`);
+        return;
+      }
+      // Supplier + Buyer auto-set
+      const sup = this.parties().find(p => p.id === bill.partyId);
+      const buy = bill.buyerPartyId ? this.parties().find(p => p.id === bill.buyerPartyId) : null;
+      if (sup) { this.supplierId = sup.id; this.supplierSearch = sup.displayName; this.supplierResults.set([]); }
+      if (buy) {
+        this.buyerId = buy.id; this.buyerSearch = buy.displayName; this.buyerResults.set([]);
+        this.buyerCommRate = +buy.commissionRate || 0;
+        if (this.showCommission) this.commissionPct = this.buyerCommRate;
+      }
+      await this.loadBills();
+      this.originalBillId = bill.id;
+      await this.onBillSelect(bill.id);
+      this.toast.success(`Bill ${bill.billNo} mil gaya — supplier/buyer auto-fill ho gaye ✓`);
+    } catch {
+      this.toast.error('Bill search nahi ho paya. Dobara try karein.');
+    } finally {
+      this.billLookupBusy.set(false);
+    }
+  }
   editId: string | null = null;
   editMode = false;
 

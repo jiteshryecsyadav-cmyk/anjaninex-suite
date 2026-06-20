@@ -49,19 +49,19 @@ import { RouterLink, RouterLinkActive, Router } from '@angular/router';
         </div>
       </div>
 
-      <div class="tn-dd" [class.tn-open]="open() === 'pay'">
-        <button type="button" class="tn-btn" (click)="toggle('pay', $event)">💰 Payment <span class="tn-caret">▼</span></button>
-        <div class="tn-menu">
-          <a routerLink="/trading/payments" (click)="close()">💰 Payments List</a>
-          <a routerLink="/trading/payments/new" (click)="close()">🪙 New Receipt</a>
-        </div>
-      </div>
-
       <div class="tn-dd" [class.tn-open]="open() === 'gr'">
         <button type="button" class="tn-btn" (click)="toggle('gr', $event)">📦 GR <span class="tn-caret">▼</span></button>
         <div class="tn-menu">
           <a routerLink="/trading/gr" (click)="close()">📦 GR List</a>
           <a routerLink="/trading/gr/new" (click)="close()">➕ New GR</a>
+        </div>
+      </div>
+
+      <div class="tn-dd" [class.tn-open]="open() === 'pay'">
+        <button type="button" class="tn-btn" (click)="toggle('pay', $event)">💰 Payment <span class="tn-caret">▼</span></button>
+        <div class="tn-menu">
+          <a routerLink="/trading/payments" (click)="close()">💰 Payments List</a>
+          <a routerLink="/trading/payments/new" (click)="close()">🪙 New Receipt</a>
         </div>
       </div>
 

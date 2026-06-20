@@ -623,6 +623,12 @@ public class BillService : IBillService
             await _db.SaveChangesAsync();
 
             await tx.CommitAsync();
+
+            // Credit limit cross hua to firm ko bell-notification (non-critical —
+            // bill commit ho chuka, notification fail ho to bhi bill safe rahe).
+            try { await CheckCreditLimitAndNotifyAsync(firmId, dto.PartyId, dto.BuyerPartyId); }
+            catch { /* notification optional — ignore */ }
+
             return await Get(bill.Id);
         }
         catch
@@ -845,6 +851,69 @@ public class BillService : IBillService
         _db.Vouchers.Add(voucher);
         await _db.SaveChangesAsync();
         return voucher.Id;
+    }
+
+    /// <summary>
+    /// Credit limit cross hone par firm ko bell-notification. Bill ke party (supplier) +
+    /// buyer dono check — jiska bhi RECEIVABLE (ledger Dr-Cr, positive) uski credit limit
+    /// se zyada ho. Dedup: same party ka unread notification ho to dobara nahi banata (spam roko).
+    /// </summary>
+    private async Task CheckCreditLimitAndNotifyAsync(Guid firmId, params Guid?[] partyIds)
+    {
+        var ids = partyIds.Where(p => p.HasValue).Select(p => p!.Value).Distinct().ToList();
+        if (ids.Count == 0) return;
+
+        var parties = await (from p in _db.PartyProfiles
+                             join c in _db.Contacts on p.ContactId equals c.Id
+                             where p.FirmId == firmId && ids.Contains(p.Id)
+                                   && p.LedgerId != null && p.CreditLimit > 0
+                             select new { LedgerId = p.LedgerId!.Value, p.CreditLimit, c.DisplayName })
+                            .ToListAsync();
+        if (parties.Count == 0) return;
+
+        var ledgerIds = parties.Select(p => p.LedgerId).ToList();
+        var bals = await _db.VoucherLines
+            .Where(vl => ledgerIds.Contains(vl.LedgerId))
+            .GroupBy(vl => vl.LedgerId)
+            .Select(g => new
+            {
+                LedgerId = g.Key,
+                Dr = g.Where(x => x.DebitCredit == "Dr").Sum(x => x.Amount),
+                Cr = g.Where(x => x.DebitCredit == "Cr").Sum(x => x.Amount)
+            })
+            .ToListAsync();
+        var balMap = bals.ToDictionary(x => x.LedgerId, x => x.Dr - x.Cr);
+
+        bool added = false;
+        foreach (var p in parties)
+        {
+            var outstanding = balMap.TryGetValue(p.LedgerId, out var b) ? b : 0m;
+            if (outstanding <= p.CreditLimit) continue;   // limit cross nahi hui (ya advance/Cr balance)
+
+            var title = $"⚠️ Credit limit cross: {p.DisplayName}";
+            var already = await _db.Notifications.AnyAsync(n =>
+                n.FirmId == firmId && n.Type == "credit_limit" && n.Title == title && n.ReadAt == null);
+            if (already) continue;
+
+            var pct = (int)Math.Round(outstanding / p.CreditLimit * 100m, MidpointRounding.AwayFromZero);
+            _db.Notifications.Add(new Notification
+            {
+                Id = Guid.NewGuid(),
+                FirmId = firmId,
+                UserId = null,   // poori firm ko dikhe
+                Type = "credit_limit",
+                Severity = "warning",
+                Title = title,
+                Body = $"{p.DisplayName} ka outstanding ₹{outstanding:N2} ho gaya — credit limit ₹{p.CreditLimit:N2} ({pct}%) se zyada.",
+                CtaLabel = "Party dekho",
+                CtaUrl = "/trading/parties",
+                ChannelsSent = "{\"inapp\":true}",
+                CreatedAt = DateTimeOffset.UtcNow,
+                ExpiresAt = DateTimeOffset.UtcNow.AddDays(30)
+            });
+            added = true;
+        }
+        if (added) await _db.SaveChangesAsync();
     }
 
     /// <summary>

@@ -54,7 +54,7 @@ import { LedgerStatementComponent } from '../components/ledger-statement.compone
       <div class="flex gap-3 mb-4">
         <input [(ngModel)]="searchQuery" (input)="onSearch()"
                type="text" placeholder="🔍 Search ledger by name..." class="input flex-1">
-        <select [(ngModel)]="selectedSubGroup" (change)="loadLedgers()" class="input w-64">
+        <select [(ngModel)]="selectedSubGroup" (ngModelChange)="loadLedgers()" class="input w-64">
           <option value="">All Sub Groups</option>
           @for (sg of subGroups(); track sg.id) {
             <option [value]="sg.id">{{ sg.groupName }} → {{ sg.name }}</option>

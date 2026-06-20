@@ -403,6 +403,9 @@ import { LedgerStatementComponent } from '../../accounting/components/ledger-sta
                   <div>
                     <label class="lbl">CREDIT LIMIT (₹)</label>
                     <input formControlName="creditLimit" type="number" placeholder="50000" class="ip">
+                    @if (form.value.creditLimit && inWords(form.value.creditLimit)) {
+                      <div class="amt-words">{{ inWords(form.value.creditLimit) }}</div>
+                    }
                   </div>
                   <div>
                     <label class="lbl">CREDIT DAYS</label>
@@ -553,6 +556,7 @@ import { LedgerStatementComponent } from '../../accounting/components/ledger-sta
     .credit-warn { background: #DC2626; }
     .credit-pct { margin-top: 4px; }
     .credit-tag { font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 4px; }
+    .amt-words { font-size: 10px; font-style: italic; color: #6b7280; margin-top: 3px; text-transform: capitalize; }
     .tag-ok { background: #D1FAE5; color: #047857; }
     .tag-warn { background: #FEF3C7; color: #92400E; }
     .tag-red { background: #FEE2E2; color: #DC2626; }
@@ -901,7 +905,10 @@ export class PartiesComponent {
   }
   creditPct(p: Party): number {
     if (!p.creditLimit || p.creditLimit === 0) return 0;
-    return Math.round((Math.abs(p.outstandingBalance) / p.creditLimit) * 100);
+    // Sirf RECEIVABLE (positive outstanding) credit limit ke against ginein.
+    // Cr balance (advance/jama) wale ko 0% (OK) — abs() use karne se galat red aata tha.
+    const receivable = p.outstandingBalance > 0 ? p.outstandingBalance : 0;
+    return Math.round((receivable / p.creditLimit) * 100);
   }
 
   // ===== BEHAVIOUR RATING — naam ke aage grade + stars (real data se computed) =====

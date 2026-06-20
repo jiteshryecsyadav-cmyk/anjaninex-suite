@@ -200,7 +200,12 @@ export class AccountingService {
 
   // Ledgers
   listLedgers(opts?: { subGroupId?: string; search?: string }): Observable<Ledger[]> {
-    return this.http.get<Ledger[]>(`${this.base}/ledgers`, { params: opts ?? {} });
+    // Sirf real values bhejo — warna Angular `subGroupId=undefined` (string) bhej deta hai
+    // aur backend Guid? parse fail karke 400 deta hai → list khali aa jati thi.
+    const p: any = {};
+    if (opts?.subGroupId) p.subGroupId = opts.subGroupId;
+    if (opts?.search) p.search = opts.search;
+    return this.http.get<Ledger[]>(`${this.base}/ledgers`, Object.keys(p).length ? { params: p } : {});
   }
   getLedger(id: string) {
     return this.http.get<Ledger>(`${this.base}/ledgers/${id}`);

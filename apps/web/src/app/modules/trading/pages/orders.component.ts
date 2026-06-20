@@ -141,6 +141,12 @@ import { amountInWords } from '../../../shared/amount-in-words.util';
                     @if (o.isDeleted) {
                       <span class="text-xs text-gray-400">—</span>
                     } @else {
+                      @if (o.status !== 'billed' && o.status !== 'cancelled' && o.status !== 'completed') {
+                        <a [routerLink]="['/trading/bills/new']" [queryParams]="{ orderId: o.id }"
+                           class="ai-btn ai-bill" title="Create Bill — order data auto-fill">🧾 Bill</a>
+                      } @else {
+                        <span class="ai-billed" title="Bill ban chuka">✓ Billed</span>
+                      }
                       <button (click)="preview(o.id)" class="ai-btn" title="Preview & Print">👁</button>
                       <a [routerLink]="['/trading/orders', o.id, 'edit']" class="ai-btn" title="Edit">✏️</a>
                       <button (click)="del(o.id)" class="ai-btn" title="Delete">🗑️</button>
@@ -171,6 +177,12 @@ import { amountInWords } from '../../../shared/amount-in-words.util';
     .ai-btn { display:inline-block; width:28px; height:28px; border:0; background:transparent;
       border-radius:6px; cursor:pointer; font-size:13px; transition:background 0.15s; margin:0 1px; }
     .ai-btn:hover { background:#FAF7F0; }
+    .ai-bill { width:auto !important; padding:0 10px; height:28px; line-height:28px;
+      background:#16a34a !important; color:#fff !important; font-weight:700; font-size:12px;
+      text-decoration:none; white-space:nowrap; }
+    .ai-bill:hover { background:#15803d !important; }
+    .ai-billed { display:inline-block; padding:0 8px; height:28px; line-height:28px;
+      font-size:11px; font-weight:700; color:#16a34a; white-space:nowrap; }
 
     @media (max-width: 640px) {
       .grid-cols-2 { grid-template-columns: 1fr !important; }

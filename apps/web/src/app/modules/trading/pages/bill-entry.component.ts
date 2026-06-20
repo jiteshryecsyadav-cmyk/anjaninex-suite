@@ -2121,7 +2121,16 @@ export class BillEntryComponent {
         this.loadBillForEdit(idParam);
       });
     } else {
-      this.svc.listParties().subscribe(p => this.parties.set(p));
+      this.svc.listParties().subscribe(p => {
+        this.parties.set(p);
+        // Orders list ke "Create Bill" button se aaye → order auto-select + auto-fill.
+        // (parties load hone ke BAAD chalao taaki supplier/buyer GST/address bhar jayein.)
+        const orderIdParam = this.route.snapshot.queryParamMap.get('orderId');
+        if (orderIdParam) {
+          this.selectedOrderId = orderIdParam;
+          this.onOrderSelect(orderIdParam);
+        }
+      });
     }
   }
 

@@ -853,7 +853,11 @@ export class CommissionComponent {
   generatedInvoices = signal<any[]>([]);
   loadInvoices() {
     this.svc.listCommissionInvoices().subscribe({
-      next: (list) => this.generatedInvoices.set(list),
+      next: (list) => {
+        // NEWEST upar (descending) — invoice no ke trailing number se
+        const num = (s: any) => { const m = String(s ?? '').match(/(\d+)\s*$/); return m ? +m[1] : 0; };
+        this.generatedInvoices.set([...list].sort((a: any, b: any) => num(b.invoiceNo) - num(a.invoiceNo)));
+      },
       error: () => {}
     });
   }

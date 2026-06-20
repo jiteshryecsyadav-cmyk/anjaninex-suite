@@ -203,7 +203,9 @@ export class GrComponent {
     this.loading.set(true);
     this.svc.listGoodsReturns({ status: this.filterStatus || undefined, size: 500 }).subscribe({
       next: (res) => {
-        this.grs.set(res.items);
+        // NEWEST upar (descending) — GR no ke trailing number se
+        const num = (s: string | null | undefined) => { const m = (s || '').match(/(\d+)\s*$/); return m ? +m[1] : 0; };
+        this.grs.set([...res.items].sort((a, b) => num(b.grNo) - num(a.grNo)));
         this.loading.set(false);
       },
       error: () => this.loading.set(false)

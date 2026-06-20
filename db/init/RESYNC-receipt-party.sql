@@ -40,7 +40,7 @@ BEGIN
     LOOP
         -- 1) sahi party nikalo: allocations ki distinct bill-party (EK ho to wahi)
         SELECT CASE WHEN count(DISTINCT b.party_id) = 1
-                    THEN min(b.party_id) ELSE r.payment_party END
+                    THEN (array_agg(DISTINCT b.party_id))[1] ELSE r.payment_party END
         INTO   correct_pid
         FROM   trading.payment_allocations a
         JOIN   trading.bills b ON b.id = a.bill_id

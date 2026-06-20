@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Namokara.Api.Infrastructure.Persistence;
 using Namokara.Api.Modules.Accounting.Entities;
 using Namokara.Api.Modules.Trading.Entities;
+using Namokara.Api.Modules.Platform.Entities;   // Notification (credit-limit alert)
 
 namespace Namokara.Api.Modules.Trading.Services;
 

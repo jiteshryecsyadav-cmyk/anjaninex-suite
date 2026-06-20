@@ -266,8 +266,8 @@ interface PartyBehavior {
               @if (billNoPicked()) { <span class="bn-ok">✓ {{ billNoPicked() }} select ho gaya</span> }
             </label>
             <input [(ngModel)]="billNoPick" (ngModelChange)="onBillNoPick()" type="text"
-                   list="prBillList" placeholder="Bill no daalo — detail niche aa jayegi"
-                   class="ip" [disabled]="bills().length === 0">
+                   list="prBillList" placeholder="Bill / supplier bill no daalo — supplier+buyer auto aa jayenge"
+                   class="ip">
             <datalist id="prBillList">
               @for (b of bills(); track b.billId) {
                 <option [value]="b.billNo">₹{{ b.pending | number:'1.0-0' }} pending</option>
@@ -1192,15 +1192,51 @@ export class PaymentReceiptComponent {
   // ===== BILL NO direct entry — type karte hi bill select ho jata hai =====
   billNoPick = '';
   billNoPicked = signal('');
-  onBillNoPick() {
+  async onBillNoPick() {
     const q = (this.billNoPick || '').trim().toLowerCase();
     if (!q) { this.billNoPicked.set(''); return; }
+
+    // 1) Pehle current loaded bills me dhoondo (supplier/buyer already select hain to)
     const idx = this.bills().findIndex(b => (b.billNo || '').toLowerCase() === q);
     if (idx >= 0) {
       this.toggleBill(idx, true);              // bill select → detail niche table me
       this.billNoPicked.set(this.bills()[idx].billNo);
-    } else {
-      this.billNoPicked.set('');
+      return;
+    }
+
+    // 2) Nahi mila → FIRM-WIDE lookup (bill no YA supplier bill no se) → supplier+buyer auto-fill
+    try {
+      const res = await firstValueFrom(this.svc.listBills({ size: 500 }));
+      const items = (res.items || []).filter(b => !b.isDeleted);
+      const norm = (s: string | null | undefined) => (s || '').trim().toLowerCase();
+      const bill =
+        items.find(b => norm(b.billNo) === q || norm(b.supplierBillNo) === q) ||
+        items.find(b => norm(b.billNo).includes(q) || norm(b.supplierBillNo).includes(q));
+      if (!bill) {
+        this.billNoPicked.set('');
+        this.toast.error(`"${this.billNoPick}" se koi bill nahi mila. Sahi bill no daalein.`);
+        return;
+      }
+      // Supplier + Buyer auto-select (parties master se)
+      const sup = this.parties().find(p => p.id === bill.partyId);
+      const buy = bill.buyerPartyId ? this.parties().find(p => p.id === bill.buyerPartyId) : null;
+      if (sup) this.selectSupplier(sup);
+      if (buy) this.selectBuyer(buy);
+
+      // Dono set hone ke baad us pair ke outstanding bills fresh load karo
+      await this.loadBills();
+      const i2 = this.bills().findIndex(b =>
+        b.billId === bill.id || (b.billNo || '').toLowerCase() === norm(bill.billNo));
+      if (i2 >= 0) {
+        this.toggleBill(i2, true);
+        this.billNoPicked.set(this.bills()[i2].billNo);
+      } else {
+        // Bill mila par outstanding nahi (shayad already paid) — supplier/buyer to bhar gaye
+        this.billNoPicked.set(bill.billNo);
+      }
+      this.toast.success(`Bill ${bill.billNo} mil gaya — supplier/buyer auto-fill ho gaye ✓`);
+    } catch {
+      this.toast.error('Bill search nahi ho paya. Dobara try karein.');
     }
   }
 

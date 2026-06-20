@@ -231,9 +231,10 @@ public class DashboardController : ControllerBase
                                && b.BillDate >= start && b.BillDate <= end
                                && (branchId == null || b.BranchId == branchId.Value)
                             select new { l.ItemName, l.Description, l.TotalAmount }).ToListAsync();
+        // SIRF Description dropdown (Fabric / Ready Made / Saree / Other) se group karo.
+        // Item-name fallback NAHI — user ko 4 fixed description categories hi chahiye.
         var segmentMix = blRows
-            .GroupBy(x => !string.IsNullOrWhiteSpace(x.Description) ? x.Description!.Trim()
-                          : (!string.IsNullOrWhiteSpace(x.ItemName) ? x.ItemName.Trim() : "Other"))
+            .GroupBy(x => !string.IsNullOrWhiteSpace(x.Description) ? x.Description!.Trim() : "Other")
             .Select(g => new { segment = g.Key, amount = g.Sum(x => x.TotalAmount) })
             .OrderByDescending(x => x.amount).Take(6).ToList();
 

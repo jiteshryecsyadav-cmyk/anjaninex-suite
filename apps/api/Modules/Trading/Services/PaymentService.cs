@@ -192,15 +192,14 @@ public class PaymentService : IPaymentService
         // Edit (ReuseNo set — delete+recreate) ke case me skip.
         if (string.IsNullOrWhiteSpace(dto.ReuseNo))
         {
-            var since = DateTimeOffset.UtcNow.AddSeconds(-120);
             var dup = await _db.Payments.AnyAsync(p =>
                 p.FirmId == firmId &&
                 p.PartyId == dto.PartyId &&
                 p.PaymentType == dto.PaymentType &&
                 p.Amount == dto.Amount &&
-                p.CreatedAt >= since);
+                p.PaymentDate == dto.PaymentDate);
             if (dup)
-                throw new ArgumentException("Itni hi amount ki payment abhi-abhi is party ki ban chuki hai (duplicate) — list refresh karein ya purani ko edit karein.");
+                throw new ArgumentException("Is party ki itni hi amount ki payment isi date par pehle se hai (duplicate) — list refresh karein ya purani ko edit karein.");
         }
 
         using var tx = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable);

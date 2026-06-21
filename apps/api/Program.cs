@@ -215,16 +215,32 @@ try
                     QueueLimit = 0
                 }));
 
-        // Global fallback: 600/min per IP — generous, catches accidents
+        // Global fallback.
+        // Logged-in: PER-USER budget (1200/min) — taaki ek office ke kai staff EK hi
+        //   public IP (NAT) se kaam karein to bhi har user ka apna limit ho, galat 429
+        //   na mile. Anonymous: PER-IP (600/min) — abuse/brute se bachav.
         opts.GlobalLimiter = System.Threading.RateLimiting.PartitionedRateLimiter.Create<HttpContext, string>(
-            httpContext => System.Threading.RateLimiting.RateLimitPartition.GetFixedWindowLimiter(
-                partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "anon",
-                factory: _ => new System.Threading.RateLimiting.FixedWindowRateLimiterOptions
-                {
-                    PermitLimit = 600,
-                    Window = TimeSpan.FromMinutes(1),
-                    QueueLimit = 0
-                }));
+            httpContext =>
+            {
+                var userId = httpContext.User.FindFirst("user_id")?.Value;
+                if (!string.IsNullOrEmpty(userId))
+                    return System.Threading.RateLimiting.RateLimitPartition.GetFixedWindowLimiter(
+                        partitionKey: "user:" + userId,
+                        factory: _ => new System.Threading.RateLimiting.FixedWindowRateLimiterOptions
+                        {
+                            PermitLimit = 1200,
+                            Window = TimeSpan.FromMinutes(1),
+                            QueueLimit = 0
+                        });
+                return System.Threading.RateLimiting.RateLimitPartition.GetFixedWindowLimiter(
+                    partitionKey: "ip:" + (httpContext.Connection.RemoteIpAddress?.ToString() ?? "anon"),
+                    factory: _ => new System.Threading.RateLimiting.FixedWindowRateLimiterOptions
+                    {
+                        PermitLimit = 600,
+                        Window = TimeSpan.FromMinutes(1),
+                        QueueLimit = 0
+                    });
+            });
     });
 
     // ---------------- Application services ----------------

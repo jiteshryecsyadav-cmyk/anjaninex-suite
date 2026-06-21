@@ -201,11 +201,26 @@ public class GoodsReturnService : IGoodsReturnService
 
     private async Task<GoodsReturnDetailDto> CreateInternal(CreateGoodsReturnDto dto, Guid firmId, Guid branchId, Guid userId)
     {
+        var totalReturn = dto.Lines.Sum(l => l.TotalAmount);
+
+        // Double-submit guard: same bill + same total amount ki GR agar 2 min ke andar
+        // ban chuki hai to dobara mat banao (double-click / slow-network retry se duplicate rokta hai).
+        if (dto.OriginalBillId.HasValue)
+        {
+            var since = DateTimeOffset.UtcNow.AddSeconds(-120);
+            var dup = await _db.GoodsReturns.AnyAsync(g =>
+                g.FirmId == firmId &&
+                g.OriginalBillId == dto.OriginalBillId &&
+                g.TotalReturnAmount == totalReturn &&
+                g.CreatedAt >= since);
+            if (dup)
+                throw new ArgumentException("Ye GR abhi-abhi ban chuki hai (duplicate) — GR list refresh karein.");
+        }
+
         var grNo = await GenerateGrNo(firmId, branchId);
 
         var taxable = dto.Lines.Sum(l => l.TaxableAmount);
         var tax = dto.Lines.Sum(l => l.TaxAmount);
-        var totalReturn = dto.Lines.Sum(l => l.TotalAmount);
         var netAfter = dto.OriginalBillAmount - totalReturn;
         var netTaxable = Math.Max(0, dto.OriginalBillAmount - totalReturn);
         var commAmount = netTaxable * (dto.CommissionPct / 100m);

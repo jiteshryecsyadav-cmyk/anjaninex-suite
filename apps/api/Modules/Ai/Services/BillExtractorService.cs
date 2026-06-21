@@ -459,7 +459,7 @@ public class BillExtractorService : IBillExtractorService
     // Shared by ALL providers (Gemini / Claude / OpenAI).
     // AI prompt badalne par ye version bump karo (v2 → v3 ...) — purana cache auto-bust ho jata hai,
     // taaki naya prompt turant chale aur manual cache-clear ki zaroorat na pade.
-    private const string PromptVersion = "v3";
+    private const string PromptVersion = "v4";
 
     private static readonly string BillPrompt = @"You are an expert Indian GST invoice parser. Extract ONLY the fields in the schema below and return ONLY valid JSON. No prose, no markdown, no extra keys.
 
@@ -469,9 +469,10 @@ IMPORTANT — read these fields very carefully, they matter most:
 - GSTIN = exactly 15 characters (e.g. 24AYXP38534B1Z7). Read each char carefully (0 vs O, 1 vs I). Capture BOTH supplier and buyer GSTIN if printed.
 - Each item row: name (Description of Goods), hsnSac, qty, unit, rate, taxRate %, taxableAmount, totalAmount.
   * Read each column carefully. taxableAmount/totalAmount = the row's Amount as printed (source of truth).
-  * rate = the value in the Rate / Price / Rate Rs column IF such a column is printed. Read it exactly (e.g. 35.50).
-  * qty = the quantity that, multiplied by rate, equals the row Amount. For cloth/textile a row often shows a piece count (Pcs / Than) AND meters (Mtr / Mts / Meter) — the BILLED qty is the METERS (e.g. Mts 1390.62), unit=""MTR"". The piece count (e.g. 12) is only packaging — do NOT use it as qty.
-  * SELF-CHECK every row: qty × rate MUST be approximately equal to the row Amount/taxableAmount. If it does not match, you picked the wrong column — choose the quantity column (usually meters) that makes qty × rate equal the amount.
+  * rate = MOST IMPORTANT, most reliable field. Read it EXACTLY from the Rate / Price / Rate Rs column (e.g. 315.00). Never alter, round, or compute it. If genuinely no Rate column exists, set rate=0.
+  * qty = the number that makes qty × rate = the row Amount (so the line amount comes out correct). A textile row may show a piece count AND meters — pick whichever quantity makes qty × rate = the printed Amount.
+  * unit = just ""PCS"" or ""MTR"" (your best guess). DON'T over-think the unit — the USER will choose PCS or MTR from a dropdown. Only these two values: ""PCS"" or ""MTR"".
+  * SELF-CHECK every row: qty × rate MUST ≈ the row Amount/taxableAmount. If not, fix qty so the product matches the printed amount.
   * ONLY if there is genuinely NO Rate/Price column anywhere on the bill (just quantity + amount): set rate=0 — do NOT invent or compute a rate (the app will ask the user).
 - invoice number + invoice date (top right of bill).
 - phone = ONLY a 10-digit Indian MOBILE number (starting 6-9), digits only. NO labels like 'Ph:'/'Accounts'/'Payment', NO landline/STD numbers like (0261)2331456, NO email. If no mobile is printed, leave it """".

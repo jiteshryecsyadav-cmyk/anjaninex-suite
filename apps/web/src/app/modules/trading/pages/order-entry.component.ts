@@ -173,7 +173,7 @@ interface LineRow {
             </div>
             <div>
               <label class="lbl">PARTY MASTER</label>
-              @if (supplierId) {
+              @if (supplierInMaster) {
                 <div class="pm-status pm-saved">✓ Party Master me save hai</div>
               } @else if (supplierFilter()) {
                 <button type="button" class="pm-status pm-missing" (click)="showAddSupplier.set(true)">
@@ -247,7 +247,7 @@ interface LineRow {
             </div>
             <div>
               <label class="lbl">PARTY MASTER</label>
-              @if (buyerId) {
+              @if (buyerInMaster) {
                 <div class="pm-status pm-saved">✓ Party Master me save hai</div>
               } @else if (buyerFilter()) {
                 <button type="button" class="pm-status pm-missing" (click)="showAddBuyer.set(true)">
@@ -1247,6 +1247,33 @@ export class OrderEntryComponent {
     );
   }
 
+  // ---- Master party duplicate detect: SIRF GST no / PAN no se ----
+  private pNorm(s?: string | null): string { return (s || '').replace(/\s+/g, '').toUpperCase(); }
+  private findMasterParty(gst?: string | null, pan?: string | null): Party | undefined {
+    const g = this.pNorm(gst), pa = this.pNorm(pan);
+    if (!g && !pa) return undefined;
+    return this.parties().find(p =>
+      (!!g && this.pNorm(p.gst) === g) ||
+      (!!pa && this.pNorm(p.pan) === pa)
+    );
+  }
+  get supplierInMaster(): boolean {
+    return !!this.supplierId || !!this.findMasterParty(this.supplierGstin, this.supplierPan);
+  }
+  get buyerInMaster(): boolean {
+    return !!this.buyerId || !!this.findMasterParty(this.buyerGstin, this.buyerPan);
+  }
+  private linkPartiesFromMaster(): void {
+    if (!this.supplierId) {
+      const m = this.findMasterParty(this.supplierGstin, this.supplierPan);
+      if (m) { this.supplierId = m.id; if (!this.supplierFilter()) this.supplierFilter.set(m.displayName); }
+    }
+    if (!this.buyerId) {
+      const m = this.findMasterParty(this.buyerGstin, this.buyerPan);
+      if (m) { this.buyerId = m.id; if (!this.buyerFilter()) this.buyerFilter.set(m.displayName); }
+    }
+  }
+
   /** Pre-fill the Quick Add modal — prefers AI cache, falls back to current form fields. */
   supplierPrefill() {
     return {
@@ -1879,6 +1906,7 @@ export class OrderEntryComponent {
   // ============ SAVE ============
   save() {
     // Detailed validation — show exactly what's missing
+    this.linkPartiesFromMaster(); // GST/PAN se existing party link → duplicate na bane
     const missing: string[] = [];
     if (!this.supplierId) missing.push('SUPPLIER (top)');
     if (!this.buyerId) missing.push('BUYER (top)');

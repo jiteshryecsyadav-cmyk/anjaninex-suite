@@ -203,18 +203,16 @@ public class GoodsReturnService : IGoodsReturnService
     {
         var totalReturn = dto.Lines.Sum(l => l.TotalAmount);
 
-        // Double-submit guard: same bill + same total amount ki GR agar 2 min ke andar
-        // ban chuki hai to dobara mat banao (double-click / slow-network retry se duplicate rokta hai).
+        // EK BILL = EK GR. Agar is bill ki GR pehle se ban chuki hai to nayi mat banao —
+        // user ko usi GR ko EDIT karna chahiye. (Double-save + alag-amount duplicate dono rukte hain.)
         if (dto.OriginalBillId.HasValue)
         {
-            var since = DateTimeOffset.UtcNow.AddSeconds(-120);
-            var dup = await _db.GoodsReturns.AnyAsync(g =>
-                g.FirmId == firmId &&
-                g.OriginalBillId == dto.OriginalBillId &&
-                g.TotalReturnAmount == totalReturn &&
-                g.CreatedAt >= since);
-            if (dup)
-                throw new ArgumentException("Ye GR abhi-abhi ban chuki hai (duplicate) — GR list refresh karein.");
+            var existingGrNo = await _db.GoodsReturns
+                .Where(g => g.FirmId == firmId && g.OriginalBillId == dto.OriginalBillId)
+                .Select(g => g.GrNo)
+                .FirstOrDefaultAsync();
+            if (existingGrNo != null)
+                throw new ArgumentException($"Is bill ki GR pehle se bani hai ({existingGrNo}). Nayi banane ke bajaye usi GR ko EDIT karein.");
         }
 
         var grNo = await GenerateGrNo(firmId, branchId);

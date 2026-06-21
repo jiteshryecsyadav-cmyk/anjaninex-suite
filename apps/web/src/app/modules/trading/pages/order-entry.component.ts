@@ -327,8 +327,8 @@ interface LineRow {
                     <select [ngModel]="line.unit"
                             (ngModelChange)="updateLine($index, 'unit', $event)"
                             class="tip">
-                      <option value="MTR">MTR</option>
-                      <option value="PCS">PCS</option>
+                      <option value="MTR">MTR × Rate</option>
+                      <option value="PCS">PCS × Rate</option>
                       <option value="KG">KG</option>
                       <option value="DOZ">DOZ</option>
                       <option value="BOX">BOX</option>

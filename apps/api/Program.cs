@@ -445,7 +445,10 @@ try
     });
 
     app.UseCors();
-    app.UseRateLimiter();             // P0-11
+    // Load-test ke liye TEST instance par limiter band kar sakte ho:
+    //   DISABLE_RATE_LIMIT=1 dotnet ... (sirf isolated test env me — PRODUCTION par NAHI)
+    if (Environment.GetEnvironmentVariable("DISABLE_RATE_LIMIT") != "1")
+        app.UseRateLimiter();         // P0-11 (production me hamesha ON)
     app.UseAuthentication();
     // P0-7: TenantContextMiddleware is now redundant — tenant context is set
     // by TenantConnectionInterceptor on the actual DB connection. Keeping no-op

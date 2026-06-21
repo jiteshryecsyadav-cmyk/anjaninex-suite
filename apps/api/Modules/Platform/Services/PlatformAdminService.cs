@@ -89,7 +89,8 @@ public record CreateFirmDto(
     string Name, string? LegalName, string? Gst, string? Pan, string? City, string? State,
     string ContactEmail, string ContactPhone, Guid? PlanId,
     string AdminFullName, string AdminUsername, string AdminPassword,
-    string? BankName = null, string? AccountNo = null, string? Ifsc = null);
+    string? BankName = null, string? AccountNo = null, string? Ifsc = null,
+    string? AgentCode = null);
 
 // =============================================================================
 // Service
@@ -578,6 +579,16 @@ public class PlatformAdminService : IPlatformAdminService
         if (await _db.Users.AnyAsync(u => u.Username == dto.AdminUsername.Trim()))
             throw new ArgumentException($"Username '{dto.AdminUsername}' pehle se le liya gaya hai.");
 
+        // Agent/reseller code (optional) → resolve to active agent. Galat code = error.
+        Guid? agentId = null;
+        if (!string.IsNullOrWhiteSpace(dto.AgentCode))
+        {
+            var code = dto.AgentCode.Trim().ToUpperInvariant();
+            var agent = await _db.Agents.FirstOrDefaultAsync(a => a.Code == code && a.Status == "active");
+            if (agent is null) throw new ArgumentException("Invalid agent code");
+            agentId = agent.Id;
+        }
+
         var now = DateTimeOffset.UtcNow;
         using var tx = await _db.Database.BeginTransactionAsync();
         try
@@ -594,7 +605,7 @@ public class PlatformAdminService : IPlatformAdminService
                 BankName = string.IsNullOrWhiteSpace(dto.BankName) ? null : dto.BankName.Trim(),
                 AccountNo = string.IsNullOrWhiteSpace(dto.AccountNo) ? null : dto.AccountNo.Trim(),
                 Ifsc = string.IsNullOrWhiteSpace(dto.Ifsc) ? null : dto.Ifsc.Trim().ToUpperInvariant(),
-                PlanId = dto.PlanId, Status = "trial",
+                PlanId = dto.PlanId, AgentId = agentId, Status = "trial",
                 TrialStartedAt = now, TrialEndsAt = now.AddDays(15),
                 WalletBalance = 0, CreatedAt = now, UpdatedAt = now
             };

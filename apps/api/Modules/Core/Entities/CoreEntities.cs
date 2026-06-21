@@ -8,6 +8,9 @@ public class User
     public Guid Id { get; set; }
     public Guid? FirmId { get; set; }
 
+    // Agent/reseller login link (migration 48) — set ho to ye user ek agent hai (FirmId null).
+    public Guid? AgentId { get; set; }
+
     [Required, MaxLength(150)]
     public string Username { get; set; } = "";
 

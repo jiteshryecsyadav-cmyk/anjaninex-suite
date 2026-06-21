@@ -42,6 +42,9 @@ public class Firm
     public Guid? PlanId { get; set; }
     public SubscriptionPlan? Plan { get; set; }
 
+    // Reseller/agent link (migration 48) — jisne ye firm refer ki.
+    public Guid? AgentId { get; set; }
+
     [Column(TypeName = "numeric(14,2)")]
     public decimal WalletBalance { get; set; }
 

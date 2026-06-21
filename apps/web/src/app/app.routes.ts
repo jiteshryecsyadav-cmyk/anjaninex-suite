@@ -1,11 +1,19 @@
 import { Routes } from '@angular/router';
 import { authGuard, guestGuard, requirePermission } from './core/auth/auth.guard';
+import { agentGuard } from './modules/agent/agent.guard';
 
 export const routes: Routes = [
   {
     path: 'login',
     canActivate: [guestGuard],
     loadComponent: () => import('./pages/login/login.component').then(m => m.LoginComponent)
+  },
+  // Agent / Reseller area — apna minimal layout, firm shell se bahar
+  { path: 'agent', pathMatch: 'full', redirectTo: 'agent/dashboard' },
+  {
+    path: 'agent/dashboard',
+    canActivate: [agentGuard],
+    loadComponent: () => import('./modules/agent/agent-dashboard.component').then(m => m.AgentDashboardComponent)
   },
   {
     path: 'pricing',

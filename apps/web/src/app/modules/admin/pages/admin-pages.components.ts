@@ -13,6 +13,8 @@ const subNav = `
        class="px-4 py-2 text-sm font-semibold text-gray-500 border-b-2 border-transparent hover:text-[#5c1a8b]">📊 Dashboard</a>
     <a routerLink="/admin/firms" routerLinkActive="!border-[#5c1a8b] !text-[#5c1a8b]"
        class="px-4 py-2 text-sm font-semibold text-gray-500 border-b-2 border-transparent hover:text-[#5c1a8b]">🏢 Firms</a>
+    <a routerLink="/admin/agents" routerLinkActive="!border-[#5c1a8b] !text-[#5c1a8b]"
+       class="px-4 py-2 text-sm font-semibold text-gray-500 border-b-2 border-transparent hover:text-[#5c1a8b]">👥 Agents</a>
     <a routerLink="/admin/firm-report" routerLinkActive="!border-[#5c1a8b] !text-[#5c1a8b]"
        class="px-4 py-2 text-sm font-semibold text-gray-500 border-b-2 border-transparent hover:text-[#5c1a8b]">📈 Report</a>
     <a routerLink="/admin/plans" routerLinkActive="!border-[#5c1a8b] !text-[#5c1a8b]"
@@ -179,6 +181,15 @@ const subNav = `
               <div><label class="fl">Username *</label><input [(ngModel)]="nf.adminUsername" class="fi"></div>
               <div><label class="fl">Password * (min 6)</label><input [(ngModel)]="nf.adminPassword" class="fi"></div>
             </div>
+            <h4 class="font-bold text-sm text-[#5c1a8b] mt-4 mb-2">👥 Referral (optional)</h4>
+            <div class="grid grid-cols-3 gap-3">
+              <div>
+                <label class="fl">Agent Code (optional)</label>
+                <input [(ngModel)]="nf.agentCode" (blur)="checkAgentCode()" class="fi font-mono uppercase" placeholder="e.g. AGT123">
+                @if (agentName()) { <div class="text-xs text-green-700 mt-1">✓ {{ agentName() }}</div> }
+                @if (agentErr()) { <div class="text-xs text-red-600 mt-1">{{ agentErr() }}</div> }
+              </div>
+            </div>
             @if (addErr()) { <div class="text-red-600 text-sm mt-2">{{ addErr() }}</div> }
             <div class="flex justify-end gap-2 mt-4">
               <button (click)="showAdd.set(false)" class="px-4 py-2 border border-gray-300 rounded text-sm">Cancel</button>
@@ -234,7 +245,19 @@ export class AdminFirmsComponent {
     return { name: '', legalName: '', gst: '', pan: '', city: '', state: '',
              contactEmail: '', contactPhone: '', planId: null,
              bankName: '', accountNo: '', ifsc: '',
-             adminFullName: '', adminUsername: '', adminPassword: '' };
+             adminFullName: '', adminUsername: '', adminPassword: '', agentCode: '' };
+  }
+
+  agentName = signal('');
+  agentErr = signal('');
+  checkAgentCode() {
+    const code = (this.nf.agentCode || '').trim();
+    this.agentName.set(''); this.agentErr.set('');
+    if (!code) return;
+    this.svc.resolveAgentCode(code).subscribe({
+      next: (a) => this.agentName.set(`${a.name} (${a.status})`),
+      error: () => this.agentErr.set('Agent code nahi mila')
+    });
   }
 
   ngOnInit() {

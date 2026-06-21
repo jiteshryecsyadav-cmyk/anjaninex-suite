@@ -26,7 +26,8 @@ public record UserInfoDto(
     Guid? DefaultBranchId,
     bool CanViewAllBranches,
     List<string> Roles,
-    List<string> Permissions);
+    List<string> Permissions,
+    Guid? AgentId = null);
 
 public class AuthFailedException : Exception
 {
@@ -114,7 +115,8 @@ public class AuthService : IAuthService
                 user.DefaultBranchId,
                 user.CanViewAllBranches,
                 roles,
-                perms.ToList()));
+                perms.ToList(),
+                user.AgentId));
     }
 
     public async Task<LoginResponse> Refresh(string refreshToken)
@@ -145,7 +147,7 @@ public class AuthService : IAuthService
             new UserInfoDto(
                 user.Id, user.FirmId, user.Username, user.FullName,
                 user.Email, user.Phone, user.DefaultBranchId,
-                user.CanViewAllBranches, roles, perms.ToList()));
+                user.CanViewAllBranches, roles, perms.ToList(), user.AgentId));
     }
 
     public async Task Logout(Guid sessionId)
@@ -163,7 +165,7 @@ public class AuthService : IAuthService
         return new UserInfoDto(
             user.Id, user.FirmId, user.Username, user.FullName,
             user.Email, user.Phone, user.DefaultBranchId,
-            user.CanViewAllBranches, roles, perms.ToList());
+            user.CanViewAllBranches, roles, perms.ToList(), user.AgentId);
     }
 
     private async Task<List<string>> GetUserRoles(Guid userId)
@@ -194,6 +196,7 @@ public class AuthService : IAuthService
         };
 
         if (user.FirmId.HasValue) claims.Add(new Claim("firm_id", user.FirmId.Value.ToString()));
+        if (user.AgentId.HasValue) claims.Add(new Claim("agent_id", user.AgentId.Value.ToString()));
         if (user.DefaultBranchId.HasValue) claims.Add(new Claim("default_branch_id", user.DefaultBranchId.Value.ToString()));
 
         foreach (var role in roles) claims.Add(new Claim(ClaimTypes.Role, role));

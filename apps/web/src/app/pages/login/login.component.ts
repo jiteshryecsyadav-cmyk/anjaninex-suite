@@ -216,6 +216,11 @@ export class LoginComponent {
     try {
       const { identifier, password } = this.form.getRawValue();
       await this.auth.login(identifier, password);
+      // Agent login → apna reseller dashboard (firm shell se alag)
+      if (this.auth.user()?.agentId) {
+        this.router.navigateByUrl('/agent/dashboard');
+        return;
+      }
       // Super admin → HAMESHA Anjaninex panel (returnUrl '/' ho to bhi override karo)
       const isSuper = this.auth.hasRole('super_admin');
       let target = this.route.snapshot.queryParamMap.get('returnUrl') ?? (isSuper ? '/admin/dashboard' : '/');

@@ -131,9 +131,13 @@ try
                     //  super admin ko har call par 401 milta tha = login flash/bounce bug.)
                     var isSuperAdmin = ctx.Principal?.IsInRole("super_admin") == true
                                     || ctx.Principal?.IsInRole("SUPER_ADMIN") == true;
+                    // Reseller/agent login: koi firm nahi hoti (agent_id claim present).
+                    // Firm checks skip — agent self endpoints (/api/agent/*) ko authorize hone do.
+                    var isAgent = ctx.Principal?.FindFirst("agent_id")?.Value != null;
                     if (firmId == null)
                     {
                         if (isSuperAdmin) return;   // platform admin — full access, no firm needed
+                        if (isAgent) return;        // agent — no firm; self endpoints allowed
                         ctx.Fail("Missing tenant claim");
                         return;
                     }
@@ -252,6 +256,8 @@ try
     builder.Services.AddScoped<IChangelogService, ChangelogService>();
     builder.Services.AddScoped<Namokara.Api.Modules.Platform.Services.IPlatformAdminService,
         Namokara.Api.Modules.Platform.Services.PlatformAdminService>();
+    builder.Services.AddScoped<Namokara.Api.Modules.Platform.Services.IAgentService,
+        Namokara.Api.Modules.Platform.Services.AgentService>();
 
     // Accounting module
     builder.Services.AddScoped<Namokara.Api.Modules.Accounting.Services.IChartOfAccountsService,

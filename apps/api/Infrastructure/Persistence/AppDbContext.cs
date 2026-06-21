@@ -24,6 +24,11 @@ public class AppDbContext : DbContext
     public DbSet<FirmApiKeys> FirmApiKeys => Set<FirmApiKeys>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
 
+    // Agent / reseller program (migration 48) — plain platform tables, NO firm RLS.
+    public DbSet<Agent> Agents => Set<Agent>();
+    public DbSet<AgentCommission> AgentCommissions => Set<AgentCommission>();
+    public DbSet<AgentPayout> AgentPayouts => Set<AgentPayout>();
+
     // Core schema
     public DbSet<User> Users => Set<User>();
     public DbSet<Branch> Branches => Set<Branch>();

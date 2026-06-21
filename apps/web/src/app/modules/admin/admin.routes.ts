@@ -15,6 +15,10 @@ export const adminRoutes: Routes = [
     loadComponent: () => import('./pages/admin-pages.components').then(m => m.AdminFirmDetailComponent)
   },
   {
+    path: 'agents',
+    loadComponent: () => import('./pages/admin-agents.component').then(m => m.AdminAgentsComponent)
+  },
+  {
     path: 'firms/:id/subscription',
     loadComponent: () => import('./pages/admin-firm-subscription.component').then(m => m.AdminFirmSubscriptionComponent)
   },

@@ -177,6 +177,70 @@ public class WalletService : IWalletService
             await tx.RollbackAsync();
             throw;
         }
+
+        // ─── Reseller/agent commission hook (recharge COMMIT ke BAAD) ──────────
+        // Recharge transaction commit ho chuki — wallet/ledger safe hai. Commission ab
+        // ALAG se save hoti hai taaki commission ka koi bhi DB error pehle se committed
+        // recharge ko na giraye (poisoned-transaction se bacho). Error aaye to sirf log.
+        // FIRST EVER recharge → signup% + recharge%; har agle → recharge% only.
+        try
+        {
+            var firm = await _db.Firms.SingleOrDefaultAsync(f => f.Id == firmId);
+            if (firm?.AgentId != null)
+            {
+                var agent = await _db.Agents.SingleOrDefaultAsync(a => a.Id == firm.AgentId.Value);
+                if (agent != null && agent.Status == "active")
+                {
+                    var now = DateTimeOffset.UtcNow;
+                    bool firstEver = !await _db.AgentCommissions.AnyAsync(c => c.FirmId == firmId);
+                    decimal totalCommission = 0;
+
+                    // recharge commission — har baar
+                    var rechargeAmt = Math.Round(amount * agent.RechargeCommissionPct / 100m, 2);
+                    _db.AgentCommissions.Add(new AgentCommission
+                    {
+                        AgentId = agent.Id,
+                        FirmId = firmId,
+                        Kind = "recharge",
+                        RechargeAmount = amount,
+                        CommissionPct = agent.RechargeCommissionPct,
+                        CommissionAmt = rechargeAmt,
+                        ReferenceId = reference,
+                        Status = "pending",
+                        CreatedAt = now
+                    });
+                    totalCommission += rechargeAmt;
+
+                    // signup commission — sirf pehli baar (aur agar pct > 0)
+                    if (firstEver && agent.SignupCommissionPct > 0)
+                    {
+                        var signupAmt = Math.Round(amount * agent.SignupCommissionPct / 100m, 2);
+                        _db.AgentCommissions.Add(new AgentCommission
+                        {
+                            AgentId = agent.Id,
+                            FirmId = firmId,
+                            Kind = "signup",
+                            RechargeAmount = amount,
+                            CommissionPct = agent.SignupCommissionPct,
+                            CommissionAmt = signupAmt,
+                            ReferenceId = reference,
+                            Status = "pending",
+                            CreatedAt = now
+                        });
+                        totalCommission += signupAmt;
+                    }
+
+                    agent.WalletBalance += totalCommission;
+                    agent.UpdatedAt = now;
+                    await _db.SaveChangesAsync();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            // Commission fail ho to recharge (jo commit ho chuki) ko koi farak nahi — sirf log.
+            _log.LogError(ex, "Agent commission failed for firm {FirmId} recharge ₹{Amount}", firmId, amount);
+        }
     }
 
     public async Task<List<WalletLedgerEntry>> GetHistory(Guid firmId, int page = 1, int size = 50)

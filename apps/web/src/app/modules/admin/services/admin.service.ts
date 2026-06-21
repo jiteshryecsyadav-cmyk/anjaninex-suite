@@ -107,6 +107,7 @@ export interface CreateFirmReq {
   contactEmail: string; contactPhone: string; planId?: string | null;
   bankName?: string; accountNo?: string; ifsc?: string;
   adminFullName: string; adminUsername: string; adminPassword: string;
+  agentCode?: string;
 }
 
 export interface SavePlan {
@@ -231,6 +232,14 @@ export class AdminService {
   approvePayment(id: string) { return this.http.post(`${this.base}/payment-requests/${id}/approve`, {}); }
   getTurnover() { return this.http.get<TurnoverInfo>(`${this.base}/payment-requests/turnover`); }
   rejectPayment(id: string, reason: string) { return this.http.post(`${this.base}/payment-requests/${id}/reject`, { reason }); }
+
+  // ---- Agent / Reseller program ----
+  listAgents() { return this.http.get<AgentListItem[]>(`${this.base}/agents`); }
+  getAgent(id: string) { return this.http.get<AgentDetail>(`${this.base}/agents/${id}`); }
+  createAgent(body: CreateAgentReq) { return this.http.post<CreateAgentResp>(`${this.base}/agents`, body); }
+  updateAgent(id: string, body: UpdateAgentReq) { return this.http.put<{ ok: boolean }>(`${this.base}/agents/${id}`, body); }
+  agentPayout(id: string, body: AgentPayoutReq) { return this.http.post<{ ok: boolean }>(`${this.base}/agents/${id}/payout`, body); }
+  resolveAgentCode(code: string) { return this.http.get<AgentResolve>(`${this.base}/agents/resolve`, { params: { code } as any }); }
 }
 
 export interface FirmApiKeysInfo {
@@ -280,4 +289,101 @@ export interface SaveAddonService {
 export interface TurnoverInfo {
   fyLabel: string; turnover: number; threshold: number;
   gstApplicable: boolean; gstCollected: number;
+}
+
+// ===== Agent / Reseller program =====
+export interface AgentListItem {
+  id: string;
+  code: string;
+  name: string;
+  email: string;
+  phone: string;
+  signupCommissionPct: number;
+  rechargeCommissionPct: number;
+  walletBalance: number;
+  status: string;
+  firmsCount: number;
+  totalEarned: number;
+  pending: number;
+}
+
+export interface AgentCommission {
+  id: string;
+  firmName: string;
+  kind: string;
+  rechargeAmount: number;
+  commissionPct: number;
+  commissionAmt: number;
+  status: string;
+  createdAt: string;
+}
+
+export interface AgentPayout {
+  id: string;
+  amount: number;
+  method: string;
+  reference: string;
+  createdAt: string;
+}
+
+// Flat shape — matches backend AgentDetailDto exactly.
+export interface AgentDetail {
+  id: string;
+  code: string;
+  name: string;
+  email: string;
+  phone: string;
+  signupCommissionPct: number;
+  rechargeCommissionPct: number;
+  status: string;
+  notes?: string | null;
+  walletBalance: number;
+  firmsCount: number;
+  totalEarned: number;
+  pending: number;
+  paid: number;
+  recentCommissions: AgentCommission[];
+  payouts: AgentPayout[];
+  createdAt: string;
+}
+
+export interface CreateAgentReq {
+  name: string;
+  email: string;
+  phone: string;
+  signupCommissionPct: number;
+  rechargeCommissionPct: number;
+  code?: string;
+  loginUsername?: string;
+  loginPassword?: string;
+}
+
+export interface CreateAgentResp {
+  id: string;
+  code: string;
+  name: string;
+  loginUsername: string;
+  tempPassword: string;
+}
+
+export interface UpdateAgentReq {
+  name: string;
+  email: string;
+  phone: string;
+  signupCommissionPct: number;
+  rechargeCommissionPct: number;
+  status: string;
+}
+
+export interface AgentPayoutReq {
+  amount: number;
+  method: string;
+  reference: string;
+  notes?: string;
+}
+
+export interface AgentResolve {
+  id: string;
+  name: string;
+  status: string;
 }

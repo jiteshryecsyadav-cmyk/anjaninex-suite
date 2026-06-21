@@ -459,7 +459,7 @@ public class BillExtractorService : IBillExtractorService
     // Shared by ALL providers (Gemini / Claude / OpenAI).
     // AI prompt badalne par ye version bump karo (v2 → v3 ...) — purana cache auto-bust ho jata hai,
     // taaki naya prompt turant chale aur manual cache-clear ki zaroorat na pade.
-    private const string PromptVersion = "v4";
+    private const string PromptVersion = "v5";
 
     private static readonly string BillPrompt = @"You are an expert Indian GST invoice parser. Extract ONLY the fields in the schema below and return ONLY valid JSON. No prose, no markdown, no extra keys.
 
@@ -468,6 +468,7 @@ IMPORTANT — read these fields very carefully, they matter most:
 - buyer = the party the bill is billed TO (Name & Address of Buyer / Bill To).
 - GSTIN = exactly 15 characters (e.g. 24AYXP38534B1Z7). Read each char carefully (0 vs O, 1 vs I). Capture BOTH supplier and buyer GSTIN if printed.
 - Each item row: name (Description of Goods), hsnSac, qty, unit, rate, taxRate %, taxableAmount, totalAmount.
+  * COMPLETENESS — read EVERY item row from top to bottom. Do NOT skip the first or last row. If rows are numbered (Sr/S.No 1,2,3,4...) your items array length MUST equal the highest serial number. CROSS-CHECK: sum of all line amounts MUST equal the bill's Sub Total / Taxable Value. If your sum is less, you missed a row (often the first one) — re-read and add it.
   * Read each column carefully. taxableAmount/totalAmount = the row's Amount as printed (source of truth).
   * rate = MOST IMPORTANT, most reliable field. Read it EXACTLY from the Rate / Price / Rate Rs column (e.g. 315.00). Never alter, round, or compute it. If genuinely no Rate column exists, set rate=0.
   * qty = the number that makes qty × rate = the row Amount (so the line amount comes out correct). A textile row may show a piece count AND meters — pick whichever quantity makes qty × rate = the printed Amount.

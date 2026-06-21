@@ -186,6 +186,23 @@ public class PaymentService : IPaymentService
     {
         if (dto.Amount <= 0) throw new ArgumentException("Amount must be positive");
 
+        // Double-submit guard: same party + same type + same amount ki payment agar 2 min ke
+        // andar ban chuki hai to dobara mat banao (double-click / slow-network se duplicate rokta
+        // hai). Partial/installment payments alag amount ki hoti hain to wo chalti rahengi.
+        // Edit (ReuseNo set — delete+recreate) ke case me skip.
+        if (string.IsNullOrWhiteSpace(dto.ReuseNo))
+        {
+            var since = DateTimeOffset.UtcNow.AddSeconds(-120);
+            var dup = await _db.Payments.AnyAsync(p =>
+                p.FirmId == firmId &&
+                p.PartyId == dto.PartyId &&
+                p.PaymentType == dto.PaymentType &&
+                p.Amount == dto.Amount &&
+                p.CreatedAt >= since);
+            if (dup)
+                throw new ArgumentException("Itni hi amount ki payment abhi-abhi is party ki ban chuki hai (duplicate) — list refresh karein ya purani ko edit karein.");
+        }
+
         using var tx = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
         try
         {

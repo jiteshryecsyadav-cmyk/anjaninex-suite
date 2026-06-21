@@ -122,7 +122,7 @@ const subNav = `
               <div><label class="fl">Signup Commission %</label><input type="number" step="0.01" [(ngModel)]="nf.signupCommissionPct" class="fi"></div>
               <div><label class="fl">Recharge Commission %</label><input type="number" step="0.01" [(ngModel)]="nf.rechargeCommissionPct" class="fi"></div>
               <div><label class="fl">Code (optional, auto-gen)</label><input [(ngModel)]="nf.code" class="fi font-mono uppercase"></div>
-              <div><label class="fl">Password (optional, auto-gen)</label><input [(ngModel)]="nf.password" class="fi"></div>
+              <div><label class="fl">Password (optional, auto-gen)</label><input [(ngModel)]="nf.loginPassword" class="fi"></div>
             </div>
             @if (addErr()) { <div class="text-red-600 text-sm mt-2">{{ addErr() }}</div> }
             <div class="flex justify-end gap-2 mt-4">
@@ -337,7 +337,7 @@ export class AdminAgentsComponent {
   detail = signal<AgentDetail | null>(null);
 
   blankAgent(): CreateAgentReq {
-    return { name: '', email: '', phone: '', signupCommissionPct: 0, rechargeCommissionPct: 0, code: '', password: '' };
+    return { name: '', email: '', phone: '', signupCommissionPct: 0, rechargeCommissionPct: 0, code: '', loginPassword: '' };
   }
 
   ngOnInit() { this.load(); }
@@ -367,7 +367,7 @@ export class AdminAgentsComponent {
       rechargeCommissionPct: +f.rechargeCommissionPct || 0
     };
     if (f.code?.trim()) body.code = f.code.trim();
-    if (f.password?.trim()) body.loginPassword = f.password.trim();
+    if (f.loginPassword?.trim()) body.loginPassword = f.loginPassword.trim();
     this.svc.createAgent(body).subscribe({
       next: (r) => { this.addSaving.set(false); this.showAdd.set(false); this.created.set(r); this.load(); },
       error: (e) => { this.addSaving.set(false); this.addErr.set(e?.error?.error ?? 'Agent nahi bana'); }

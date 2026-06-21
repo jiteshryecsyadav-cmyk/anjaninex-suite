@@ -26,7 +26,8 @@ import { AgentService, AgentDashboard } from './agent.service';
           <div class="ag-card text-center text-gray-500">Loading…</div>
         } @else if (err()) {
           <div class="ag-card text-center text-red-600">{{ err() }}</div>
-        } @else if (data(); as d) {
+        } @else {
+          @if (data(); as d) {
 
           <!-- KPI cards -->
           <div class="ag-kpis">
@@ -120,6 +121,7 @@ import { AgentService, AgentDashboard } from './agent.service';
               }
             </div>
           </div>
+          }
         }
       </main>
     </div>

@@ -1131,7 +1131,7 @@ export class GrEntryComponent {
           billLineId: bl.id ?? null,
           itemId: bl.itemId ?? null,
           itemName: bl.itemName,
-          description: '',
+          description: bl.description ?? '',
           hsnSac: bl.hsnSac ?? '',
           qty: bl.qty,
           unit: bl.unit ?? 'MTR',

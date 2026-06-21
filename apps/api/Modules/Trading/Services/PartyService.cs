@@ -101,7 +101,11 @@ public class PartyService : IPartyService
                                   || x.c.GstNumber!.Contains(search));
         }
 
-        var rows = await query.OrderBy(x => x.c.DisplayName).Take(200).ToListAsync();
+        // Take limit raised 200 → 5000: trading forms (bill/order entry) saari parties
+        // client-side load karke dropdown/duplicate-check karte hain. 200 cap se 200+ wali
+        // firms me peechli parties (alphabetically) load hi nahi hoti thi → "No buyer found"
+        // aur GST/PAN duplicate detect fail. 5000 SME size ke liye kaafi + safe.
+        var rows = await query.OrderBy(x => x.c.DisplayName).Take(5000).ToListAsync();
 
         // Compute outstanding from accounting ledger if linked
         var ledgerIds = rows.Where(r => r.p.LedgerId.HasValue).Select(r => r.p.LedgerId!.Value).ToList();

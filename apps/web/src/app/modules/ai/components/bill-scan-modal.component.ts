@@ -134,7 +134,6 @@ interface ScanPage {
             }
 
             <div class="text-center text-xs text-gray-500 mt-4">
-              <strong>💰 Cost:</strong> ~₹{{ modelCost() }} per scan · {{ modelLabel() }} (wallet se — BYOK ho to free)<br>
               <strong>⚡ Speed:</strong> ~2-6 seconds<br>
               <strong>🎯 Accuracy:</strong> Flash/Haiku theek · Pro/GPT-4o/Sonnet zyada sahi
             </div>

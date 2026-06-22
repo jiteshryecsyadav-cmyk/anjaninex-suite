@@ -85,10 +85,13 @@ public class AiKeysController : ControllerBase
                                      THEN ai_openai_key ELSE @openai END,
                 updated_at = now()
               WHERE id = 1");
-        void P(string n, object? v) => cmd.Parameters.Add(new NpgsqlParameter(n, v ?? DBNull.Value));
-        P("gemini", string.IsNullOrWhiteSpace(dto.GeminiKey) ? null : dto.GeminiKey.Trim());
-        P("claude", string.IsNullOrWhiteSpace(dto.ClaudeKey) ? null : dto.ClaudeKey.Trim());
-        P("openai", string.IsNullOrWhiteSpace(dto.OpenaiKey) ? null : dto.OpenaiKey.Trim());
+        // Blank ke liye EMPTY STRING bhejo (null nahi) — SQL '' ko "keep old" maanta hai.
+        // null/DBNull bhejne par Postgres parameter ka type infer nahi kar pata → error 42P08
+        // ("could not determine data type of parameter"). Explicit text param se ye theek.
+        void P(string n, string v) => cmd.Parameters.Add(new NpgsqlParameter(n, NpgsqlTypes.NpgsqlDbType.Text) { Value = v });
+        P("gemini", string.IsNullOrWhiteSpace(dto.GeminiKey) ? "" : dto.GeminiKey.Trim());
+        P("claude", string.IsNullOrWhiteSpace(dto.ClaudeKey) ? "" : dto.ClaudeKey.Trim());
+        P("openai", string.IsNullOrWhiteSpace(dto.OpenaiKey) ? "" : dto.OpenaiKey.Trim());
         await cmd.ExecuteNonQueryAsync();
         return await Get();
     }

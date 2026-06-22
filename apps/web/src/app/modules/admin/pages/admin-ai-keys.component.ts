@@ -52,6 +52,9 @@ import { AdminService, AiKeysInfo } from '../services/admin.service';
             </label>
             <input [(ngModel)]="geminiKey" type="password" class="input font-mono"
                    [placeholder]="info().geminiSet ? '•••••• (saved)' : 'AIza...'">
+            @if (info().geminiSet) {
+              <button (click)="clear('gemini')" class="text-xs text-red-600 mt-2 hover:underline">🗑 Clear / Delete key</button>
+            }
           </div>
 
           <!-- CLAUDE -->
@@ -66,6 +69,9 @@ import { AdminService, AiKeysInfo } from '../services/admin.service';
             </label>
             <input [(ngModel)]="claudeKey" type="password" class="input font-mono"
                    [placeholder]="info().claudeSet ? '•••••• (saved)' : 'sk-ant-...'">
+            @if (info().claudeSet) {
+              <button (click)="clear('claude')" class="text-xs text-red-600 mt-2 hover:underline">🗑 Clear / Delete key</button>
+            }
           </div>
 
           <!-- OPENAI -->
@@ -80,6 +86,9 @@ import { AdminService, AiKeysInfo } from '../services/admin.service';
             </label>
             <input [(ngModel)]="openaiKey" type="password" class="input font-mono"
                    [placeholder]="info().openaiSet ? '•••••• (saved)' : 'sk-...'">
+            @if (info().openaiSet) {
+              <button (click)="clear('openai')" class="text-xs text-red-600 mt-2 hover:underline">🗑 Clear / Delete key</button>
+            }
           </div>
 
           @if (msg()) { <div class="bg-green-50 border border-green-200 text-green-700 px-3 py-2 rounded text-sm">{{ msg() }}</div> }
@@ -133,6 +142,15 @@ export class AdminAiKeysComponent {
         this.msg.set('✅ AI keys save ho gayi! Sab firms ke scan ab inhi se chalenge.');
       },
       error: (e) => { this.err.set(e?.error?.error ?? 'Save nahi hua'); this.saving.set(false); }
+    });
+  }
+
+  clear(provider: 'gemini' | 'claude' | 'openai') {
+    if (!confirm('Is key ko delete karein? Iske baad us provider ke model platform key se nahi chalenge (jab tak nayi key na daalein).')) return;
+    this.msg.set(''); this.err.set('');
+    this.svc.clearAiKey(provider).subscribe({
+      next: (s) => { this.info.set(s); this.msg.set('🗑 Key delete ho gayi.'); },
+      error: (e) => { this.err.set(e?.error?.error ?? 'Delete nahi hua'); }
     });
   }
 }

@@ -223,6 +223,7 @@ export class AdminService {
   // ---- Platform AI keys (super-admin, common for all firms) ----
   getAiKeys() { return this.http.get<AiKeysInfo>(`${this.base}/ai-keys`); }
   saveAiKeys(body: SaveAiKeys) { return this.http.put<AiKeysInfo>(`${this.base}/ai-keys`, body); }
+  clearAiKey(provider: 'gemini' | 'claude' | 'openai') { return this.http.delete<AiKeysInfo>(`${this.base}/ai-keys/${provider}`); }
 
   // Add-on services (admin catalog)
   listAddonServices() { return this.http.get<AddonService[]>(`${this.base}/addon-services`); }

@@ -95,4 +95,25 @@ public class AiKeysController : ControllerBase
         await cmd.ExecuteNonQueryAsync();
         return await Get();
     }
+
+    // Ek provider ki key clear/delete karo (galat key hatane ke liye). provider = gemini|claude|openai.
+    [HttpDelete("{provider}")]
+    [HasPermission("platform.firm.edit.platform")]
+    public async Task<IActionResult> Clear(string provider)
+    {
+        // Column whitelist (SQL injection se bachne ke liye — direct interpolation safe rahe).
+        var col = provider?.Trim().ToLowerInvariant() switch
+        {
+            "gemini" => "ai_gemini_key",
+            "claude" => "ai_claude_key",
+            "openai" => "ai_openai_key",
+            _ => null
+        };
+        if (col is null) return BadRequest(new { error = "Invalid provider (gemini/claude/openai)" });
+
+        await using var cmd = await CmdAsync(
+            $"UPDATE platform.billing_settings SET {col} = '', updated_at = now() WHERE id = 1");
+        await cmd.ExecuteNonQueryAsync();
+        return await Get();
+    }
 }

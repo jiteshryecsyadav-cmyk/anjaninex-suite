@@ -631,6 +631,14 @@ Schema (extract ONLY these keys):
             : "";
         parts.Add(new { text = "Extract this Indian GST invoice as JSON." + pageNote });
 
+        // gemini-2.5-PRO sirf "thinking mode" me chalta hai — thinkingBudget=0 reject karta hai
+        // ("Budget 0 is invalid. This model only works in thinking mode."). Isliye:
+        //   Pro  → thinkingBudget = -1 (dynamic/auto thinking) + zyada output cap (thinking tokens kha jaata)
+        //   Flash→ thinkingBudget = 0  (thinking off — fast/sasta)
+        var isPro = model.Contains("pro", StringComparison.OrdinalIgnoreCase);
+        var thinkBudget = isPro ? -1 : 0;
+        var maxTokens = isPro ? 16384 : 8192;
+
         var requestBody = new
         {
             system_instruction = new { parts = new[] { new { text = BillPrompt } } },
@@ -645,12 +653,10 @@ Schema (extract ONLY these keys):
             {
                 responseMimeType = "application/json",
                 temperature = 0.1,
-                // 4096 was too small — gemini-2.5-flash is a "thinking" model that spends
-                // output tokens on internal reasoning, so a full GST invoice's JSON got cut
-                // off mid-object ("Expected end of string ... Path: $.buyer.name").
-                // Disable thinking + raise the cap so the complete JSON is returned.
-                maxOutputTokens = 8192,
-                thinkingConfig = new { thinkingBudget = 0 }
+                // 4096 was too small — Gemini "thinking" models output tokens internal reasoning par
+                // kharch karte hain, JSON beech me cut ho jata tha. Cap raise kiya.
+                maxOutputTokens = maxTokens,
+                thinkingConfig = new { thinkingBudget = thinkBudget }
             }
         };
 

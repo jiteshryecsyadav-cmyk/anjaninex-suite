@@ -180,6 +180,13 @@ public class BillExtractorService : IBillExtractorService
         var firmKeys = await _db.FirmApiKeys.FindAsync(firmId);
         var hasFirmKey = !string.IsNullOrEmpty(firmKeys?.AiApiKey);
 
+        // PLATFORM KEYS (Anjaninex admin, common for all firms) — DB key appsettings se
+        // PRECEDENCE leti hai. DB blank ho to appsettings fallback (= pehle jaisa behavior).
+        var dbKeys = await ReadPlatformAiKeysAsync(ct);
+        var platformGeminiKey = !string.IsNullOrEmpty(dbKeys.Gemini) ? dbKeys.Gemini : settings.GeminiApiKey;
+        var platformClaudeKey = !string.IsNullOrEmpty(dbKeys.Claude) ? dbKeys.Claude : settings.ClaudeApiKey;
+        var platformOpenAiKey = !string.IsNullOrEmpty(dbKeys.OpenAi) ? dbKeys.OpenAi : settings.OpenAiApiKey;
+
         // SCAN MODEL CHOOSER: firm scan ke time flash/pro/sonnet chun sakti hai.
         // Valid choice ho to firm-default switch ki jagah allowlist ka provider+model use hoga.
         // (null/blank → niche existing default behavior chalega — kuch change nahi.)
@@ -205,9 +212,9 @@ public class BillExtractorService : IBillExtractorService
                     apiKey = firmKeys.AiApiKey!;
                     usingFirmKey = true;
                 }
-                else if (!string.IsNullOrEmpty(settings.ClaudeApiKey))
+                else if (!string.IsNullOrEmpty(platformClaudeKey))
                 {
-                    apiKey = settings.ClaudeApiKey;
+                    apiKey = platformClaudeKey;
                     usingFirmKey = false;
                 }
                 else
@@ -224,9 +231,9 @@ public class BillExtractorService : IBillExtractorService
                     apiKey = firmKeys.AiApiKey!;
                     usingFirmKey = true;
                 }
-                else if (!string.IsNullOrEmpty(settings.OpenAiApiKey))
+                else if (!string.IsNullOrEmpty(platformOpenAiKey))
                 {
-                    apiKey = settings.OpenAiApiKey;
+                    apiKey = platformOpenAiKey;
                     usingFirmKey = false;
                 }
                 else
@@ -245,7 +252,7 @@ public class BillExtractorService : IBillExtractorService
                 }
                 else
                 {
-                    apiKey = settings.GeminiApiKey;
+                    apiKey = platformGeminiKey;
                     usingFirmKey = false;
                 }
             }
@@ -254,7 +261,7 @@ public class BillExtractorService : IBillExtractorService
         {
             // EXISTING behavior — firm BYOK provider/model, warna global Gemini default.
             provider = hasFirmKey ? (firmKeys!.AiProvider ?? "gemini") : "gemini";
-            apiKey = hasFirmKey ? firmKeys!.AiApiKey! : settings.GeminiApiKey;
+            apiKey = hasFirmKey ? firmKeys!.AiApiKey! : platformGeminiKey;
             model = hasFirmKey && !string.IsNullOrEmpty(firmKeys!.AiModel)
                 ? firmKeys.AiModel!
                 : provider switch
@@ -945,6 +952,36 @@ Schema (extract ONLY these keys):
         }
         sha.TransformFinalBlock(Array.Empty<byte>(), 0, 0);
         return Convert.ToHexString(sha.Hash!);
+    }
+
+    // Platform AI keys — Anjaninex super-admin EK BAAR set karta hai (platform.billing_settings id=1).
+    // DB keys appsettings ke fallbacks par PRECEDENCE leti hain. Raw SQL (same as BillingSettingsController).
+    // Khali ho to behavior pehle jaisa = appsettings/BYOK.
+    private readonly record struct PlatformAiKeys(string Gemini, string Claude, string OpenAi);
+
+    private async Task<PlatformAiKeys> ReadPlatformAiKeysAsync(CancellationToken ct)
+    {
+        try
+        {
+            var conn = (Npgsql.NpgsqlConnection)_db.Database.GetDbConnection();
+            if (conn.State != System.Data.ConnectionState.Open) await conn.OpenAsync(ct);
+            await using var cmd = conn.CreateCommand();
+            cmd.CommandText =
+                @"SELECT ai_gemini_key, ai_claude_key, ai_openai_key
+                  FROM platform.billing_settings WHERE id = 1";
+            await using var r = await cmd.ExecuteReaderAsync(ct);
+            if (await r.ReadAsync(ct))
+                return new PlatformAiKeys(
+                    r["ai_gemini_key"] as string ?? "",
+                    r["ai_claude_key"] as string ?? "",
+                    r["ai_openai_key"] as string ?? "");
+        }
+        catch (Exception ex)
+        {
+            // Migration na chali ho / table na ho — gracefully appsettings fallback par chalo.
+            _log.LogWarning(ex, "Platform AI keys read fail — appsettings/BYOK par fallback");
+        }
+        return new PlatformAiKeys("", "", "");
     }
 
     // JSON string ke ANDAR aaye unescaped quotes ko \" me badlo.

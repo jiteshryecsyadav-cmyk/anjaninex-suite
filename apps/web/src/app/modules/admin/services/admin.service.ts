@@ -220,6 +220,10 @@ export class AdminService {
   getBilling() { return this.http.get<BillingSettings>(`${this.base}/billing`); }
   saveBilling(s: SaveBilling) { return this.http.put<BillingSettings>(`${this.base}/billing`, s); }
 
+  // ---- Platform AI keys (super-admin, common for all firms) ----
+  getAiKeys() { return this.http.get<AiKeysInfo>(`${this.base}/ai-keys`); }
+  saveAiKeys(body: SaveAiKeys) { return this.http.put<AiKeysInfo>(`${this.base}/ai-keys`, body); }
+
   // Add-on services (admin catalog)
   listAddonServices() { return this.http.get<AddonService[]>(`${this.base}/addon-services`); }
   createAddonService(s: SaveAddonService) { return this.http.post<AddonService>(`${this.base}/addon-services`, s); }
@@ -273,6 +277,18 @@ export interface SaveBilling {
   qrImageUrl?: string | null; instructions?: string | null; gateway?: string | null;
   razorpayKeyId?: string | null; razorpayKeySecret?: string | null; gatewayEnabled?: boolean;
   booksFirmId?: string | null; gstin?: string | null;
+}
+
+// Platform AI keys — full key kabhi nahi aati, sirf set-flag + last 4 chars.
+export interface AiKeysInfo {
+  geminiSet: boolean; geminiLast4: string;
+  claudeSet: boolean; claudeLast4: string;
+  openaiSet: boolean; openaiLast4: string;
+}
+export interface SaveAiKeys {
+  geminiKey?: string | null;   // blank/null = no change
+  claudeKey?: string | null;
+  openaiKey?: string | null;
 }
 
 export interface AddonService {

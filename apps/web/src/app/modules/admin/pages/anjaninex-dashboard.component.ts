@@ -40,6 +40,8 @@ import { BackButtonComponent } from '../../../shared/back-button.component';
            class="px-4 py-2 text-sm font-semibold text-gray-500 border-b-2 border-transparent hover:text-[#5c1a8b]">📊 ROI / Profit</a>
         <a routerLink="/admin/ai-monitor" routerLinkActive="!border-[#5c1a8b] !text-[#5c1a8b]"
            class="px-4 py-2 text-sm font-semibold text-gray-500 border-b-2 border-transparent hover:text-[#5c1a8b]">🤖 AI Monitor</a>
+        <a routerLink="/admin/ai-keys" routerLinkActive="!border-[#5c1a8b] !text-[#5c1a8b]"
+           class="px-4 py-2 text-sm font-semibold text-gray-500 border-b-2 border-transparent hover:text-[#5c1a8b]">🔑 AI Keys</a>
         <a routerLink="/admin/changelog" routerLinkActive="!border-[#5c1a8b] !text-[#5c1a8b]"
            class="px-4 py-2 text-sm font-semibold text-gray-500 border-b-2 border-transparent hover:text-[#5c1a8b]">📝 Changelog</a>
       </div>

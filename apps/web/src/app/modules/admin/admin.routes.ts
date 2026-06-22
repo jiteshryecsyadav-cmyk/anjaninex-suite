@@ -51,6 +51,10 @@ export const adminRoutes: Routes = [
     loadComponent: () => import('./pages/admin-pages.components').then(m => m.AdminAiMonitorComponent)
   },
   {
+    path: 'ai-keys',
+    loadComponent: () => import('./pages/admin-ai-keys.component').then(m => m.AdminAiKeysComponent)
+  },
+  {
     path: 'changelog',
     loadComponent: () => import('./pages/admin-pages.components').then(m => m.AdminChangelogComponent)
   }

@@ -101,6 +101,11 @@ public class AiSettings
     public bool Enabled { get; set; }
     public string GeminiApiKey { get; set; } = "";
     public string GeminiModel { get; set; } = "gemini-2.5-flash";
+    // Platform/global Claude key — optional. Sirf tab set hoti hai jab admin platform key se
+    // Sonnet enable karna chahe. Khali ho to Sonnet sirf firm BYOK Claude key se chalega.
+    public string ClaudeApiKey { get; set; } = "";
+    // Platform/global OpenAI key — optional (GPT-4o ke liye). Khali ho to GPT-4o sirf firm BYOK OpenAI key se chalega.
+    public string OpenAiApiKey { get; set; } = "";
     public decimal ConfidenceThreshold { get; set; } = 0.8m;
     public int CacheTtlHours { get; set; } = 24;
     public bool EnableMockResponses { get; set; } = true;
@@ -117,7 +122,7 @@ public class InsufficientWalletException : Exception
 // =============================================================================
 public interface IBillExtractorService
 {
-    Task<ExtractedBillDto> ExtractBill(IReadOnlyList<IFormFile> images, Guid firmId, Guid userId, CancellationToken ct, string source = "bill");
+    Task<ExtractedBillDto> ExtractBill(IReadOnlyList<IFormFile> images, Guid firmId, Guid userId, CancellationToken ct, string source = "bill", string? modelChoice = null);
     Task<List<AiExtractionLog>> RecentExtractions(Guid firmId, int limit);
     Task MarkCorrected(Guid extractionId, object correctionDiff);
 }
@@ -133,6 +138,20 @@ public class BillExtractorService : IBillExtractorService
 
     private const decimal BillScanCost = 0m;   // TEMP: free during testing — change to 0.15m for production
 
+    // Scan model chooser — firm scan ke time 3 options me se model chun sakti hai.
+    // Short key → (provider, modelId). Sirf in 3 ko hi allow karo (allowlist).
+    //   flash  → Gemini 2.5 Flash (sasta/fast) — default
+    //   pro    → Gemini 2.5 Pro   (accurate)
+    //   sonnet → Claude Sonnet 4.6 (best)  — Claude key chahiye (BYOK ya platform)
+    private static readonly Dictionary<string, (string Provider, string Model)> ModelAllowlist = new()
+    {
+        ["flash"]  = ("gemini", "gemini-2.5-flash"),
+        ["pro"]    = ("gemini", "gemini-2.5-pro"),
+        ["sonnet"] = ("claude", "claude-sonnet-4-6"),
+        ["haiku"]  = ("claude", "claude-haiku-4-5-20251001"),
+        ["gpt4o"]  = ("openai", "gpt-4o"),
+    };
+
     public BillExtractorService(
         AppDbContext db,
         IWalletService wallet,
@@ -147,7 +166,7 @@ public class BillExtractorService : IBillExtractorService
         _log = log;
     }
 
-    public async Task<ExtractedBillDto> ExtractBill(IReadOnlyList<IFormFile> images, Guid firmId, Guid userId, CancellationToken ct, string source = "bill")
+    public async Task<ExtractedBillDto> ExtractBill(IReadOnlyList<IFormFile> images, Guid firmId, Guid userId, CancellationToken ct, string source = "bill", string? modelChoice = null)
     {
         var settings = _opts.CurrentValue;
         var sw = System.Diagnostics.Stopwatch.StartNew();
@@ -156,10 +175,103 @@ public class BillExtractorService : IBillExtractorService
         var hash = await ComputeHashAsync(images);
         var inputSizeKb = (int)(images.Sum(i => i.Length) / 1024);
 
+        // BYOK: firm-specific provider/key (Anjaninex admin sets it) overrides global settings.
+        // Firm apni key se scan karti hai → kharcha unke provider account par, hamara zero.
+        var firmKeys = await _db.FirmApiKeys.FindAsync(firmId);
+        var hasFirmKey = !string.IsNullOrEmpty(firmKeys?.AiApiKey);
+
+        // SCAN MODEL CHOOSER: firm scan ke time flash/pro/sonnet chun sakti hai.
+        // Valid choice ho to firm-default switch ki jagah allowlist ka provider+model use hoga.
+        // (null/blank → niche existing default behavior chalega — kuch change nahi.)
+        var choice = modelChoice?.Trim().ToLowerInvariant();
+        var hasChoice = !string.IsNullOrEmpty(choice) && ModelAllowlist.ContainsKey(choice);
+
+        string provider;
+        string model;
+        string apiKey;
+        bool usingFirmKey;   // wallet charge sirf platform key par hota hai
+
+        if (hasChoice)
+        {
+            var picked = ModelAllowlist[choice!];
+            provider = picked.Provider;
+            model = picked.Model;
+
+            if (provider == "claude")
+            {
+                // Sonnet → firm BYOK Claude key, warna platform Claude key, warna friendly error.
+                if (hasFirmKey && firmKeys!.AiProvider == "claude")
+                {
+                    apiKey = firmKeys.AiApiKey!;
+                    usingFirmKey = true;
+                }
+                else if (!string.IsNullOrEmpty(settings.ClaudeApiKey))
+                {
+                    apiKey = settings.ClaudeApiKey;
+                    usingFirmKey = false;
+                }
+                else
+                {
+                    throw new ArgumentException(
+                        "Sonnet ke liye Claude API key chahiye — Admin se Settings me Claude key set karwayen (ya Gemini Pro use karein).");
+                }
+            }
+            else if (provider == "openai")
+            {
+                // GPT-4o → firm BYOK OpenAI key, warna platform OpenAI key, warna friendly error.
+                if (hasFirmKey && firmKeys!.AiProvider == "openai")
+                {
+                    apiKey = firmKeys.AiApiKey!;
+                    usingFirmKey = true;
+                }
+                else if (!string.IsNullOrEmpty(settings.OpenAiApiKey))
+                {
+                    apiKey = settings.OpenAiApiKey;
+                    usingFirmKey = false;
+                }
+                else
+                {
+                    throw new ArgumentException(
+                        "GPT-4o ke liye OpenAI API key chahiye — Admin se Settings me OpenAI key set karwayen (ya Gemini Pro use karein).");
+                }
+            }
+            else
+            {
+                // Gemini (flash/pro) → firm BYOK Gemini key, warna platform Gemini key.
+                if (hasFirmKey && firmKeys!.AiProvider == "gemini")
+                {
+                    apiKey = firmKeys.AiApiKey!;
+                    usingFirmKey = true;
+                }
+                else
+                {
+                    apiKey = settings.GeminiApiKey;
+                    usingFirmKey = false;
+                }
+            }
+        }
+        else
+        {
+            // EXISTING behavior — firm BYOK provider/model, warna global Gemini default.
+            provider = hasFirmKey ? (firmKeys!.AiProvider ?? "gemini") : "gemini";
+            apiKey = hasFirmKey ? firmKeys!.AiApiKey! : settings.GeminiApiKey;
+            model = hasFirmKey && !string.IsNullOrEmpty(firmKeys!.AiModel)
+                ? firmKeys.AiModel!
+                : provider switch
+                {
+                    "claude" => "claude-haiku-4-5-20251001",
+                    "openai" => "gpt-4o-mini",
+                    _ => settings.GeminiModel
+                };
+            usingFirmKey = hasFirmKey;
+        }
+
         // 2. Check cache — but skip poisoned cache entries (low confidence / empty extraction)
         //    PromptVersion key me hai → jab bhi AI prompt badle, version bump karo (neeche
         //    BillPrompt ke paas) → purana cache apne aap ignore (auto-bust), fresh scan hoga.
-        var cacheKey = $"bill:{PromptVersion}:{firmId}:{hash}";
+        //    Effective model bhi key me hai → Flash/Pro/Sonnet ke results alag-alag cache hote
+        //    hain, ek doosre se collide nahi karte.
+        var cacheKey = $"bill:{PromptVersion}:{model}:{firmId}:{hash}";
         var cached = await _db.AiCache
             .FirstOrDefaultAsync(c => c.CacheKey == cacheKey && c.ExpiresAt > DateTimeOffset.UtcNow);
         if (cached != null)
@@ -189,49 +301,39 @@ public class BillExtractorService : IBillExtractorService
             }
         }
 
-        // BYOK: firm-specific provider/key (Anjaninex admin sets it) overrides global settings.
-        // Firm apni key se scan karti hai → kharcha unke provider account par, hamara zero.
-        var firmKeys = await _db.FirmApiKeys.FindAsync(firmId);
-        var hasFirmKey = !string.IsNullOrEmpty(firmKeys?.AiApiKey);
-        var provider = hasFirmKey ? (firmKeys!.AiProvider ?? "gemini") : "gemini";
-        var apiKey = hasFirmKey ? firmKeys!.AiApiKey! : settings.GeminiApiKey;
-        var model = hasFirmKey && !string.IsNullOrEmpty(firmKeys!.AiModel)
-            ? firmKeys.AiModel!
-            : provider switch
-            {
-                "claude" => "claude-haiku-4-5-20251001",
-                "openai" => "gpt-4o-mini",
-                _ => settings.GeminiModel
-            };
-
         // 3. P0-5 fix: DEBIT WALLET FIRST (atomic, SELECT FOR UPDATE inside).
         //    Mock mode = free, otherwise pre-debit. Refund on confirmed failure with idempotency key.
-        var isMockMode = hasFirmKey
+        //    usingFirmKey → firm apni key se scan kar rahi (BYOK) → hamesha real call, wallet charge nahi.
+        //    platform key → global Gemini settings ke hisab se mock/real + wallet charge.
+        var isMockMode = usingFirmKey
             ? false   // firm ki apni key hai → hamesha real call
-            : (!settings.Enabled || string.IsNullOrEmpty(settings.GeminiApiKey) || settings.EnableMockResponses);
-        var scanCost = isMockMode ? 0m : BillScanCost;
-        var idempotencyRef = $"bill_scan:{hash}:{Guid.NewGuid()}";  // unique per attempt
+            : (!settings.Enabled || string.IsNullOrEmpty(apiKey) || settings.EnableMockResponses);
+        // PER-MODEL CHARGE: har model ki apni rate (admin-editable addon_services me:
+        // bill_scan_flash / _pro / _sonnet / _haiku / _gpt4o). Choice na ho to purana 'bill_scan'.
+        // Charge sirf REAL scan + PLATFORM key par hota hai. BYOK (usingFirmKey) → kharcha firm
+        // ke apne provider account par → wallet charge ZERO. Mock → free.
+        var serviceCode = hasChoice ? $"bill_scan_{choice}" : "bill_scan";
+        decimal scanCost = 0m;
+        var idempotencyRef = $"{serviceCode}:{hash}:{Guid.NewGuid()}";  // unique per attempt
 
-        if (scanCost > 0)
+        if (!isMockMode && !usingFirmKey)
         {
-            // Admin-managed 'bill_scan' rate se charge + usage log (mode 'self' ho to free).
-            var charge = await _wallet.ChargeServiceAsync(firmId, "bill_scan", 1, idempotencyRef, userId);
+            // Admin-managed per-model rate se charge + usage log (firm 'self' mode me ho to free).
+            var charge = await _wallet.ChargeServiceAsync(firmId, serviceCode, 1, idempotencyRef, userId);
             if (charge.Ok)
             {
-                scanCost = charge.Charged;   // 0 agar firm khud (self) le rahi hai — refund bhi 0
+                scanCost = charge.Charged;   // 0 agar firm 'self' mode me — refund bhi 0
             }
             else if (charge.Reason == "unknown_service")
             {
-                // catalog me service nahi — purana fixed debit fallback
-                var debited = await _wallet.Debit(firmId, scanCost, "ai", idempotencyRef, userId);
-                if (!debited)
-                    throw new InsufficientWalletException(
-                        $"Wallet balance insufficient. AI bill scan requires ₹{scanCost}. Please recharge.");
+                // is model ka service catalog me nahi → default 'bill_scan' try; wo bhi na ho to free (scan block na ho)
+                var fb = await _wallet.ChargeServiceAsync(firmId, "bill_scan", 1, idempotencyRef, userId);
+                scanCost = fb.Ok ? fb.Charged : 0m;
             }
             else
             {
                 throw new InsufficientWalletException(
-                    $"Wallet balance insufficient. AI bill scan requires ₹{scanCost}. Please recharge.");
+                    "Wallet balance kam hai — is AI model se scan ke liye wallet recharge karein (ya sasta model chunein).");
             }
         }
 

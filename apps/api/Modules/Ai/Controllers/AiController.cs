@@ -57,14 +57,24 @@ public class AiController : ControllerBase
         // bill ya order — scan report me alag dikhane ke liye
         var source = Request.Form["source"].FirstOrDefault() == "order" ? "order" : "bill";
 
+        // Scan model chooser: flash | pro | sonnet (query param ?model= ya form field 'model').
+        // Koi aur value ya khali → null bhejo → backend default (firm BYOK / Flash) behave karega.
+        var modelChoice = Request.Query["model"].FirstOrDefault()
+                          ?? Request.Form["model"].FirstOrDefault();
+
         try
         {
-            var result = await _billExtractor.ExtractBill(images, CurrentFirmId, CurrentUserId, ct, source);
+            var result = await _billExtractor.ExtractBill(images, CurrentFirmId, CurrentUserId, ct, source, modelChoice);
             return Ok(result);
         }
         catch (InsufficientWalletException ex)
         {
             return StatusCode(402, new { error = ex.Message, code = "WALLET_INSUFFICIENT" });
+        }
+        catch (ArgumentException ex)
+        {
+            // e.g. Sonnet chuna par Claude key set nahi — clean 400, frontend banner dikhayega.
+            return BadRequest(new { error = ex.Message });
         }
         catch (Exception ex)
         {

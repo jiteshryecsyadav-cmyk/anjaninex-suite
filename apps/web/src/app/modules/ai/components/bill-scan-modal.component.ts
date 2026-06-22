@@ -3,6 +3,7 @@ import { CommonModule, DecimalPipe } from '@angular/common';
 import { AiService, ExtractedBill } from '../services/ai.service';
 
 type ScanState = 'idle' | 'camera' | 'preview' | 'analyzing' | 'result' | 'error';
+type ScanModel = 'flash' | 'pro' | 'sonnet' | 'haiku' | 'gpt4o';
 
 interface ScanPage {
   file: File;
@@ -47,6 +48,48 @@ interface ScanPage {
               </button>
               <input #filePicker type="file" hidden multiple accept="image/*,application/pdf"
                      (change)="onFileSelected($event)">
+            </div>
+
+            <!-- AI MODEL CHOOSER — scan se pehle model chuno (default: Fast/Flash) -->
+            <div class="mb-4">
+              <div class="text-xs font-bold text-[#6b3fa0] uppercase mb-2">AI Model</div>
+              <div class="grid grid-cols-3 gap-2">
+                <button type="button" (click)="setScanModel('flash')"
+                        [ngClass]="scanModel() === 'flash' ? 'border-[#5c1a8b] bg-[#f0e6ff]' : 'border-gray-200'"
+                        class="border-2 rounded-lg p-2 text-center transition hover:bg-[#faf5ff]">
+                  <div class="text-lg">⚡</div>
+                  <div class="text-xs font-bold text-[#5c1a8b]">Fast</div>
+                  <div class="text-[10px] text-gray-500">Gemini Flash · sasta</div>
+                </button>
+                <button type="button" (click)="setScanModel('pro')"
+                        [ngClass]="scanModel() === 'pro' ? 'border-[#5c1a8b] bg-[#f0e6ff]' : 'border-gray-200'"
+                        class="border-2 rounded-lg p-2 text-center transition hover:bg-[#faf5ff]">
+                  <div class="text-lg">🎯</div>
+                  <div class="text-xs font-bold text-[#5c1a8b]">Accurate</div>
+                  <div class="text-[10px] text-gray-500">Gemini Pro</div>
+                </button>
+                <button type="button" (click)="setScanModel('sonnet')"
+                        [ngClass]="scanModel() === 'sonnet' ? 'border-[#5c1a8b] bg-[#f0e6ff]' : 'border-gray-200'"
+                        class="border-2 rounded-lg p-2 text-center transition hover:bg-[#faf5ff]">
+                  <div class="text-lg">⭐</div>
+                  <div class="text-xs font-bold text-[#5c1a8b]">Best</div>
+                  <div class="text-[10px] text-gray-500">Claude Sonnet</div>
+                </button>
+                <button type="button" (click)="setScanModel('haiku')"
+                        [ngClass]="scanModel() === 'haiku' ? 'border-[#5c1a8b] bg-[#f0e6ff]' : 'border-gray-200'"
+                        class="border-2 rounded-lg p-2 text-center transition hover:bg-[#faf5ff]">
+                  <div class="text-lg">🌿</div>
+                  <div class="text-xs font-bold text-[#5c1a8b]">Haiku</div>
+                  <div class="text-[10px] text-gray-500">Claude Haiku</div>
+                </button>
+                <button type="button" (click)="setScanModel('gpt4o')"
+                        [ngClass]="scanModel() === 'gpt4o' ? 'border-[#5c1a8b] bg-[#f0e6ff]' : 'border-gray-200'"
+                        class="border-2 rounded-lg p-2 text-center transition hover:bg-[#faf5ff]">
+                  <div class="text-lg">🤖</div>
+                  <div class="text-xs font-bold text-[#5c1a8b]">GPT-4o</div>
+                  <div class="text-[10px] text-gray-500">OpenAI</div>
+                </button>
+              </div>
             </div>
 
             <!-- Added pages -->
@@ -313,6 +356,20 @@ export class BillScanModalComponent implements OnDestroy {
   pages = signal<ScanPage[]>([]);
   private readonly MAX_PAGES = 5;
 
+  // AI model chooser — last choice localStorage me yaad rakhi jati hai (default 'flash').
+  scanModel = signal<ScanModel>(this.loadScanModel());
+
+  private loadScanModel(): ScanModel {
+    const saved = (typeof localStorage !== 'undefined') ? localStorage.getItem('scanModel') : null;
+    const valid: ScanModel[] = ['flash', 'pro', 'sonnet', 'haiku', 'gpt4o'];
+    return valid.includes(saved as ScanModel) ? (saved as ScanModel) : 'flash';
+  }
+
+  setScanModel(m: ScanModel) {
+    this.scanModel.set(m);
+    try { localStorage.setItem('scanModel', m); } catch { /* ignore (private mode) */ }
+  }
+
   // ── Preview zoom + pan ──
   zoom = signal(1);
   private panning = false;
@@ -507,7 +564,7 @@ export class BillScanModalComponent implements OnDestroy {
     setTimeout(() => this.progressStep.set('Processing scan...'), 800);
     setTimeout(() => this.progressStep.set('Extracting fields...'), 1800);
 
-    this.svc.extractBill(files, this.source()).subscribe({
+    this.svc.extractBill(files, this.source(), this.scanModel()).subscribe({
       next: (result) => {
         // AI fail hua? Koi sample/demo data nahi — seedha error screen.
         if (result.failureReason || result.modelUsed === 'failed' || result.modelUsed === 'mock_fallback') {

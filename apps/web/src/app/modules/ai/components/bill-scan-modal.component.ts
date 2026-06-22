@@ -134,9 +134,9 @@ interface ScanPage {
             }
 
             <div class="text-center text-xs text-gray-500 mt-4">
-              <strong>💰 Cost:</strong> ₹0.15 per bill scan (debited from wallet)<br>
-              <strong>⚡ Speed:</strong> ~2-4 seconds<br>
-              <strong>🎯 Accuracy:</strong> ~92% on Indian GST invoices
+              <strong>💰 Cost:</strong> ~₹{{ modelCost() }} per scan · {{ modelLabel() }} (wallet se — BYOK ho to free)<br>
+              <strong>⚡ Speed:</strong> ~2-6 seconds<br>
+              <strong>🎯 Accuracy:</strong> Flash/Haiku theek · Pro/GPT-4o/Sonnet zyada sahi
             </div>
           </div>
         }
@@ -368,6 +368,17 @@ export class BillScanModalComponent implements OnDestroy {
   setScanModel(m: ScanModel) {
     this.scanModel.set(m);
     try { localStorage.setItem('scanModel', m); } catch { /* ignore (private mode) */ }
+  }
+
+  // Footer me selected model ki approx rate + naam (cost = AI cost + 10% margin + GST).
+  // Approx hai — admin Addon Services se rate badal sakta hai.
+  modelCost(): string {
+    const r: Record<ScanModel, string> = { flash: '0.39', haiku: '0.91', pro: '1.56', gpt4o: '1.82', sonnet: '2.60' };
+    return r[this.scanModel()];
+  }
+  modelLabel(): string {
+    const l: Record<ScanModel, string> = { flash: 'Gemini Flash', haiku: 'Claude Haiku', pro: 'Gemini Pro', gpt4o: 'GPT-4o', sonnet: 'Claude Sonnet' };
+    return l[this.scanModel()];
   }
 
   // ── Preview zoom + pan ──

@@ -1,3 +1,4 @@
+using System.IO.Compression;
 using System.Net.Http.Headers;
 using System.Security.Cryptography;
 using System.Text;
@@ -153,6 +154,8 @@ public class BillExtractorService : IBillExtractorService
         ["sonnet"] = ("claude", "claude-sonnet-4-6"),
         ["haiku"]  = ("claude", "claude-haiku-4-5-20251001"),
         ["gpt4o"]  = ("openai", "gpt-4o"),
+        // Sarvam Vision (option B) — OCR (Sarvam doc-digitization) + AI structuring (Gemini Flash).
+        ["sarvam"] = ("sarvam", "sarvam-vision"),
     };
 
     public BillExtractorService(
@@ -189,6 +192,11 @@ public class BillExtractorService : IBillExtractorService
         var platformGeminiKey = !string.IsNullOrEmpty(dbKeys.Gemini) ? dbKeys.Gemini : settings.GeminiApiKey;
         var platformClaudeKey = !string.IsNullOrEmpty(dbKeys.Claude) ? dbKeys.Claude : settings.ClaudeApiKey;
         var platformOpenAiKey = !string.IsNullOrEmpty(dbKeys.OpenAi) ? dbKeys.OpenAi : settings.OpenAiApiKey;
+        var platformSarvamKey = !string.IsNullOrEmpty(dbKeys.Sarvam) ? dbKeys.Sarvam : settings.SarvamApiKey;
+        // Sarvam Vision (option B) hybrid ke 2nd step (OCR text -> structured JSON) ke liye
+        // Gemini Flash use hoti hai. Key: firm BYOK Gemini, warna platform Gemini.
+        var structuringGeminiKey = (hasFirmKey && firmKeys!.AiProvider == "gemini")
+            ? firmKeys!.AiApiKey! : platformGeminiKey;
 
         // SCAN MODEL CHOOSER: firm scan ke time flash/pro/sonnet chun sakti hai.
         // Valid choice ho to firm-default switch ki jagah allowlist ka provider+model use hoga.
@@ -244,6 +252,19 @@ public class BillExtractorService : IBillExtractorService
                     throw new ArgumentException(
                         "GPT-4o ke liye OpenAI API key chahiye — Admin se Settings me OpenAI key set karwayen (ya Gemini Pro use karein).");
                 }
+            }
+            else if (provider == "sarvam")
+            {
+                // Sarvam Vision (OCR+AI) → platform Sarvam key (Platform AI Keys page).
+                // Structuring step Gemini Flash se hoti hai (structuringGeminiKey).
+                if (string.IsNullOrEmpty(platformSarvamKey))
+                    throw new ArgumentException(
+                        "Sarvam Vision ke liye Sarvam API key chahiye — Admin → Platform AI Keys me Sarvam key set karein (ya doosra model chunein).");
+                if (string.IsNullOrEmpty(structuringGeminiKey))
+                    throw new ArgumentException(
+                        "Sarvam Vision ko text→JSON ke liye Gemini key chahiye — Admin → Platform AI Keys me Gemini key set karein.");
+                apiKey = platformSarvamKey;   // wallet charge hota hai (platform key)
+                usingFirmKey = false;
             }
             else
             {
@@ -372,6 +393,7 @@ public class BillExtractorService : IBillExtractorService
                         {
                             "claude" => await CallClaudeAsync(images, apiKey, model, ct),
                             "openai" => await CallOpenAiAsync(images, apiKey, model, ct),
+                            "sarvam" => await CallSarvamHybridAsync(images, apiKey, structuringGeminiKey, ct),
                             _ => await CallGeminiAsync(images, apiKey, model, ct)
                         };
                         break;
@@ -804,6 +826,204 @@ Schema (extract ONLY these keys):
         var parsed = JsonDocument.Parse(responseText);
         var text = parsed.RootElement.GetProperty("choices")[0].GetProperty("message").GetProperty("content").GetString() ?? "{}";
         _log.LogInformation("OpenAI extracted JSON ({Len} chars)", text.Length);
+        return ParseBillJson(text);
+    }
+
+    // =================================================
+    // Sarvam Vision (option B) — OCR + AI hybrid
+    // -------------------------------------------------
+    // Step 1: Sarvam Document Intelligence (doc-digitization) image(s) ko OCR karke
+    //         markdown text deta hai (Indian scripts/handwriting acche se padhta hai).
+    // Step 2: Us OCR text ko Gemini Flash (text-only) se structured JSON me badalte hain
+    //         (wahi BillPrompt + ParseBillJson — sasta + deterministic).
+    // Sarvam doc-digitization async batch hai: create job -> upload (zip) -> start -> poll
+    // -> download (zip) -> unzip text. Server hi poll karta hai; frontend ko 1 hi response.
+    // =================================================
+    private const string SarvamDocBase = "https://api.sarvam.ai/doc-digitization/job/v1";
+
+    private async Task<ExtractedBillDto> CallSarvamHybridAsync(
+        IReadOnlyList<IFormFile> images, string sarvamKey, string geminiKey, CancellationToken ct)
+    {
+        // ---- 1. Saare pages ko ek flat ZIP me daalo (Sarvam ZIP me JPEG/PNG maangta hai) ----
+        byte[] zipBytes;
+        using (var zipMs = new MemoryStream())
+        {
+            using (var zip = new ZipArchive(zipMs, ZipArchiveMode.Create, true))
+            {
+                var idx = 0;
+                foreach (var img in images)
+                {
+                    idx++;
+                    var ext = (img.ContentType ?? "").Contains("png", StringComparison.OrdinalIgnoreCase) ? "png" : "jpg";
+                    var entry = zip.CreateEntry($"page{idx}.{ext}", CompressionLevel.Fastest);
+                    await using var es = entry.Open();
+                    await img.CopyToAsync(es, ct);
+                }
+            }
+            zipBytes = zipMs.ToArray();
+        }
+
+        // ---- 2. Create job (output md, language en-IN — GST bills mostly English/Hinglish) ----
+        var createBody = JsonSerializer.Serialize(new
+        {
+            job_parameters = new { language = "en-IN", output_format = "md" }
+        });
+        var createResp = await SarvamPostAsync(SarvamDocBase, sarvamKey, createBody, ct);
+        using var createDoc = JsonDocument.Parse(createResp);
+        var jobId = createDoc.RootElement.GetProperty("job_id").GetString()
+                    ?? throw new Exception("Sarvam: job_id missing");
+        var storage = createDoc.RootElement.TryGetProperty("storage_container_type", out var st)
+            ? st.GetString() ?? "" : "";
+
+        // ---- 3. Upload URL maango (exactly 1 file: zip) ----
+        var zipName = "bill_pages.zip";
+        var upBody = JsonSerializer.Serialize(new { job_id = jobId, files = new[] { zipName } });
+        var upResp = await SarvamPostAsync($"{SarvamDocBase}/upload-files", sarvamKey, upBody, ct);
+        using var upDoc = JsonDocument.Parse(upResp);
+        var uploadUrl = upDoc.RootElement.GetProperty("upload_urls").GetProperty(zipName)
+            .GetProperty("file_url").GetString()
+            ?? throw new Exception("Sarvam: upload_url missing");
+
+        // ---- 4. Presigned URL par ZIP PUT karo (Azure ke liye x-ms-blob-type chahiye) ----
+        using (var putReq = new HttpRequestMessage(HttpMethod.Put, uploadUrl))
+        {
+            putReq.Content = new ByteArrayContent(zipBytes);
+            putReq.Content.Headers.ContentType = new MediaTypeHeaderValue("application/zip");
+            if (storage.Contains("Azure", StringComparison.OrdinalIgnoreCase))
+                putReq.Headers.TryAddWithoutValidation("x-ms-blob-type", "BlockBlob");
+            var putResp = await _http.SendAsync(putReq, ct);
+            if (!putResp.IsSuccessStatusCode)
+            {
+                var e = await putResp.Content.ReadAsStringAsync(ct);
+                throw new Exception($"Sarvam upload PUT {putResp.StatusCode}: {e}");
+            }
+        }
+
+        // ---- 5. Job start ----
+        await SarvamPostAsync($"{SarvamDocBase}/{jobId}/start", sarvamKey, "{}", ct);
+
+        // ---- 6. Status poll (terminal: Completed / PartiallyCompleted / Failed) ----
+        string state = "Pending";
+        for (var i = 0; i < 40; i++)   // ~40 * 2.5s = 100s max
+        {
+            await Task.Delay(2500, ct);
+            var stResp = await SarvamGetAsync($"{SarvamDocBase}/{jobId}/status", sarvamKey, ct);
+            using var stDoc = JsonDocument.Parse(stResp);
+            state = stDoc.RootElement.GetProperty("job_state").GetString() ?? "";
+            if (state is "Completed" or "PartiallyCompleted" or "Failed") break;
+        }
+        if (state == "Failed")
+            throw new Exception("Sarvam OCR job Failed — clearer image try karo ya doosra model chunein.");
+        if (state is not ("Completed" or "PartiallyCompleted"))
+            throw new Exception("Sarvam OCR abhi busy/slow hai (timeout). Thodi der baad try karo ya doosra model chunein.");
+
+        // ---- 7. Download URLs (POST) → har URL GET → text nikaalo (zip ho to unzip) ----
+        var dlResp = await SarvamPostAsync($"{SarvamDocBase}/{jobId}/download-files", sarvamKey, "{}", ct);
+        using var dlDoc = JsonDocument.Parse(dlResp);
+        var sb = new StringBuilder();
+        foreach (var prop in dlDoc.RootElement.GetProperty("download_urls").EnumerateObject())
+        {
+            var fileUrl = prop.Value.GetProperty("file_url").GetString();
+            if (string.IsNullOrEmpty(fileUrl)) continue;
+            var bytes = await _http.GetByteArrayAsync(fileUrl, ct);
+            sb.Append(ExtractTextFromDownload(bytes));
+            sb.Append('\n');
+        }
+        var ocrText = sb.ToString().Trim();
+        if (string.IsNullOrWhiteSpace(ocrText))
+            throw new Exception("Sarvam OCR se text nahi mila — clearer image try karo ya doosra model chunein.");
+
+        _log.LogInformation("Sarvam OCR text ({Len} chars) extracted — Gemini se structure kar rahe", ocrText.Length);
+
+        // ---- 8. OCR text → structured JSON (Gemini Flash text-only) ----
+        return await CallGeminiTextAsync(ocrText, geminiKey, "gemini-2.5-flash", ct);
+    }
+
+    // Download bytes ko text me badlo. ZIP (PK header) ho to andar ke .md/.json/.txt/.html
+    // entries ka content jodo; warna seedha UTF-8 text maan lo.
+    private static string ExtractTextFromDownload(byte[] bytes)
+    {
+        // ZIP signature: 'P''K' (0x50 0x4B)
+        if (bytes.Length > 4 && bytes[0] == 0x50 && bytes[1] == 0x4B)
+        {
+            var sb = new StringBuilder();
+            using var ms = new MemoryStream(bytes);
+            using var zip = new ZipArchive(ms, ZipArchiveMode.Read);
+            foreach (var entry in zip.Entries)
+            {
+                var n = entry.FullName.ToLowerInvariant();
+                if (n.EndsWith(".md") || n.EndsWith(".json") || n.EndsWith(".txt") || n.EndsWith(".html") || n.EndsWith(".htm"))
+                {
+                    using var es = entry.Open();
+                    using var sr = new StreamReader(es, Encoding.UTF8);
+                    sb.Append(sr.ReadToEnd());
+                    sb.Append('\n');
+                }
+            }
+            return sb.ToString();
+        }
+        return Encoding.UTF8.GetString(bytes);
+    }
+
+    private async Task<string> SarvamPostAsync(string url, string key, string jsonBody, CancellationToken ct)
+    {
+        using var req = new HttpRequestMessage(HttpMethod.Post, url);
+        req.Headers.Add("api-subscription-key", key);
+        req.Content = new StringContent(jsonBody, Encoding.UTF8, "application/json");
+        var resp = await _http.SendAsync(req, ct);
+        var body = await resp.Content.ReadAsStringAsync(ct);
+        if (!resp.IsSuccessStatusCode)
+            throw new Exception($"Sarvam {resp.StatusCode}: {body}");
+        return body;
+    }
+
+    private async Task<string> SarvamGetAsync(string url, string key, CancellationToken ct)
+    {
+        using var req = new HttpRequestMessage(HttpMethod.Get, url);
+        req.Headers.Add("api-subscription-key", key);
+        var resp = await _http.SendAsync(req, ct);
+        var body = await resp.Content.ReadAsStringAsync(ct);
+        if (!resp.IsSuccessStatusCode)
+            throw new Exception($"Sarvam {resp.StatusCode}: {body}");
+        return body;
+    }
+
+    // Gemini Flash TEXT-only structuring — image nahi, OCR text se JSON (Sarvam hybrid step 2).
+    private async Task<ExtractedBillDto> CallGeminiTextAsync(string ocrText, string apiKey, string model, CancellationToken ct)
+    {
+        var url = $"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={apiKey}";
+        var userText =
+            "Below is the OCR text (markdown) extracted from an Indian GST invoice. " +
+            "Extract it as JSON per the schema. Use ONLY this text.\n\n----- OCR TEXT -----\n" + ocrText;
+
+        var requestBody = new
+        {
+            system_instruction = new { parts = new[] { new { text = BillPrompt } } },
+            contents = new[] { new { parts = new object[] { new { text = userText } } } },
+            generationConfig = new
+            {
+                responseMimeType = "application/json",
+                temperature = 0.1,
+                maxOutputTokens = 8192,
+                thinkingConfig = new { thinkingBudget = 0 }
+            }
+        };
+
+        var json = JsonSerializer.Serialize(requestBody, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+        using var content = new StringContent(json, Encoding.UTF8, "application/json");
+        var response = await _http.PostAsync(url, content, ct);
+        if (!response.IsSuccessStatusCode)
+        {
+            var err = await response.Content.ReadAsStringAsync(ct);
+            throw new Exception($"Gemini (structuring) {response.StatusCode}: {err}");
+        }
+        var responseText = await response.Content.ReadAsStringAsync(ct);
+        var parsed = JsonDocument.Parse(responseText);
+        var candidate = parsed.RootElement.GetProperty("candidates")[0];
+        var finishReason = candidate.TryGetProperty("finishReason", out var fr) ? fr.GetString() : null;
+        var text = candidate.GetProperty("content").GetProperty("parts")[0].GetProperty("text").GetString() ?? "{}";
+        if (finishReason == "MAX_TOKENS")
+            throw new Exception("Gemini structuring response cut off (token limit) — bill bahut bada hai, clearer/cropped image try karo.");
         return ParseBillJson(text);
     }
 

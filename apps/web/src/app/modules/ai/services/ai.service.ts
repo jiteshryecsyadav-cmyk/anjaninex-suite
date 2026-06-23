@@ -87,7 +87,7 @@ export class AiService {
   // Multi-page: accepts one File or an array of pages. Each page is appended under the
   // same 'image' field name so the backend reads them all via Request.Form.Files.
   // Single-page (1 File) behaves exactly as before.
-  extractBill(images: File | File[], source: 'bill' | 'order' = 'bill', model?: 'flash' | 'pro' | 'sonnet' | 'haiku' | 'gpt4o') {
+  extractBill(images: File | File[], source: 'bill' | 'order' = 'bill', model?: 'flash' | 'pro' | 'sonnet' | 'haiku' | 'gpt4o' | 'sarvam') {
     const fd = new FormData();
     const pages = Array.isArray(images) ? images : [images];
     for (const page of pages) fd.append('image', page);

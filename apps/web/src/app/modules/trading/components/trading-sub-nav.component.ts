@@ -26,10 +26,10 @@ import { RouterLink, RouterLinkActive, Router } from '@angular/router';
       </div>
 
       <div class="tn-dd" [class.tn-open]="open() === 'item'">
-        <button type="button" class="tn-btn" (click)="toggle('item', $event)">📝 Description <span class="tn-caret">▼</span></button>
+        <button type="button" class="tn-btn" (click)="toggle('item', $event)">📝 Category <span class="tn-caret">▼</span></button>
         <div class="tn-menu">
-          <a routerLink="/trading/items" (click)="close()">📝 Description List</a>
-          <a href="javascript:void(0)" (click)="goNewItem(); close()">➕ New Description</a>
+          <a routerLink="/trading/items" (click)="close()">📝 Category List</a>
+          <a href="javascript:void(0)" (click)="goNewItem(); close()">➕ New Category</a>
         </div>
       </div>
 

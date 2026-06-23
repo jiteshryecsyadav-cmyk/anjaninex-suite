@@ -16,10 +16,10 @@ import { BackButtonComponent } from '../../../shared/back-button.component';
 
       <div class="mb-4 flex items-center justify-between">
         <div>
-          <h2 class="font-display font-black text-2xl text-[#5c1a8b]">Descriptions</h2>
-          <p class="text-sm text-[#6b3fa0]">Item descriptions — Order & Bill entry me dropdown me aate hain</p>
+          <h2 class="font-display font-black text-2xl text-[#5c1a8b]">Categories</h2>
+          <p class="text-sm text-[#6b3fa0]">Item categories — Order & Bill entry me dropdown me aate hain</p>
         </div>
-        <button (click)="openNew()" class="btn-primary">+ New Description</button>
+        <button (click)="openNew()" class="btn-primary">+ New Category</button>
       </div>
 
       <app-trading-sub-nav></app-trading-sub-nav>
@@ -29,7 +29,7 @@ import { BackButtonComponent } from '../../../shared/back-button.component';
         @else {
           <table class="w-full text-sm">
             <thead class="bg-[#f0e6ff] text-[#5c1a8b] uppercase text-xs">
-              <tr><th class="px-3 py-2 text-left">Code</th><th class="px-3 py-2 text-left">Description</th><th class="px-3 py-2 text-left">HSN</th><th class="px-3 py-2 text-center">Unit</th><th class="px-3 py-2 text-center">Actions</th></tr>
+              <tr><th class="px-3 py-2 text-left">Code</th><th class="px-3 py-2 text-left">Category</th><th class="px-3 py-2 text-left">HSN</th><th class="px-3 py-2 text-center">Unit</th><th class="px-3 py-2 text-center">Actions</th></tr>
             </thead>
             <tbody>
               @for (i of items(); track i.id) {
@@ -45,7 +45,7 @@ import { BackButtonComponent } from '../../../shared/back-button.component';
                 </tr>
               }
               @if (items().length === 0) {
-                <tr><td colspan="5" class="px-3 py-6 text-center text-gray-400">Koi description nahi. "+ New Description" se banao.</td></tr>
+                <tr><td colspan="5" class="px-3 py-6 text-center text-gray-400">Koi category nahi. "+ New Category" se banao.</td></tr>
               }
             </tbody>
           </table>
@@ -55,9 +55,9 @@ import { BackButtonComponent } from '../../../shared/back-button.component';
       @if (showForm()) {
         <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" (click)="closeForm()">
           <div class="bg-white rounded-2xl p-6 w-full max-w-lg" (click)="$event.stopPropagation()">
-            <h3 class="font-display font-bold text-lg text-[#5c1a8b] mb-4">{{ editId() ? 'Edit Description' : 'New Description' }}</h3>
+            <h3 class="font-display font-bold text-lg text-[#5c1a8b] mb-4">{{ editId() ? 'Edit Category' : 'New Category' }}</h3>
             <form [formGroup]="form" (ngSubmit)="save()" class="grid grid-cols-2 gap-3">
-              <div class="col-span-2"><label class="text-xs font-bold uppercase">Description *</label><input formControlName="name" class="input" placeholder="e.g. Saree, Fabric, Suit Material"></div>
+              <div class="col-span-2"><label class="text-xs font-bold uppercase">Category *</label><input formControlName="name" class="input" placeholder="e.g. Saree, Fabric, Suit Material"></div>
               <div><label class="text-xs font-bold uppercase">HSN / SAC Code</label><input formControlName="hsnSac" class="input" placeholder="e.g. 5208"></div>
               <div><label class="text-xs font-bold uppercase">Unit</label><select formControlName="unit" class="input"><option>PCS</option><option>MTR</option><option>KG</option></select></div>
               <div class="col-span-2 flex justify-end gap-2">

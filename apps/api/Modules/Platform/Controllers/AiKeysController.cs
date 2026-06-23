@@ -19,9 +19,10 @@ namespace Namokara.Api.Modules.Platform.Controllers;
 public record AiKeysDto(
     bool GeminiSet, string GeminiLast4,
     bool ClaudeSet, string ClaudeLast4,
-    bool OpenaiSet, string OpenaiLast4);
+    bool OpenaiSet, string OpenaiLast4,
+    bool SarvamSet, string SarvamLast4);
 
-public record SaveAiKeysDto(string? GeminiKey, string? ClaudeKey, string? OpenaiKey);
+public record SaveAiKeysDto(string? GeminiKey, string? ClaudeKey, string? OpenaiKey, string? SarvamKey);
 
 [ApiController]
 [Route("api/admin/ai-keys")]
@@ -53,20 +54,22 @@ public class AiKeysController : ControllerBase
     public async Task<IActionResult> Get()
     {
         await using var cmd = await CmdAsync(
-            @"SELECT ai_gemini_key, ai_claude_key, ai_openai_key
+            @"SELECT ai_gemini_key, ai_claude_key, ai_openai_key, ai_sarvam_key
               FROM platform.billing_settings WHERE id = 1");
         await using var r = await cmd.ExecuteReaderAsync();
         if (!await r.ReadAsync())
-            return Ok(new AiKeysDto(false, "", false, "", false, ""));
+            return Ok(new AiKeysDto(false, "", false, "", false, "", false, ""));
 
         var gemini = r["ai_gemini_key"] as string;
         var claude = r["ai_claude_key"] as string;
         var openai = r["ai_openai_key"] as string;
+        var sarvam = r["ai_sarvam_key"] as string;
 
         return Ok(new AiKeysDto(
             !string.IsNullOrEmpty(gemini), Last4(gemini),
             !string.IsNullOrEmpty(claude), Last4(claude),
-            !string.IsNullOrEmpty(openai), Last4(openai)));
+            !string.IsNullOrEmpty(openai), Last4(openai),
+            !string.IsNullOrEmpty(sarvam), Last4(sarvam)));
     }
 
     [HttpPut]
@@ -83,6 +86,8 @@ public class AiKeysController : ControllerBase
                                      THEN ai_claude_key ELSE @claude END,
                 ai_openai_key = CASE WHEN @openai IS NULL OR @openai = ''
                                      THEN ai_openai_key ELSE @openai END,
+                ai_sarvam_key = CASE WHEN @sarvam IS NULL OR @sarvam = ''
+                                     THEN ai_sarvam_key ELSE @sarvam END,
                 updated_at = now()
               WHERE id = 1");
         // Blank ke liye EMPTY STRING bhejo (null nahi) — SQL '' ko "keep old" maanta hai.
@@ -92,6 +97,7 @@ public class AiKeysController : ControllerBase
         P("gemini", string.IsNullOrWhiteSpace(dto.GeminiKey) ? "" : dto.GeminiKey.Trim());
         P("claude", string.IsNullOrWhiteSpace(dto.ClaudeKey) ? "" : dto.ClaudeKey.Trim());
         P("openai", string.IsNullOrWhiteSpace(dto.OpenaiKey) ? "" : dto.OpenaiKey.Trim());
+        P("sarvam", string.IsNullOrWhiteSpace(dto.SarvamKey) ? "" : dto.SarvamKey.Trim());
         await cmd.ExecuteNonQueryAsync();
         return await Get();
     }
@@ -107,9 +113,10 @@ public class AiKeysController : ControllerBase
             "gemini" => "ai_gemini_key",
             "claude" => "ai_claude_key",
             "openai" => "ai_openai_key",
+            "sarvam" => "ai_sarvam_key",
             _ => null
         };
-        if (col is null) return BadRequest(new { error = "Invalid provider (gemini/claude/openai)" });
+        if (col is null) return BadRequest(new { error = "Invalid provider (gemini/claude/openai/sarvam)" });
 
         await using var cmd = await CmdAsync(
             $"UPDATE platform.billing_settings SET {col} = '', updated_at = now() WHERE id = 1");

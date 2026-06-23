@@ -91,6 +91,23 @@ import { AdminService, AiKeysInfo } from '../services/admin.service';
             }
           </div>
 
+          <!-- SARVAM (Anji ki Voice) -->
+          <div class="card">
+            <h3 class="font-bold text-[#5c1a8b] mb-1">🔊 Sarvam AI (Anji ki Voice)</h3>
+            <p class="text-xs text-gray-500 mb-3">Anji ki natural Indian awaaz (TTS). Khali = Anji browser ki robotic voice par chalega. dashboard.sarvam.ai se key.</p>
+            <label class="lbl">
+              Nayi key paste karein (khali = koi change nahi)
+              @if (info().sarvamSet) {
+                <span class="ml-2 text-green-600 normal-case font-semibold">set ✓ (…{{ info().sarvamLast4 }})</span>
+              }
+            </label>
+            <input [(ngModel)]="sarvamKey" type="password" class="input font-mono"
+                   [placeholder]="info().sarvamSet ? '•••••• (saved)' : 'sk_...'">
+            @if (info().sarvamSet) {
+              <button (click)="clear('sarvam')" class="text-xs text-red-600 mt-2 hover:underline">🗑 Clear / Delete key</button>
+            }
+          </div>
+
           @if (msg()) { <div class="bg-green-50 border border-green-200 text-green-700 px-3 py-2 rounded text-sm">{{ msg() }}</div> }
           @if (err()) { <div class="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded text-sm">{{ err() }}</div> }
 
@@ -114,12 +131,14 @@ export class AdminAiKeysComponent {
   msg = signal('');
   err = signal('');
   info = signal<AiKeysInfo>({
-    geminiSet: false, geminiLast4: '', claudeSet: false, claudeLast4: '', openaiSet: false, openaiLast4: ''
+    geminiSet: false, geminiLast4: '', claudeSet: false, claudeLast4: '',
+    openaiSet: false, openaiLast4: '', sarvamSet: false, sarvamLast4: ''
   });
 
   geminiKey = '';
   claudeKey = '';
   openaiKey = '';
+  sarvamKey = '';
 
   ngOnInit() {
     this.svc.getAiKeys().subscribe({
@@ -133,11 +152,12 @@ export class AdminAiKeysComponent {
     this.svc.saveAiKeys({
       geminiKey: this.geminiKey || null,
       claudeKey: this.claudeKey || null,
-      openaiKey: this.openaiKey || null
+      openaiKey: this.openaiKey || null,
+      sarvamKey: this.sarvamKey || null
     }).subscribe({
       next: (s) => {
         this.info.set(s);
-        this.geminiKey = ''; this.claudeKey = ''; this.openaiKey = '';
+        this.geminiKey = ''; this.claudeKey = ''; this.openaiKey = ''; this.sarvamKey = '';
         this.saving.set(false);
         this.msg.set('✅ AI keys save ho gayi! Sab firms ke scan ab inhi se chalenge.');
       },
@@ -145,7 +165,7 @@ export class AdminAiKeysComponent {
     });
   }
 
-  clear(provider: 'gemini' | 'claude' | 'openai') {
+  clear(provider: 'gemini' | 'claude' | 'openai' | 'sarvam') {
     if (!confirm('Is key ko delete karein? Iske baad us provider ke model platform key se nahi chalenge (jab tak nayi key na daalein).')) return;
     this.msg.set(''); this.err.set('');
     this.svc.clearAiKey(provider).subscribe({

@@ -106,6 +106,9 @@ public class AiSettings
     public string ClaudeApiKey { get; set; } = "";
     // Platform/global OpenAI key — optional (GPT-4o ke liye). Khali ho to GPT-4o sirf firm BYOK OpenAI key se chalega.
     public string OpenAiApiKey { get; set; } = "";
+    // Platform/global Sarvam AI key — optional (Anji ki natural Indian TTS ke liye). Khali ho to
+    // Anji apne aap browser Web Speech voice par fallback ho jaata hai.
+    public string SarvamApiKey { get; set; } = "";
     public decimal ConfidenceThreshold { get; set; } = 0.8m;
     public int CacheTtlHours { get; set; } = 24;
     public bool EnableMockResponses { get; set; } = true;
@@ -963,7 +966,7 @@ Schema (extract ONLY these keys):
     // Platform AI keys — Anjaninex super-admin EK BAAR set karta hai (platform.billing_settings id=1).
     // DB keys appsettings ke fallbacks par PRECEDENCE leti hain. Raw SQL (same as BillingSettingsController).
     // Khali ho to behavior pehle jaisa = appsettings/BYOK.
-    private readonly record struct PlatformAiKeys(string Gemini, string Claude, string OpenAi);
+    private readonly record struct PlatformAiKeys(string Gemini, string Claude, string OpenAi, string Sarvam);
 
     private async Task<PlatformAiKeys> ReadPlatformAiKeysAsync(CancellationToken ct)
     {
@@ -973,21 +976,22 @@ Schema (extract ONLY these keys):
             if (conn.State != System.Data.ConnectionState.Open) await conn.OpenAsync(ct);
             await using var cmd = conn.CreateCommand();
             cmd.CommandText =
-                @"SELECT ai_gemini_key, ai_claude_key, ai_openai_key
+                @"SELECT ai_gemini_key, ai_claude_key, ai_openai_key, ai_sarvam_key
                   FROM platform.billing_settings WHERE id = 1";
             await using var r = await cmd.ExecuteReaderAsync(ct);
             if (await r.ReadAsync(ct))
                 return new PlatformAiKeys(
                     r["ai_gemini_key"] as string ?? "",
                     r["ai_claude_key"] as string ?? "",
-                    r["ai_openai_key"] as string ?? "");
+                    r["ai_openai_key"] as string ?? "",
+                    r["ai_sarvam_key"] as string ?? "");
         }
         catch (Exception ex)
         {
             // Migration na chali ho / table na ho — gracefully appsettings fallback par chalo.
             _log.LogWarning(ex, "Platform AI keys read fail — appsettings/BYOK par fallback");
         }
-        return new PlatformAiKeys("", "", "");
+        return new PlatformAiKeys("", "", "", "");
     }
 
     // JSON string ke ANDAR aaye unescaped quotes ko \" me badlo.

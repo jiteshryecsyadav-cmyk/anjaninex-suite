@@ -1,5 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
+import { firstValueFrom } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 
 export interface ExtractedParty {
@@ -111,5 +112,22 @@ export class AiService {
 
   markCorrected(id: string, diff: any) {
     return this.http.post(`${this.base}/mark-corrected/${id}`, diff);
+  }
+
+  // Anji voice — Sarvam AI natural Indian TTS. Returns base64 WAV chunks in order,
+  // or null when the backend has no Sarvam key / Sarvam failed (HTTP 204) — caller
+  // then falls back to the browser Web Speech voice. lang: 'hi'|'hinglish'|'en'|'gu'.
+  async ttsSarvam(text: string, lang: string, voice: 'male' | 'female' = 'female'): Promise<{ audios: string[] } | null> {
+    try {
+      const res = await firstValueFrom(
+        this.http.post<{ audios: string[] }>(`${this.base}/tts`, { text, lang, voice },
+          { observe: 'response' })
+      );
+      // 204 No Content → no key / Sarvam error → browser voice fallback.
+      if (!res || res.status === 204 || !res.body || !res.body.audios?.length) return null;
+      return res.body;
+    } catch {
+      return null;   // network/server error → browser voice fallback
+    }
   }
 }

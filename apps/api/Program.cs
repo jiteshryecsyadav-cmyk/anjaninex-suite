@@ -314,6 +314,15 @@ try
     builder.Services.AddScoped<Namokara.Api.Modules.Ai.Services.IBillExtractorService,
         Namokara.Api.Modules.Ai.Services.BillExtractorService>();
 
+    // Sarvam AI — Anji ki natural Indian TTS (browser voice fallback ke saath).
+    builder.Services.AddHttpClient("sarvam", c =>
+    {
+        c.Timeout = TimeSpan.FromSeconds(30);   // chote TTS chunks — 30s kaafi hai
+        c.DefaultRequestHeaders.Add("User-Agent", "Namokara/1.0");
+    });
+    builder.Services.AddScoped<Namokara.Api.Modules.Ai.Services.ISarvamTtsService,
+        Namokara.Api.Modules.Ai.Services.SarvamTtsService>();
+
     // Storage (MinIO)
     builder.Services.Configure<Namokara.Api.Infrastructure.Storage.StorageSettings>(
         builder.Configuration.GetSection("Storage"));

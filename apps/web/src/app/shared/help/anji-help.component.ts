@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { Router, NavigationEnd } from '@angular/router';
 import { filter } from 'rxjs/operators';
 import { findHelp, LANG_LABEL, LANG_BCP, Lang, HelpPage } from './help-content';
+import { AiService } from '../../modules/ai/services/ai.service';
 
 /**
  * Anji — per-page Help Desk. No AI: hand-written help per page in 3 languages, with
@@ -36,6 +37,12 @@ import { findHelp, LANG_LABEL, LANG_BCP, Lang, HelpPage } from './help-content';
           @for (l of langs; track l) {
             <button class="anji-lang" [class.on]="lang()===l" (click)="setLang(l)">{{ label(l) }}</button>
           }
+        </div>
+
+        <!-- Voice: female / male -->
+        <div class="anji-langs" style="margin-top:6px;">
+          <button class="anji-lang" [class.on]="voice()==='female'" (click)="setVoice('female')" title="Female voice">👩 Female</button>
+          <button class="anji-lang" [class.on]="voice()==='male'" (click)="setVoice('male')" title="Male voice">👨 Male</button>
         </div>
 
         <!-- Body -->
@@ -134,10 +141,19 @@ import { findHelp, LANG_LABEL, LANG_BCP, Lang, HelpPage } from './help-content';
 })
 export class AnjiHelpComponent {
   private router = inject(Router);
+  private ai = inject(AiService);
   langs: Lang[] = ['hinglish', 'english', 'gujarati'];
+
+  // Sarvam TTS playback state — base64 WAV chunks played sequentially via one
+  // <audio> element. Reference rakhi jaati hai taaki stopAll() pause/reset kar sake.
+  private sarvamAudio: HTMLAudioElement | null = null;
+  private sarvamQueue: string[] = [];
+  private sarvamIdx = 0;
+  private speakToken = 0;   // har naye speak() par badhta — purani async TTS race se bachata
 
   open = signal(false);
   lang = signal<Lang>(this.loadLang());
+  voice = signal<'male' | 'female'>(this.loadVoice());
   url = signal<string>(this.router.url);
 
   typed = '';
@@ -163,6 +179,11 @@ export class AnjiHelpComponent {
 
   label(l: Lang) { return LANG_LABEL[l]; }
   setLang(l: Lang) { this.lang.set(l); try { localStorage.setItem('anji_lang', l); } catch {} this.stopAll(); }
+  private loadVoice(): 'male' | 'female' {
+    try { const v = localStorage.getItem('anji_voice'); if (v === 'male' || v === 'female') return v; } catch {}
+    return 'female';
+  }
+  setVoice(v: 'male' | 'female') { this.voice.set(v); try { localStorage.setItem('anji_voice', v); } catch {} this.stopAll(); }
   private loadLang(): Lang {
     try { const v = localStorage.getItem('anji_lang') as Lang; if (v) return v; } catch {}
     return 'hinglish';
@@ -171,7 +192,77 @@ export class AnjiHelpComponent {
   openPanel() { this.open.set(true); this.err.set(''); }
 
   // ---------- TTS ----------
+  // Sarvam AI ki natural Indian awaaz pehle try karo; key na ho / fail ho to
+  // browser Web Speech voice par fallback (Anji kabhi nahi tootta).
   speak(text: string) {
+    if (!text || !text.trim()) return;
+    const token = ++this.speakToken;
+    // Pehle koi bhi chal rahi awaaz band karo (Sarvam audio + browser synth).
+    this.stopAudio();
+    try { window.speechSynthesis?.cancel(); } catch {}
+    this.err.set('');
+
+    const langCode = this.shortLang();
+    this.ai.ttsSarvam(text, langCode, this.voice()).then(res => {
+      // Race guard: is beech naya speak()/stop() chala ho to ye result chhod do.
+      if (token !== this.speakToken) return;
+      if (res && res.audios && res.audios.length) {
+        this.playSarvam(res.audios, token);
+      } else {
+        // 204 / empty / error → browser voice fallback.
+        this.browserSpeak(text);
+      }
+    }).catch(() => {
+      if (token !== this.speakToken) return;
+      this.browserSpeak(text);
+    });
+  }
+
+  // lang() signal ('hinglish'|'english'|'gujarati') → Sarvam short code.
+  private shortLang(): string {
+    const l = this.lang();
+    return l === 'english' ? 'en' : l === 'gujarati' ? 'gu' : 'hi';
+  }
+
+  // Sequentially play base64 WAV chunks via one <audio> element; chain via onended.
+  private playSarvam(audios: string[], token: number) {
+    this.sarvamQueue = audios;
+    this.sarvamIdx = 0;
+    this.speaking.set(true);
+    const audio = new Audio();
+    this.sarvamAudio = audio;
+    audio.onended = () => {
+      if (token !== this.speakToken) return;
+      this.sarvamIdx++;
+      if (this.sarvamIdx < this.sarvamQueue.length) {
+        audio.src = 'data:audio/wav;base64,' + this.sarvamQueue[this.sarvamIdx];
+        audio.play().catch(() => this.speaking.set(false));
+      } else {
+        this.speaking.set(false);
+      }
+    };
+    audio.onerror = () => { if (token === this.speakToken) this.speaking.set(false); };
+    audio.src = 'data:audio/wav;base64,' + this.sarvamQueue[0];
+    audio.play().catch(() => this.speaking.set(false));
+  }
+
+  // Pause + reset Sarvam audio and clear the queue (used by stop + new speak).
+  private stopAudio() {
+    try {
+      if (this.sarvamAudio) {
+        this.sarvamAudio.onended = null;
+        this.sarvamAudio.onerror = null;
+        this.sarvamAudio.pause();
+        this.sarvamAudio.src = '';
+      }
+    } catch {}
+    this.sarvamAudio = null;
+    this.sarvamQueue = [];
+    this.sarvamIdx = 0;
+  }
+
+  // FALLBACK — original browser Web Speech voice (kept intact). Sarvam na ho to.
+  browserSpeak(text: string) {
     try {
       const synth = window.speechSynthesis;
       if (!synth) { this.err.set('Is browser me speaker support nahi. Chrome use karein.'); return; }
@@ -199,6 +290,9 @@ export class AnjiHelpComponent {
     this.speak(text);
   }
   stopAll() {
+    // Naya token → koi pending Sarvam TTS promise apna result play na kare.
+    this.speakToken++;
+    this.stopAudio();
     try { window.speechSynthesis?.cancel(); } catch {}
     this.speaking.set(false);
     try { this.recog?.stop(); } catch {}

@@ -59,17 +59,25 @@ import { AiService } from '../../modules/ai/services/ai.service';
           }
           @if (listening()) { <div class="anji-listening">🎤 Sun raha hoon… boliye</div> }
 
-          <div class="anji-sec">Steps</div>
-          <ol class="anji-steps">
-            @for (s of page().steps; track s) { <li (click)="speak(s)">{{ s }}</li> }
-          </ol>
+          <button class="anji-sec anji-toggle" (click)="showSteps.set(!showSteps())">
+            <span>{{ showSteps() ? '▾' : '▸' }} Steps</span>
+          </button>
+          @if (showSteps()) {
+            <ol class="anji-steps">
+              @for (s of page().steps; track s) { <li (click)="speak(s)">{{ s }}</li> }
+            </ol>
+          }
 
-          <div class="anji-sec">Common sawaal (dabाo / pucho)</div>
-          <div class="anji-faqs">
-            @for (f of page().faqs; track f.q) {
-              <button class="anji-faq" (click)="speakFaq(f.a)">❓ {{ f.q }}</button>
-            }
-          </div>
+          <button class="anji-sec anji-toggle" (click)="showFaqs.set(!showFaqs())">
+            <span>{{ showFaqs() ? '▾' : '▸' }} Common sawaal (dabao / pucho)</span>
+          </button>
+          @if (showFaqs()) {
+            <div class="anji-faqs">
+              @for (f of page().faqs; track f.q) {
+                <button class="anji-faq" (click)="speakFaq(f.a)">❓ {{ f.q }}</button>
+              }
+            </div>
+          }
         </div>
 
         <!-- Controls -->
@@ -122,6 +130,9 @@ import { AiService } from '../../modules/ai/services/ai.service';
     .anji-a { font-size: 13px; color: #111827; margin-top: 3px; line-height: 1.45; }
     .anji-listening { font-size: 12px; color: #b91c1c; font-weight: 700; margin-bottom: 8px; }
     .anji-sec { font-size: 11px; font-weight: 800; text-transform: uppercase; color: #94a3b8; margin: 10px 0 4px; }
+    .anji-toggle { display: block; width: 100%; text-align: left; background: #f4f6fb; border: 1px solid #e2e8f0;
+      border-radius: 8px; padding: 7px 10px; cursor: pointer; letter-spacing: .3px; }
+    .anji-toggle:hover { background: #eef4ff; border-color: #cfe0ff; color: #1e3a8a; }
     .anji-steps { margin: 0; padding-left: 18px; }
     .anji-steps li { font-size: 13px; color: #334155; margin-bottom: 5px; line-height: 1.4; cursor: pointer; }
     .anji-steps li:hover { color: var(--anjaninex-navy, #1B2E5C); }
@@ -152,6 +163,10 @@ export class AnjiHelpComponent {
   private speakToken = 0;   // har naye speak() par badhta — purani async TTS race se bachata
 
   open = signal(false);
+  // Steps + Common Sawaal default me HIDDEN (collapsed) — taaki chat/jawab saaf dikhe.
+  // Header tap karke khol/band kar sakte hain.
+  showSteps = signal(false);
+  showFaqs = signal(false);
   lang = signal<Lang>(this.loadLang());
   voice = signal<'male' | 'female'>(this.loadVoice());
   url = signal<string>(this.router.url);

@@ -59,8 +59,10 @@ public class SarvamTtsService : ISarvamTtsService
         if (string.IsNullOrWhiteSpace(apiKey))
         {
             // Koi key nahi → null → frontend browser voice par fallback.
+            _log.LogWarning("Sarvam TTS: koi API key nahi (DB/appsettings dono khali) → browser voice fallback");
             return null;
         }
+        _log.LogInformation("Sarvam TTS start: lang={Lang} voice={Voice} speaker={Speaker}", lang, voice, speaker);
 
         var targetLang = MapLang(lang);
         var trimmed = text.Trim();
@@ -114,6 +116,7 @@ public class SarvamTtsService : ISarvamTtsService
                 }
             }
 
+            _log.LogInformation("Sarvam TTS done: {N} audio chunk(s) returned", audios.Count);
             return audios.Count > 0 ? audios : null;
         }
         catch (Exception ex)
@@ -138,7 +141,7 @@ public class SarvamTtsService : ISarvamTtsService
                 source_language_code = "auto",          // Hinglish/English auto-detect
                 target_language_code = "hi-IN",
                 model = "mayura:v1",
-                mode = "modern-colloquial",             // natural spoken Hindi
+                mode = "formal",                        // pure Hindi (modern-colloquial English words rakhta tha)
                 numerals_format = "international"
             };
             var json = JsonSerializer.Serialize(body);
@@ -159,6 +162,9 @@ public class SarvamTtsService : ISarvamTtsService
                 && t.ValueKind == JsonValueKind.String)
             {
                 var hindi = t.GetString();
+                _log.LogInformation("Sarvam translate OK: IN='{In}' OUT='{Out}'",
+                    text.Length > 60 ? text.Substring(0, 60) : text,
+                    (hindi ?? "").Length > 60 ? hindi!.Substring(0, 60) : hindi);
                 if (!string.IsNullOrWhiteSpace(hindi)) return hindi!;
             }
         }

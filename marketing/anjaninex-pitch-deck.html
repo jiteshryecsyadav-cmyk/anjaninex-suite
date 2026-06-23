@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Anjaninex Business Suite — Pitch Deck</title>
+<style>
+  :root{
+    --purple:#5C1A8B; --navy:#1B2E5C; --dark:#141228; --gold:#E0A526;
+    --muted:#6B7280; --light:#F7F4FB; --green:#16A34A; --card:#ffffff;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{height:100%;}
+  body{font-family:Calibri,'Segoe UI',Arial,sans-serif; background:#000; color:var(--navy); overflow:hidden;}
+  .deck{height:100vh; width:100vw;}
+  .slide{
+    position:absolute; inset:0; display:none; flex-direction:column;
+    padding:5vh 6vw; background:var(--light);
+  }
+  .slide.active{display:flex;}
+  .slide.dark{background:var(--dark); color:#fff;}
+  .slide.dark .muted{color:#cfc9e6;}
+  .eyebrow{font-size:clamp(14px,1.6vw,22px); font-weight:800; letter-spacing:3px; text-transform:uppercase; color:var(--purple);}
+  .slide.dark .eyebrow{color:var(--gold);}
+  h1{font-size:clamp(34px,6.4vw,92px); font-weight:900; line-height:1.02; letter-spacing:-1px;}
+  h2{font-size:clamp(28px,4.4vw,60px); font-weight:900; line-height:1.05; letter-spacing:-0.5px;}
+  .tag{font-size:clamp(18px,2.4vw,34px); font-weight:600; margin-top:3vh;}
+  .muted{color:var(--muted);}
+  .center{justify-content:center;}
+  .foot{position:absolute; bottom:3.2vh; left:6vw; right:6vw; display:flex; justify-content:space-between; align-items:center; font-size:clamp(12px,1.3vw,18px); color:var(--muted);}
+  .slide.dark .foot{color:#9a93c0;}
+  .grid{display:grid; gap:2.2vh 2vw; margin-top:4vh;}
+  .g2{grid-template-columns:1fr 1fr;}
+  .g3{grid-template-columns:1fr 1fr 1fr;}
+  .card{background:var(--card); border-radius:18px; padding:2.6vh 1.8vw; box-shadow:0 10px 30px rgba(20,20,40,.10);}
+  .slide.dark .card{background:rgba(255,255,255,.06); box-shadow:none; border:1px solid rgba(255,255,255,.12);}
+  .ic{font-size:clamp(26px,3.4vw,46px); line-height:1; margin-bottom:1vh;}
+  .ct{font-size:clamp(18px,1.9vw,28px); font-weight:800; color:var(--purple);}
+  .slide.dark .ct{color:#fff;}
+  .cd{font-size:clamp(13px,1.4vw,20px); color:var(--muted); margin-top:.6vh; line-height:1.35;}
+  .slide.dark .cd{color:#cfc9e6;}
+  .stats{display:grid; grid-template-columns:1fr 1fr 1fr; gap:2vw; margin-top:5vh;}
+  .stat .num{font-size:clamp(40px,6.4vw,86px); font-weight:900; color:var(--gold); line-height:1;}
+  .stat .lbl{font-size:clamp(14px,1.5vw,22px); font-weight:700; margin-top:1vh;}
+  .stat .sub{font-size:clamp(11px,1.2vw,16px); color:var(--muted); margin-top:.4vh;}
+  .slide.dark .stat .sub{color:#cfc9e6;}
+  .chips{display:flex; flex-wrap:wrap; gap:1.2vh 1vw; margin-top:4vh;}
+  .chip{background:#fff; border-radius:999px; padding:1.4vh 1.6vw; font-size:clamp(14px,1.5vw,22px); font-weight:700; color:var(--navy); box-shadow:0 6px 16px rgba(20,20,40,.08);}
+  .chip b{color:var(--purple);}
+  .flow{display:flex; align-items:stretch; gap:1vw; margin-top:5vh; flex-wrap:wrap;}
+  .step{flex:1; min-width:180px; background:#fff; border-radius:16px; padding:2.4vh 1.4vw; box-shadow:0 8px 22px rgba(20,20,40,.10);}
+  .step .n{display:inline-block; background:var(--purple); color:#fff; font-weight:900; border-radius:999px; width:2.4em; height:2.4em; line-height:2.4em; text-align:center; font-size:clamp(13px,1.3vw,18px);}
+  .step .t{font-size:clamp(14px,1.5vw,22px); font-weight:700; margin-top:1.2vh; color:var(--navy);}
+  .arrow{align-self:center; font-size:clamp(20px,2.4vw,34px); color:var(--purple); font-weight:900;}
+  .two{display:grid; grid-template-columns:1fr 1fr; gap:2vw; margin-top:5vh;}
+  .bigbox{background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.16); border-radius:20px; padding:4vh 2vw;}
+  .bigbox .h{font-size:clamp(22px,2.6vw,38px); font-weight:900; color:var(--gold);}
+  .bigbox .p{font-size:clamp(15px,1.7vw,24px); margin-top:1.4vh; color:#e9e6f5;}
+  .pill{display:inline-block; background:var(--gold); color:#3a2a00; font-weight:900; border-radius:999px; padding:1vh 1.4vw; font-size:clamp(16px,2vw,30px); margin-top:3vh;}
+  ul.lead{margin-top:3vh; list-style:none;}
+  ul.lead li{font-size:clamp(16px,1.9vw,28px); font-weight:600; margin:1.6vh 0; padding-left:2.4em; position:relative;}
+  ul.lead li:before{content:"✓"; position:absolute; left:0; color:var(--green); font-weight:900;}
+  .nav{position:fixed; bottom:14px; right:18px; z-index:50; display:flex; gap:8px;}
+  .nav button{background:rgba(92,26,139,.9); color:#fff; border:0; border-radius:8px; padding:8px 12px; font-size:18px; cursor:pointer;}
+  .count{position:fixed; bottom:16px; left:18px; z-index:50; color:#fff; mix-blend-mode:difference; font-size:14px; font-weight:700;}
+  @media print{
+    body{overflow:visible;}
+    .slide{display:flex !important; position:relative; height:100vh; page-break-after:always; inset:auto;}
+    .nav,.count{display:none;}
+  }
+</style>
+</head>
+<body>
+<div class="deck">
+
+  <!-- 1 TITLE -->
+  <section class="slide dark active center">
+    <div class="eyebrow">B2B Business Suite · Made in India</div>
+    <h1 style="margin-top:3vh;">Anjaninex<br>Business Suite</h1>
+    <div class="tag muted">Ek hi app me poora B2B business —<br><b style="color:#fff;">Trading · Accounting · AI · WhatsApp</b></div>
+    <div class="foot"><span>trade.anjaninex.com</span><span>Investor & Partner Deck</span></div>
+  </section>
+
+  <!-- 2 PROBLEM -->
+  <section class="slide">
+    <div class="eyebrow">The Problem</div>
+    <h2 style="margin-top:1.5vh;">Aaj ka B2B trader / dalal pareshan hai</h2>
+    <div class="grid g2">
+      <div class="card"><div class="ic">📒</div><div class="ct">Register &amp; Excel</div><div class="cd">Haath se hisaab — galti, mehnat aur time barbaad.</div></div>
+      <div class="card"><div class="ic">🧩</div><div class="ct">4–5 alag apps</div><div class="cd">Billing alag, khata alag, stock alag — sab bikhra.</div></div>
+      <div class="card"><div class="ic">⏳</div><div class="ct">Bill banane me ghante</div><div class="cd">GST, HSN, party detail — sab manually bharna.</div></div>
+      <div class="card"><div class="ic">⚠️</div><div class="ct">Data bikhra + GST tension</div><div class="cd">Report nikalna mushkil, compliance ka dar.</div></div>
+    </div>
+    <div class="foot"><span>Anjaninex Business Suite</span><span>02</span></div>
+  </section>
+
+  <!-- 3 SOLUTION -->
+  <section class="slide">
+    <div class="eyebrow">The Solution</div>
+    <h2 style="margin-top:1.5vh;">Ek Anjaninex Suite — sab kuch ek jagah</h2>
+    <div class="chips">
+      <div class="chip">🛒 <b>Trading</b> — Orders · Bills · GST Invoice · Goods Return · Commission</div>
+      <div class="chip">📊 <b>Accounting</b> — Ledger · P&amp;L · Balance Sheet · Vouchers</div>
+      <div class="chip">🏭 <b>Suppliers</b> — Directory · Product Catalog</div>
+      <div class="chip">👥 <b>HR</b> — Attendance · Team</div>
+      <div class="chip">💳 <b>Wallet</b> — Subscription · Usage</div>
+    </div>
+    <div class="tag" style="margin-top:5vh;">☁️ Cloud &nbsp;·&nbsp; 📱 Mobile &nbsp;·&nbsp; 🇮🇳 Hinglish &nbsp;·&nbsp; 🧾 GST-ready</div>
+    <div class="foot"><span>Anjaninex Business Suite</span><span>03</span></div>
+  </section>
+
+  <!-- 4 KEY FEATURES -->
+  <section class="slide">
+    <div class="eyebrow">Key Features</div>
+    <h2 style="margin-top:1.5vh;">Aise features jo dukaan badal dein</h2>
+    <div class="grid g3">
+      <div class="card"><div class="ic">🤖</div><div class="ct">AI Bill Scanner</div><div class="cd">Photo se bill apne aap bhar jaaye.</div></div>
+      <div class="card"><div class="ic">💬</div><div class="ct">WhatsApp Bot</div><div class="cd">Rate → buyers → order, auto.</div></div>
+      <div class="card"><div class="ic">📥</div><div class="ct">1-Click Import</div><div class="cd">Purana data turant le aao.</div></div>
+      <div class="card"><div class="ic">🧾</div><div class="ct">GST &amp; e-Invoice</div><div class="cd">CGST/SGST/IGST, HSN, e-Way bill.</div></div>
+      <div class="card"><div class="ic">🏢</div><div class="ct">Multi-Firm + Secure</div><div class="cd">Kai firm/branch, row-level security.</div></div>
+      <div class="card"><div class="ic">🇮🇳</div><div class="ct">Hinglish UI</div><div class="cd">Indian SME ke liye natural.</div></div>
+    </div>
+    <div class="foot"><span>Anjaninex Business Suite</span><span>04</span></div>
+  </section>
+
+  <!-- 5 AI SCANNER -->
+  <section class="slide dark center">
+    <div class="eyebrow">⭐ Spotlight</div>
+    <h2 style="margin-top:1.5vh;">AI Bill Scanner</h2>
+    <div class="tag">Bill ki photo khicho — saara data apne aap bhar jaata hai.</div>
+    <div class="stats">
+      <div class="stat"><div class="num">5</div><div class="lbl">AI Models</div><div class="sub">Gemini · Claude · GPT-4o</div></div>
+      <div class="stat"><div class="num">92–97%</div><div class="lbl">Accuracy</div><div class="sub">Indian GST bills</div></div>
+      <div class="stat"><div class="num">Sec.</div><div class="lbl">Minutes → Seconds</div><div class="sub">Order + Bill dono me</div></div>
+    </div>
+    <div class="tag muted" style="margin-top:4vh;">Party, items, GST, HSN, total — sab auto.</div>
+    <div class="foot"><span>Anjaninex Business Suite</span><span>05</span></div>
+  </section>
+
+  <!-- 6 WHATSAPP BOT -->
+  <section class="slide">
+    <div class="eyebrow">⭐ Spotlight</div>
+    <h2 style="margin-top:1.5vh;">💬 Business ab WhatsApp pe</h2>
+    <div class="flow">
+      <div class="step"><span class="n">1</span><div class="t">Supplier rate + photo WhatsApp bhejta hai</div></div>
+      <div class="arrow">→</div>
+      <div class="step"><span class="n">2</span><div class="t">Bot padhke catalog banata hai (watermark + track code)</div></div>
+      <div class="arrow">→</div>
+      <div class="step"><span class="n">3</span><div class="t">Matching buyers ko auto-broadcast</div></div>
+      <div class="arrow">→</div>
+      <div class="step"><span class="n">4</span><div class="t">Order ban jaata hai</div></div>
+    </div>
+    <div class="tag" style="margin-top:5vh;">Bina app khole — aapka business chalta rahe.</div>
+    <div class="foot"><span>Anjaninex Business Suite</span><span>06</span></div>
+  </section>
+
+  <!-- 7 AGENTS -->
+  <section class="slide dark">
+    <div class="eyebrow">For Agents / Resellers</div>
+    <h2 style="margin-top:1.5vh;">Bina dukaan, bina maal — kamao</h2>
+    <div class="pill">💰 Lifetime Recurring Income</div>
+    <div class="grid g3" style="margin-top:3vh;">
+      <div class="card"><div class="ic">🟢</div><div class="ct">Sale Commission</div><div class="cd">Har nayi firm pe — pehli payment ka %.</div></div>
+      <div class="card"><div class="ic">🔁</div><div class="ct">Recharge % — Lifetime</div><div class="cd">Jab tak firm chale, har recharge pe income.</div></div>
+      <div class="card"><div class="ic">📈</div><div class="ct">Apna Dashboard</div><div class="cd">Firms, earning, payout — sab apne paas.</div></div>
+    </div>
+    <div class="tag" style="margin-top:3.5vh;">Jitni firms laao — utni monthly income, automatic.</div>
+    <div class="foot"><span>Anjaninex Business Suite</span><span>07</span></div>
+  </section>
+
+  <!-- 8 MARKET -->
+  <section class="slide">
+    <div class="eyebrow">Market Opportunity</div>
+    <h2 style="margin-top:1.5vh;">India ka mauka bohot bada hai</h2>
+    <div class="stats">
+      <div class="stat"><div class="num" style="color:var(--purple)">7.83 Cr</div><div class="lbl">MSMEs</div><div class="sub">Udyam-registered (Feb 2026)</div></div>
+      <div class="stat"><div class="num" style="color:var(--purple)">$17B→$100B</div><div class="lbl">India SaaS Market</div><div class="sub">2026 → 2035 · ~27% CAGR</div></div>
+      <div class="stat"><div class="num" style="color:var(--purple)">$13B</div><div class="lbl">SMB Digitization</div><div class="sub">Vertical-app opportunity</div></div>
+    </div>
+    <div class="tag muted" style="margin-top:4vh;">Aur inme se zyadatar abhi bhi register / Excel par chalte hain.</div>
+    <div class="foot"><span>Source: MSME Udyam · IBEF / SaaSBoomi</span><span>08</span></div>
+  </section>
+
+  <!-- 9 BUSINESS MODEL -->
+  <section class="slide">
+    <div class="eyebrow">Business Model</div>
+    <h2 style="margin-top:1.5vh;">Paisa kaise banta hai — 4 streams</h2>
+    <div class="grid g2">
+      <div class="card"><div class="ic">💳</div><div class="ct">1 · Subscription</div><div class="cd">Per-firm monthly / yearly plans.</div></div>
+      <div class="card"><div class="ic">⚡</div><div class="ct">2 · Wallet Usage</div><div class="cd">AI scan, WhatsApp, services — pay-per-use.</div></div>
+      <div class="card"><div class="ic">🤖</div><div class="ct">3 · AI Markup Margin</div><div class="cd">Per-scan: cost + margin + GST.</div></div>
+      <div class="card"><div class="ic">🧑‍💼</div><div class="ct">4 · Agent-led Distribution</div><div class="cd">Low CAC — agents bechte hain.</div></div>
+    </div>
+    <div class="foot"><span>Anjaninex Business Suite</span><span>09</span></div>
+  </section>
+
+  <!-- 10 WHY NOW -->
+  <section class="slide">
+    <div class="eyebrow">Why Now</div>
+    <h2 style="margin-top:1.5vh;">Kyun abhi, kyun Anjaninex</h2>
+    <ul class="lead">
+      <li><b>Live product</b> — trade.anjaninex.com par chal raha hai, real firms use kar rahi hain.</li>
+      <li><b>AI + WhatsApp + GST</b> — sab working, sirf idea nahi.</li>
+      <li><b>India-first Hinglish</b> — competitors English-heavy; hum dukaandar ki bhasha bolte hain.</li>
+      <li><b>Agent network ready</b> — distribution scale karne ke liye taiyaar.</li>
+    </ul>
+    <div class="foot"><span>Anjaninex Business Suite</span><span>10</span></div>
+  </section>
+
+  <!-- 11 CTA -->
+  <section class="slide dark center">
+    <div class="eyebrow">Let's go together</div>
+    <h2 style="margin-top:1.5vh;">Aaiye, saath chalein</h2>
+    <div class="two">
+      <div class="bigbox"><div class="h">🧑‍💼 Agents</div><div class="p">Partner bano — lifetime recurring income kamao.</div></div>
+      <div class="bigbox"><div class="h">📈 Investors</div><div class="p">Bada market, live product, agent-led growth. Let's talk.</div></div>
+    </div>
+    <div class="tag" style="margin-top:4vh;"><b style="color:var(--gold)">trade.anjaninex.com</b></div>
+    <div class="tag muted" style="margin-top:1vh;">📞 [Your phone] &nbsp;·&nbsp; ✉️ [your email]</div>
+    <div class="foot"><span>Anjaninex Business Suite</span><span>11</span></div>
+  </section>
+
+</div>
+
+<div class="count"><span id="cur">1</span> / 11</div>
+<div class="nav"><button onclick="go(-1)">◀</button><button onclick="go(1)">▶</button></div>
+
+<script>
+  const slides=[...document.querySelectorAll('.slide')]; let i=0;
+  function show(n){ slides[i].classList.remove('active'); i=(n+slides.length)%slides.length; slides[i].classList.add('active'); document.getElementById('cur').textContent=i+1; }
+  function go(d){ show(i+d); }
+  document.addEventListener('keydown',e=>{
+    if(e.key==='ArrowRight'||e.key==='PageDown'||e.key===' ') go(1);
+    if(e.key==='ArrowLeft'||e.key==='PageUp') go(-1);
+    if(e.key==='Home') show(0);
+    if(e.key==='End') show(slides.length-1);
+  });
+  document.querySelector('.deck').addEventListener('click',e=>{ if(!e.target.closest('.nav')) go(1); });
+</script>
+</body>
+</html>

@@ -1,7 +1,7 @@
 import { Component, inject, signal, computed } from '@angular/core';
 import { CommonModule, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RouterLink, RouterLinkActive } from '@angular/router';
+import { ActivatedRoute, RouterLink, RouterLinkActive } from '@angular/router';
 import { AccountingService, Ledger, VoucherListItem, VoucherDetail } from '../services/accounting.service';
 import { BackButtonComponent } from '../../../shared/back-button.component';
 import { ToastService } from '../../../shared/toast.service';
@@ -44,6 +44,8 @@ interface LineRow {
         <a routerLink="/accounting/ledgers" class="px-4 py-2 text-sm font-semibold text-gray-500 border-b-2 border-transparent hover:text-[#5c1a8b]">Ledgers</a>
         <a routerLink="/accounting/vouchers" routerLinkActive="!border-[#5c1a8b] !text-[#5c1a8b]"
            class="px-4 py-2 text-sm font-semibold text-gray-500 border-b-2 border-transparent hover:text-[#5c1a8b]">Vouchers</a>
+        <a routerLink="/accounting/voucher-list" routerLinkActive="!border-[#5c1a8b] !text-[#5c1a8b]"
+           class="px-4 py-2 text-sm font-semibold text-gray-500 border-b-2 border-transparent hover:text-[#5c1a8b]">📋 Voucher List</a>
         <a routerLink="/accounting/trial-balance" class="px-4 py-2 text-sm font-semibold text-gray-500 border-b-2 border-transparent hover:text-[#5c1a8b]">Trial Balance</a>
         <a routerLink="/accounting/profit-loss" class="px-4 py-2 text-sm font-semibold text-gray-500 border-b-2 border-transparent hover:text-[#5c1a8b]">P&amp;L</a>
         <a routerLink="/accounting/balance-sheet" class="px-4 py-2 text-sm font-semibold text-gray-500 border-b-2 border-transparent hover:text-[#5c1a8b]">Balance Sheet</a>
@@ -392,6 +394,7 @@ interface LineRow {
 export class VoucherEntryComponent {
   private svc = inject(AccountingService);
   private toast = inject(ToastService);
+  private route = inject(ActivatedRoute);
 
   voucherTypes = [
     { code: 'payment',  icon: '💸', label: 'Payment',  hint: 'Money paid out — Cash/Bank credited, Expense/Party debited' },
@@ -446,6 +449,11 @@ export class VoucherEntryComponent {
   ngOnInit() {
     this.svc.listLedgers().subscribe(l => this.ledgers.set(l));
     this.loadRecent();
+
+    // Voucher List page ka "✏️ Edit" button yahan deep-link karta hai
+    // (?edit=<id>) → wahi edit-load logic chalao jo list ke Edit button ka hai.
+    const editId = this.route.snapshot.queryParamMap.get('edit');
+    if (editId) this.startEdit(editId);
   }
 
   loadRecent() {

@@ -23,6 +23,10 @@ export const accountingRoutes: Routes = [
     loadComponent: () => import('./pages/voucher-entry.component').then(m => m.VoucherEntryComponent)
   },
   {
+    path: 'voucher-list',
+    loadComponent: () => import('./pages/voucher-list.component').then(m => m.VoucherListComponent)
+  },
+  {
     path: 'trial-balance',
     loadComponent: () => import('./pages/reports.components').then(m => m.TrialBalanceComponent)
   },

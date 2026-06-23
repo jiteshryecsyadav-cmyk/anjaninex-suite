@@ -29,6 +29,7 @@ public class SarvamTtsService : ISarvamTtsService
     private readonly ILogger<SarvamTtsService> _log;
 
     private const string SarvamUrl = "https://api.sarvam.ai/text-to-speech";
+    private const string SarvamTransliterateUrl = "https://api.sarvam.ai/transliterate";
     private const int MaxChunkChars = 450;    // Sarvam ~500 char/request limit — safe margin
     private const int MaxTotalChars = 1500;   // poori reply cap (Anji answers chote hote hain)
 
@@ -71,9 +72,18 @@ public class SarvamTtsService : ISarvamTtsService
             var audios = new List<string>(chunks.Count);
             foreach (var chunk in chunks)
             {
+                // HINDI VOICE FIX — Anji ka content romanized Hinglish hai (e.g. "Sawaal likho").
+                // Sarvam ko romanized hi-IN do to wo English-accent me galat bolta hai. Isliye
+                // pehle Devanagari me transliterate karo (en-IN → hi-IN, spoken_form) — fir
+                // Anji asli shudh Hindi me bolega. Transliterate fail ho to original text par
+                // gracefully chalega (TTS kabhi nahi tootega).
+                var textForTts = chunk;
+                if (targetLang == "hi-IN")
+                    textForTts = await TransliterateToHindiAsync(chunk, apiKey, ct);
+
                 var body = new
                 {
-                    text = chunk,
+                    text = textForTts,
                     target_language_code = targetLang,
                     speaker = speaker,
                     model = "bulbul:v2",
@@ -111,6 +121,49 @@ public class SarvamTtsService : ISarvamTtsService
             _log.LogWarning(ex, "Sarvam TTS failed — frontend browser voice par fallback karega");
             return null;
         }
+    }
+
+    // Romanized Hinglish → Devanagari Hindi (spoken form) taaki Anji shudh Hindi bole.
+    // Sarvam transliterate: source en-IN (romanized) → target hi-IN, spoken_form=true.
+    // Koi bhi error / khali result par original text wapas (graceful — TTS na tute).
+    private async Task<string> TransliterateToHindiAsync(string text, string apiKey, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return text;
+        try
+        {
+            var body = new
+            {
+                input = text.Length > 1000 ? text.Substring(0, 1000) : text,  // API cap 1000 chars
+                source_language_code = "en-IN",
+                target_language_code = "hi-IN",
+                spoken_form = true,
+                numerals_format = "international"
+            };
+            var json = JsonSerializer.Serialize(body);
+            using var req = new HttpRequestMessage(HttpMethod.Post, SarvamTransliterateUrl);
+            req.Headers.Add("api-subscription-key", apiKey);
+            req.Content = new StringContent(json, Encoding.UTF8, "application/json");
+
+            var resp = await _http.SendAsync(req, ct);
+            if (!resp.IsSuccessStatusCode)
+            {
+                _log.LogWarning("Sarvam transliterate {Status} — original text par TTS chalega", resp.StatusCode);
+                return text;
+            }
+            var respText = await resp.Content.ReadAsStringAsync(ct);
+            using var doc = JsonDocument.Parse(respText);
+            if (doc.RootElement.TryGetProperty("transliterated_text", out var t)
+                && t.ValueKind == JsonValueKind.String)
+            {
+                var deva = t.GetString();
+                if (!string.IsNullOrWhiteSpace(deva)) return deva!;
+            }
+        }
+        catch (Exception ex)
+        {
+            _log.LogWarning(ex, "Sarvam transliterate fail — original text par TTS chalega");
+        }
+        return text;
     }
 
     // "hi"/"hinglish" → hi-IN, "en" → en-IN, "gu" → gu-IN. Default hi-IN.

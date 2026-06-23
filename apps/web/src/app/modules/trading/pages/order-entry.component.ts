@@ -539,7 +539,7 @@ interface LineRow {
             </div>
             <div>
               <label class="lbl">INSURANCE</label>
-              <input [(ngModel)]="insuranceAmt" type="number" step="0.01" class="ip">
+              <input [ngModel]="insuranceAmt()" (ngModelChange)="insuranceAmt.set(+$event || 0)" type="number" step="0.01" class="ip">
             </div>
           </div>
         </div>
@@ -566,10 +566,10 @@ interface LineRow {
               <span>💵 CD Discount ({{ cdType() === 'before' ? 'Before GST' : 'After GST' }})</span>
               <span class="font-mono text-red-600">- ₹ {{ cdAmount() | number:'1.2-2' }}</span>
             </div>
-            @if (insuranceAmt > 0) {
+            @if (insuranceAmt() > 0) {
               <div class="sum-row">
                 <span>Insurance</span>
-                <span class="font-mono">+ ₹ {{ insuranceAmt | number:'1.2-2' }}</span>
+                <span class="font-mono">+ ₹ {{ insuranceAmt() | number:'1.2-2' }}</span>
               </div>
             }
             <div class="sum-divider"></div>
@@ -1504,7 +1504,7 @@ export class OrderEntryComponent {
   paymentTerms = '';
   orderStatus = 'pending';
   remark = '';
-  insuranceAmt = 0;   // INSURANCE — additive charge (net me jud kar)
+  insuranceAmt = signal(0);   // INSURANCE — additive charge (net me jud kar). SIGNAL taaki netTotal computed track kare.
   transporterId = '';
   transporters = signal<Transporter[]>([]);
 
@@ -1632,7 +1632,7 @@ export class OrderEntryComponent {
   effTax = computed(() => this.effSgst() + this.effCgst() + this.effIgst());
 
   netTotal = computed(() => {
-    const ins = (+this.insuranceAmt || 0);
+    const ins = (+this.insuranceAmt() || 0);
     if (this.cdType() === 'before') {
       // (taxable − CD) + tax-on-discounted + insurance
       return (this.totalTaxable() - this.cdAmount()) + this.effTax() + ins;
@@ -1721,7 +1721,7 @@ export class OrderEntryComponent {
         {
           const n = o.notes || '';
           const insM = n.match(/Insurance:\s*₹?([\d.]+)/);
-          if (insM) this.insuranceAmt = +insM[1] || 0;
+          if (insM) this.insuranceAmt.set(+insM[1] || 0);
           this.remark = n.replace(/\s*\|?\s*Insurance:\s*₹?[\d.]+/, '').trim();
         }
         // Lines
@@ -1955,7 +1955,7 @@ export class OrderEntryComponent {
       transporterId: this.transporterId || null,
       paymentTerms: this.paymentTerms || undefined,
       status: this.orderStatus,
-      notes: [this.remark, this.insuranceAmt ? `Insurance: ₹${this.insuranceAmt}` : ''].filter(Boolean).join(' | ') || undefined,
+      notes: [this.remark, this.insuranceAmt() ? `Insurance: ₹${this.insuranceAmt()}` : ''].filter(Boolean).join(' | ') || undefined,
       lines: validLines
     };
 

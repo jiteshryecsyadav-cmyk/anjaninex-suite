@@ -531,15 +531,15 @@ interface LineRow {
 
             <div>
               <label class="lbl">SWEET / L.S</label>
-              <input [(ngModel)]="sweetLs" type="number" step="0.01" class="ip">
+              <input [ngModel]="sweetLs()" (ngModelChange)="sweetLs.set(+$event || 0)" type="number" step="0.01" class="ip">
             </div>
             <div>
               <label class="lbl">INTEREST AMT</label>
-              <input [(ngModel)]="interestAmt" type="number" step="0.01" class="ip">
+              <input [ngModel]="interestAmt()" (ngModelChange)="interestAmt.set(+$event || 0)" type="number" step="0.01" class="ip">
             </div>
             <div>
               <label class="lbl">INSURANCE</label>
-              <input [(ngModel)]="insuranceAmt" type="number" step="0.01" class="ip">
+              <input [ngModel]="insuranceAmt()" (ngModelChange)="insuranceAmt.set(+$event || 0)" type="number" step="0.01" class="ip">
             </div>
             <div>
               <label class="lbl">TAXABLE AMT *</label>
@@ -571,7 +571,7 @@ interface LineRow {
 
             <div>
               <label class="lbl">TCS AMT</label>
-              <input [(ngModel)]="tcsAmt" type="number" step="0.01" class="ip">
+              <input [ngModel]="tcsAmt()" (ngModelChange)="tcsAmt.set(+$event || 0)" type="number" step="0.01" class="ip">
             </div>
             <div>
               <label class="lbl">E-INVOICE AMT *</label>
@@ -694,15 +694,15 @@ interface LineRow {
             </div>
             <div class="sum-row">
               <span>Sweet / L.s</span>
-              <span class="font-mono">₹ {{ sweetLs | number:'1.2-2' }}</span>
+              <span class="font-mono">₹ {{ sweetLs() | number:'1.2-2' }}</span>
             </div>
             <div class="sum-row">
               <span>Interest</span>
-              <span class="font-mono">₹ {{ interestAmt | number:'1.2-2' }}</span>
+              <span class="font-mono">₹ {{ interestAmt() | number:'1.2-2' }}</span>
             </div>
             <div class="sum-row">
               <span>Insurance</span>
-              <span class="font-mono">₹ {{ insuranceAmt | number:'1.2-2' }}</span>
+              <span class="font-mono">₹ {{ insuranceAmt() | number:'1.2-2' }}</span>
             </div>
             <div class="sum-row">
               <span>Taxable Amt</span>
@@ -726,7 +726,7 @@ interface LineRow {
             }
             <div class="sum-row">
               <span>TCS</span>
-              <span class="font-mono">₹ {{ tcsAmt | number:'1.2-2' }}</span>
+              <span class="font-mono">₹ {{ tcsAmt() | number:'1.2-2' }}</span>
             </div>
             <div class="sum-divider"></div>
             <div class="sum-row">
@@ -1873,12 +1873,14 @@ export class BillEntryComponent {
     this.cdType.set(t);
     this.cdAmountOverride.set(null);
   }
-  sweetLs = 0;
-  interestAmt = 0;
-  insuranceAmt = 0;   // INSURANCE — additive charge (taxable me jud kar net me)
+  // Additive charges — SIGNALS (computed eInvoiceAmt/taxableAfterCd inhe track kare,
+  // warna value badalne par net amount recompute nahi hota tha — wahi bug tha).
+  sweetLs = signal(0);
+  interestAmt = signal(0);
+  insuranceAmt = signal(0);   // INSURANCE — additive charge (taxable me jud kar net me)
   paymentTerms = '';   // order jaisa hi dropdown (net15/net30/.../advance/cod/loa)
   days = 45;           // internal — terms se derive hota hai (due/remark ke liye)
-  tcsAmt = 0;
+  tcsAmt = signal(0);
   orderStatus = 'billed';
   transporter = '';                          // legacy free-text (still used in notes)
   transporterId = '';                        // NEW — selected transporter UUID
@@ -2065,7 +2067,7 @@ export class BillEntryComponent {
     this.cdAmountOverride.set(+val || 0);
   }
   taxableAfterCd = computed(() => {
-    return this.grossAmt() - this.cdAmount() + this.sweetLs + this.interestAmt + (+this.insuranceAmt || 0);
+    return this.grossAmt() - this.cdAmount() + this.sweetLs() + this.interestAmt() + (+this.insuranceAmt() || 0);
   });
   sgstTotal = computed(() => {
     return this.lines().reduce((s, _, i) => {
@@ -2096,12 +2098,12 @@ export class BillEntryComponent {
   eInvoiceAmt = computed(() => {
     if (this.cdType() === 'after') {
       // GST poore par, discount total par
-      return this.grossAmt() + this.sweetLs + this.interestAmt + (+this.insuranceAmt || 0)
-           + this.sgstTotal() + this.cgstTotal() + this.igstTotal() + (+this.tcsAmt || 0)
+      return this.grossAmt() + this.sweetLs() + this.interestAmt() + (+this.insuranceAmt() || 0)
+           + this.sgstTotal() + this.cgstTotal() + this.igstTotal() + (+this.tcsAmt() || 0)
            - this.cdAmount();
     }
     // Before GST: discounted base + scaled tax
-    return this.taxableAfterCd() + this.effSgst() + this.effCgst() + this.effIgst() + (+this.tcsAmt || 0);
+    return this.taxableAfterCd() + this.effSgst() + this.effCgst() + this.effIgst() + (+this.tcsAmt() || 0);
   });
 
   /** Net amount = e-Invoice Amt rounded to nearest whole rupee. */
@@ -2220,11 +2222,11 @@ export class BillEntryComponent {
           }
           // Sweet/L.S, Interest, TCS
           const sweetMatch = notes.match(/Sweet\/L\.S:\s*₹?([\d.]+)/);
-          if (sweetMatch) this.sweetLs = +sweetMatch[1] || 0;
+          if (sweetMatch) this.sweetLs.set(+sweetMatch[1] || 0);
           const intMatch = notes.match(/Interest:\s*₹?([\d.]+)/);
-          if (intMatch) this.interestAmt = +intMatch[1] || 0;
+          if (intMatch) this.interestAmt.set(+intMatch[1] || 0);
           const insMatch = notes.match(/Insurance:\s*₹?([\d.]+)/);
-          if (insMatch) this.insuranceAmt = +insMatch[1] || 0;
+          if (insMatch) this.insuranceAmt.set(+insMatch[1] || 0);
 
           if (b.lines && b.lines.length > 0) {
             this.lines.set(b.lines.map(l => ({
@@ -2719,7 +2721,7 @@ export class BillEntryComponent {
     this.orderNo = ''; this.supplierBillNo = '';
     this.paymentTerms = ''; this.days = 45;
     this.cdPct.set(0); this.cdAmountOverride.set(null); this.cdEnabled.set(true);
-    this.sweetLs = 0; this.interestAmt = 0; this.insuranceAmt = 0; this.tcsAmt = 0;
+    this.sweetLs.set(0); this.interestAmt.set(0); this.insuranceAmt.set(0); this.tcsAmt.set(0);
     this.lrNo = ''; this.lrDate = ''; this.transporter = ''; this.transporterId = ''; this.transporterFilter.set('');
     this.ewayBillNo = ''; this.ewayBillDate = ''; this.transporterMatchLevel.set(null);
     this.aiTransporterName.set(''); this.aiTransporterGst.set('');
@@ -2793,10 +2795,10 @@ export class BillEntryComponent {
       this.transporter ? `Transporter: ${this.transporter}` : '',
       this.lrNo ? `LR: ${this.lrNo}${this.lrDate ? ' (' + this.lrDate + ')' : ''}` : '',
       this.cdEnabled() && this.cdPct() > 0 ? `CD ${this.cdPct()}% = ₹${this.cdAmount().toFixed(2)}` : '',
-      this.sweetLs ? `Sweet/L.S: ₹${this.sweetLs}` : '',
-      this.interestAmt ? `Interest: ₹${this.interestAmt}` : '',
-      this.insuranceAmt ? `Insurance: ₹${this.insuranceAmt}` : '',
-      this.tcsAmt ? `TCS: ₹${this.tcsAmt}` : '',
+      this.sweetLs() ? `Sweet/L.S: ₹${this.sweetLs()}` : '',
+      this.interestAmt() ? `Interest: ₹${this.interestAmt()}` : '',
+      this.insuranceAmt() ? `Insurance: ₹${this.insuranceAmt()}` : '',
+      this.tcsAmt() ? `TCS: ₹${this.tcsAmt()}` : '',
       this.paymentTerms ? `Payment Terms: ${this.termsLabel(this.paymentTerms)}` : (this.days ? `Credit Days: ${this.days}` : '')
     ].filter(Boolean).join('\n');
 

@@ -280,7 +280,7 @@ interface LineRow {
               <tr>
                 <th class="w-10">SNO.</th>
                 <th>ITEM NAME</th>
-                <th>DESCRIPTION</th>
+                <th>CATEGORY</th>
                 <th class="w-16">QTY.</th>
                 <th class="w-20">UNIT</th>
                 <th class="w-28">PRICE</th>
@@ -306,7 +306,7 @@ interface LineRow {
                            list="items-list" class="tip" placeholder="Item name"
                            (change)="autoFillFromItem($index, $event)">
                   </td>
-                  <td data-label="Description">
+                  <td data-label="Category">
                     <select [ngModel]="line.description"
                             (ngModelChange)="updateLine($index, 'description', $event)"
                             (change)="onDescPick($index, $event)"

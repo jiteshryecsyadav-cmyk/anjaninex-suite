@@ -52,16 +52,16 @@ import { LedgerStatementComponent } from '../components/ledger-statement.compone
            class="px-4 py-2 text-sm font-semibold text-gray-500 border-b-2 border-transparent hover:text-[#5c1a8b]">Balance Sheet</a>
       </div>
 
-      <!-- Search + filter -->
-      <div class="flex gap-3 mb-4">
-        <input [(ngModel)]="searchQuery" (input)="onSearch()"
-               type="text" placeholder="🔍 Search ledger by name..." class="input flex-1">
-        <select [(ngModel)]="selectedSubGroup" (ngModelChange)="loadLedgers()" class="input w-64">
+      <!-- Filter (Sub Group) + Search (ledger naam) — search dropdown ke NEECHE, full width -->
+      <div class="flex flex-col gap-3 mb-4">
+        <select [(ngModel)]="selectedSubGroup" (ngModelChange)="loadLedgers()" class="input w-full">
           <option value="">All Sub Groups</option>
           @for (sg of subGroups(); track sg.id) {
             <option [value]="sg.id">{{ sg.groupName }} → {{ sg.name }}</option>
           }
         </select>
+        <input [(ngModel)]="searchQuery" (input)="onSearch()"
+               type="text" placeholder="🔍 Ledger naam se search karo..." class="input w-full">
       </div>
 
       <!-- Ledger list -->

@@ -161,6 +161,26 @@ export interface CreateRole {
   color?: string;
 }
 
+// ============== PERMISSIONS MATRIX ==============
+// Backend: GET /api/core/permissions → module › resource › cells tree.
+export interface PermissionCell {
+  code: string;
+  action: string;       // view / create / edit / delete / approve / export / use ...
+  scope: string;        // branch / firm / self / all / platform
+  description: string | null;
+  isDangerous: boolean;
+}
+export interface PermissionResource {
+  resource: string;
+  label: string;
+  permissions: PermissionCell[];
+}
+export interface PermissionModule {
+  module: string;
+  label: string;
+  resources: PermissionResource[];
+}
+
 @Injectable({ providedIn: 'root' })
 export class MastersService {
   private http = inject(HttpClient);
@@ -209,4 +229,11 @@ export class MastersService {
   createRole(data: CreateRole) { return this.http.post<{ id: string }>(`${this.base}/roles`, data); }
   updateRole(id: string, data: CreateRole) { return this.http.put(`${this.base}/roles/${id}`, data); }
   deleteRole(id: string) { return this.http.delete(`${this.base}/roles/${id}`); }
+
+  // Permissions matrix
+  permissionCatalog() { return this.http.get<PermissionModule[]>(`${this.base}/permissions`); }
+  getRolePermissionCodes(roleId: string) { return this.http.get<string[]>(`${this.base}/roles/${roleId}/permissions`); }
+  setRolePermissionCodes(roleId: string, codes: string[]) {
+    return this.http.put<{ ok: boolean; count: number }>(`${this.base}/roles/${roleId}/permissions`, { codes });
+  }
 }

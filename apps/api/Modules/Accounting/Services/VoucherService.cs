@@ -196,26 +196,28 @@ public class VoucherService : IVoucherService
         using var tx = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
         try
         {
-            var voucher = await _db.Vouchers
-                .Include(v => v.Lines)
-                .SingleAsync(v => v.Id == id);
+            // Purani lines RAW SQL DELETE se hatao. Pehle tracked RemoveRange use hota tha,
+            // jo har row ka affected-count check karta hai — DB trigger/xmin ki wajah se count
+            // 0 aata tha → DbUpdateConcurrencyException ("expected 1 affected 0") → edit fail.
+            // ExecuteDelete seedha DELETE chalata hai, koi concurrency-count check nahi.
+            await _db.VoucherLines.Where(l => l.VoucherId == id).ExecuteDeleteAsync();
 
+            // Voucher ab FRESH load karo (delete ke baad sahi state) + scalar fields update.
+            var voucher = await _db.Vouchers.SingleAsync(v => v.Id == id);
             voucher.VoucherType = dto.VoucherType;   // type change ab save hota hai (pehle drop ho jaata tha)
             voucher.VoucherDate = dto.VoucherDate;
             voucher.Narration = dto.Narration;
             voucher.TotalAmount = dr;
             voucher.UpdatedAt = DateTimeOffset.UtcNow;
 
-            // Replace lines
-            _db.VoucherLines.RemoveRange(voucher.Lines);
-
+            // Nayi lines add karo (naye Guid se)
             int order = 0;
             foreach (var line in dto.Lines)
             {
-                voucher.Lines.Add(new VoucherLine
+                _db.VoucherLines.Add(new VoucherLine
                 {
                     Id = Guid.NewGuid(),
-                    VoucherId = voucher.Id,
+                    VoucherId = id,
                     LedgerId = line.LedgerId,
                     DebitCredit = line.DebitCredit,
                     Amount = line.Amount,

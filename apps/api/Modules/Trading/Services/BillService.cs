@@ -444,50 +444,33 @@ public class BillService : IBillService
             await _db.SaveChangesAsync();
 
             // ===== AUTO-POST TO ACCOUNTING =====
-            // Sales:    Dr Party       Cr Sales       Cr CGST+SGST (or IGST)
-            // Purchase: Cr Party       Dr Purchase    Dr CGST+SGST (or IGST) [input tax credit]
+            // Sales:    Dr BUYER (debtor)   Cr Sales   Cr CGST+SGST (or IGST)
+            // Purchase: Cr SUPPLIER (creditor)   Dr Purchase   Dr CGST+SGST (or IGST) [ITC]
             //
-            // FIX: if party has no ledger yet (e.g. created via Quick Add when accounting seed
-            // wasn't run for the firm), auto-create one on the fly instead of crashing.
+            // KHATA FIX: broker model me ek bill par DO party hoti hain —
+            //   party_id        = SUPPLIER (jisne maal bheja)
+            //   buyer_party_id  = BUYER    (jisne kharida — customer)
+            // SALES bill ka DEBTOR (receivable) BUYER hai, supplier nahi. Pehle yahan
+            // hamesha party_id (supplier) ka ledger Dr hota tha → buyer khata khaali rehta
+            // aur supplier ke khate me galat sale chadh jaati. Ab:
+            //   sales    → buyer ka ledger (Sundry Debtors)
+            //   purchase → supplier ka ledger (Sundry Creditors)  [UNCHANGED]
             Guid partyLedgerId;
-            if (party.LedgerId.HasValue)
+            if (dto.BillType == "sales" && dto.BuyerPartyId.HasValue)
             {
+                // SALES → BUYER ka ledger (auto-create in Sundry Debtors agar null ho)
+                partyLedgerId = await GetOrCreatePartyLedgerAsync(dto.BuyerPartyId.Value, firmId, "Sundry Debtors");
+            }
+            else if (party.LedgerId.HasValue)
+            {
+                // PURCHASE (ya legacy sales bina buyer ke) → party_id ka ledger
                 partyLedgerId = party.LedgerId.Value;
             }
             else
             {
+                // party_id ka ledger nahi mila → auto-create (purchase = Creditors, legacy sales = Debtors)
                 var subGroupName = dto.BillType == "purchase" ? "Sundry Creditors" : "Sundry Debtors";
-                var subGroup = await _db.SubGroups
-                    .FirstOrDefaultAsync(s => s.FirmId == firmId && s.Name == subGroupName);
-                if (subGroup == null)
-                    throw new InvalidOperationException(
-                        $"Cannot auto-create ledger for this party — the '{subGroupName}' sub-group is missing. " +
-                        "Please run the accounting seed for this firm (Admin → Settings → Initialize Chart of Accounts).");
-
-                var contact = await _db.Contacts.SingleAsync(c => c.Id == party.ContactId);
-                var newLedger = new Namokara.Api.Modules.Accounting.Entities.Ledger
-                {
-                    Id = Guid.NewGuid(),
-                    FirmId = firmId,
-                    SubGroupId = subGroup.Id,
-                    ContactId = contact.Id,
-                    Name = contact.DisplayName,
-                    OpeningBalance = 0,
-                    OpeningType = "Dr",
-                    IsActive = true,
-                    CreatedAt = DateTimeOffset.UtcNow,
-                    UpdatedAt = DateTimeOffset.UtcNow
-                };
-                _db.Ledgers.Add(newLedger);
-                await _db.SaveChangesAsync();
-
-                // Link the party to the new ledger
-                var partyEntity = await _db.PartyProfiles.SingleAsync(p => p.Id == dto.PartyId);
-                partyEntity.LedgerId = newLedger.Id;
-                await _db.SaveChangesAsync();
-
-                partyLedgerId = newLedger.Id;
-                _log.LogInformation("Auto-created ledger {LedgerId} for party {PartyId}", newLedger.Id, dto.PartyId);
+                partyLedgerId = await GetOrCreatePartyLedgerAsync(dto.PartyId, firmId, subGroupName);
             }
 
             var voucherId = dto.BillType == "sales"
@@ -614,9 +597,20 @@ public class BillService : IBillService
             }
             await _db.SaveChangesAsync();
 
-            // party ledger (existing bill — ledger pehle se hona chahiye)
-            var partyLedgerId = party.LedgerId ?? throw new InvalidOperationException(
-                "Is party ka ledger nahi mila. Pehle Chart of Accounts initialize karein.");
+            // ===== KHATA FIX (same rule as AddBill) =====
+            //   sales    → BUYER ka ledger (Sundry Debtors) — receivable buyer par
+            //   purchase → SUPPLIER (party_id) ka ledger (Sundry Creditors)  [UNCHANGED]
+            Guid partyLedgerId;
+            if (dto.BillType == "sales" && dto.BuyerPartyId.HasValue)
+            {
+                partyLedgerId = await GetOrCreatePartyLedgerAsync(dto.BuyerPartyId.Value, firmId, "Sundry Debtors");
+            }
+            else
+            {
+                // PURCHASE (ya legacy sales bina buyer ke) → party_id (supplier) ka ledger
+                partyLedgerId = party.LedgerId ?? throw new InvalidOperationException(
+                    "Is party ka ledger nahi mila. Pehle Chart of Accounts initialize karein.");
+            }
             var voucherId = dto.BillType == "sales"
                 ? await PostSalesVoucherForBill(bill, partyLedgerId, firmId, bill.BranchId, userId)
                 : await PostPurchaseVoucherForBill(bill, partyLedgerId, firmId, bill.BranchId, userId);
@@ -710,6 +704,55 @@ public class BillService : IBillService
         ["ladakh"] = "38",
         ["other territory"] = "97",
     };
+
+    /// <summary>
+    /// Kisi party (party_profiles.id) ka ledger nikaalo; agar null ho to ON-THE-FLY bana do
+    /// diye gaye sub-group (Sundry Debtors / Sundry Creditors) ke andar, party ke contact se
+    /// linked. Phir party.LedgerId set kar ke save. (AddBill ke purane auto-create block ka
+    /// reusable version — sales=buyer, purchase=supplier dono ke liye ek hi jagah.)
+    /// </summary>
+    private async Task<Guid> GetOrCreatePartyLedgerAsync(Guid partyProfileId, Guid firmId, string subGroupName)
+    {
+        var party = await _db.PartyProfiles
+            .Where(p => p.Id == partyProfileId)
+            .Select(p => new { p.LedgerId, p.ContactId })
+            .SingleAsync();
+        if (party.LedgerId.HasValue)
+            return party.LedgerId.Value;
+
+        var subGroup = await _db.SubGroups
+            .FirstOrDefaultAsync(s => s.FirmId == firmId && s.Name == subGroupName);
+        if (subGroup == null)
+            throw new InvalidOperationException(
+                $"Cannot auto-create ledger for this party — the '{subGroupName}' sub-group is missing. " +
+                "Please run the accounting seed for this firm (Admin → Settings → Initialize Chart of Accounts).");
+
+        var contact = await _db.Contacts.SingleAsync(c => c.Id == party.ContactId);
+        var newLedger = new Namokara.Api.Modules.Accounting.Entities.Ledger
+        {
+            Id = Guid.NewGuid(),
+            FirmId = firmId,
+            SubGroupId = subGroup.Id,
+            ContactId = contact.Id,
+            Name = contact.DisplayName,
+            OpeningBalance = 0,
+            OpeningType = "Dr",
+            IsActive = true,
+            CreatedAt = DateTimeOffset.UtcNow,
+            UpdatedAt = DateTimeOffset.UtcNow
+        };
+        _db.Ledgers.Add(newLedger);
+        await _db.SaveChangesAsync();
+
+        // Link the party to the new ledger
+        var partyEntity = await _db.PartyProfiles.SingleAsync(p => p.Id == partyProfileId);
+        partyEntity.LedgerId = newLedger.Id;
+        await _db.SaveChangesAsync();
+
+        _log.LogInformation("Auto-created ledger {LedgerId} for party {PartyId} under '{SubGroup}'",
+            newLedger.Id, partyProfileId, subGroupName);
+        return newLedger.Id;
+    }
 
     /// <summary>
     /// Sales bill → Dr Party (full), Cr Sales (taxable), Cr CGST+SGST (intra-state) OR Cr IGST (inter-state)

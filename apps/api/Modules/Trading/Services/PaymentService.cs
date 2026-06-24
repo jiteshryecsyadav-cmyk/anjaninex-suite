@@ -340,26 +340,29 @@ public class PaymentService : IPaymentService
             ?? throw new InvalidOperationException("Bank/Cash ledger not specified");
 
         // ===== WHICH PARTY LEDGER does this voucher hit? =====
-        // CRITICAL (khata-balance fix): the BILL debits/credits bill.PartyId — in this
-        // broker model that's the SUPPLIER (PostSalesVoucherForBill: Dr partyLedger where
-        // partyLedger = supplier's ledger). The receipt screen, however, sends
-        // payment.PartyId = the BUYER. If we Cr the buyer's ledger, the supplier (bill)
-        // khata never gets the offsetting credit → bill stays Dr forever and the balance
-        // looks wrong (receipt appears to "add" instead of "subtract").
+        // CRITICAL (khata-balance fix): the voucher's party line MUST hit the SAME party
+        // ledger the allocated bill(s) used, warna bill-party ka khata settle hone par 0
+        // nahi hoga (receipt "add" lagta hai, "subtract" nahi).
         //
-        // FIX: settle on the SAME party the allocated bill(s) used (bill.PartyId). This
-        // keeps the bill-party khata netting to zero on full settlement. If the payment
-        // has no allocations (pure on-account advance) we fall back to payment.PartyId.
+        // KHATA FIX (sales=buyer): bill ne jis party ko Dr/Cr kiya wahi yahan chahiye —
+        //   sales bill    → bill ne BUYER ko Dr kiya (buyer_party_id)  → receipt Cr BUYER
+        //   purchase bill → bill ne SUPPLIER ko Cr kiya (party_id)     → payment Dr SUPPLIER
+        // Pehle yahan hamesha bill.PartyId (supplier) use hota tha → sales receipt galat
+        // supplier khate me jaata, buyer ka receivable kabhi clear nahi hota.
+        // Agar payment ke koi allocations nahi (pure on-account advance) to payment.PartyId.
         Guid partyId = payment.PartyId;
         var allocBillIds = payment.Allocations.Select(a => a.BillId).Distinct().ToList();
         if (allocBillIds.Count > 0)
         {
+            // Har allocated bill ki SAHI party (sales→buyer, purchase→supplier) nikalo.
             var billPartyIds = await _db.Bills
                 .Where(b => allocBillIds.Contains(b.Id))
-                .Select(b => b.PartyId)
+                .Select(b => (b.BillType == "sales" && b.BuyerPartyId != null)
+                    ? b.BuyerPartyId!.Value
+                    : b.PartyId)
                 .Distinct()
                 .ToListAsync();
-            // All allocations should belong to one bill-party; if so, use it.
+            // All allocations should resolve to one party; if so, use it.
             if (billPartyIds.Count == 1)
                 partyId = billPartyIds[0];
         }

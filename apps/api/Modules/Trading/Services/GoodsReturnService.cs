@@ -473,7 +473,11 @@ public class GoodsReturnService : IGoodsReturnService
         if (gr.TotalReturnAmount <= 0) return null;
 
         // Original bill se decide karo: sales bill ka GR = sales_return, purchase ka = purchase_return.
-        // Bill ka party (bill.PartyId) wahi hai jise bill ne Dr/Cr kiya — usi ko reverse karenge.
+        // KHATA FIX: GR ko USI party ke ledger pe reverse karna hai jise BILL ne Dr/Cr kiya tha.
+        //   sales bill    → bill ne BUYER ko Dr kiya  → GR Cr BUYER (bill.BuyerPartyId)
+        //   purchase bill → bill ne SUPPLIER ko Cr kiya → GR Dr SUPPLIER (bill.PartyId)  [UNCHANGED]
+        // (Pehle yahan dono case me bill.PartyId/supplier use hota tha → sales GR galat
+        // supplier khate me jaata tha, buyer ka credit-note kabhi nahi banta.)
         // Agar GR kisi bill se linked nahi hai to fallback: GR ka supplier party + sales_return.
         string billType = "sales";
         Guid partyId = gr.SupplierPartyId;
@@ -481,9 +485,17 @@ public class GoodsReturnService : IGoodsReturnService
         {
             var bill = await _db.Bills.IgnoreQueryFilters()
                 .Where(b => b.Id == gr.OriginalBillId.Value)
-                .Select(b => new { b.BillType, b.PartyId })
+                .Select(b => new { b.BillType, b.PartyId, b.BuyerPartyId })
                 .FirstOrDefaultAsync();
-            if (bill != null) { billType = bill.BillType; partyId = bill.PartyId; }
+            if (bill != null)
+            {
+                billType = bill.BillType;
+                // sales → buyer (agar bill par buyer set hai), warna legacy fallback party_id;
+                // purchase → supplier (party_id).
+                partyId = (bill.BillType == "sales" && bill.BuyerPartyId.HasValue)
+                    ? bill.BuyerPartyId.Value
+                    : bill.PartyId;
+            }
         }
 
         var partyLedgerId = await ResolvePartyLedgerId(partyId, firmId)

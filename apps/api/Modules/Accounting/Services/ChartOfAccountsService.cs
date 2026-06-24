@@ -283,12 +283,23 @@ public class ChartOfAccountsService : IChartOfAccountsService
 
     public async Task<LedgerDto> CreateLedger(CreateLedgerDto dto, Guid firmId)
     {
+        // DUPLICATE GUARD — ek hi naam ka ledger dobara na bane (case/space ignore).
+        // (Cash ke 2 ledger jaisi galti rokne ke liye.)
+        var cleanName = (dto.Name ?? "").Trim();
+        if (cleanName.Length == 0)
+            throw new ArgumentException("Ledger ka naam zaroori hai.");
+        var dup = await _db.Ledgers
+            .Where(l => l.FirmId == firmId && l.Name.ToLower() == cleanName.ToLower())
+            .FirstOrDefaultAsync();
+        if (dup != null)
+            throw new ArgumentException($"\"{cleanName}\" naam ka ledger pehle se hai — dobara nahi ban sakta. Usi ko use/edit karein.");
+
         var ledger = new Ledger
         {
             Id = Guid.NewGuid(),
             FirmId = firmId,
             SubGroupId = dto.SubGroupId,
-            Name = dto.Name,
+            Name = cleanName,
             Code = dto.Code,
             ContactId = dto.ContactId,
             OpeningBalance = dto.OpeningBalance,
@@ -305,8 +316,20 @@ public class ChartOfAccountsService : IChartOfAccountsService
     public async Task<LedgerDto> UpdateLedger(Guid id, CreateLedgerDto dto)
     {
         var ledger = await _db.Ledgers.SingleAsync(l => l.Id == id);
+
+        // Rename DUPLICATE guard — kisi DOOSRE ledger ka same naam na ho.
+        var cleanName = (dto.Name ?? "").Trim();
+        if (cleanName.Length == 0)
+            throw new ArgumentException("Ledger ka naam zaroori hai.");
+        var dup = await _db.Ledgers
+            .Where(l => l.FirmId == ledger.FirmId && l.Id != id
+                        && l.Name.ToLower() == cleanName.ToLower())
+            .FirstOrDefaultAsync();
+        if (dup != null)
+            throw new ArgumentException($"\"{cleanName}\" naam ka ledger pehle se hai — same naam nahi rakh sakte.");
+
         ledger.SubGroupId = dto.SubGroupId;
-        ledger.Name = dto.Name;
+        ledger.Name = cleanName;
         ledger.Code = dto.Code;
         ledger.ContactId = dto.ContactId;   // existing party link carry-through (frontend hidden field se aata hai)
         ledger.OpeningBalance = dto.OpeningBalance;

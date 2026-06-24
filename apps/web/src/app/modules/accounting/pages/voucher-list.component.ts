@@ -152,6 +152,7 @@ import { InDatePipe } from '../../../shared/in-date.pipe';
                 <option [ngValue]="10">10</option>
                 <option [ngValue]="25">25</option>
                 <option [ngValue]="50">50</option>
+                <option [ngValue]="100">100</option>
               </select>
             </div>
             <div class="flex items-center gap-2">

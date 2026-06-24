@@ -1,6 +1,8 @@
+using System.Data;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using Namokara.Api.Infrastructure.Persistence;
 using Namokara.Api.Modules.Core.Entities;
 using Namokara.Api.Modules.Platform.Services;
@@ -49,6 +51,16 @@ public record PermissionModuleDto(
 
 // PUT body — role ko exactly ye codes do (replace-all).
 public record SetRolePermissionCodesDto(List<string> Codes);
+
+// ── Screen-based CRUD matrix DTOs (NEW model — separate from above) ─────────
+// Ek app screen (sidebar/menu item) — catalog row.
+public record AppScreenDto(string Code, string Label, string? Route, string? Module, int SortOrder);
+
+// Ek role ke liye ek screen ke C/R/U/D toggles.
+public record ScreenPermRowDto(string ScreenCode, bool C, bool R, bool U, bool D);
+
+// PUT body — role ke screen-perms ko in rows se replace karo.
+public record SetRoleScreenPermsDto(List<ScreenPermRowDto> Rows);
 
 [Authorize]
 [ApiController]
@@ -276,6 +288,140 @@ public class RolesController : ControllerBase
             await _perms.InvalidateRole(id);
 
             return Ok(new { ok = true, count = valid.Count });
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { error = Namokara.Api.Common.Errors.FriendlyError.From(ex) });
+        }
+    }
+
+    // =========================================================================
+    // SCREEN-BASED CRUD MATRIX  (NEW model — core.app_screens +
+    // core.role_screen_permissions). Separate from the module.resource.action
+    // permissions above. Stored as raw SQL because these tables have no EF
+    // entity. NOTE: these tables have NO RLS (like core.role_permissions), so
+    // they are firm-scoped via role_id (+ firm_id column kept for convenience).
+    // ENFORCEMENT: config only — no route guard reads these yet (separate task).
+    // =========================================================================
+
+    private async Task<NpgsqlCommand> CmdAsync(string sql)
+    {
+        var conn = (NpgsqlConnection)_db.Database.GetDbConnection();
+        if (conn.State != ConnectionState.Open) await conn.OpenAsync();
+        var cmd = conn.CreateCommand();
+        cmd.CommandText = sql;
+        return cmd;
+    }
+
+    /// <summary>Screen catalog — sidebar/menu items, ordered by sort_order.</summary>
+    [HttpGet("/api/core/screens")]
+    public async Task<IActionResult> Screens()
+    {
+        var list = new List<AppScreenDto>();
+        await using var cmd = await CmdAsync(
+            "SELECT code, label, route, module, sort_order FROM core.app_screens ORDER BY sort_order, label");
+        await using var r = await cmd.ExecuteReaderAsync();
+        while (await r.ReadAsync())
+            list.Add(new AppScreenDto(
+                (string)r["code"],
+                (string)r["label"],
+                r["route"] as string,
+                r["module"] as string,
+                r["sort_order"] is DBNull ? 0 : Convert.ToInt32(r["sort_order"])));
+        return Ok(list);
+    }
+
+    /// <summary>Selected role ke screen-CRUD rows (jo rows hain wahi; baaki = all false).</summary>
+    [HttpGet("{id}/screen-permissions")]
+    public async Task<IActionResult> GetRoleScreenPermissions(Guid id)
+    {
+        var role = await _db.Roles.AsNoTracking().FirstOrDefaultAsync(r =>
+            r.Id == id && (r.FirmId == null || r.FirmId == CurrentFirmId));
+        if (role is null) return NotFound();
+
+        var rows = new List<ScreenPermRowDto>();
+        await using var cmd = await CmdAsync(
+            @"SELECT screen_code, can_create, can_read, can_update, can_delete
+                FROM core.role_screen_permissions WHERE role_id = @rid");
+        cmd.Parameters.Add(new NpgsqlParameter("rid", id));
+        await using var r = await cmd.ExecuteReaderAsync();
+        while (await r.ReadAsync())
+            rows.Add(new ScreenPermRowDto(
+                (string)r["screen_code"],
+                (bool)r["can_create"], (bool)r["can_read"],
+                (bool)r["can_update"], (bool)r["can_delete"]));
+        return Ok(rows);
+    }
+
+    /// <summary>
+    /// Role ke screen-CRUD rows ko EXACTLY in rows se replace karo (transactional).
+    /// Sirf wahi screen_codes lete hain jo core.app_screens me hain (invalid skip).
+    /// super_admin / firm_admin / firm_owner roles lock — lockout se bachne ke liye.
+    /// </summary>
+    [HttpPut("{id}/screen-permissions")]
+    public async Task<IActionResult> SetRoleScreenPermissions(Guid id, [FromBody] SetRoleScreenPermsDto dto)
+    {
+        try
+        {
+            var role = await _db.Roles.FirstOrDefaultAsync(r =>
+                r.Id == id && (r.FirmId == null || r.FirmId == CurrentFirmId));
+            if (role is null) return NotFound();
+
+            // Protected roles — inke rights badalna mana (baaki endpoints jaisa hi rule).
+            if (role.Code == "super_admin")
+                return BadRequest(new { error = "Cannot modify super admin role" });
+            if (role.IsSystem && (role.Code == "firm_admin" || role.Code == "firm_owner"))
+                return BadRequest(new { error = "Admin/Owner role ke permissions nahi badal sakte (lockout se bachne ke liye)" });
+
+            var firmId = CurrentFirmId;
+
+            // Valid screen codes (catalog me jo hain).
+            var validCodes = new HashSet<string>();
+            await using (var vc = await CmdAsync("SELECT code FROM core.app_screens"))
+            {
+                await using var vr = await vc.ExecuteReaderAsync();
+                while (await vr.ReadAsync()) validCodes.Add((string)vr["code"]);
+            }
+
+            // Sirf valid + jin me koi true ho — sab false rows store karne ka fayda nahi.
+            var rows = (dto.Rows ?? new())
+                .Where(x => !string.IsNullOrWhiteSpace(x.ScreenCode) && validCodes.Contains(x.ScreenCode))
+                .GroupBy(x => x.ScreenCode).Select(g => g.Last())   // dedupe — last wins
+                .Where(x => x.C || x.R || x.U || x.D)
+                .ToList();
+
+            var conn = (NpgsqlConnection)_db.Database.GetDbConnection();
+            if (conn.State != ConnectionState.Open) await conn.OpenAsync();
+            await using var tx = await conn.BeginTransactionAsync();
+
+            await using (var del = conn.CreateCommand())
+            {
+                del.Transaction = tx;
+                del.CommandText = "DELETE FROM core.role_screen_permissions WHERE role_id = @rid";
+                del.Parameters.Add(new NpgsqlParameter("rid", id));
+                await del.ExecuteNonQueryAsync();
+            }
+
+            foreach (var x in rows)
+            {
+                await using var ins = conn.CreateCommand();
+                ins.Transaction = tx;
+                ins.CommandText =
+                    @"INSERT INTO core.role_screen_permissions
+                        (firm_id, role_id, screen_code, can_create, can_read, can_update, can_delete)
+                      VALUES (@f, @rid, @sc, @c, @r, @u, @d)";
+                ins.Parameters.Add(new NpgsqlParameter("f", firmId));
+                ins.Parameters.Add(new NpgsqlParameter("rid", id));
+                ins.Parameters.Add(new NpgsqlParameter("sc", x.ScreenCode));
+                ins.Parameters.Add(new NpgsqlParameter("c", x.C));
+                ins.Parameters.Add(new NpgsqlParameter("r", x.R));
+                ins.Parameters.Add(new NpgsqlParameter("u", x.U));
+                ins.Parameters.Add(new NpgsqlParameter("d", x.D));
+                await ins.ExecuteNonQueryAsync();
+            }
+
+            await tx.CommitAsync();
+            return Ok(new { ok = true, count = rows.Count });
         }
         catch (Exception ex)
         {

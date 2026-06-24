@@ -181,6 +181,23 @@ export interface PermissionModule {
   resources: PermissionResource[];
 }
 
+// ============== SCREEN-BASED CRUD MATRIX (NEW model) ==============
+// Backend: GET /api/core/screens, GET/PUT /api/core/roles/{id}/screen-permissions
+export interface AppScreen {
+  code: string;
+  label: string;
+  route: string | null;
+  module: string | null;
+  sortOrder: number;
+}
+export interface ScreenPermRow {
+  screenCode: string;
+  c: boolean;
+  r: boolean;
+  u: boolean;
+  d: boolean;
+}
+
 @Injectable({ providedIn: 'root' })
 export class MastersService {
   private http = inject(HttpClient);
@@ -235,5 +252,15 @@ export class MastersService {
   getRolePermissionCodes(roleId: string) { return this.http.get<string[]>(`${this.base}/roles/${roleId}/permissions`); }
   setRolePermissionCodes(roleId: string, codes: string[]) {
     return this.http.put<{ ok: boolean; count: number }>(`${this.base}/roles/${roleId}/permissions`, { codes });
+  }
+
+  // Screen-based CRUD matrix
+  screens() { return this.http.get<AppScreen[]>(`${this.base}/screens`); }
+  getRoleScreenPerms(roleId: string) {
+    return this.http.get<ScreenPermRow[]>(`${this.base}/roles/${roleId}/screen-permissions`);
+  }
+  saveRoleScreenPerms(roleId: string, rows: ScreenPermRow[]) {
+    return this.http.put<{ ok: boolean; count: number }>(
+      `${this.base}/roles/${roleId}/screen-permissions`, { rows });
   }
 }

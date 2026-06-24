@@ -115,13 +115,13 @@ interface LineRow {
                     <tr class="border-t">
                       <td class="px-2 py-2 text-center text-xs text-gray-500">{{ $index + 1 }}</td>
                       <td class="px-1 py-1">
-                        <select [ngModel]="line.ledgerId" (ngModelChange)="updateLine($index, 'ledgerId', $event)"
-                                class="input text-xs py-1">
-                          <option value="">— Select —</option>
-                          @for (l of ledgers(); track l.id) {
-                            <option [value]="l.id">{{ l.name }} ({{ l.groupName }})</option>
-                          }
-                        </select>
+                        <!-- Searchable account picker — type karke dhoondo (datalist) -->
+                        <input [ngModel]="line.ledgerName" (ngModelChange)="onLedgerText($index, $event)"
+                               list="vch-ledger-options" type="text" autocomplete="off"
+                               placeholder="🔍 Account dhoondo..."
+                               class="input text-xs py-1"
+                               [class.border-red-400]="line.ledgerName && !line.ledgerId"
+                               [title]="line.ledgerName && !line.ledgerId ? 'List me se sahi account chuno' : ''">
                       </td>
                       <td class="px-1 py-1">
                         <select [ngModel]="line.debitCredit" (ngModelChange)="updateLine($index, 'debitCredit', $event)"
@@ -170,6 +170,13 @@ interface LineRow {
             <button (click)="addLine()" class="text-xs text-[#5c1a8b] hover:underline mb-4">
               + Add Line
             </button>
+
+            <!-- Saari account lines isi searchable list se chunti hain (type karke dhoondo) -->
+            <datalist id="vch-ledger-options">
+              @for (l of ledgers(); track l.id) {
+                <option [value]="ledgerDisplay(l)"></option>
+              }
+            </datalist>
 
             @if (error()) {
               <div class="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded text-sm mb-3">
@@ -513,6 +520,24 @@ export class VoucherEntryComponent {
     this.lines.update(arr => arr.map((l, i) => i === idx ? { ...l, [field]: value } : l));
   }
 
+  // ===== Searchable account picker (datalist) =====
+  // Dropdown me jo text dikhega: "Naam — Group". Isi se match karke ledgerId nikalte hain.
+  ledgerDisplay(l: Ledger): string {
+    return l.groupName ? `${l.name} — ${l.groupName}` : l.name;
+  }
+  private ledgerDisplayById(id: string): string {
+    const l = this.ledgers().find(x => x.id === id);
+    return l ? this.ledgerDisplay(l) : '';
+  }
+  // User type/select kare → text yaad rakho aur agar kisi account se exact match ho to
+  // uska ledgerId set karo, warna ledgerId khali (input red border dikhayega).
+  onLedgerText(idx: number, text: string) {
+    const t = (text || '').trim();
+    const match = this.ledgers().find(l => this.ledgerDisplay(l) === t || l.name === t);
+    this.lines.update(arr => arr.map((l, i) =>
+      i === idx ? { ...l, ledgerName: text, ledgerId: match ? match.id : '' } : l));
+  }
+
   addLine() {
     this.lines.update(arr => [...arr, { ledgerId: '', debitCredit: 'Dr', amount: 0, narration: '' }]);
   }
@@ -552,6 +577,7 @@ export class VoucherEntryComponent {
         });
         this.lines.set(v.lines.map(l => ({
           ledgerId: l.ledgerId,
+          ledgerName: this.ledgerDisplayById(l.ledgerId) || (l as any).ledgerName || '',
           debitCredit: l.debitCredit,
           amount: +l.amount,
           narration: l.narration || ''

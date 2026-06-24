@@ -453,29 +453,31 @@ public class BillService : IBillService
             // SALES bill ka DEBTOR (receivable) BUYER hai, supplier nahi. Pehle yahan
             // hamesha party_id (supplier) ka ledger Dr hota tha → buyer khata khaali rehta
             // aur supplier ke khate me galat sale chadh jaati. Ab:
-            //   sales    → buyer ka ledger (Sundry Debtors)
+            //   sales    → BROKER 2-line: Dr BUYER (Sundry Debtors), Cr SUPPLIER (Sundry Creditors)
             //   purchase → supplier ka ledger (Sundry Creditors)  [UNCHANGED]
-            Guid partyLedgerId;
-            if (dto.BillType == "sales" && dto.BuyerPartyId.HasValue)
+            Guid voucherId;
+            if (dto.BillType == "sales")
             {
-                // SALES → BUYER ka ledger (auto-create in Sundry Debtors agar null ho)
-                partyLedgerId = await GetOrCreatePartyLedgerAsync(dto.BuyerPartyId.Value, firmId, "Sundry Debtors");
-            }
-            else if (party.LedgerId.HasValue)
-            {
-                // PURCHASE (ya legacy sales bina buyer ke) → party_id ka ledger
-                partyLedgerId = party.LedgerId.Value;
+                // BROKER model — dono ledger chahiye (buyer Dr + supplier Cr).
+                Guid? buyerLedgerId = null, supplierLedgerId = null;
+                if (dto.BuyerPartyId.HasValue)
+                {
+                    buyerLedgerId    = await GetOrCreatePartyLedgerAsync(dto.BuyerPartyId.Value, firmId, "Sundry Debtors");
+                    supplierLedgerId = await GetOrCreatePartyLedgerAsync(dto.PartyId, firmId, "Sundry Creditors");
+                }
+                // Legacy fallback (bina buyer ke sales): party_id ka ledger Dr / Cr Sales.
+                var fallbackLedgerId = party.LedgerId
+                    ?? await GetOrCreatePartyLedgerAsync(dto.PartyId, firmId, "Sundry Debtors");
+                voucherId = await PostSalesVoucherForBill(
+                    bill, buyerLedgerId, supplierLedgerId, fallbackLedgerId, firmId, branchId, userId);
             }
             else
             {
-                // party_id ka ledger nahi mila → auto-create (purchase = Creditors, legacy sales = Debtors)
-                var subGroupName = dto.BillType == "purchase" ? "Sundry Creditors" : "Sundry Debtors";
-                partyLedgerId = await GetOrCreatePartyLedgerAsync(dto.PartyId, firmId, subGroupName);
+                // PURCHASE — party_id (supplier) ka ledger Cr. [UNCHANGED]
+                var partyLedgerId = party.LedgerId
+                    ?? await GetOrCreatePartyLedgerAsync(dto.PartyId, firmId, "Sundry Creditors");
+                voucherId = await PostPurchaseVoucherForBill(bill, partyLedgerId, firmId, branchId, userId);
             }
-
-            var voucherId = dto.BillType == "sales"
-                ? await PostSalesVoucherForBill(bill, partyLedgerId, firmId, branchId, userId)
-                : await PostPurchaseVoucherForBill(bill, partyLedgerId, firmId, branchId, userId);
 
             bill.VoucherId = voucherId;
             await _db.SaveChangesAsync();
@@ -597,23 +599,29 @@ public class BillService : IBillService
             }
             await _db.SaveChangesAsync();
 
-            // ===== KHATA FIX (same rule as AddBill) =====
-            //   sales    → BUYER ka ledger (Sundry Debtors) — receivable buyer par
+            // ===== BROKER model (same rule as AddBill) =====
+            //   sales    → 2-line: Dr BUYER (Sundry Debtors), Cr SUPPLIER (Sundry Creditors)
             //   purchase → SUPPLIER (party_id) ka ledger (Sundry Creditors)  [UNCHANGED]
-            Guid partyLedgerId;
-            if (dto.BillType == "sales" && dto.BuyerPartyId.HasValue)
+            Guid voucherId;
+            if (dto.BillType == "sales")
             {
-                partyLedgerId = await GetOrCreatePartyLedgerAsync(dto.BuyerPartyId.Value, firmId, "Sundry Debtors");
+                Guid? buyerLedgerId = null, supplierLedgerId = null;
+                if (dto.BuyerPartyId.HasValue)
+                {
+                    buyerLedgerId    = await GetOrCreatePartyLedgerAsync(dto.BuyerPartyId.Value, firmId, "Sundry Debtors");
+                    supplierLedgerId = await GetOrCreatePartyLedgerAsync(dto.PartyId, firmId, "Sundry Creditors");
+                }
+                var fallbackLedgerId = party.LedgerId
+                    ?? await GetOrCreatePartyLedgerAsync(dto.PartyId, firmId, "Sundry Debtors");
+                voucherId = await PostSalesVoucherForBill(
+                    bill, buyerLedgerId, supplierLedgerId, fallbackLedgerId, firmId, bill.BranchId, userId);
             }
             else
             {
-                // PURCHASE (ya legacy sales bina buyer ke) → party_id (supplier) ka ledger
-                partyLedgerId = party.LedgerId ?? throw new InvalidOperationException(
+                var partyLedgerId = party.LedgerId ?? throw new InvalidOperationException(
                     "Is party ka ledger nahi mila. Pehle Chart of Accounts initialize karein.");
+                voucherId = await PostPurchaseVoucherForBill(bill, partyLedgerId, firmId, bill.BranchId, userId);
             }
-            var voucherId = dto.BillType == "sales"
-                ? await PostSalesVoucherForBill(bill, partyLedgerId, firmId, bill.BranchId, userId)
-                : await PostPurchaseVoucherForBill(bill, partyLedgerId, firmId, bill.BranchId, userId);
             bill.VoucherId = voucherId;
             await _db.SaveChangesAsync();
 
@@ -755,24 +763,21 @@ public class BillService : IBillService
     }
 
     /// <summary>
-    /// Sales bill → Dr Party (full), Cr Sales (taxable), Cr CGST+SGST (intra-state) OR Cr IGST (inter-state)
+    /// BROKER (dalal) model — Sales bill ka double-entry sirf DO line:
+    ///     Dr BUYER ledger    (Sundry Debtors)  = bill.Total
+    ///     Cr SUPPLIER ledger (Sundry Creditors)= bill.Total
+    /// Riddhi Agency seller NAHI hai — sirf supplier↔buyer ka bill re-enter karta hai.
+    /// GST supplier↔buyer ka hai → broker ki books me NA Sales Account, NA Output GST.
+    /// Payment seedha buyer↔supplier hoti hai; broker cash hold nahi karta.
+    ///
+    /// LEGACY FALLBACK: agar buyerLedgerId null hai (purane sales bina buyer ke) to
+    /// crash mat karo — purana behavior rakho: Dr existing party ledger, Cr Sales
+    /// (+ GST) jaise pehle hota tha. Naye normal bills ke liye 2-line broker form.
     /// </summary>
-    private async Task<Guid> PostSalesVoucherForBill(Bill bill, Guid partyLedgerId, Guid firmId, Guid branchId, Guid userId)
+    private async Task<Guid> PostSalesVoucherForBill(
+        Bill bill, Guid? buyerLedgerId, Guid? supplierLedgerId, Guid fallbackPartyLedgerId,
+        Guid firmId, Guid branchId, Guid userId)
     {
-        // Find or create Sales Account ledger
-        var salesLedger = await _db.Ledgers
-            .Where(l => l.FirmId == firmId && l.Name == "Sales Account")
-            .Select(l => l.Id)
-            .FirstOrDefaultAsync();
-
-        if (salesLedger == Guid.Empty)
-            throw new InvalidOperationException("Sales Account ledger not found. Run accounting seed.");
-
-        // Output tax ledgers (CGST/SGST/IGST Payable)
-        Guid cgstLedger = await FindOrCreateTaxLedger(firmId, "CGST Payable");
-        Guid sgstLedger = await FindOrCreateTaxLedger(firmId, "SGST Payable");
-        Guid igstLedger = await FindOrCreateTaxLedger(firmId, "IGST Payable");
-
         var voucherNo = await GenerateVoucherNoForBill(branchId, firmId, "sales");
 
         var voucher = new Voucher
@@ -794,11 +799,50 @@ public class BillService : IBillService
         };
 
         int order = 0;
+
+        // ===== BROKER 2-LINE PATH (normal naye sales: buyer + supplier dono ledger maujood) =====
+        if (buyerLedgerId.HasValue && supplierLedgerId.HasValue)
+        {
+            // Dr BUYER = bill.Total
+            voucher.Lines.Add(new VoucherLine
+            {
+                Id = Guid.NewGuid(), VoucherId = voucher.Id,
+                LedgerId = buyerLedgerId.Value, DebitCredit = "Dr",
+                Amount = bill.Total,
+                Narration = $"Bill {bill.BillNo} (buyer)", SortOrder = order++
+            });
+            // Cr SUPPLIER = bill.Total  (Dr==Cr==Total → koi round-off nahi chahiye)
+            voucher.Lines.Add(new VoucherLine
+            {
+                Id = Guid.NewGuid(), VoucherId = voucher.Id,
+                LedgerId = supplierLedgerId.Value, DebitCredit = "Cr",
+                Amount = bill.Total,
+                Narration = $"Bill {bill.BillNo} (supplier)", SortOrder = order++
+            });
+            // Safety net only — Dr==Cr already, ye normally no-op.
+            await AddBalancingRoundOffAsync(voucher, firmId, order++);
+            _db.Vouchers.Add(voucher);
+            await _db.SaveChangesAsync();
+            return voucher.Id;
+        }
+
+        // ===== LEGACY FALLBACK (sales bina buyer ke) — purana Dr party / Cr Sales (+GST) =====
+        var salesLedger = await _db.Ledgers
+            .Where(l => l.FirmId == firmId && l.Name == "Sales Account")
+            .Select(l => l.Id)
+            .FirstOrDefaultAsync();
+        if (salesLedger == Guid.Empty)
+            throw new InvalidOperationException("Sales Account ledger not found. Run accounting seed.");
+
+        Guid cgstLedger = await FindOrCreateTaxLedger(firmId, "CGST Payable");
+        Guid sgstLedger = await FindOrCreateTaxLedger(firmId, "SGST Payable");
+        Guid igstLedger = await FindOrCreateTaxLedger(firmId, "IGST Payable");
+
         // Dr Party (full bill total)
         voucher.Lines.Add(new VoucherLine
         {
             Id = Guid.NewGuid(), VoucherId = voucher.Id,
-            LedgerId = partyLedgerId, DebitCredit = "Dr",
+            LedgerId = fallbackPartyLedgerId, DebitCredit = "Dr",
             Amount = bill.Total,
             Narration = $"Bill {bill.BillNo}", SortOrder = order++
         });

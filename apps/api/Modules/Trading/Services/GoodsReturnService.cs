@@ -473,14 +473,15 @@ public class GoodsReturnService : IGoodsReturnService
         if (gr.TotalReturnAmount <= 0) return null;
 
         // Original bill se decide karo: sales bill ka GR = sales_return, purchase ka = purchase_return.
-        // KHATA FIX: GR ko USI party ke ledger pe reverse karna hai jise BILL ne Dr/Cr kiya tha.
-        //   sales bill    → bill ne BUYER ko Dr kiya  → GR Cr BUYER (bill.BuyerPartyId)
-        //   purchase bill → bill ne SUPPLIER ko Cr kiya → GR Dr SUPPLIER (bill.PartyId)  [UNCHANGED]
-        // (Pehle yahan dono case me bill.PartyId/supplier use hota tha → sales GR galat
-        // supplier khate me jaata tha, buyer ka credit-note kabhi nahi banta.)
-        // Agar GR kisi bill se linked nahi hai to fallback: GR ka supplier party + sales_return.
+        // BROKER (dalal) model — sales GR ka double-entry sirf DO line, bill ka exact reverse:
+        //   sales bill    → bill tha (Dr BUYER / Cr SUPPLIER)  → GR (Dr SUPPLIER / Cr BUYER)
+        //   purchase bill → bill ne SUPPLIER ko Cr kiya         → GR Dr SUPPLIER  [UNCHANGED]
+        // Riddhi Agency seller nahi — sales GR me NA Sales-Return ledger, NA GST reversal.
+        // Sales case ke liye buyer + supplier DONO ledger chahiye.
+        // Agar GR kisi bill se linked nahi (ya buyer ledger nahi) to safe legacy fallback rakhte hain.
         string billType = "sales";
-        Guid partyId = gr.SupplierPartyId;
+        Guid supplierPartyId = gr.SupplierPartyId;
+        Guid? buyerPartyId   = gr.BuyerPartyId;
         if (gr.OriginalBillId.HasValue)
         {
             var bill = await _db.Bills.IgnoreQueryFilters()
@@ -489,29 +490,14 @@ public class GoodsReturnService : IGoodsReturnService
                 .FirstOrDefaultAsync();
             if (bill != null)
             {
-                billType = bill.BillType;
-                // sales → buyer (agar bill par buyer set hai), warna legacy fallback party_id;
-                // purchase → supplier (party_id).
-                partyId = (bill.BillType == "sales" && bill.BuyerPartyId.HasValue)
-                    ? bill.BuyerPartyId.Value
-                    : bill.PartyId;
+                billType        = bill.BillType;
+                supplierPartyId = bill.PartyId;
+                buyerPartyId    = bill.BuyerPartyId ?? gr.BuyerPartyId;
             }
         }
 
-        var partyLedgerId = await ResolvePartyLedgerId(partyId, firmId)
-            ?? throw new InvalidOperationException(
-                "GR party ka ledger nahi mila. Pehle Chart of Accounts initialize karein.");
-
         var isSales = billType != "purchase";
-        var returnLedgerName = isSales ? "Sales Return" : "Purchase Return";
-        var returnLedgerId = await FindOrCreateReturnLedger(firmId, returnLedgerName, isSales);
         var voucherType = isSales ? "sales_return" : "purchase_return";
-
-        var taxable = gr.TaxableAmount;
-        var tax = gr.TaxAmount;
-        // Agar split fields 0 hain par total > 0 (legacy), poora total taxable maano.
-        if (taxable + tax <= 0) { taxable = gr.TotalReturnAmount; tax = 0; }
-
         var voucherNo = await GenerateVoucherNoForGr(voucherType, branchId, firmId);
 
         var voucher = new Voucher
@@ -533,21 +519,52 @@ public class GoodsReturnService : IGoodsReturnService
         };
 
         int order = 0;
+
         if (isSales)
         {
-            // Cr Party (reverse the bill's Dr) — full return amount
-            voucher.Lines.Add(new VoucherLine { Id = Guid.NewGuid(), VoucherId = voucher.Id, LedgerId = partyLedgerId, DebitCredit = "Cr", Amount = gr.TotalReturnAmount, Narration = $"GR {gr.GrNo}", SortOrder = order++ });
-            // Dr Sales Return (taxable) + Dr Tax (output reversal)
-            voucher.Lines.Add(new VoucherLine { Id = Guid.NewGuid(), VoucherId = voucher.Id, LedgerId = returnLedgerId, DebitCredit = "Dr", Amount = taxable, Narration = "Sales return (taxable)", SortOrder = order++ });
-            if (tax > 0)
+            // BROKER 2-LINE sales return — supplier + buyer dono ledger chahiye.
+            var supplierLedgerId = await ResolvePartyLedgerId(supplierPartyId, firmId);
+            var buyerLedgerId    = buyerPartyId.HasValue
+                ? await ResolvePartyLedgerId(buyerPartyId.Value, firmId)
+                : null;
+
+            if (supplierLedgerId.HasValue && buyerLedgerId.HasValue)
             {
-                var taxLedger = await FindOrCreateTaxLedger(firmId, "Output Tax Reversal");
-                voucher.Lines.Add(new VoucherLine { Id = Guid.NewGuid(), VoucherId = voucher.Id, LedgerId = taxLedger, DebitCredit = "Dr", Amount = tax, Narration = "Tax on sales return", SortOrder = order++ });
+                // Dr SUPPLIER = return total  (bill ka Cr supplier reverse)
+                voucher.Lines.Add(new VoucherLine { Id = Guid.NewGuid(), VoucherId = voucher.Id, LedgerId = supplierLedgerId.Value, DebitCredit = "Dr", Amount = gr.TotalReturnAmount, Narration = $"GR {gr.GrNo} (supplier)", SortOrder = order++ });
+                // Cr BUYER = return total      (bill ka Dr buyer reverse)
+                voucher.Lines.Add(new VoucherLine { Id = Guid.NewGuid(), VoucherId = voucher.Id, LedgerId = buyerLedgerId.Value, DebitCredit = "Cr", Amount = gr.TotalReturnAmount, Narration = $"GR {gr.GrNo} (buyer)", SortOrder = order++ });
+            }
+            else
+            {
+                // LEGACY FALLBACK (buyer/supplier ledger missing) — purana Cr party / Dr Sales-Return.
+                var partyLedgerId = (buyerLedgerId ?? supplierLedgerId)
+                    ?? throw new InvalidOperationException(
+                        "GR party ka ledger nahi mila. Pehle Chart of Accounts initialize karein.");
+                var taxable = gr.TaxableAmount;
+                var tax = gr.TaxAmount;
+                if (taxable + tax <= 0) { taxable = gr.TotalReturnAmount; tax = 0; }
+                var returnLedgerId = await FindOrCreateReturnLedger(firmId, "Sales Return", true);
+                voucher.Lines.Add(new VoucherLine { Id = Guid.NewGuid(), VoucherId = voucher.Id, LedgerId = partyLedgerId, DebitCredit = "Cr", Amount = gr.TotalReturnAmount, Narration = $"GR {gr.GrNo}", SortOrder = order++ });
+                voucher.Lines.Add(new VoucherLine { Id = Guid.NewGuid(), VoucherId = voucher.Id, LedgerId = returnLedgerId, DebitCredit = "Dr", Amount = taxable, Narration = "Sales return (taxable)", SortOrder = order++ });
+                if (tax > 0)
+                {
+                    var taxLedger = await FindOrCreateTaxLedger(firmId, "Output Tax Reversal");
+                    voucher.Lines.Add(new VoucherLine { Id = Guid.NewGuid(), VoucherId = voucher.Id, LedgerId = taxLedger, DebitCredit = "Dr", Amount = tax, Narration = "Tax on sales return", SortOrder = order++ });
+                }
             }
         }
         else
         {
-            // Purchase GR: reverse the bill's Cr Party → Dr Party
+            // ===== PURCHASE GR — UNCHANGED (Dr Supplier, Cr Purchase Return + Tax) =====
+            var partyLedgerId = await ResolvePartyLedgerId(supplierPartyId, firmId)
+                ?? throw new InvalidOperationException(
+                    "GR party ka ledger nahi mila. Pehle Chart of Accounts initialize karein.");
+            var returnLedgerId = await FindOrCreateReturnLedger(firmId, "Purchase Return", false);
+            var taxable = gr.TaxableAmount;
+            var tax = gr.TaxAmount;
+            if (taxable + tax <= 0) { taxable = gr.TotalReturnAmount; tax = 0; }
+            // Reverse the bill's Cr Party → Dr Party
             voucher.Lines.Add(new VoucherLine { Id = Guid.NewGuid(), VoucherId = voucher.Id, LedgerId = partyLedgerId, DebitCredit = "Dr", Amount = gr.TotalReturnAmount, Narration = $"GR {gr.GrNo}", SortOrder = order++ });
             voucher.Lines.Add(new VoucherLine { Id = Guid.NewGuid(), VoucherId = voucher.Id, LedgerId = returnLedgerId, DebitCredit = "Cr", Amount = taxable, Narration = "Purchase return (taxable)", SortOrder = order++ });
             if (tax > 0)

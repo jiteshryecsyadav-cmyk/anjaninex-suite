@@ -336,48 +336,6 @@ public class PaymentService : IPaymentService
 
     private async Task<Guid> PostVoucherForPayment(Payment payment, Guid firmId, Guid branchId, Guid userId)
     {
-        var bankLedger = payment.BankLedgerId
-            ?? throw new InvalidOperationException("Bank/Cash ledger not specified");
-
-        // ===== WHICH PARTY LEDGER does this voucher hit? =====
-        // CRITICAL (khata-balance fix): the voucher's party line MUST hit the SAME party
-        // ledger the allocated bill(s) used, warna bill-party ka khata settle hone par 0
-        // nahi hoga (receipt "add" lagta hai, "subtract" nahi).
-        //
-        // KHATA FIX (sales=buyer): bill ne jis party ko Dr/Cr kiya wahi yahan chahiye —
-        //   sales bill    → bill ne BUYER ko Dr kiya (buyer_party_id)  → receipt Cr BUYER
-        //   purchase bill → bill ne SUPPLIER ko Cr kiya (party_id)     → payment Dr SUPPLIER
-        // Pehle yahan hamesha bill.PartyId (supplier) use hota tha → sales receipt galat
-        // supplier khate me jaata, buyer ka receivable kabhi clear nahi hota.
-        // Agar payment ke koi allocations nahi (pure on-account advance) to payment.PartyId.
-        Guid partyId = payment.PartyId;
-        var allocBillIds = payment.Allocations.Select(a => a.BillId).Distinct().ToList();
-        if (allocBillIds.Count > 0)
-        {
-            // Har allocated bill ki SAHI party (sales→buyer, purchase→supplier) nikalo.
-            var billPartyIds = await _db.Bills
-                .Where(b => allocBillIds.Contains(b.Id))
-                .Select(b => (b.BillType == "sales" && b.BuyerPartyId != null)
-                    ? b.BuyerPartyId!.Value
-                    : b.PartyId)
-                .Distinct()
-                .ToListAsync();
-            // All allocations should resolve to one party; if so, use it.
-            if (billPartyIds.Count == 1)
-                partyId = billPartyIds[0];
-        }
-
-        var party = await _db.PartyProfiles
-            .Where(p => p.Id == partyId)
-            .Select(p => p.LedgerId).SingleAsync()
-            ?? throw new InvalidOperationException("Party has no linked ledger");
-
-        // Receipt: Dr Cash/Bank, Cr Party
-        // Payment: Dr Party, Cr Cash/Bank
-        var (drLedger, crLedger) = payment.PaymentType == "receipt"
-            ? (bankLedger, party)
-            : (party, bankLedger);
-
         var voucherType = payment.PaymentType == "receipt" ? "receipt" : "payment";
         var voucherNo = await GenerateVoucherNoForPayment(voucherType, branchId, firmId);
 
@@ -399,24 +357,122 @@ public class PaymentService : IPaymentService
             UpdatedAt = DateTimeOffset.UtcNow
         };
 
-        voucher.Lines.Add(new VoucherLine
+        // ===== BROKER (dalal) model — kis tarah ki settlement hai? =====
+        // Allocated bills SALES hain to buyer↔supplier DIRECT settle hua — broker cash hold
+        // nahi karta. Is liye sales settlement me KOI cash/bank line NAHI:
+        //     Dr SUPPLIER ledger = amount   (supplier ka receivable/balance ghata)
+        //     Cr BUYER ledger    = amount   (buyer ka payable ghata)
+        // PURCHASE-side payments PURANE jaise: Dr Party / Cr Bank (broker apna paisa deta).
+        // Multi-bill payment: har SALES bill ka per-bill (allocated) amount lo aur uske apne
+        // supplier/buyer ledger par ek Dr-supplier/Cr-buyer pair banao.
+        var allocBillIds = payment.Allocations.Select(a => a.BillId).Distinct().ToList();
+        var allocByBill = payment.Allocations
+            .GroupBy(a => a.BillId)
+            .ToDictionary(g => g.Key, g => g.Sum(x => x.Allocated));
+
+        var allocBills = allocBillIds.Count > 0
+            ? await _db.Bills
+                .Where(b => allocBillIds.Contains(b.Id))
+                .Select(b => new { b.Id, b.BillType, b.PartyId, b.BuyerPartyId })
+                .ToListAsync()
+            : new();
+
+        var salesBills    = allocBills.Where(b => b.BillType == "sales").ToList();
+        var purchaseBills = allocBills.Where(b => b.BillType != "sales").ToList();
+
+        int order = 0;
+
+        // ---------- SALES settlement: NO cash/bank — Dr Supplier / Cr Buyer per bill ----------
+        if (salesBills.Count > 0)
         {
-            Id = Guid.NewGuid(), VoucherId = voucher.Id,
-            LedgerId = drLedger, DebitCredit = "Dr",
-            Amount = payment.Amount,
-            Narration = payment.ReferenceNo, SortOrder = 0
-        });
-        voucher.Lines.Add(new VoucherLine
+            foreach (var b in salesBills)
+            {
+                var amt = allocByBill.GetValueOrDefault(b.Id, 0m);
+                if (amt <= 0) continue;
+
+                // Supplier ledger = bill.PartyId; Buyer ledger = bill.BuyerPartyId (fallback PartyId).
+                var supplierLedgerId = await ResolvePartyLedgerId(b.PartyId, firmId)
+                    ?? throw new InvalidOperationException("Sales bill ke supplier ka ledger nahi mila.");
+                var buyerLedgerId = (b.BuyerPartyId.HasValue
+                        ? await ResolvePartyLedgerId(b.BuyerPartyId.Value, firmId)
+                        : null)
+                    ?? supplierLedgerId;   // legacy sales bina buyer ke — same party dono taraf
+
+                // Dr SUPPLIER = amount
+                voucher.Lines.Add(new VoucherLine
+                {
+                    Id = Guid.NewGuid(), VoucherId = voucher.Id,
+                    LedgerId = supplierLedgerId, DebitCredit = "Dr",
+                    Amount = amt,
+                    Narration = payment.ReferenceNo, SortOrder = order++
+                });
+                // Cr BUYER = amount
+                voucher.Lines.Add(new VoucherLine
+                {
+                    Id = Guid.NewGuid(), VoucherId = voucher.Id,
+                    LedgerId = buyerLedgerId, DebitCredit = "Cr",
+                    Amount = amt,
+                    Narration = payment.ReferenceNo, SortOrder = order++
+                });
+            }
+        }
+
+        // ---------- PURCHASE settlement (UNCHANGED): Dr/Cr Party vs Bank ----------
+        // Purchase bills par payment = broker/firm apna paisa deta → cash/bank line lagti hai.
+        // Pure on-account (koi allocation nahi) bhi yahin aata hai — purana behavior.
+        var purchaseAmount = purchaseBills.Sum(b => allocByBill.GetValueOrDefault(b.Id, 0m));
+        var unallocated = payment.Amount - salesBills.Sum(b => allocByBill.GetValueOrDefault(b.Id, 0m)) - purchaseAmount;
+        var bankSideAmount = purchaseAmount + Math.Max(0m, unallocated);
+
+        if (bankSideAmount > 0)
         {
-            Id = Guid.NewGuid(), VoucherId = voucher.Id,
-            LedgerId = crLedger, DebitCredit = "Cr",
-            Amount = payment.Amount,
-            Narration = payment.ReferenceNo, SortOrder = 1
-        });
+            var bankLedger = payment.BankLedgerId
+                ?? throw new InvalidOperationException("Bank/Cash ledger not specified");
+
+            // Party ledger: agar purchase bills hain to unka SUPPLIER (party_id),
+            // warna (on-account) payment.PartyId.
+            Guid partyId = payment.PartyId;
+            var purchasePartyIds = purchaseBills.Select(b => b.PartyId).Distinct().ToList();
+            if (purchasePartyIds.Count == 1) partyId = purchasePartyIds[0];
+
+            var party = await _db.PartyProfiles
+                .Where(p => p.Id == partyId)
+                .Select(p => p.LedgerId).SingleAsync()
+                ?? throw new InvalidOperationException("Party has no linked ledger");
+
+            // Receipt: Dr Cash/Bank, Cr Party | Payment: Dr Party, Cr Cash/Bank
+            var (drLedger, crLedger) = payment.PaymentType == "receipt"
+                ? (bankLedger, party)
+                : (party, bankLedger);
+
+            voucher.Lines.Add(new VoucherLine
+            {
+                Id = Guid.NewGuid(), VoucherId = voucher.Id,
+                LedgerId = drLedger, DebitCredit = "Dr",
+                Amount = bankSideAmount,
+                Narration = payment.ReferenceNo, SortOrder = order++
+            });
+            voucher.Lines.Add(new VoucherLine
+            {
+                Id = Guid.NewGuid(), VoucherId = voucher.Id,
+                LedgerId = crLedger, DebitCredit = "Cr",
+                Amount = bankSideAmount,
+                Narration = payment.ReferenceNo, SortOrder = order++
+            });
+        }
 
         _db.Vouchers.Add(voucher);
         await _db.SaveChangesAsync();
         return voucher.Id;
+    }
+
+    // party.LedgerId resolve karo (bill ne isi ledger ko Dr/Cr kiya tha).
+    private async Task<Guid?> ResolvePartyLedgerId(Guid partyId, Guid firmId)
+    {
+        return await _db.PartyProfiles
+            .Where(p => p.Id == partyId && p.FirmId == firmId)
+            .Select(p => p.LedgerId)
+            .FirstOrDefaultAsync();
     }
 
     public async Task<List<BillListItemDto>> GetOutstandingBills(Guid partyId, Guid? supplierId = null)

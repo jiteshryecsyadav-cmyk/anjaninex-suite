@@ -194,12 +194,28 @@ public class ReportsService : IReportsService
             .ThenBy(x => x.v.CreatedAt)
             .ToListAsync();
 
+        // PARTICULARS ke liye — har voucher ke DOOSRE ledger(s) ka naam (jise/jaha against entry hui).
+        var voucherIds = inPeriod.Select(x => x.v.Id).Distinct().ToList();
+        var counterMap = new Dictionary<Guid, List<string>>();
+        if (voucherIds.Count > 0)
+        {
+            var others = await _db.VoucherLines
+                .Where(vl => voucherIds.Contains(vl.VoucherId) && vl.LedgerId != ledgerId)
+                .Join(_db.Ledgers, vl => vl.LedgerId, l => l.Id, (vl, l) => new { vl.VoucherId, l.Name })
+                .ToListAsync();
+            foreach (var o in others)
+            {
+                if (!counterMap.TryGetValue(o.VoucherId, out var lst)) { lst = new(); counterMap[o.VoucherId] = lst; }
+                if (!lst.Contains(o.Name)) lst.Add(o.Name);
+            }
+        }
+
         var rows = new List<LedgerTransactionDto>();
         decimal runBal = openingBalance;
 
         // Opening row
         rows.Add(new LedgerTransactionDto(
-            from, "Opening", "—", null,
+            from, "Opening", "—", "Opening Balance",
             0, 0,
             Math.Abs(runBal), runBal >= 0 ? "Dr" : "Cr"));
 
@@ -208,8 +224,18 @@ public class ReportsService : IReportsService
             decimal dr = x.vl.DebitCredit == "Dr" ? x.vl.Amount : 0;
             decimal cr = x.vl.DebitCredit == "Cr" ? x.vl.Amount : 0;
             runBal += dr - cr;
+
+            // PARTICULARS = counter ledger naam + (narration ho to "— narration")
+            var counter = counterMap.TryGetValue(x.v.Id, out var names) && names.Count > 0
+                ? string.Join(", ", names) : "";
+            var note = (x.v.Narration ?? "").Trim();
+            var particulars = counter;
+            if (note.Length > 0)
+                particulars = counter.Length > 0 ? $"{counter} — {note}" : note;
+            if (particulars.Length == 0) particulars = "—";
+
             rows.Add(new LedgerTransactionDto(
-                x.v.VoucherDate, x.v.VoucherNo, x.v.VoucherType, x.v.Narration,
+                x.v.VoucherDate, x.v.VoucherNo, x.v.VoucherType, particulars,
                 dr, cr, Math.Abs(runBal), runBal >= 0 ? "Dr" : "Cr"));
         }
 

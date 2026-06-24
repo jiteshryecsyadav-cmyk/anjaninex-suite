@@ -177,6 +177,22 @@ public class BillExtractorService : IBillExtractorService
         var settings = _opts.CurrentValue;
         var sw = System.Diagnostics.Stopwatch.StartNew();
 
+        // 0. MONTHLY SCAN LIMIT — is mahine ki AI scan quota khatam ho to scan BLOCK karo
+        //    aur recharge message do. (firm.AiQuotaMonthly = 0 → unlimited, skip.)
+        var monthlyQuota = await _db.Firms.Where(f => f.Id == firmId)
+            .Select(f => f.AiQuotaMonthly).FirstOrDefaultAsync(ct);
+        if (monthlyQuota > 0)
+        {
+            var now = DateTimeOffset.UtcNow;
+            var monthStart = new DateTimeOffset(now.Year, now.Month, 1, 0, 0, 0, TimeSpan.Zero);
+            var usedThisMonth = await _db.AiExtractionLogs
+                .CountAsync(l => l.FirmId == firmId && l.CreatedAt >= monthStart, ct);
+            if (usedThisMonth >= monthlyQuota)
+                throw new InsufficientWalletException(
+                    $"Aapki AI scan limit ({usedThisMonth}/{monthlyQuota}) is mahine khatam ho gayi hai. " +
+                    "Aur scan ke liye wallet recharge karein ya plan upgrade karein.");
+        }
+
         // 1. Compute hash over ALL pages combined → multi-page set gets its own cache key.
         var hash = await ComputeHashAsync(images);
         var inputSizeKb = (int)(images.Sum(i => i.Length) / 1024);

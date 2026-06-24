@@ -56,7 +56,7 @@ interface LineRow {
           </div>
         </div>
         <div class="oh-right">
-          <button type="button" (click)="showScan.set(true)" class="oh-btn oh-btn-ai" title="Scan order/PO document">
+          <button type="button" (click)="openScan()" class="oh-btn oh-btn-ai" title="Scan order/PO document">
             🤖 Scan Order
             @if (scanUse(); as u) {
               <span style="background:rgba(255,255,255,.25);border-radius:10px;padding:1px 8px;font-size:10px;margin-left:6px">
@@ -1161,6 +1161,16 @@ export class OrderEntryComponent {
 
   loadScanUse() {
     this.aiSvc.usage().subscribe({ next: u => this.scanUse.set(u), error: () => {} });
+  }
+
+  // Scan kholne se pehle monthly limit check — quota khatam to popup, scanner na khole.
+  openScan() {
+    const u = this.scanUse();
+    if (u && u.quotaMonthly > 0 && u.usedThisMonth >= u.quotaMonthly) {
+      alert(`⚠️ Aapki AI scan limit (${u.usedThisMonth}/${u.quotaMonthly}) is mahine khatam ho gayi hai.\n\nAur scan karne ke liye Wallet recharge karein ya plan upgrade karein.`);
+      return;
+    }
+    this.showScan.set(true);
   }
 
   // Document preview modal state

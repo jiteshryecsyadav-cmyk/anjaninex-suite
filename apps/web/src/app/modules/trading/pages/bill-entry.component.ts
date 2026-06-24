@@ -60,7 +60,7 @@ interface LineRow {
           </div>
         </div>
         <div class="bh-right">
-          <button type="button" (click)="showScan.set(true)" class="bh-btn-ai">
+          <button type="button" (click)="openScan()" class="bh-btn-ai">
             🤖 Scan Bill
             @if (scanUse(); as u) {
               <span style="background:rgba(255,255,255,.25);border-radius:10px;padding:1px 8px;font-size:10px;margin-left:6px">
@@ -2125,6 +2125,16 @@ export class BillEntryComponent {
   editBillNo = '';   // edit mode me existing BILL ENTRY NO dikhane ke liye
   loadScanUse() {
     this.aiSvc.usage().subscribe({ next: u => this.scanUse.set(u), error: () => {} });
+  }
+
+  // Scan Bill kholne se pehle monthly limit check — quota khatam to popup, scanner na khole.
+  openScan() {
+    const u = this.scanUse();
+    if (u && u.quotaMonthly > 0 && u.usedThisMonth >= u.quotaMonthly) {
+      alert(`⚠️ Aapki AI scan limit (${u.usedThisMonth}/${u.quotaMonthly}) is mahine khatam ho gayi hai.\n\nAur bill scan karne ke liye Wallet recharge karein ya plan upgrade karein.`);
+      return;
+    }
+    this.showScan.set(true);
   }
 
   ngOnInit() {

@@ -92,6 +92,7 @@ import { amountInWords } from '../../../shared/amount-in-words.util';
                 <th class="px-3 py-3 text-left">BILL ENTRY NO.</th>
                 <th class="px-3 py-3 text-left">ORDER NO.</th>
                 <th class="px-3 py-3 text-left">SUPP. BILL NO</th>
+                <th class="px-3 py-3 text-left">SUPP. BILL DATE</th>
                 <th class="px-3 py-3 text-left">BILL ENTRY DATE</th>
                 <th class="px-3 py-3 text-left">SUPPLIER</th>
                 <th class="px-3 py-3 text-left">BUYER</th>
@@ -112,6 +113,9 @@ import { amountInWords } from '../../../shared/amount-in-words.util';
                   </td>
                   <td class="px-3 py-3 font-mono text-xs">{{ b.poNumber || '—' }}</td>
                   <td class="px-3 py-3 text-xs font-mono">{{ b.supplierBillNo || '—' }}</td>
+                  <td class="px-3 py-3 text-xs font-mono whitespace-nowrap">
+                    {{ b.billDate ? (b.billDate | date:'dd/MM/yy') : '—' }}
+                  </td>
                   <td class="px-3 py-3 text-xs font-mono whitespace-nowrap">
                     {{ b.createdAt ? (b.createdAt | date:'dd/MM/yy') : (b.billDate | date:'dd/MM/yy') }}
                   </td>

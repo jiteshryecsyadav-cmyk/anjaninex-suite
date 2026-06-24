@@ -92,7 +92,7 @@ import { amountInWords } from '../../../shared/amount-in-words.util';
                 <th class="px-3 py-3 text-left">BILL ENTRY NO.</th>
                 <th class="px-3 py-3 text-left">ORDER NO.</th>
                 <th class="px-3 py-3 text-left">SUPP. BILL NO</th>
-                <th class="px-3 py-3 text-left">TYPE</th>
+                <th class="px-3 py-3 text-left">BILL ENTRY DATE</th>
                 <th class="px-3 py-3 text-left">SUPPLIER</th>
                 <th class="px-3 py-3 text-left">BUYER</th>
                 <th class="px-3 py-3 text-right">E-INVOICE AMT</th>
@@ -112,14 +112,8 @@ import { amountInWords } from '../../../shared/amount-in-words.util';
                   </td>
                   <td class="px-3 py-3 font-mono text-xs">{{ b.poNumber || '—' }}</td>
                   <td class="px-3 py-3 text-xs font-mono">{{ b.supplierBillNo || '—' }}</td>
-                  <td class="px-3 py-3">
-                    <span class="text-xs px-2 py-0.5 rounded font-bold uppercase"
-                          [class.bg-green-100]="b.billType === 'sales'"
-                          [class.text-green-700]="b.billType === 'sales'"
-                          [class.bg-orange-100]="b.billType === 'purchase'"
-                          [class.text-orange-700]="b.billType === 'purchase'">
-                      {{ b.billType === 'sales' ? '🛒 Sales' : '📦 Purchase' }}
-                    </span>
+                  <td class="px-3 py-3 text-xs font-mono whitespace-nowrap">
+                    {{ b.createdAt ? (b.createdAt | date:'dd/MM/yy') : (b.billDate | date:'dd/MM/yy') }}
                   </td>
                   <td class="px-3 py-3 font-semibold">{{ b.partyName }}</td>
                   <td class="px-3 py-3 text-gray-700">{{ b.buyerName || '—' }}</td>

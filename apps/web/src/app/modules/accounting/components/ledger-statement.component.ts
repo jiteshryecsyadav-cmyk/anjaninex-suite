@@ -164,7 +164,7 @@ export class LedgerStatementComponent implements OnInit {
 
   @Input({ required: true }) ledgerId!: string;
   @Input() initialName: string | null = null;
-  @Input() firmName = 'Namokara Suite';
+  @Input() firmName = 'Anjaninex';   // parent (ledgers page) asli firm naam pass karta hai
   @Output() close = new EventEmitter<void>();
 
   ledgerName = signal<string | null>(null);

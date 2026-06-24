@@ -5,6 +5,7 @@ import { RouterLink, RouterLinkActive } from '@angular/router';
 import { AccountingService, Ledger, SubGroup } from '../services/accounting.service';
 import { BackButtonComponent } from '../../../shared/back-button.component';
 import { LedgerStatementComponent } from '../components/ledger-statement.component';
+import { FeatureService } from '../../../shared/feature.service';
 
 @Component({
   selector: 'app-ledgers',
@@ -208,6 +209,7 @@ import { LedgerStatementComponent } from '../components/ledger-statement.compone
         <app-ledger-statement
           [ledgerId]="statementLedgerId()!"
           [initialName]="statementLedgerName()"
+          [firmName]="features.firmName() || 'Anjaninex'"
           (close)="statementLedgerId.set(null)">
         </app-ledger-statement>
       }
@@ -217,6 +219,7 @@ import { LedgerStatementComponent } from '../components/ledger-statement.compone
 export class LedgersComponent {
   private svc = inject(AccountingService);
   private fb = inject(FormBuilder);
+  features = inject(FeatureService);   // asli firm naam (print header) ke liye
 
   ledgers = signal<Ledger[]>([]);
   subGroups = signal<SubGroup[]>([]);

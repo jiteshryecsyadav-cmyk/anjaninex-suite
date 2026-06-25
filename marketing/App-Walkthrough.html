@@ -1,0 +1,64 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Anjaninex Business Suite — App Walkthrough</title><style>
+:root{--purple:#5C1A8B;--navy:#1B2E5C;--dark:#141228;--gold:#E0A526;--muted:#cfc9e6;}
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;font-family:Calibri,'Segoe UI',Arial,sans-serif;background:#000;overflow:hidden;}
+.stage{position:fixed;inset:0;}
+.slide{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;padding:6vh 7vw;opacity:0;transform:translateX(40px);transition:opacity .6s,transform .6s;background:var(--dark);color:#fff;pointer-events:none;}
+.slide.on{opacity:1;transform:none;pointer-events:auto;}
+.slide.light{background:#F7F4FB;color:var(--navy);}
+.eyebrow{font-size:clamp(13px,1.5vw,20px);font-weight:800;letter-spacing:3px;text-transform:uppercase;color:var(--gold);}
+.slide.light .eyebrow{color:var(--purple);}
+h1{font-size:clamp(30px,5.2vw,72px);font-weight:900;line-height:1.05;margin-top:2vh;}
+.cap{font-size:clamp(18px,2.4vw,34px);font-weight:600;margin-top:3vh;max-width:60%;line-height:1.4;}
+.slide.light .cap{color:#475569;}
+.shot{margin-top:4vh;max-width:62%;border:2px dashed rgba(255,255,255,.3);border-radius:16px;padding:5vh 3vw;text-align:center;font-size:clamp(13px,1.4vw,18px);color:var(--muted);}
+.slide.light .shot{border-color:#c9b6e6;color:#8a7aa8;background:#fff;}
+.step{display:inline-block;background:var(--gold);color:#3a2a00;font-weight:900;border-radius:999px;padding:.5vh 1.4vw;font-size:clamp(14px,1.6vw,22px);margin-bottom:2vh;}
+.bar{position:fixed;top:0;left:0;height:5px;background:var(--gold);width:0;transition:width .3s;z-index:6;}
+.ctrl{position:fixed;bottom:2vh;left:50%;transform:translateX(-50%);display:flex;gap:10px;z-index:7;}
+.ctrl button{background:rgba(92,26,139,.9);color:#fff;border:0;border-radius:8px;padding:8px 14px;font-size:16px;cursor:pointer;}
+.count{position:fixed;bottom:3vh;right:3vw;color:#fff;mix-blend-mode:difference;font-weight:700;z-index:7;}
+</style></head><body>
+<div class="bar" id="bar"></div><div class="stage" id="stage"></div>
+<div class="ctrl"><button onclick="go(-1)">◀</button><button onclick="toggle()" id="pp">⏸ Pause</button><button onclick="go(1)">▶</button></div>
+<div class="count"><span id="cur">1</span> / <span id="tot">0</span></div>
+<script>
+const S = [
+ {"t": "Intro", "l": 0, "h": "Anjaninex Business Suite", "c": "Riddhi Agency — ek hi app me poora business: Bill · Hisaab · WhatsApp · OCR Technology (Made in India).", "shot": "Login → Dashboard"},
+ {"t": "1 · Dashboard", "l": 1, "h": "Ek nazar me poora business", "c": "Total Sales · Commission · Received · GR Returns — sab live.", "shot": "4 KPI cards"},
+ {"t": "1 · Dashboard", "l": 1, "h": "Trend + Alerts + Multi-branch", "c": "Sales trend graph, overdue alerts, har branch alag.", "shot": "Sales trend + branch filter"},
+ {"t": "2 · Trading", "l": 0, "h": "Order banao & track", "c": "Buyer ka order banao, status track karo.", "shot": "Orders screen"},
+ {"t": "2 · Trading", "l": 0, "h": "OCR Bill Scanner", "c": "Bill ki photo khicho — OCR Technology (Made in India) party, items, GST, total padh kar auto bhar de.", "shot": "Bill Entry → Scan Bill"},
+ {"t": "2 · Trading", "l": 0, "h": "Goods Return (GR)", "c": "Maal wapas? Bill se link, hisaab auto-adjust.", "shot": "GR entry"},
+ {"t": "2 · Trading", "l": 0, "h": "Payment", "c": "Buyer se supplier — dono ka khata auto update.", "shot": "Payment Receipt"},
+ {"t": "2 · Trading", "l": 0, "h": "Commission — aapki kamai", "c": "Har deal pe commission yahin raise + track.", "shot": "Commission screen"},
+ {"t": "2 · Trading", "l": 0, "h": "Reports + Branches", "c": "Sales · Outstanding · GST · Commission — har report ready.", "shot": "Reports menu"},
+ {"t": "3 · Bazaar Link", "l": 0, "h": "Business ab WhatsApp pe", "c": "Supplier–Buyer ka pura flow, bina app khole.", "shot": "WhatsApp Bot intro"},
+ {"t": "3 · Bazaar Link", "l": 0, "h": "Supplier rate bhejta hai", "c": "Supplier WhatsApp pe rate + design photo bhejta hai.", "shot": "WhatsApp supplier msg", "step": "STEP 1"},
+ {"t": "3 · Bazaar Link", "l": 0, "h": "Watermark + Track Code", "c": "System photo pe watermark + track code lagata hai.", "shot": "Watermarked photo", "step": "STEP 2"},
+ {"t": "3 · Bazaar Link", "l": 0, "h": "Bot buyers ko broadcast", "c": "Wahi rate matching buyers ko bot auto bhejta hai.", "shot": "Bot → buyers", "step": "STEP 3"},
+ {"t": "3 · Bazaar Link", "l": 0, "h": "Buyer order → Bot pehchanta", "c": "Buyer photo se order → bot track code se supplier pehchan ke msg bhejta.", "shot": "Order → supplier msg", "step": "STEP 4"},
+ {"t": "3 · Bazaar Link", "l": 0, "h": "Agent ek entry → sab auto", "c": "Agent ek entry kare — poora flow automatic. Staff ka time bachta.", "shot": "Agent entry → ready", "step": "STEP 5"},
+ {"t": "4 · HR", "l": 1, "h": "Check-in selfie + Live map", "c": "Staff check-in/out selfie ke saath + live movement.", "shot": "HR check-in + map"},
+ {"t": "4 · HR", "l": 1, "h": "Salary sheet — automatic", "c": "Attendance se basic, PF, ESI, net — sab auto.", "shot": "Payroll salary sheet"},
+ {"t": "4 · Accounting", "l": 1, "h": "Accounting — automatic", "c": "Har bill/payment/commission ka voucher auto — ledger, P&L, balance sheet ready.", "shot": "Vouchers auto-posted"},
+ {"t": "4 · Anji Helper", "l": 1, "h": "Anji — har page pe madad", "c": "Atko to Anji Hindi awaaz me batata hai kya karna hai.", "shot": "Anji help panel"},
+ {"t": "Outro", "l": 0, "h": "Aapka poora business, ek app me", "c": "trade.anjaninex.com · 📞 [phone] · ✉️ [email]", "shot": "Logo + contact"}
+];
+const stage=document.getElementById('stage');
+S.forEach((s,i)=>{const d=document.createElement('section');
+ d.className='slide'+(s.l?' light':'')+(i===0?' on':'');
+ d.innerHTML=`<div class="eyebrow">${s.t}</div>`+(s.step?`<div class="step">${s.step}</div>`:'')+`<h1>${s.h}</h1><div class="cap">${s.c}</div><div class="shot">📷 ${s.shot} — screenshot yahan</div>`;
+ stage.appendChild(d);});
+document.getElementById('tot').textContent=S.length;
+let i=0,playing=true,timer=null;const DUR=6500;
+function show(n){document.querySelectorAll('.slide')[i].classList.remove('on');i=(n+S.length)%S.length;document.querySelectorAll('.slide')[i].classList.add('on');document.getElementById('cur').textContent=i+1;document.getElementById('bar').style.width=((i+1)/S.length*100)+'%';}
+function go(d){show(i+d);reset();}
+function tick(){if(playing)show(i+1);}
+function reset(){clearInterval(timer);timer=setInterval(tick,DUR);}
+function toggle(){playing=!playing;document.getElementById('pp').textContent=playing?'⏸ Pause':'▶ Play';reset();}
+document.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' ')go(1);if(e.key==='ArrowLeft')go(-1);});
+document.getElementById('bar').style.width=(1/S.length*100)+'%';reset();
+</script></body></html>

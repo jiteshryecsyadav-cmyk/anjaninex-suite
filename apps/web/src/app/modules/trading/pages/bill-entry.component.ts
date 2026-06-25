@@ -106,13 +106,6 @@ interface LineRow {
             </select>
           </div>
           <div>
-            <label class="lbl">E-INVOICE TYPE *</label>
-            <select [(ngModel)]="billType" class="ip">
-              <option value="sales">Sales</option>
-              <option value="purchase">Purchase</option>
-            </select>
-          </div>
-          <div>
             <label class="lbl">BILL ENTRY NO.</label>
             <input type="text" disabled [value]="editBillNo" placeholder="Auto — save par milega" class="ip ip-auto">
           </div>
@@ -131,7 +124,7 @@ interface LineRow {
             }
           </div>
           <div>
-            <label class="lbl">SUPPLIER BILL NO. (E-INVOICE NO) <span style="color:#dc2626;font-weight:800">*</span></label>
+            <label class="lbl">SUPPLIER BILL NO. <span style="color:#dc2626;font-weight:800">*</span></label>
             <input [(ngModel)]="supplierBillNo" type="text"
                    placeholder="Supplier ka Bill Number (e.g. INV-2026/045)"
                    class="ip"
@@ -574,7 +567,7 @@ interface LineRow {
               <input [ngModel]="tcsAmt()" (ngModelChange)="tcsAmt.set(+$event || 0)" type="number" step="0.01" class="ip">
             </div>
             <div>
-              <label class="lbl">E-INVOICE AMT *</label>
+              <label class="lbl">BILL AMT *</label>
               <input type="text" disabled [value]="'₹ ' + (eInvoiceAmt() | number:'1.2-2')" class="ip ip-auto">
             </div>
             <div>
@@ -730,7 +723,7 @@ interface LineRow {
             </div>
             <div class="sum-divider"></div>
             <div class="sum-row">
-              <span>e-Invoice Amt</span>
+              <span>Bill Amt</span>
               <span class="font-mono">₹ {{ eInvoiceAmt() | number:'1.2-2' }}</span>
             </div>
             @if (roundOff() !== 0) {
@@ -2748,7 +2741,7 @@ export class BillEntryComponent {
   }
 
   preview() {
-    alert(`📄 Preview\n\nSupplier: ${this.parties().find(p => p.id === this.supplierId)?.displayName ?? '—'}\nBuyer: ${this.parties().find(p => p.id === this.buyerId)?.displayName ?? '—'}\nItems: ${this.lines().filter(l => l.itemName).length}\nGross: ₹${this.grossAmt().toFixed(2)}\nE-Invoice Amt: ₹${this.eInvoiceAmt().toFixed(2)}\n\n(Full PDF preview coming soon)`);
+    alert(`📄 Preview\n\nSupplier: ${this.parties().find(p => p.id === this.supplierId)?.displayName ?? '—'}\nBuyer: ${this.parties().find(p => p.id === this.buyerId)?.displayName ?? '—'}\nItems: ${this.lines().filter(l => l.itemName).length}\nGross: ₹${this.grossAmt().toFixed(2)}\nBill Amt: ₹${this.eInvoiceAmt().toFixed(2)}\n\n(Full PDF preview coming soon)`);
   }
 
   /** e-Way Bill No diya hai par e-Way date khali → bill ki date hi e-Way date maan lo. */

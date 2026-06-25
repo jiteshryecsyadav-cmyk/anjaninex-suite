@@ -58,8 +58,8 @@ interface ScanPage {
                         [ngClass]="scanModel() === 'ocr' ? 'border-[#5c1a8b] bg-[#f0e6ff]' : 'border-gray-200'"
                         class="border-2 rounded-lg p-2 text-center transition hover:bg-[#faf5ff]">
                   <div class="text-lg">📄</div>
-                  <div class="text-xs font-bold text-[#5c1a8b]">OCR Technology</div>
-                  <div class="text-[10px] text-gray-500">Made in India · FREE</div>
+                  <div class="text-xs font-bold text-[#5c1a8b]">OCR Accurate</div>
+                  <div class="text-[10px] text-gray-500">Made in India · Best</div>
                 </button>
                 <button type="button" (click)="setScanModel('flash')"
                         [ngClass]="scanModel() === 'flash' ? 'border-[#5c1a8b] bg-[#f0e6ff]' : 'border-gray-200'"
@@ -390,7 +390,7 @@ export class BillScanModalComponent implements OnDestroy {
     return r[this.scanModel()];
   }
   modelLabel(): string {
-    const l: Record<ScanModel, string> = { ocr: 'OCR Technology', flash: 'Gemini Flash', haiku: 'Claude Haiku', pro: 'Gemini Pro', gpt4o: 'GPT-4o', sonnet: 'Claude Sonnet', sarvam: 'Sarvam Vision' };
+    const l: Record<ScanModel, string> = { ocr: 'OCR Accurate', flash: 'Gemini Flash', haiku: 'Claude Haiku', pro: 'Gemini Pro', gpt4o: 'GPT-4o', sonnet: 'Claude Sonnet', sarvam: 'Sarvam Vision' };
     return l[this.scanModel()];
   }
 

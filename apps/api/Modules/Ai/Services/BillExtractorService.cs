@@ -156,6 +156,9 @@ public class BillExtractorService : IBillExtractorService
         ["gpt4o"]  = ("openai", "gpt-4o"),
         // Sarvam Vision (option B) — OCR (Sarvam doc-digitization) + AI structuring (Gemini Flash).
         ["sarvam"] = ("sarvam", "sarvam-vision"),
+        // Anjaninex OCR Technology (HYBRID) — apna Tesseract OCR (VPS pe, FREE) + regex parser.
+        // Confidence kam ho to hi Gemini Flash (text-only) fallback. Per-scan cost ~0.
+        ["ocr"]    = ("anjaninex", "anjaninex-ocr"),
     };
 
     public BillExtractorService(
@@ -280,6 +283,14 @@ public class BillExtractorService : IBillExtractorService
                     throw new ArgumentException(
                         "Sarvam Vision ko text→JSON ke liye Gemini key chahiye — Admin → Platform AI Keys me Gemini key set karein.");
                 apiKey = platformSarvamKey;   // wallet charge hota hai (platform key)
+                usingFirmKey = false;
+            }
+            else if (provider == "anjaninex")
+            {
+                // Anjaninex OCR (apna Tesseract) — koi API key zaroori NAHI (VPS pe local OCR).
+                // apiKey me structuring-Gemini-key rakhte hain SIRF low-confidence fallback ke liye
+                // (ho to behtar, na ho to bhi OCR chalega — bas fields manual bharne padenge).
+                apiKey = structuringGeminiKey ?? "";
                 usingFirmKey = false;
             }
             else
@@ -410,6 +421,7 @@ public class BillExtractorService : IBillExtractorService
                             "claude" => await CallClaudeAsync(images, apiKey, model, ct),
                             "openai" => await CallOpenAiAsync(images, apiKey, model, ct),
                             "sarvam" => await CallSarvamHybridAsync(images, apiKey, structuringGeminiKey, ct),
+                            "anjaninex" => await CallAnjaninexOcrAsync(images, structuringGeminiKey, ct),
                             _ => await CallGeminiAsync(images, apiKey, model, ct)
                         };
                         break;
@@ -856,6 +868,148 @@ Schema (extract ONLY these keys):
     // -> download (zip) -> unzip text. Server hi poll karta hai; frontend ko 1 hi response.
     // =================================================
     private const string SarvamDocBase = "https://api.sarvam.ai/doc-digitization/job/v1";
+
+    // =====================================================================
+    // ANJANINEX OCR TECHNOLOGY (HYBRID) — apna Tesseract OCR (VPS, FREE)
+    //   1) Har page Tesseract se text  2) regex/rules se fields nikaalo
+    //   3) confidence kam ho TABHI Gemini Flash (text-only) fallback (sasta)
+    // VPS pe zaroori:  sudo apt install -y tesseract-ocr
+    // =====================================================================
+    private async Task<ExtractedBillDto> CallAnjaninexOcrAsync(
+        IReadOnlyList<IFormFile> images, string? fallbackGeminiKey, CancellationToken ct)
+    {
+        var sb = new StringBuilder();
+        foreach (var img in images)
+        {
+            var tmpBase = Path.Combine(Path.GetTempPath(), $"anjocr_{Guid.NewGuid():N}");
+            var ext = (img.ContentType ?? "").Contains("png", StringComparison.OrdinalIgnoreCase) ? ".png" : ".jpg";
+            var inPath = tmpBase + ext;
+            try
+            {
+                await using (var fs = File.Create(inPath)) await img.CopyToAsync(fs, ct);
+                sb.AppendLine(await RunTesseractAsync(inPath, ct));
+            }
+            finally { try { File.Delete(inPath); } catch { /* ignore */ } }
+        }
+        var ocrText = sb.ToString().Trim();
+        if (string.IsNullOrWhiteSpace(ocrText))
+            throw new Exception("OCR se text nahi mila — saaf/seedhi photo dobara try karein.");
+
+        _log.LogInformation("Anjaninex OCR text ({Len} chars) extracted", ocrText.Length);
+
+        // Rules/regex se fields
+        var dto = ParseOcrTextToBill(ocrText);
+
+        // Confidence score (0..1)
+        int score = 0;
+        if (!string.IsNullOrEmpty(dto.Supplier.Gst) || !string.IsNullOrEmpty(dto.Buyer.Gst)) score += 35;
+        if (dto.Totals.GrandTotal > 0) score += 30;
+        if (dto.Totals.Cgst > 0 || dto.Totals.Sgst > 0 || dto.Totals.Igst > 0) score += 15;
+        if (!string.IsNullOrEmpty(dto.Invoice.Number)) score += 10;
+        if (!string.IsNullOrEmpty(dto.Supplier.Name)) score += 10;
+        dto.Confidence = Math.Min(1.0m, score / 100m);
+        dto.ModelUsed = "anjaninex-ocr";
+
+        // Low confidence + Gemini key ho → text-only structuring fallback (sasta, no vision)
+        if (dto.Confidence < 0.6m && !string.IsNullOrEmpty(fallbackGeminiKey))
+        {
+            try
+            {
+                _log.LogInformation("OCR confidence {C} kam — Gemini text fallback", dto.Confidence);
+                var aiDto = await CallGeminiTextAsync(ocrText, fallbackGeminiKey!, "gemini-2.5-flash", ct);
+                aiDto.ModelUsed = "anjaninex-ocr+ai";
+                if (aiDto.Confidence <= 0) aiDto.Confidence = 0.85m;
+                return aiDto;
+            }
+            catch (Exception ex) { _log.LogWarning("OCR Gemini fallback fail: {M}", ex.Message); }
+        }
+        return dto;
+    }
+
+    private static async Task<string> RunTesseractAsync(string imgPath, CancellationToken ct)
+    {
+        var psi = new System.Diagnostics.ProcessStartInfo
+        {
+            FileName = "tesseract",
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            CreateNoWindow = true,
+        };
+        psi.ArgumentList.Add(imgPath);
+        psi.ArgumentList.Add("stdout");
+        psi.ArgumentList.Add("-l"); psi.ArgumentList.Add("eng");
+        psi.ArgumentList.Add("--psm"); psi.ArgumentList.Add("6");
+
+        System.Diagnostics.Process proc;
+        try { proc = System.Diagnostics.Process.Start(psi)!; }
+        catch (Exception ex)
+        { throw new Exception("OCR engine (Tesseract) server par install nahi hai: " + ex.Message); }
+
+        using (proc)
+        {
+            var outTask = proc.StandardOutput.ReadToEndAsync();
+            var errTask = proc.StandardError.ReadToEndAsync();
+            using var reg = ct.Register(() => { try { if (!proc.HasExited) proc.Kill(true); } catch { } });
+            await proc.WaitForExitAsync(ct);
+            var outp = await outTask;
+            if (proc.ExitCode != 0 && string.IsNullOrWhiteSpace(outp))
+                throw new Exception("Tesseract OCR fail: " + (await errTask));
+            return outp ?? "";
+        }
+    }
+
+    // OCR raw text → bill fields (deterministic regex/rules; items skip — user bharega)
+    private static ExtractedBillDto ParseOcrTextToBill(string text)
+    {
+        var dto = new ExtractedBillDto();
+        var lines = text.Split('\n').Select(l => l.Trim()).Where(l => l.Length > 0).ToList();
+
+        // GSTIN (15): 2 digit + 5 letter + 4 digit + 1 letter + 1 alnum + Z + 1 alnum
+        var gstRe = new Regex(@"\b(\d{2}[A-Z]{5}\d{4}[A-Z][0-9A-Z]Z[0-9A-Z])\b", RegexOptions.IgnoreCase);
+        var gsts = gstRe.Matches(text).Select(m => m.Value.ToUpperInvariant()).Distinct().ToList();
+        if (gsts.Count >= 1) { dto.Supplier.Gst = gsts[0]; dto.Supplier.Pan = gsts[0].Substring(2, 10); }
+        if (gsts.Count >= 2) { dto.Buyer.Gst = gsts[1]; dto.Buyer.Pan = gsts[1].Substring(2, 10); }
+
+        var invM = Regex.Match(text, @"(?:invoice|bill)\s*(?:no\.?|number|#)\s*[:\-]?\s*([A-Z0-9][A-Z0-9\/\-]{2,20})", RegexOptions.IgnoreCase);
+        if (invM.Success) dto.Invoice.Number = invM.Groups[1].Value.Trim();
+
+        var dtM = Regex.Match(text, @"\b(\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4})\b");
+        if (dtM.Success) dto.Invoice.Date = dtM.Groups[1].Value;
+
+        decimal Amt(params string[] keys)
+        {
+            foreach (var key in keys)
+            {
+                var m = Regex.Match(text, key + @"[^0-9\-]{0,15}([0-9][0-9,]*\.?\d{0,2})", RegexOptions.IgnoreCase);
+                if (m.Success && decimal.TryParse(m.Groups[1].Value.Replace(",", ""), out var v) && v > 0) return v;
+            }
+            return 0;
+        }
+        dto.Totals.Cgst = Amt("cgst", "c gst");
+        dto.Totals.Sgst = Amt("sgst", "s gst");
+        dto.Totals.Igst = Amt("igst", "i gst");
+        dto.Totals.TaxableTotal = Amt("taxable value", "taxable", "sub ?total");
+        dto.Totals.RoundOff = Amt(@"round ?off");
+        dto.Totals.GrandTotal = Amt(@"grand ?total", "total amount", "net amount", "bill amount", "invoice total", "amount payable", "total");
+
+        if (dto.Totals.GrandTotal == 0)
+        {
+            var nums = Regex.Matches(text, @"[0-9][0-9,]*\.\d{2}")
+                .Select(m => decimal.TryParse(m.Value.Replace(",", ""), out var v) ? v : 0m)
+                .Where(v => v > 0).ToList();
+            if (nums.Count > 0) dto.Totals.GrandTotal = nums.Max();
+        }
+
+        // Party naam — top ~8 lines me se pehli letter-wali line (headers skip)
+        foreach (var l in lines.Take(8))
+        {
+            if (l.Length >= 5 && Regex.IsMatch(l, @"[A-Za-z]{4,}")
+                && !Regex.IsMatch(l, @"tax invoice|invoice|gstin|original|duplicate|bill of|estimate|quotation", RegexOptions.IgnoreCase))
+            { dto.Supplier.Name = l; break; }
+        }
+        return dto;
+    }
 
     private async Task<ExtractedBillDto> CallSarvamHybridAsync(
         IReadOnlyList<IFormFile> images, string sarvamKey, string geminiKey, CancellationToken ct)

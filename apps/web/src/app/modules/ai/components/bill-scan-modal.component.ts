@@ -3,7 +3,7 @@ import { CommonModule, DecimalPipe } from '@angular/common';
 import { AiService, ExtractedBill } from '../services/ai.service';
 
 type ScanState = 'idle' | 'camera' | 'preview' | 'analyzing' | 'result' | 'error';
-type ScanModel = 'ocr' | 'ocrfast' | 'ocrbest' | 'flash' | 'pro' | 'sonnet' | 'haiku' | 'gpt4o' | 'sarvam';
+type ScanModel = 'ocr' | 'ocrfast' | 'ocrbest' | 'ocrmirror' | 'flash' | 'pro' | 'sonnet' | 'haiku' | 'gpt4o' | 'sarvam';
 
 interface ScanPage {
   file: File;
@@ -109,6 +109,13 @@ interface ScanPage {
                   <div class="text-lg">✨</div>
                   <div class="text-xs font-bold text-[#5c1a8b]">OCR Best</div>
                   <div class="text-[10px] text-gray-500">Made in India · Balanced</div>
+                </button>
+                <button type="button" (click)="setScanModel('ocrmirror')"
+                        [ngClass]="scanModel() === 'ocrmirror' ? 'border-[#5c1a8b] bg-[#f0e6ff]' : 'border-gray-200'"
+                        class="border-2 rounded-lg p-2 text-center transition hover:bg-[#faf5ff]">
+                  <div class="text-lg">🪞</div>
+                  <div class="text-xs font-bold text-[#5c1a8b]">OCR Mirror</div>
+                  <div class="text-[10px] text-gray-500">Made in India · Premium</div>
                 </button>
               </div>
             </div>
@@ -381,7 +388,7 @@ export class BillScanModalComponent implements OnDestroy {
 
   private loadScanModel(): ScanModel {
     const saved = (typeof localStorage !== 'undefined') ? localStorage.getItem('scanModel') : null;
-    const valid: ScanModel[] = ['ocr', 'ocrfast', 'ocrbest', 'flash', 'pro', 'sonnet', 'haiku', 'gpt4o', 'sarvam'];
+    const valid: ScanModel[] = ['ocr', 'ocrfast', 'ocrbest', 'ocrmirror', 'flash', 'pro', 'sonnet', 'haiku', 'gpt4o', 'sarvam'];
     return valid.includes(saved as ScanModel) ? (saved as ScanModel) : 'ocr';
   }
 
@@ -393,11 +400,11 @@ export class BillScanModalComponent implements OnDestroy {
   // Footer me selected model ki approx rate + naam (cost = AI cost + 10% margin + GST).
   // Approx hai — admin Addon Services se rate badal sakta hai.
   modelCost(): string {
-    const r: Record<ScanModel, string> = { ocr: '0.00', ocrfast: '0.39', ocrbest: '0.39', flash: '0.39', haiku: '0.91', pro: '1.56', gpt4o: '1.82', sonnet: '2.60', sarvam: '0.39' };
+    const r: Record<ScanModel, string> = { ocr: '0.00', ocrfast: '0.39', ocrbest: '0.39', ocrmirror: '2.60', flash: '0.39', haiku: '0.91', pro: '1.56', gpt4o: '1.82', sonnet: '2.60', sarvam: '0.39' };
     return r[this.scanModel()];
   }
   modelLabel(): string {
-    const l: Record<ScanModel, string> = { ocr: 'OCR Accurate', ocrfast: 'OCR Fast', ocrbest: 'OCR Best', flash: 'Gemini Flash', haiku: 'Claude Haiku', pro: 'Gemini Pro', gpt4o: 'GPT-4o', sonnet: 'Claude Sonnet', sarvam: 'Sarvam Vision' };
+    const l: Record<ScanModel, string> = { ocr: 'OCR Accurate', ocrfast: 'OCR Fast', ocrbest: 'OCR Best', ocrmirror: 'OCR Mirror', flash: 'Gemini Flash', haiku: 'Claude Haiku', pro: 'Gemini Pro', gpt4o: 'GPT-4o', sonnet: 'Claude Sonnet', sarvam: 'Sarvam Vision' };
     return l[this.scanModel()];
   }
 

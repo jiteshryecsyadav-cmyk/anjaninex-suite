@@ -163,6 +163,8 @@ public class BillExtractorService : IBillExtractorService
         ["ocrfast"] = ("sarvamocr", "anjaninex-ocr-fast"),
         // OCR Best — Gemini Flash vision engine. Label "OCR Best" (vendor naam chhupa).
         ["ocrbest"] = ("anjaninexflash", "anjaninex-ocr-best"),
+        // OCR Mirror — Claude Sonnet vision engine. Label "OCR Mirror" (vendor naam chhupa).
+        ["ocrmirror"] = ("anjaninexsonnet", "anjaninex-ocr-mirror"),
     };
 
     public BillExtractorService(
@@ -312,6 +314,25 @@ public class BillExtractorService : IBillExtractorService
                     usingFirmKey = false;
                 }
             }
+            else if (provider == "anjaninexsonnet")
+            {
+                // OCR Mirror — engine Claude Sonnet. Key resolution Claude jaisa (firm BYOK → platform).
+                if (hasFirmKey && firmKeys!.AiProvider == "claude")
+                {
+                    apiKey = firmKeys.AiApiKey!;
+                    usingFirmKey = true;
+                }
+                else if (!string.IsNullOrEmpty(platformClaudeKey))
+                {
+                    apiKey = platformClaudeKey;
+                    usingFirmKey = false;
+                }
+                else
+                {
+                    throw new ArgumentException(
+                        "OCR Mirror ke liye Claude API key chahiye — Admin → Platform AI Keys me Claude key set karein (ya doosra OCR chunein).");
+                }
+            }
             else
             {
                 // Gemini (flash/pro) → firm BYOK Gemini key, warna platform Gemini key.
@@ -442,6 +463,7 @@ public class BillExtractorService : IBillExtractorService
                             "sarvam" => await CallSarvamHybridAsync(images, apiKey, structuringGeminiKey, ct),
                             "sarvamocr" => await CallAnjaninexOcrFastAsync(images, apiKey, structuringGeminiKey, ct),
                             "anjaninexflash" => await CallAnjaninexOcrBestAsync(images, apiKey, ct),
+                            "anjaninexsonnet" => await CallAnjaninexOcrMirrorAsync(images, apiKey, ct),
                             "anjaninex" => await CallAnjaninexOcrAsync(images, structuringGeminiKey, ct),
                             _ => await CallGeminiAsync(images, apiKey, model, ct)
                         };
@@ -929,6 +951,21 @@ Schema (extract ONLY these keys):
                 "OCR Best ke liye Gemini key chahiye — Admin → Platform AI Keys me Gemini key set karein.");
         var dto = await CallGeminiAsync(images, geminiKey, "gemini-2.5-flash", ct);
         dto.ModelUsed = "anjaninex-ocr-best";
+        return dto;
+    }
+
+    // =====================================================================
+    // OCR MIRROR — engine Claude Sonnet VISION (asli image seedha padhta).
+    // Label "OCR Mirror" (vendor naam chhupa).
+    // =====================================================================
+    private async Task<ExtractedBillDto> CallAnjaninexOcrMirrorAsync(
+        IReadOnlyList<IFormFile> images, string claudeKey, CancellationToken ct)
+    {
+        if (string.IsNullOrEmpty(claudeKey))
+            throw new ArgumentException(
+                "OCR Mirror ke liye Claude key chahiye — Admin → Platform AI Keys me Claude key set karein.");
+        var dto = await CallClaudeAsync(images, claudeKey, "claude-sonnet-4-6", ct);
+        dto.ModelUsed = "anjaninex-ocr-mirror";
         return dto;
     }
 

@@ -159,6 +159,8 @@ public class BillExtractorService : IBillExtractorService
         // Anjaninex OCR Technology (HYBRID) — apna Tesseract OCR (VPS pe, FREE) + regex parser.
         // Confidence kam ho to hi Gemini Flash (text-only) fallback. Per-scan cost ~0.
         ["ocr"]    = ("anjaninex", "anjaninex-ocr"),
+        // OCR Fast — Sarvam vision engine (sasta). Label "OCR Fast" (vendor naam chhupa).
+        ["ocrfast"] = ("sarvamocr", "anjaninex-ocr-fast"),
     };
 
     public BillExtractorService(
@@ -272,16 +274,17 @@ public class BillExtractorService : IBillExtractorService
                         "GPT-4o ke liye OpenAI API key chahiye — Admin se Settings me OpenAI key set karwayen (ya Gemini Pro use karein).");
                 }
             }
-            else if (provider == "sarvam")
+            else if (provider == "sarvam" || provider == "sarvamocr")
             {
-                // Sarvam Vision (OCR+AI) → platform Sarvam key (Platform AI Keys page).
+                // Sarvam Vision / OCR Fast (OCR+AI) → platform Sarvam key (Platform AI Keys page).
                 // Structuring step Gemini Flash se hoti hai (structuringGeminiKey).
+                var label = provider == "sarvamocr" ? "OCR Fast" : "Sarvam Vision";
                 if (string.IsNullOrEmpty(platformSarvamKey))
                     throw new ArgumentException(
-                        "Sarvam Vision ke liye Sarvam API key chahiye — Admin → Platform AI Keys me Sarvam key set karein (ya doosra model chunein).");
+                        $"{label} ke liye Sarvam API key chahiye — Admin → Platform AI Keys me Sarvam key set karein (ya doosra model chunein).");
                 if (string.IsNullOrEmpty(structuringGeminiKey))
                     throw new ArgumentException(
-                        "Sarvam Vision ko text→JSON ke liye Gemini key chahiye — Admin → Platform AI Keys me Gemini key set karein.");
+                        $"{label} ko text→JSON ke liye Gemini key chahiye — Admin → Platform AI Keys me Gemini key set karein.");
                 apiKey = platformSarvamKey;   // wallet charge hota hai (platform key)
                 usingFirmKey = false;
             }
@@ -421,6 +424,7 @@ public class BillExtractorService : IBillExtractorService
                             "claude" => await CallClaudeAsync(images, apiKey, model, ct),
                             "openai" => await CallOpenAiAsync(images, apiKey, model, ct),
                             "sarvam" => await CallSarvamHybridAsync(images, apiKey, structuringGeminiKey, ct),
+                            "sarvamocr" => await CallAnjaninexOcrFastAsync(images, apiKey, structuringGeminiKey, ct),
                             "anjaninex" => await CallAnjaninexOcrAsync(images, structuringGeminiKey, ct),
                             _ => await CallGeminiAsync(images, apiKey, model, ct)
                         };
@@ -881,6 +885,18 @@ Schema (extract ONLY these keys):
                 "OCR Accurate ke liye Gemini key chahiye — Admin → Platform AI Keys me Gemini key set karein.");
         var dto = await CallGeminiAsync(images, geminiKey!, "gemini-2.5-pro", ct);
         dto.ModelUsed = "anjaninex-ocr";
+        return dto;
+    }
+
+    // =====================================================================
+    // OCR FAST — engine Sarvam vision (OCR text) + Gemini Flash structuring.
+    // Sasta (Sarvam per-page rate kam). Label "OCR Fast" (vendor naam chhupa).
+    // =====================================================================
+    private async Task<ExtractedBillDto> CallAnjaninexOcrFastAsync(
+        IReadOnlyList<IFormFile> images, string sarvamKey, string geminiKey, CancellationToken ct)
+    {
+        var dto = await CallSarvamHybridAsync(images, sarvamKey, geminiKey, ct);
+        dto.ModelUsed = "anjaninex-ocr-fast";
         return dto;
     }
 

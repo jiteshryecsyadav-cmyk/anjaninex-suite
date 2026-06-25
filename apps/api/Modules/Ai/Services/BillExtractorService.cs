@@ -900,23 +900,30 @@ Schema (extract ONLY these keys):
         // Rules/regex se fields
         var dto = ParseOcrTextToBill(ocrText);
 
-        // Confidence score (0..1)
+        // Confidence — numbers ki INTERNAL CONSISTENCY par (galat reading pe kam aaye, taaki
+        // fallback chale). Grand total >= taxable, aur taxable+tax ~= grand total hona chahiye.
+        var taxes = dto.Totals.Cgst + dto.Totals.Sgst + dto.Totals.Igst;
+        var expected = dto.Totals.TaxableTotal + taxes;
+        bool consistent = dto.Totals.GrandTotal > 0 && dto.Totals.TaxableTotal > 0
+            && dto.Totals.GrandTotal >= dto.Totals.TaxableTotal
+            && (expected <= 0 || Math.Abs(dto.Totals.GrandTotal - expected) <= expected * 0.12m);
         int score = 0;
-        if (!string.IsNullOrEmpty(dto.Supplier.Gst) || !string.IsNullOrEmpty(dto.Buyer.Gst)) score += 35;
-        if (dto.Totals.GrandTotal > 0) score += 30;
-        if (dto.Totals.Cgst > 0 || dto.Totals.Sgst > 0 || dto.Totals.Igst > 0) score += 15;
+        if (!string.IsNullOrEmpty(dto.Supplier.Gst) || !string.IsNullOrEmpty(dto.Buyer.Gst)) score += 15;
         if (!string.IsNullOrEmpty(dto.Invoice.Number)) score += 10;
-        if (!string.IsNullOrEmpty(dto.Supplier.Name)) score += 10;
+        if (!string.IsNullOrEmpty(dto.Invoice.Date)) score += 10;
+        if (dto.Totals.GrandTotal > 0) score += 15;
+        if (consistent) score += 50;     // sabse zaroori
         dto.Confidence = Math.Min(1.0m, score / 100m);
         dto.ModelUsed = "anjaninex-ocr";
 
-        // Low confidence + Gemini key ho → text-only structuring fallback (sasta, no vision)
-        if (dto.Confidence < 0.6m && !string.IsNullOrEmpty(fallbackGeminiKey))
+        // Confidence kam / numbers galat → asli IMAGE seedha Gemini VISION ko bhejo (text se nahi).
+        // Saaf consistent printed bill = FREE OCR; dense/photo/handwritten = AI vision (accurate).
+        if (dto.Confidence < 0.7m && !string.IsNullOrEmpty(fallbackGeminiKey))
         {
             try
             {
-                _log.LogInformation("OCR confidence {C} kam — Gemini text fallback", dto.Confidence);
-                var aiDto = await CallGeminiTextAsync(ocrText, fallbackGeminiKey!, "gemini-2.5-flash", ct);
+                _log.LogInformation("OCR confidence {C} kam — Gemini VISION fallback", dto.Confidence);
+                var aiDto = await CallGeminiAsync(images, fallbackGeminiKey!, "gemini-2.5-flash", ct);
                 aiDto.ModelUsed = "anjaninex-ocr+ai";
                 if (aiDto.Confidence <= 0) aiDto.Confidence = 0.85m;
                 return aiDto;
@@ -993,13 +1000,14 @@ Schema (extract ONLY these keys):
         dto.Totals.RoundOff = Amt(@"round ?off");
         dto.Totals.GrandTotal = Amt(@"grand ?total", "total amount", "net amount", "bill amount", "invoice total", "amount payable", "total");
 
-        if (dto.Totals.GrandTotal == 0)
-        {
-            var nums = Regex.Matches(text, @"[0-9][0-9,]*\.\d{2}")
-                .Select(m => decimal.TryParse(m.Value.Replace(",", ""), out var v) ? v : 0m)
-                .Where(v => v > 0).ToList();
-            if (nums.Count > 0) dto.Totals.GrandTotal = nums.Max();
-        }
+        // Saare currency-numbers nikaalo. Grand total na mila / biggest se kaafi chhota mila
+        // (galat token) → biggest number (= aksar Invoice Value) ko grand total maano.
+        var allNums = Regex.Matches(text, @"[0-9][0-9,]*\.\d{2}")
+            .Select(m => decimal.TryParse(m.Value.Replace(",", ""), out var v) ? v : 0m)
+            .Where(v => v > 0).ToList();
+        var maxNum = allNums.Count > 0 ? allNums.Max() : 0m;
+        if (dto.Totals.GrandTotal <= 0 || dto.Totals.GrandTotal < maxNum * 0.6m)
+            dto.Totals.GrandTotal = maxNum;
 
         // Party naam — top ~8 lines me se pehli letter-wali line (headers skip)
         foreach (var l in lines.Take(8))

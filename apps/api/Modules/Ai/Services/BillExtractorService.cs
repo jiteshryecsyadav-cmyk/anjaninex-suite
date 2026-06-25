@@ -881,8 +881,9 @@ Schema (extract ONLY these keys):
     {
         if (string.IsNullOrEmpty(geminiKey))
             throw new ArgumentException(
-                "OCR Technology ke liye Gemini key chahiye — Admin → Platform AI Keys me Gemini key set karein.");
-        var dto = await CallGeminiAsync(images, geminiKey!, "gemini-2.5-flash", ct);
+                "OCR Accurate ke liye Gemini key chahiye — Admin → Platform AI Keys me Gemini key set karein.");
+        // Gemini 2.5 Pro — dense item-tables + faint photos par saare line items theek padhta hai.
+        var dto = await CallGeminiAsync(images, geminiKey!, "gemini-2.5-pro", ct);
         dto.ModelUsed = "anjaninex-ocr";
         return dto;
     }

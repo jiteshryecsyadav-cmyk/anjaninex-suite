@@ -161,6 +161,8 @@ public class BillExtractorService : IBillExtractorService
         ["ocr"]    = ("anjaninex", "anjaninex-ocr"),
         // OCR Fast — Sarvam vision engine (sasta). Label "OCR Fast" (vendor naam chhupa).
         ["ocrfast"] = ("sarvamocr", "anjaninex-ocr-fast"),
+        // OCR Best — Gemini Flash vision engine. Label "OCR Best" (vendor naam chhupa).
+        ["ocrbest"] = ("anjaninexflash", "anjaninex-ocr-best"),
     };
 
     public BillExtractorService(
@@ -296,6 +298,20 @@ public class BillExtractorService : IBillExtractorService
                 apiKey = structuringGeminiKey ?? "";
                 usingFirmKey = false;
             }
+            else if (provider == "anjaninexflash")
+            {
+                // OCR Best — engine Gemini Flash. Key resolution Gemini jaisa (firm BYOK → platform).
+                if (hasFirmKey && firmKeys!.AiProvider == "gemini")
+                {
+                    apiKey = firmKeys.AiApiKey!;
+                    usingFirmKey = true;
+                }
+                else
+                {
+                    apiKey = platformGeminiKey;
+                    usingFirmKey = false;
+                }
+            }
             else
             {
                 // Gemini (flash/pro) → firm BYOK Gemini key, warna platform Gemini key.
@@ -425,6 +441,7 @@ public class BillExtractorService : IBillExtractorService
                             "openai" => await CallOpenAiAsync(images, apiKey, model, ct),
                             "sarvam" => await CallSarvamHybridAsync(images, apiKey, structuringGeminiKey, ct),
                             "sarvamocr" => await CallAnjaninexOcrFastAsync(images, apiKey, structuringGeminiKey, ct),
+                            "anjaninexflash" => await CallAnjaninexOcrBestAsync(images, apiKey, ct),
                             "anjaninex" => await CallAnjaninexOcrAsync(images, structuringGeminiKey, ct),
                             _ => await CallGeminiAsync(images, apiKey, model, ct)
                         };
@@ -897,6 +914,21 @@ Schema (extract ONLY these keys):
     {
         var dto = await CallSarvamHybridAsync(images, sarvamKey, geminiKey, ct);
         dto.ModelUsed = "anjaninex-ocr-fast";
+        return dto;
+    }
+
+    // =====================================================================
+    // OCR BEST — engine Gemini Flash VISION (asli image seedha padhta).
+    // Label "OCR Best" (vendor naam chhupa).
+    // =====================================================================
+    private async Task<ExtractedBillDto> CallAnjaninexOcrBestAsync(
+        IReadOnlyList<IFormFile> images, string geminiKey, CancellationToken ct)
+    {
+        if (string.IsNullOrEmpty(geminiKey))
+            throw new ArgumentException(
+                "OCR Best ke liye Gemini key chahiye — Admin → Platform AI Keys me Gemini key set karein.");
+        var dto = await CallGeminiAsync(images, geminiKey, "gemini-2.5-flash", ct);
+        dto.ModelUsed = "anjaninex-ocr-best";
         return dto;
     }
 

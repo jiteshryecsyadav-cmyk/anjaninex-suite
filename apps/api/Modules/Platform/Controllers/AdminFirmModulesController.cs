@@ -58,12 +58,19 @@ public class AdminFirmModulesController : ControllerBase
                 .Select(p => p.MonthlyInr).FirstOrDefaultAsync()
             : null;
 
+        // REAL used-this-month — bill scan limit jis count se enforce hoti hai wahi dikhao
+        // (AiExtractionLogs is mahine ke). firm.AiUsedThisMonth stale ho sakta hai (0 reh jata
+        // tha jabki asli scan log me hote the) — isliye live count se replace kiya.
+        var monthStart = new DateTimeOffset(DateTimeOffset.UtcNow.Year, DateTimeOffset.UtcNow.Month, 1, 0, 0, 0, TimeSpan.Zero);
+        var usedThisMonth = await _db.AiExtractionLogs
+            .CountAsync(l => l.FirmId == firmId && l.CreatedAt >= monthStart);
+
         return Ok(new FirmSubscriptionDto(
             firm.Id, firm.Name, firm.Status,
             firm.PlanCode, planName, planPrice,
             ParseModules(firm.EnabledModules),
             firm.UserLimit, firm.BranchLimit, firm.AiQuotaMonthly,
-            firm.AiUsedThisMonth, firm.WalletBalance,
+            usedThisMonth, firm.WalletBalance,
             firm.TrialEndsAt, firm.SubscriptionEndsAt
         ));
     }

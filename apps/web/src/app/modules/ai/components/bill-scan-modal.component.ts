@@ -50,9 +50,9 @@ interface ScanPage {
                      (change)="onFileSelected($event)">
             </div>
 
-            <!-- AI MODEL CHOOSER — scan se pehle model chuno (default: Fast/Flash) -->
+            <!-- SCAN MODEL CHOOSER — sirf branded OCR models (default: OCR Accurate) -->
             <div class="mb-4">
-              <div class="text-xs font-bold text-[#6b3fa0] uppercase mb-2">AI Model</div>
+              <div class="text-xs font-bold text-[#6b3fa0] uppercase mb-2">OCR Model</div>
               <div class="grid grid-cols-3 gap-2">
                 <button type="button" (click)="setScanModel('ocr')"
                         [ngClass]="scanModel() === 'ocr' ? 'border-[#5c1a8b] bg-[#f0e6ff]' : 'border-gray-200'"
@@ -60,41 +60,6 @@ interface ScanPage {
                   <div class="text-lg">📄</div>
                   <div class="text-xs font-bold text-[#5c1a8b]">OCR Accurate</div>
                   <div class="text-[10px] text-gray-500">Made in India · Best</div>
-                </button>
-                <button type="button" (click)="setScanModel('flash')"
-                        [ngClass]="scanModel() === 'flash' ? 'border-[#5c1a8b] bg-[#f0e6ff]' : 'border-gray-200'"
-                        class="border-2 rounded-lg p-2 text-center transition hover:bg-[#faf5ff]">
-                  <div class="text-lg">⚡</div>
-                  <div class="text-xs font-bold text-[#5c1a8b]">Fast</div>
-                  <div class="text-[10px] text-gray-500">Gemini Flash · sasta</div>
-                </button>
-                <button type="button" (click)="setScanModel('pro')"
-                        [ngClass]="scanModel() === 'pro' ? 'border-[#5c1a8b] bg-[#f0e6ff]' : 'border-gray-200'"
-                        class="border-2 rounded-lg p-2 text-center transition hover:bg-[#faf5ff]">
-                  <div class="text-lg">🎯</div>
-                  <div class="text-xs font-bold text-[#5c1a8b]">Accurate</div>
-                  <div class="text-[10px] text-gray-500">Gemini Pro</div>
-                </button>
-                <button type="button" (click)="setScanModel('sonnet')"
-                        [ngClass]="scanModel() === 'sonnet' ? 'border-[#5c1a8b] bg-[#f0e6ff]' : 'border-gray-200'"
-                        class="border-2 rounded-lg p-2 text-center transition hover:bg-[#faf5ff]">
-                  <div class="text-lg">⭐</div>
-                  <div class="text-xs font-bold text-[#5c1a8b]">Best</div>
-                  <div class="text-[10px] text-gray-500">Claude Sonnet</div>
-                </button>
-                <button type="button" (click)="setScanModel('haiku')"
-                        [ngClass]="scanModel() === 'haiku' ? 'border-[#5c1a8b] bg-[#f0e6ff]' : 'border-gray-200'"
-                        class="border-2 rounded-lg p-2 text-center transition hover:bg-[#faf5ff]">
-                  <div class="text-lg">🌿</div>
-                  <div class="text-xs font-bold text-[#5c1a8b]">Haiku</div>
-                  <div class="text-[10px] text-gray-500">Claude Haiku</div>
-                </button>
-                <button type="button" (click)="setScanModel('gpt4o')"
-                        [ngClass]="scanModel() === 'gpt4o' ? 'border-[#5c1a8b] bg-[#f0e6ff]' : 'border-gray-200'"
-                        class="border-2 rounded-lg p-2 text-center transition hover:bg-[#faf5ff]">
-                  <div class="text-lg">🤖</div>
-                  <div class="text-xs font-bold text-[#5c1a8b]">GPT-4o</div>
-                  <div class="text-[10px] text-gray-500">OpenAI</div>
                 </button>
                 <button type="button" (click)="setScanModel('ocrfast')"
                         [ngClass]="scanModel() === 'ocrfast' ? 'border-[#5c1a8b] bg-[#f0e6ff]' : 'border-gray-200'"
@@ -163,7 +128,7 @@ interface ScanPage {
 
             <div class="text-center text-xs text-gray-500 mt-4">
               <strong>⚡ Speed:</strong> ~2-6 seconds<br>
-              <strong>🎯 Accuracy:</strong> Flash/Haiku theek · Pro/GPT-4o/Sonnet zyada sahi
+              <strong>🎯 Accuracy:</strong> OCR Fast/Best tez · OCR Accurate/Mirror zyada sahi
             </div>
           </div>
         }
@@ -388,7 +353,9 @@ export class BillScanModalComponent implements OnDestroy {
 
   private loadScanModel(): ScanModel {
     const saved = (typeof localStorage !== 'undefined') ? localStorage.getItem('scanModel') : null;
-    const valid: ScanModel[] = ['ocr', 'ocrfast', 'ocrbest', 'ocrmirror', 'flash', 'pro', 'sonnet', 'haiku', 'gpt4o', 'sarvam'];
+    // Sirf branded OCR models hi UI me dikhte hain — purana saved hidden model (flash/pro/
+    // sonnet/haiku/gpt4o/sarvam) ho to OCR Accurate par fallback.
+    const valid: ScanModel[] = ['ocr', 'ocrfast', 'ocrbest', 'ocrmirror'];
     return valid.includes(saved as ScanModel) ? (saved as ScanModel) : 'ocr';
   }
 

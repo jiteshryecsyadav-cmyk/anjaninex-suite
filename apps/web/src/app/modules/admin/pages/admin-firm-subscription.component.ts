@@ -293,9 +293,9 @@ const MODULE_LIST: Array<{ key: string; label: string; icon: string; description
           </div>
         </div>
 
-        <!-- Save bar -->
-        <div class="flex justify-end gap-3 sticky bottom-4 bg-white p-3 rounded-lg shadow-lg border border-purple-200">
-          <span class="text-sm text-gray-600 self-center" *ngIf="dirty()">⚠️ Unsaved changes</span>
+        <!-- Save bar — bottom pe docked rehta hai (scroll pe move nahi hota) -->
+        <div class="save-bar flex justify-end items-center gap-3">
+          <span class="text-sm text-gray-600" *ngIf="dirty()">⚠️ Unsaved changes</span>
           <button (click)="reload()" class="btn-light">↺ Reload</button>
           <button (click)="save()" [disabled]="saving()" class="btn-primary">
             {{ saving() ? 'Saving…' : '💾 Save Changes' }}
@@ -308,6 +308,10 @@ const MODULE_LIST: Array<{ key: string; label: string; icon: string; description
   `,
   styles: [`
     .card { background: #fff; border: 1.5px solid #ddc8f5; border-radius: 12px; padding: 16px; box-shadow: 0 2px 8px rgba(92,26,139,.06); }
+    /* Docked save bar — viewport ke bottom pe chipka rehta hai, scroll pe move nahi hota.
+       -24px margin + 24px padding se page ki p-6 padding ke edges tak full-width bleed karta hai. */
+    .save-bar { position: sticky; bottom: 0; z-index: 20; margin: 16px -24px 0; padding: 12px 24px;
+      background: #fff; border-top: 1.5px solid #ddc8f5; box-shadow: 0 -3px 12px rgba(92,26,139,.10); }
     .card-head { font-size: 13px; font-weight: 800; color: #5c1a8b; text-transform: uppercase; letter-spacing: .5px; }
     .lbl { font-size: 10px; font-weight: 700; color: #6b3fa0; text-transform: uppercase; letter-spacing: .5px; display: block; margin-bottom: 4px; }
     .ip { width: 100%; padding: 8px 10px; border: 1.5px solid #ddc8f5; border-radius: 8px; font-size: 13px; outline: none; background: #faf5ff; }

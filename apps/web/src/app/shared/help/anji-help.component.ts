@@ -18,9 +18,9 @@ import { AiService } from '../../modules/ai/services/ai.service';
   template: `
     <!-- Floating launcher -->
     @if (!open()) {
-      <button class="anji-fab" (click)="openPanel()" title="Anji — Help Desk">
+      <button class="anji-fab" (click)="openPanel()" title="Assistant">
         <span class="anji-face">🙋</span>
-        <span class="anji-fab-txt">Anji</span>
+        <span class="anji-fab-txt">Help</span>
       </button>
     }
 
@@ -28,7 +28,7 @@ import { AiService } from '../../modules/ai/services/ai.service';
       <div class="anji-wrap">
         <!-- Header -->
         <div class="anji-head">
-          <div class="anji-id"><span class="anji-face">🙋</span> <b>Anji</b> <small>Help Desk</small></div>
+          <div class="anji-id"><span class="anji-face">🙋</span> <b>Assistant</b></div>
           <button class="anji-x" (click)="open.set(false); stopAll()">×</button>
         </div>
 

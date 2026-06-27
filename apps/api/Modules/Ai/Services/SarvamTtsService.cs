@@ -141,7 +141,7 @@ public class SarvamTtsService : ISarvamTtsService
                 source_language_code = "auto",          // Hinglish/English auto-detect
                 target_language_code = "hi-IN",
                 model = "mayura:v1",
-                mode = "formal",                        // pure Hindi (modern-colloquial English words rakhta tha)
+                mode = "modern-colloquial",             // aam bolchaal ki simple Hindi (formal bahut kathin tha)
                 numerals_format = "international"
             };
             var json = JsonSerializer.Serialize(body);

@@ -49,8 +49,9 @@ public class SarvamTtsService : ISarvamTtsService
     {
         if (string.IsNullOrWhiteSpace(text)) return null;
 
-        // Voice: male / female. Sarvam bulbul:v2 speakers — female "anushka", male "abhilash".
-        var speaker = (voice?.Trim().ToLowerInvariant() == "male") ? "abhilash" : "anushka";
+        // Voice: male / female. Sarvam bulbul:v3 (latest, best quality) — young (~22) natural
+        // awaaz: female "priya", male "rohan". (v3 me pitch/loudness support nahi — hum bhejte bhi nahi.)
+        var speaker = (voice?.Trim().ToLowerInvariant() == "male") ? "rohan" : "priya";
 
         // Resolve key: DB platform key wins, warna appsettings AI:SarvamApiKey.
         var apiKey = await ReadPlatformSarvamKeyAsync(ct);
@@ -88,9 +89,9 @@ public class SarvamTtsService : ISarvamTtsService
                     text = textForTts,
                     target_language_code = targetLang,
                     speaker = speaker,
-                    model = "bulbul:v2",
-                    pace = 0.85,   // dheere/saaf bolne ke liye (1.0 tez tha)
-                    speech_sample_rate = 22050
+                    model = "bulbul:v3",          // latest, best quality (v2 se behtar)
+                    pace = 0.85,                  // dheere/saaf (v3 range 0.5–2.0)
+                    speech_sample_rate = 24000    // high quality (v3 default)
                 };
                 var json = JsonSerializer.Serialize(body);
                 using var req = new HttpRequestMessage(HttpMethod.Post, SarvamUrl);

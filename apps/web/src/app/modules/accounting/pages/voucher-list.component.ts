@@ -126,6 +126,14 @@ import { InDatePipe } from '../../../shared/in-date.pipe';
                                 [title]="isAutoPosted(v) ? ('Auto-posted from ' + v.sourceModule + ' — edit/delete source document me karein') : 'View voucher'">
                           👁
                         </button>
+                        <button (click)="printVoucher(v.id)"
+                                class="px-2 py-1 rounded bg-[#f0e6ff] text-[#5c1a8b] font-bold hover:bg-[#ddc8f5] text-xs" title="Print voucher">
+                          🖨
+                        </button>
+                        <button (click)="whatsappVoucher(v.id)"
+                                class="px-2 py-1 rounded bg-green-50 text-green-700 font-bold hover:bg-green-100 text-xs" title="WhatsApp par bhejo">
+                          📲
+                        </button>
                         @if (!isAutoPosted(v)) {
                           <button (click)="editVoucher(v)"
                                   class="px-2 py-1 rounded bg-[#f0e6ff] text-[#5c1a8b] font-bold hover:bg-[#ddc8f5] text-xs" title="Edit voucher">
@@ -347,6 +355,64 @@ export class VoucherListComponent {
         this.load();
       },
       error: (e) => this.toast.error(e?.error?.error ?? 'Delete nahi hua')
+    });
+  }
+
+  // ===== Print voucher (naya window me, formatted) =====
+  printVoucher(id: string) {
+    this.svc.getVoucher(id).subscribe({
+      next: (v) => this.doPrint(v),
+      error: (e) => this.toast.error(e?.error?.error ?? 'Voucher load nahi hua')
+    });
+  }
+  private doPrint(v: VoucherDetail) {
+    const rows = (v.lines ?? []).map(l =>
+      `<tr>
+        <td style="padding:6px 10px;border:1px solid #ccc">${l.ledgerName}${l.narration ? '<br><small style="color:#888">' + l.narration + '</small>' : ''}</td>
+        <td style="padding:6px 10px;border:1px solid #ccc;text-align:center">${l.debitCredit}</td>
+        <td style="padding:6px 10px;border:1px solid #ccc;text-align:right">₹${(+l.amount).toFixed(2)}</td>
+      </tr>`).join('');
+    const html =
+      `<!doctype html><html><head><meta charset="utf-8"><title>Voucher ${v.voucherNo}</title></head>
+      <body style="font-family:Arial,sans-serif;padding:24px;color:#222">
+        <h2 style="margin:0 0 4px">Voucher ${v.voucherNo}</h2>
+        <p style="margin:2px 0">Type: <b>${v.voucherType}</b> &nbsp;|&nbsp; Date: ${v.voucherDate} &nbsp;|&nbsp; Branch: ${v.branchName || '-'}</p>
+        <p style="margin:2px 0 12px">Narration: ${v.narration || '-'}</p>
+        <table style="border-collapse:collapse;width:100%;font-size:14px">
+          <thead><tr style="background:#f0e6ff">
+            <th style="padding:6px 10px;border:1px solid #ccc;text-align:left">Ledger</th>
+            <th style="padding:6px 10px;border:1px solid #ccc">Dr/Cr</th>
+            <th style="padding:6px 10px;border:1px solid #ccc;text-align:right">Amount</th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+          <tfoot><tr>
+            <td colspan="2" style="padding:6px 10px;text-align:right;font-weight:bold">Total</td>
+            <td style="padding:6px 10px;text-align:right;font-weight:bold">₹${(+v.totalAmount).toFixed(2)}</td>
+          </tr></tfoot>
+        </table>
+      </body></html>`;
+    const w = window.open('', '_blank', 'width=820,height=640');
+    if (!w) { this.toast.error('Popup block ho raha — browser me allow karein'); return; }
+    w.document.write(html);
+    w.document.close();
+    w.focus();
+    setTimeout(() => { try { w.print(); } catch {} }, 350);
+  }
+
+  // ===== WhatsApp — voucher ka summary text wa.me se bhejo (contact user chunega) =====
+  whatsappVoucher(id: string) {
+    this.svc.getVoucher(id).subscribe({
+      next: (v) => {
+        const linesTxt = (v.lines ?? [])
+          .map(l => `${l.ledgerName} — ${l.debitCredit} ₹${(+l.amount).toFixed(2)}`).join('\n');
+        const txt =
+          `*Voucher ${v.voucherNo}*\n` +
+          `Type: ${v.voucherType}\nDate: ${v.voucherDate}\n` +
+          (v.narration ? `Narration: ${v.narration}\n` : '') +
+          `\n${linesTxt}\n\n*Total: ₹${(+v.totalAmount).toFixed(2)}*`;
+        window.open('https://wa.me/?text=' + encodeURIComponent(txt), '_blank');
+      },
+      error: (e) => this.toast.error(e?.error?.error ?? 'Voucher load nahi hua')
     });
   }
 

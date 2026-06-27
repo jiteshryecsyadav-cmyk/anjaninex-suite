@@ -59,28 +59,28 @@ interface ScanPage {
                         class="border-2 rounded-lg p-2 text-center transition hover:bg-[#faf5ff]">
                   <div class="text-lg">📄</div>
                   <div class="text-xs font-bold text-[#5c1a8b]">OCR Accurate</div>
-                  <div class="text-[10px] text-gray-500">Made in India · Best</div>
+                  <div class="text-[10px] text-gray-500">Best</div>
                 </button>
                 <button type="button" (click)="setScanModel('ocrfast')"
                         [ngClass]="scanModel() === 'ocrfast' ? 'border-[#5c1a8b] bg-[#f0e6ff]' : 'border-gray-200'"
                         class="border-2 rounded-lg p-2 text-center transition hover:bg-[#faf5ff]">
                   <div class="text-lg">⚡</div>
                   <div class="text-xs font-bold text-[#5c1a8b]">OCR Fast</div>
-                  <div class="text-[10px] text-gray-500">Made in India · Sasta</div>
+                  <div class="text-[10px] text-gray-500">Sasta</div>
                 </button>
                 <button type="button" (click)="setScanModel('ocrbest')"
                         [ngClass]="scanModel() === 'ocrbest' ? 'border-[#5c1a8b] bg-[#f0e6ff]' : 'border-gray-200'"
                         class="border-2 rounded-lg p-2 text-center transition hover:bg-[#faf5ff]">
                   <div class="text-lg">✨</div>
                   <div class="text-xs font-bold text-[#5c1a8b]">OCR Best</div>
-                  <div class="text-[10px] text-gray-500">Made in India · Balanced</div>
+                  <div class="text-[10px] text-gray-500">Balanced</div>
                 </button>
                 <button type="button" (click)="setScanModel('ocrmirror')"
                         [ngClass]="scanModel() === 'ocrmirror' ? 'border-[#5c1a8b] bg-[#f0e6ff]' : 'border-gray-200'"
                         class="border-2 rounded-lg p-2 text-center transition hover:bg-[#faf5ff]">
                   <div class="text-lg">🪞</div>
                   <div class="text-xs font-bold text-[#5c1a8b]">OCR Mirror</div>
-                  <div class="text-[10px] text-gray-500">Made in India · Premium</div>
+                  <div class="text-[10px] text-gray-500">Premium</div>
                 </button>
               </div>
             </div>

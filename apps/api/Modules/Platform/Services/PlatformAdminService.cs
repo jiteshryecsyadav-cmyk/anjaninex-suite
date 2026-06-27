@@ -612,6 +612,14 @@ public class PlatformAdminService : IPlatformAdminService
             _db.Firms.Add(firm);
             await _db.SaveChangesAsync();   // firm PEHLE save — baaki rows iski FK par depend hain
 
+            // RLS FIX (code 42501): super-admin ka current_firm_id khali hota hai, isliye nayi
+            // firm ke child rows (branch/role/chart-of-accounts) ka WITH CHECK fail ho jata tha.
+            // Is transaction ke liye current_firm_id ko NAYI firm par set kar do → saare child
+            // inserts (firm_id = nayi firm) RLS paas kar jaayenge. is_local=true → tx ke baad
+            // apne aap revert (connection pool safe). is_platform_admin interceptor se already true.
+            await _db.Database.ExecuteSqlRawAsync(
+                "SELECT set_config('app.current_firm_id', {0}, true)", firm.Id.ToString());
+
             var branch = new Branch
             {
                 Id = Guid.NewGuid(), FirmId = firm.Id, Code = "HO", Name = "Head Office",

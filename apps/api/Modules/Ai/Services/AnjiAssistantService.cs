@@ -19,7 +19,10 @@ public interface IAnjiAssistantService
 {
     // Returns a short answer string, or null if no key / Gemini failed
     // (frontend tab apne hand-written FAQ keyword-match par fallback karta hai).
-    Task<string?> AnswerAsync(string question, string pageContext, string lang, CancellationToken ct);
+    // firmId + hasReportPermission live-data lookup (party balance/sales/last bill) ke liye —
+    // data sirf tabhi nikalta hai jab user ke paas report-permission ho.
+    Task<string?> AnswerAsync(string question, string pageContext, string lang,
+        Guid firmId, bool hasReportPermission, CancellationToken ct);
 }
 
 public class AnjiAssistantService : IAnjiAssistantService
@@ -43,9 +46,14 @@ public class AnjiAssistantService : IAnjiAssistantService
         _log = log;
     }
 
-    public async Task<string?> AnswerAsync(string question, string pageContext, string lang, CancellationToken ct)
+    public async Task<string?> AnswerAsync(string question, string pageContext, string lang,
+        Guid firmId, bool hasReportPermission, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(question)) return null;
+
+        // LIVE DATA — agar sawaal balance/sales/last-bill type hai to asli aankde nikaalo
+        // (firm-scoped). Ye block sirf tab data deta hai jab user ke paas report-permission ho.
+        var liveData = await BuildLiveDataAsync(question, firmId, hasReportPermission, ct);
 
         var apiKey = await ReadPlatformGeminiKeyAsync(ct);
         if (string.IsNullOrWhiteSpace(apiKey)) apiKey = _opts.CurrentValue.GeminiApiKey;
@@ -70,10 +78,14 @@ public class AnjiAssistantService : IAnjiAssistantService
             "based on the PAGE CONTEXT provided. If the answer is not in the context, give the most sensible short " +
             "guidance for such an app, and if truly unrelated, say politely you can only help with this app. " +
             "Keep answers SHORT (2-4 sentences), friendly and step-like. Never mention 'AI', 'LLM', 'Gemini', " +
-            "'model', or any vendor name. " + langLine;
+            "'model', or any vendor name. " +
+            "If a LIVE DATA section is provided, use those EXACT figures in your answer (do not invent numbers). " +
+            "If LIVE DATA says permission is missing, politely tell the user they don't have access to see that figure. " +
+            langLine;
 
         var userMsg =
             "PAGE CONTEXT:\n" + (string.IsNullOrWhiteSpace(pageContext) ? "(none)" : pageContext) +
+            (string.IsNullOrWhiteSpace(liveData) ? "" : "\n\nLIVE DATA (use these exact figures):\n" + liveData) +
             "\n\nUSER QUESTION:\n" + question.Trim();
 
         var body = new
@@ -116,6 +128,102 @@ public class AnjiAssistantService : IAnjiAssistantService
             _log.LogWarning(ex, "Assistant Gemini fail → FAQ fallback");
             return null;
         }
+    }
+
+    // ── LIVE DATA lookup ── sawaal balance/sales/last-bill type ho to asli aankde (firm-scoped).
+    private async Task<string> BuildLiveDataAsync(string question, Guid firmId, bool hasReportPermission, CancellationToken ct)
+    {
+        var q = (question ?? "").ToLowerInvariant();
+        bool wantsBalance = ContainsAny(q, "outstanding", "balance", "baki", "baaki", "bakaya", "udhar", "udhaar", "len den", "lena dena", "kitna baki", "kitne paise");
+        bool wantsSales = ContainsAny(q, "sales", "bikri", "becha", " sale", "vikri", "vechan");
+        bool wantsLastBill = ContainsAny(q, "last bill", "aakhri bill", "akhri bill", "pichla bill", "pichhla bill", "recent bill", "last invoice", "aakhri invoice");
+        bool wantsLastPay = ContainsAny(q, "last payment", "aakhri payment", "akhri payment", "payment kab", "last receipt", "aakhri receipt", "bhugtan kab");
+
+        if (!wantsBalance && !wantsSales && !wantsLastBill && !wantsLastPay) return "";
+
+        // Permission gate — live figure sirf report-permission walon ko.
+        if (!hasReportPermission)
+            return "PERMISSION MISSING: user ko ye figure dekhne ki ijazat nahi.";
+
+        var sb = new StringBuilder();
+        var todayIst = DateOnly.FromDateTime(DateTime.UtcNow.AddMinutes(330));
+
+        if (wantsSales)
+        {
+            bool today = ContainsAny(q, "aaj", "today", "aj ka", "aaj ka");
+            var from = today ? todayIst : new DateOnly(todayIst.Year, todayIst.Month, 1);
+            var total = await _db.Bills
+                .Where(b => b.FirmId == firmId && b.BillType == "sales" && b.DeletedAt == null
+                         && b.BillDate >= from && b.BillDate <= todayIst)
+                .SumAsync(b => (decimal?)b.Total, ct) ?? 0m;
+            sb.AppendLine($"Sales {(today ? "aaj" : "is mahine")}: Rs {total:N2}");
+        }
+
+        if (wantsBalance || wantsLastBill || wantsLastPay)
+        {
+            var party = await ResolvePartyAsync(q, firmId, ct);
+            if (party == null)
+            {
+                sb.AppendLine("Party nahi mili: sawaal me party ka naam saaf likho (jaise 'Riddhi Agency ka balance').");
+            }
+            else
+            {
+                if (wantsBalance)
+                {
+                    var outstanding = await _db.Bills
+                        .Where(b => b.FirmId == firmId && b.BillType == "sales"
+                                 && b.Status != "paid" && b.Status != "cancelled" && b.DeletedAt == null
+                                 && b.PartyId == party.Value.Id)
+                        .SumAsync(b => (decimal?)(b.Total - b.PaidAmount), ct) ?? 0m;
+                    sb.AppendLine($"{party.Value.Name} ka outstanding (baaki): Rs {outstanding:N2}");
+                }
+                if (wantsLastBill)
+                {
+                    var lb = await _db.Bills
+                        .Where(b => b.FirmId == firmId && b.DeletedAt == null
+                                 && (b.PartyId == party.Value.Id || b.BuyerPartyId == party.Value.Id))
+                        .OrderByDescending(b => b.BillDate).ThenByDescending(b => b.CreatedAt)
+                        .Select(b => new { b.BillNo, b.BillDate, b.Total })
+                        .FirstOrDefaultAsync(ct);
+                    sb.AppendLine(lb == null
+                        ? $"{party.Value.Name} ka koi bill nahi mila."
+                        : $"{party.Value.Name} ka aakhri bill: No {lb.BillNo}, date {lb.BillDate:dd-MM-yyyy}, Rs {lb.Total:N2}");
+                }
+                if (wantsLastPay)
+                {
+                    var lp = await _db.Payments
+                        .Where(p => p.FirmId == firmId && p.DeletedAt == null && p.PartyId == party.Value.Id)
+                        .OrderByDescending(p => p.PaymentDate).ThenByDescending(p => p.CreatedAt)
+                        .Select(p => new { p.PaymentNo, p.PaymentDate, p.Amount, p.PaymentType })
+                        .FirstOrDefaultAsync(ct);
+                    sb.AppendLine(lp == null
+                        ? $"{party.Value.Name} ka koi payment/receipt nahi mila."
+                        : $"{party.Value.Name} ka aakhri {(lp.PaymentType == "payment" ? "payment" : "receipt")}: No {lp.PaymentNo}, date {lp.PaymentDate:dd-MM-yyyy}, Rs {lp.Amount:N2}");
+                }
+            }
+        }
+        return sb.ToString().Trim();
+    }
+
+    private static bool ContainsAny(string hay, params string[] needles)
+    {
+        foreach (var n in needles) if (hay.Contains(n)) return true;
+        return false;
+    }
+
+    // Party name resolve — firm ke saare party naam load karke jo naam sawaal me aata hai
+    // (longest match) wahi party. Galat/aadha naam pe bhi best match dhundhta hai.
+    private async Task<(Guid Id, string Name)?> ResolvePartyAsync(string qLower, Guid firmId, CancellationToken ct)
+    {
+        var parties = await _db.PartyProfiles
+            .Where(p => p.FirmId == firmId)
+            .Join(_db.Contacts, p => p.ContactId, c => c.Id, (p, c) => new { p.Id, c.DisplayName })
+            .ToListAsync(ct);
+        var match = parties
+            .Where(x => !string.IsNullOrWhiteSpace(x.DisplayName) && qLower.Contains(x.DisplayName.ToLowerInvariant()))
+            .OrderByDescending(x => x.DisplayName.Length)
+            .FirstOrDefault();
+        return match == null ? null : (match.Id, match.DisplayName);
     }
 
     // Platform Gemini key — platform.billing_settings (id=1). Migration na chali ho to "" (appsettings fallback).

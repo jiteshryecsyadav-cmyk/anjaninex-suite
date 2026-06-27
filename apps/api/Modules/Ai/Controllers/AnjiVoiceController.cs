@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Namokara.Api.Modules.Ai.Services;
+using Namokara.Api.Modules.Platform.Services;
 
 namespace Namokara.Api.Modules.Ai.Controllers;
 
@@ -21,12 +22,15 @@ public class AnjiVoiceController : ControllerBase
 {
     private readonly ISarvamTtsService _tts;
     private readonly IAnjiAssistantService _assistant;
+    private readonly IPermissionService _perms;
     private readonly ILogger<AnjiVoiceController> _log;
 
-    public AnjiVoiceController(ISarvamTtsService tts, IAnjiAssistantService assistant, ILogger<AnjiVoiceController> log)
+    public AnjiVoiceController(ISarvamTtsService tts, IAnjiAssistantService assistant,
+        IPermissionService perms, ILogger<AnjiVoiceController> log)
     {
         _tts = tts;
         _assistant = assistant;
+        _perms = perms;
         _log = log;
     }
 
@@ -40,8 +44,19 @@ public class AnjiVoiceController : ControllerBase
             return NoContent();
         try
         {
+            // firm + report-permission — live data (party balance/sales/last bill) sirf
+            // un users ko jinke paas report dekhne ki permission ho.
+            Guid.TryParse(User.FindFirst("firm_id")?.Value, out var firmId);
+            var hasReport = false;
+            if (Guid.TryParse(User.FindFirst("user_id")?.Value, out var userId))
+            {
+                var perms = await _perms.GetUserPermissions(userId);
+                hasReport = perms.Contains("*") || perms.Contains("firm:*")
+                            || perms.Contains("accounting.report.view.firm");
+            }
+
             var answer = await _assistant.AnswerAsync(
-                body.Question, body.PageContext ?? "", body.Lang ?? "hi", ct);
+                body.Question, body.PageContext ?? "", body.Lang ?? "hi", firmId, hasReport, ct);
             if (string.IsNullOrWhiteSpace(answer))
                 return NoContent();   // no key / fail → frontend FAQ fallback
             return Ok(new { answer });

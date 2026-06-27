@@ -45,9 +45,11 @@ const subNavTemplate = `
           <h2 class="font-display font-black text-2xl text-[#5c1a8b]">⚖️ Trial Balance</h2>
           <p class="text-sm text-[#6b3fa0]">Verifies all debits equal all credits</p>
         </div>
-        <div class="flex gap-2">
+        <div class="flex gap-2 flex-wrap">
           <input [(ngModel)]="asOf" type="date" (change)="load()" class="input w-44">
           <button (click)="load()" class="btn-primary">Refresh</button>
+          <button (click)="printTB()" class="px-3 py-2 rounded border border-[#ddc8f5] text-[#5c1a8b] font-bold hover:bg-[#f0e6ff] text-sm">🖨 Print</button>
+          <button (click)="whatsappTB()" class="px-3 py-2 rounded bg-green-50 text-green-700 font-bold hover:bg-green-100 text-sm">📲 WhatsApp</button>
         </div>
       </div>
 
@@ -89,9 +91,9 @@ const subNavTemplate = `
               </tr>
             </thead>
             <tbody>
-              @for (r of d.rows; track r.ledgerId; let i = $index) {
+              @for (r of pagedRows(); track r.ledgerId; let i = $index) {
                 <tr class="border-t hover:bg-[#faf5ff]">
-                  <td class="px-3 py-2 font-mono text-xs">{{ i + 1 }}</td>
+                  <td class="px-3 py-2 font-mono text-xs">{{ (page() - 1) * pageSize + i + 1 }}</td>
                   <td class="px-3 py-2 font-semibold">{{ r.ledgerName }}</td>
                   <td class="px-3 py-2 text-xs text-gray-500">{{ r.groupName }}</td>
                   <td class="px-3 py-2 text-right font-mono text-xs">

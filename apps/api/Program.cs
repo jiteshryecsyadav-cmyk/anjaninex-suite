@@ -323,6 +323,10 @@ try
     builder.Services.AddScoped<Namokara.Api.Modules.Ai.Services.ISarvamTtsService,
         Namokara.Api.Modules.Ai.Services.SarvamTtsService>();
 
+    // Assistant (Anji) brain — Gemini Flash text Q&A (uses the "gemini" HttpClient above).
+    builder.Services.AddScoped<Namokara.Api.Modules.Ai.Services.IAnjiAssistantService,
+        Namokara.Api.Modules.Ai.Services.AnjiAssistantService>();
+
     // Storage (MinIO)
     builder.Services.Configure<Namokara.Api.Infrastructure.Storage.StorageSettings>(
         builder.Configuration.GetSection("Storage"));

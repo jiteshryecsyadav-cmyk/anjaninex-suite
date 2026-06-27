@@ -117,6 +117,21 @@ export class AiService {
   // Anji voice — Sarvam AI natural Indian TTS. Returns base64 WAV chunks in order,
   // or null when the backend has no Sarvam key / Sarvam failed (HTTP 204) — caller
   // then falls back to the browser Web Speech voice. lang: 'hi'|'hinglish'|'en'|'gu'.
+  // Assistant (Anji) AI jawab — Gemini Flash. Page context + sawaal bhejte hain.
+  // null milta hai (204 / error / no key) to caller apne hand-written FAQ par fallback kare.
+  async assistantAsk(question: string, pageContext: string, lang: string): Promise<string | null> {
+    try {
+      const res = await firstValueFrom(
+        this.http.post<{ answer: string }>(`${this.base}/assistant`,
+          { question, pageContext, lang }, { observe: 'response' })
+      );
+      if (!res || res.status === 204 || !res.body?.answer) return null;
+      return res.body.answer;
+    } catch {
+      return null;   // network/server error → FAQ fallback
+    }
+  }
+
   async ttsSarvam(text: string, lang: string, voice: 'male' | 'female' = 'female'): Promise<{ audios: string[] } | null> {
     try {
       const res = await firstValueFrom(

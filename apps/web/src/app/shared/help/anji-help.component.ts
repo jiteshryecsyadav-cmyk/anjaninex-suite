@@ -409,11 +409,30 @@ export class AnjiHelpComponent {
   askTyped() { const t = this.typed.trim(); if (t) { this.ask(t); this.typed = ''; } }
 
   // ---------- keyword match ----------
-  ask(query: string) {
+  // AI-first: pehle Gemini Flash se is page ke context me jawab maango. Jawab mile to
+  // wahi bolo; na mile (key na ho / fail) to hand-written FAQ keyword-match par fallback.
+  async ask(query: string) {
     this.askedQ.set(query);
-    const a = this.bestAnswer(query);
+    this.answer.set(this.thinkingMsg());
+    let a: string | null = null;
+    try { a = await this.ai.assistantAsk(query, this.pageContextText(), this.shortLang()); } catch { a = null; }
+    if (!a) a = this.bestAnswer(query);   // AI na chale to FAQ fallback (Anji kabhi na tute)
     this.answer.set(a);
     this.speak(a);
+  }
+
+  private thinkingMsg(): string {
+    return this.lang() === 'gujarati' ? 'જવાબ શોધી રહ્યો છું…'
+      : this.lang() === 'english' ? 'Let me check…'
+      : 'जवाब ढूंढ रहा हूँ…';
+  }
+
+  // Current page ka help-content → AI ke liye context (taaki jawab is app ka sahi ho).
+  private pageContextText(): string {
+    const p = this.page();
+    const steps = p.steps.map((s, i) => `${i + 1}. ${s}`).join('\n');
+    const faqs = p.faqs.map(f => `Q: ${f.q}\nA: ${f.a}`).join('\n');
+    return `Page: ${p.title}\n${p.intro}\nSteps:\n${steps}\nFAQs:\n${faqs}`;
   }
   private norm(s: string) { return (s || '').toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, ' ').replace(/\s+/g, ' ').trim(); }
   private bestAnswer(query: string): string {

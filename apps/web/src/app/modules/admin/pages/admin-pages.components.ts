@@ -3,7 +3,7 @@ import { CommonModule, DecimalPipe, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink, RouterLinkActive } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
-import { AdminService, FirmListItem, FirmDetail, WalletTxn, Plan, AgentCost, SavePlan, CreateFirmReq } from '../services/admin.service';
+import { AdminService, FirmListItem, FirmDetail, WalletTxn, Plan, AgentCost, SavePlan, CreateFirmReq, AgentListItem } from '../services/admin.service';
 import { BackButtonComponent } from '../../../shared/back-button.component';
 
 const subNav = `
@@ -172,8 +172,14 @@ const subNav = `
                   @for (p of plans(); track p.id) { <option [ngValue]="p.id">{{ p.name }}</option> }
                 </select>
               </div>
-              <div><label class="fl">City</label><input [(ngModel)]="nf.city" class="fi"></div>
-              <div><label class="fl">State</label><input [(ngModel)]="nf.state" class="fi"></div>
+              <div><label class="fl">City</label>
+                <input [(ngModel)]="nf.city" class="fi" list="cityList" placeholder="Type/Select city">
+                <datalist id="cityList">@for (c of cities; track c) { <option [value]="c"></option> }</datalist>
+              </div>
+              <div><label class="fl">State</label>
+                <input [(ngModel)]="nf.state" class="fi" list="stateList" placeholder="Type/Select state">
+                <datalist id="stateList">@for (s of states; track s) { <option [value]="s"></option> }</datalist>
+              </div>
               <div><label class="fl">Contact Email *</label><input [(ngModel)]="nf.contactEmail" class="fi"></div>
               <div><label class="fl">Contact Phone</label><input [(ngModel)]="nf.contactPhone" class="fi"></div>
             </div>
@@ -199,14 +205,17 @@ const subNav = `
                       class="text-xs px-2 py-1 rounded bg-[#f0e6ff] text-[#5c1a8b] font-bold disabled:opacity-40">+ Add Partner</button>
             </div>
             @for (p of nf.partners; track $index; let i = $index) {
-              <div class="grid grid-cols-5 gap-2 mb-2">
-                <div><label class="fl">Partner {{ i + 1 }} Name</label><input [(ngModel)]="p.fullName" class="fi"></div>
-                <div><label class="fl">Username</label><input [(ngModel)]="p.username" class="fi"></div>
-                <div><label class="fl">Mobile No</label><input [(ngModel)]="p.mobile" class="fi font-mono" inputmode="numeric"></div>
-                <div><label class="fl">WhatsApp No</label><input [(ngModel)]="p.whatsapp" class="fi font-mono" inputmode="numeric"></div>
-                <div class="flex gap-1 items-end">
-                  <div class="flex-1"><label class="fl">Password (min 6)</label><input [(ngModel)]="p.password" class="fi"></div>
-                  <button type="button" (click)="removePartner(i)" class="px-2 pb-2 text-red-600 font-bold" title="Hatao">✕</button>
+              <div class="border border-[#e7d9fb] rounded-lg p-3 mb-2 bg-[#faf7ff]">
+                <div class="flex items-center justify-between mb-2">
+                  <span class="fl !mb-0">Partner {{ i + 1 }}</span>
+                  <button type="button" (click)="removePartner(i)" class="text-xs text-red-600 font-bold hover:underline">✕ Hatao</button>
+                </div>
+                <div class="grid grid-cols-3 gap-3">
+                  <div><label class="fl">Name</label><input [(ngModel)]="p.fullName" class="fi"></div>
+                  <div><label class="fl">Username</label><input [(ngModel)]="p.username" class="fi"></div>
+                  <div><label class="fl">Password (min 6)</label><input [(ngModel)]="p.password" class="fi"></div>
+                  <div><label class="fl">Mobile No</label><input [(ngModel)]="p.mobile" class="fi font-mono" inputmode="numeric"></div>
+                  <div><label class="fl">WhatsApp No</label><input [(ngModel)]="p.whatsapp" class="fi font-mono" inputmode="numeric"></div>
                 </div>
               </div>
             }
@@ -216,8 +225,12 @@ const subNav = `
             <h4 class="font-bold text-sm text-[#5c1a8b] mt-4 mb-2">👥 Referral (optional)</h4>
             <div class="grid grid-cols-3 gap-3">
               <div>
-                <label class="fl">Agent Code (optional)</label>
-                <input [(ngModel)]="nf.agentCode" (blur)="checkAgentCode()" class="fi font-mono uppercase" placeholder="e.g. AGT123">
+                <label class="fl">Agent (code + naam — search/select)</label>
+                <input [(ngModel)]="nf.agentCode" (change)="onAgentPick(nf.agentCode!)" (blur)="checkAgentCode()"
+                       class="fi font-mono" list="agentList" placeholder="Naam ya code se dhundo">
+                <datalist id="agentList">
+                  @for (a of agents(); track a.id) { <option [value]="a.code + ' — ' + a.name"></option> }
+                </datalist>
                 @if (agentName()) { <div class="text-xs text-green-700 mt-1">✓ {{ agentName() }}</div> }
                 @if (agentErr()) { <div class="text-xs text-red-600 mt-1">{{ agentErr() }}</div> }
               </div>
@@ -301,9 +314,23 @@ export class AdminFirmsComponent {
     });
   }
 
+  // Agent searchable dropdown — code + naam; select pe code auto-fill.
+  agents = signal<AgentListItem[]>([]);
+  // State/City searchable dropdowns (datalist).
+  readonly states = ['Andhra Pradesh','Arunachal Pradesh','Assam','Bihar','Chhattisgarh','Goa','Gujarat','Haryana','Himachal Pradesh','Jharkhand','Karnataka','Kerala','Madhya Pradesh','Maharashtra','Manipur','Meghalaya','Mizoram','Nagaland','Odisha','Punjab','Rajasthan','Sikkim','Tamil Nadu','Telangana','Tripura','Uttar Pradesh','Uttarakhand','West Bengal','Delhi','Jammu and Kashmir','Ladakh','Puducherry','Chandigarh','Andaman and Nicobar Islands','Dadra and Nagar Haveli and Daman and Diu','Lakshadweep'];
+  readonly cities = ['Mumbai','Delhi','Bengaluru','Hyderabad','Ahmedabad','Chennai','Kolkata','Surat','Pune','Jaipur','Lucknow','Kanpur','Nagpur','Indore','Bhopal','Patna','Ludhiana','Agra','Vadodara','Rajkot','Varanasi','Coimbatore','Madurai','Nashik','Faridabad','Ghaziabad','Amritsar','Jodhpur','Raipur','Ranchi','Guwahati','Chandigarh','Gurugram','Noida','Bhilwara','Erode','Tiruppur','Salem','Panipat','Bhiwandi'];
+
+  // Agent datalist se "CODE — Naam" pick hone par code nikaal kar fill + resolve.
+  onAgentPick(value: string) {
+    const code = (value || '').split('—')[0].trim().toUpperCase();
+    this.nf.agentCode = code;
+    this.checkAgentCode();
+  }
+
   ngOnInit() {
     this.load();
     this.svc.listPlans().subscribe(p => this.plans.set(p));
+    this.svc.listAgents().subscribe({ next: a => this.agents.set(a), error: () => {} });
   }
 
   openAddFirm() { this.nf = this.blankFirm(); this.addErr.set(''); this.showAdd.set(true); }

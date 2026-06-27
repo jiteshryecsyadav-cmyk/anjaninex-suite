@@ -18,17 +18,22 @@ import { AiService } from '../../modules/ai/services/ai.service';
   template: `
     <!-- Floating launcher -->
     @if (!open()) {
-      <button class="anji-fab" (click)="openPanel()" title="Assistant">
+      <button class="anji-fab" title="Assistant — pakad kar khisko (drag)"
+              [style.left.px]="fabPos()?.x" [style.top.px]="fabPos()?.y"
+              [style.right]="fabPos() ? 'auto' : null" [style.bottom]="fabPos() ? 'auto' : null"
+              (pointerdown)="fabDown($event)">
         <span class="anji-face">🙋</span>
         <span class="anji-fab-txt">Help</span>
       </button>
     }
 
     @if (open()) {
-      <div class="anji-wrap">
-        <!-- Header -->
-        <div class="anji-head">
-          <div class="anji-id"><span class="anji-face">🙋</span> <b>Assistant</b></div>
+      <div class="anji-wrap"
+           [style.left.px]="panelPos()?.x" [style.top.px]="panelPos()?.y"
+           [style.right]="panelPos() ? 'auto' : null" [style.bottom]="panelPos() ? 'auto' : null">
+        <!-- Header (drag handle) -->
+        <div class="anji-head anji-drag" (pointerdown)="panelDown($event)">
+          <div class="anji-id"><span class="anji-face">🙋</span> <b>Assistant</b> <small>⠿ drag</small></div>
           <button class="anji-x" (click)="open.set(false); stopAll()">×</button>
         </div>
 
@@ -96,10 +101,14 @@ import { AiService } from '../../modules/ai/services/ai.service';
     .anji-fab {
       position: fixed; right: 18px; bottom: 18px; z-index: 1190;
       display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
-      width: 60px; height: 60px; border: 0; border-radius: 50%; cursor: pointer; color: #fff;
+      width: 60px; height: 60px; border: 0; border-radius: 50%; cursor: grab; color: #fff;
       background: var(--anjaninex-navy, #1B2E5C); box-shadow: 0 8px 22px rgba(0,0,0,.35);
-      transition: transform .12s;
+      transition: transform .12s; touch-action: none; user-select: none;
     }
+    .anji-fab:active { cursor: grabbing; }
+    .anji-drag { cursor: grab; touch-action: none; user-select: none; }
+    .anji-drag:active { cursor: grabbing; }
+    .anji-id small { font-size: 9px; opacity: .65; }
     .anji-fab:hover { transform: scale(1.08); }
     .anji-fab::after { content: ''; position: absolute; inset: 0; border-radius: 50%;
       background: linear-gradient(180deg, rgba(255,255,255,.30), transparent 55%); pointer-events: none; }
@@ -205,6 +214,73 @@ export class AnjiHelpComponent {
   }
 
   openPanel() { this.open.set(true); this.err.set(''); }
+
+  // ---------- DRAG (mouse + touch via Pointer Events) ----------
+  // FAB aur khula panel dono ko screen pe kahin bhi khisko sakte ho. Position localStorage
+  // me yaad rehti hai. Click vs drag: 5px se kam hila to click (FAB → panel khulta hai).
+  fabPos = signal<{ x: number; y: number } | null>(this.loadPos('anji_fab_pos'));
+  panelPos = signal<{ x: number; y: number } | null>(this.loadPos('anji_panel_pos'));
+  private drag: { kind: 'fab' | 'panel'; dx: number; dy: number; w: number; h: number; sx: number; sy: number; moved: boolean } | null = null;
+
+  private loadPos(key: string): { x: number; y: number } | null {
+    try {
+      const v = localStorage.getItem(key);
+      if (v) {
+        const p = JSON.parse(v);
+        if (typeof p?.x === 'number' && typeof p?.y === 'number') {
+          // viewport ke andar clamp (window chhoti ho gayi ho to off-screen na rahe)
+          const x = Math.max(2, Math.min((window.innerWidth || 360) - 64, p.x));
+          const y = Math.max(2, Math.min((window.innerHeight || 640) - 64, p.y));
+          return { x, y };
+        }
+      }
+    } catch {}
+    return null;
+  }
+  private savePos(key: string, p: { x: number; y: number }) { try { localStorage.setItem(key, JSON.stringify(p)); } catch {} }
+
+  fabDown(e: PointerEvent) { this.startDrag('fab', e); }
+  panelDown(e: PointerEvent) {
+    // close (×) button par drag mat shuru karo — uska click chalne do
+    if ((e.target as HTMLElement)?.closest('.anji-x')) return;
+    this.startDrag('panel', e);
+  }
+
+  private startDrag(kind: 'fab' | 'panel', e: PointerEvent) {
+    const handle = e.currentTarget as HTMLElement;
+    const host = kind === 'fab' ? handle : (handle.closest('.anji-wrap') as HTMLElement);
+    if (!host) return;
+    const r = host.getBoundingClientRect();
+    this.drag = { kind, dx: e.clientX - r.left, dy: e.clientY - r.top, w: r.width, h: r.height, sx: e.clientX, sy: e.clientY, moved: false };
+    try { handle.setPointerCapture?.(e.pointerId); } catch {}
+    window.addEventListener('pointermove', this.onDragMove);
+    window.addEventListener('pointerup', this.onDragUp);
+    window.addEventListener('pointercancel', this.onDragUp);
+    e.preventDefault();
+  }
+
+  private onDragMove = (e: PointerEvent) => {
+    const d = this.drag; if (!d) return;
+    if (!d.moved && Math.abs(e.clientX - d.sx) + Math.abs(e.clientY - d.sy) < 5) return;
+    d.moved = true;
+    const x = Math.max(2, Math.min(window.innerWidth - d.w - 2, e.clientX - d.dx));
+    const y = Math.max(2, Math.min(window.innerHeight - d.h - 2, e.clientY - d.dy));
+    if (d.kind === 'fab') this.fabPos.set({ x, y }); else this.panelPos.set({ x, y });
+  };
+
+  private onDragUp = () => {
+    const d = this.drag; this.drag = null;
+    window.removeEventListener('pointermove', this.onDragMove);
+    window.removeEventListener('pointerup', this.onDragUp);
+    window.removeEventListener('pointercancel', this.onDragUp);
+    if (!d) return;
+    if (!d.moved) {
+      if (d.kind === 'fab') this.openPanel();   // bina khiske click = panel kholo
+      return;
+    }
+    if (d.kind === 'fab') { const p = this.fabPos(); if (p) this.savePos('anji_fab_pos', p); }
+    else { const p = this.panelPos(); if (p) this.savePos('anji_panel_pos', p); }
+  };
 
   // ---------- TTS ----------
   // Sarvam AI ki natural Indian awaaz pehle try karo; key na ho / fail ho to

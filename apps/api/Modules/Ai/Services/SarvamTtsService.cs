@@ -90,7 +90,7 @@ public class SarvamTtsService : ISarvamTtsService
                     target_language_code = targetLang,
                     speaker = speaker,
                     model = "bulbul:v3",          // latest, best quality (v2 se behtar)
-                    pace = 0.85,                  // dheere/saaf (v3 range 0.5–2.0)
+                    pace = 0.90,                  // (v3 range 0.5–2.0)
                     speech_sample_rate = 24000    // high quality (v3 default)
                 };
                 var json = JsonSerializer.Serialize(body);

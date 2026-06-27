@@ -360,7 +360,7 @@ export class AnjiHelpComponent {
              || voices.find(v => v.lang?.startsWith(bcp.split('-')[0]))
              || voices.find(v => v.lang === 'hi-IN')
              || voices.find(v => v.lang?.startsWith('en')) || null;
-      u.rate = 0.85; u.pitch = 1;   // dheere/saaf (0.96 tez tha)
+      u.rate = 0.90; u.pitch = 1;
       u.onstart = () => this.speaking.set(true);
       u.onend = () => this.speaking.set(false);
       u.onerror = () => this.speaking.set(false);

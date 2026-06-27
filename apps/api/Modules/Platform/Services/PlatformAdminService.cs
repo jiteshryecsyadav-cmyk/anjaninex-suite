@@ -690,6 +690,7 @@ public class PlatformAdminService : IPlatformAdminService
                         CreatedAt = now, UpdatedAt = now
                     };
                     _db.Users.Add(pu);
+                    await _db.SaveChangesAsync();   // partner user PEHLE persist — warna user_branch_access ka FK (user_id) fail
                     _db.UserRoles.Add(new UserRole { UserId = pu.Id, RoleId = role.Id, AssignedAt = now });
                     _db.UserBranchAccess.Add(new UserBranchAccess { UserId = pu.Id, BranchId = branch.Id, IsDefault = true });
                 }

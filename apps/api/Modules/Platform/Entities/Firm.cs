@@ -13,6 +13,10 @@ public class Firm
     [MaxLength(200)]
     public string? LegalName { get; set; }
 
+    // proprietorship | partnership | llp | pvt_ltd
+    [MaxLength(30)]
+    public string? FirmType { get; set; }
+
     [MaxLength(15)]
     public string? GstNumber { get; set; }
 

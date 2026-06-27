@@ -155,6 +155,14 @@ const subNav = `
             <p class="text-xs text-gray-500 mb-3">Sirf firm + admin login banega. Admin khud login karke users / branches / roles set karega.</p>
             <div class="grid grid-cols-2 gap-3">
               <div class="col-span-2"><label class="fl">Firm Name *</label><input [(ngModel)]="nf.name" class="fi"></div>
+              <div><label class="fl">Firm Type</label>
+                <select [(ngModel)]="nf.firmType" class="fi">
+                  <option value="proprietorship">Proprietorship</option>
+                  <option value="partnership">Partnership</option>
+                  <option value="llp">LLP</option>
+                  <option value="pvt_ltd">Pvt Ltd</option>
+                </select>
+              </div>
               <div><label class="fl">Legal Name</label><input [(ngModel)]="nf.legalName" class="fi"></div>
               <div><label class="fl">GST</label><input [(ngModel)]="nf.gst" class="fi font-mono uppercase"></div>
               <div><label class="fl">PAN</label><input [(ngModel)]="nf.pan" class="fi font-mono uppercase"></div>
@@ -181,6 +189,26 @@ const subNav = `
               <div><label class="fl">Username *</label><input [(ngModel)]="nf.adminUsername" class="fi"></div>
               <div><label class="fl">Password * (min 6)</label><input [(ngModel)]="nf.adminPassword" class="fi"></div>
             </div>
+
+            <!-- Partners (extra admin, optional) -->
+            <div class="flex items-center justify-between mt-4 mb-2">
+              <h4 class="font-bold text-sm text-[#5c1a8b]">🤝 Partners (extra admin) — optional</h4>
+              <button type="button" (click)="addPartner()" [disabled]="(nf.partners?.length ?? 0) >= 3"
+                      class="text-xs px-2 py-1 rounded bg-[#f0e6ff] text-[#5c1a8b] font-bold disabled:opacity-40">+ Add Partner</button>
+            </div>
+            @for (p of nf.partners; track $index; let i = $index) {
+              <div class="grid grid-cols-3 gap-3 mb-2">
+                <div><label class="fl">Partner {{ i + 1 }} Name</label><input [(ngModel)]="p.fullName" class="fi"></div>
+                <div><label class="fl">Username</label><input [(ngModel)]="p.username" class="fi"></div>
+                <div class="flex gap-1 items-end">
+                  <div class="flex-1"><label class="fl">Password (min 6)</label><input [(ngModel)]="p.password" class="fi"></div>
+                  <button type="button" (click)="removePartner(i)" class="px-2 pb-2 text-red-600 font-bold" title="Hatao">✕</button>
+                </div>
+              </div>
+            }
+            @if ((nf.partners?.length ?? 0) > 0) {
+              <p class="text-[10px] text-gray-400">Har partner ko full-access (Firm Owner) admin login milega.</p>
+            }
             <h4 class="font-bold text-sm text-[#5c1a8b] mt-4 mb-2">👥 Referral (optional)</h4>
             <div class="grid grid-cols-3 gap-3">
               <div>
@@ -243,10 +271,19 @@ export class AdminFirmsComponent {
 
   blankFirm(): CreateFirmReq {
     return { name: '', legalName: '', gst: '', pan: '', city: '', state: '',
+             firmType: 'proprietorship',
              contactEmail: '', contactPhone: '', planId: null,
              bankName: '', accountNo: '', ifsc: '',
-             adminFullName: '', adminUsername: '', adminPassword: '', agentCode: '' };
+             adminFullName: '', adminUsername: '', adminPassword: '', agentCode: '',
+             partners: [] };
   }
+
+  // Partner = extra admin login (firm_owner). Main admin + max 3 partner = 4 admin tak.
+  addPartner() {
+    if ((this.nf.partners?.length ?? 0) < 3)
+      this.nf.partners!.push({ fullName: '', username: '', password: '' });
+  }
+  removePartner(i: number) { this.nf.partners!.splice(i, 1); }
 
   agentName = signal('');
   agentErr = signal('');
@@ -273,6 +310,11 @@ export class AdminFirmsComponent {
       this.addErr.set('Firm Name, Contact Email, Username, Password zaroori hain.'); return;
     }
     if (f.adminPassword.length < 6) { this.addErr.set('Password kam se kam 6 character.'); return; }
+    // Khali partner rows hatao; jisme username hai uska password 6+ zaroori.
+    f.partners = (f.partners ?? []).filter(p => p.username?.trim());
+    for (const p of f.partners) {
+      if ((p.password ?? '').length < 6) { this.addErr.set(`Partner '${p.username}' ka password kam se kam 6 character.`); return; }
+    }
     this.addSaving.set(true); this.addErr.set('');
     this.svc.createFirm(f).subscribe({
       next: (r) => {

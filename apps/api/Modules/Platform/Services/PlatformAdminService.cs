@@ -87,10 +87,15 @@ public record CreatePlanDto(
 
 public record CreateFirmDto(
     string Name, string? LegalName, string? Gst, string? Pan, string? City, string? State,
+    string? FirmType,   // proprietorship | partnership | llp | pvt_ltd
     string ContactEmail, string ContactPhone, Guid? PlanId,
     string AdminFullName, string AdminUsername, string AdminPassword,
     string? BankName = null, string? AccountNo = null, string? Ifsc = null,
-    string? AgentCode = null);
+    string? AgentCode = null,
+    List<FirmPartnerDto>? Partners = null);   // extra partner admins (2-4), sab firm_owner
+
+// Partner = extra admin login (firm_owner full access). Main admin ke alaava.
+public record FirmPartnerDto(string FullName, string Username, string Password);
 
 // =============================================================================
 // Service
@@ -601,6 +606,7 @@ public class PlatformAdminService : IPlatformAdminService
                 GstNumber = string.IsNullOrWhiteSpace(dto.Gst) ? null : dto.Gst.Trim().ToUpperInvariant(),
                 PanNumber = string.IsNullOrWhiteSpace(dto.Pan) ? null : dto.Pan.Trim().ToUpperInvariant(),
                 City = dto.City, State = dto.State,
+                FirmType = string.IsNullOrWhiteSpace(dto.FirmType) ? "proprietorship" : dto.FirmType.Trim(),
                 ContactEmail = dto.ContactEmail.Trim(), ContactPhone = (dto.ContactPhone ?? "").Trim(),
                 BankName = string.IsNullOrWhiteSpace(dto.BankName) ? null : dto.BankName.Trim(),
                 AccountNo = string.IsNullOrWhiteSpace(dto.AccountNo) ? null : dto.AccountNo.Trim(),
@@ -653,6 +659,36 @@ public class PlatformAdminService : IPlatformAdminService
             await _db.SaveChangesAsync();   // FK order: user pehle persist (role_permissions+user)
             _db.UserRoles.Add(new UserRole { UserId = user.Id, RoleId = role.Id, AssignedAt = now });
             _db.UserBranchAccess.Add(new UserBranchAccess { UserId = user.Id, BranchId = branch.Id, IsDefault = true });
+
+            // Extra PARTNER admins (optional) — har partner firm_owner (full access), apna login.
+            if (dto.Partners is { Count: > 0 })
+            {
+                var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { dto.AdminUsername.Trim() };
+                foreach (var p in dto.Partners)
+                {
+                    var uname = (p.Username ?? "").Trim();
+                    if (string.IsNullOrWhiteSpace(uname)) continue;   // khali partner row skip
+                    if (string.IsNullOrWhiteSpace(p.Password) || p.Password.Length < 6)
+                        throw new ArgumentException($"Partner '{uname}' ka password kam se kam 6 character ka ho.");
+                    if (!seen.Add(uname))
+                        throw new ArgumentException($"Partner username '{uname}' duplicate hai.");
+                    if (await _db.Users.AnyAsync(u => u.Username == uname))
+                        throw new ArgumentException($"Username '{uname}' pehle se le liya gaya hai.");
+
+                    var pu = new User
+                    {
+                        Id = Guid.NewGuid(), FirmId = firm.Id,
+                        FullName = string.IsNullOrWhiteSpace(p.FullName) ? uname : p.FullName.Trim(),
+                        Username = uname, Email = dto.ContactEmail.Trim(), Phone = dto.ContactPhone?.Trim(),
+                        PasswordHash = BCrypt.Net.BCrypt.HashPassword(p.Password),
+                        DefaultBranchId = branch.Id, CanViewAllBranches = true, IsActive = true,
+                        CreatedAt = now, UpdatedAt = now
+                    };
+                    _db.Users.Add(pu);
+                    _db.UserRoles.Add(new UserRole { UserId = pu.Id, RoleId = role.Id, AssignedAt = now });
+                    _db.UserBranchAccess.Add(new UserBranchAccess { UserId = pu.Id, BranchId = branch.Id, IsDefault = true });
+                }
+            }
 
             // Standard Indian chart of accounts — nayi firm accounting-ready mile
             await SeedChartOfAccounts(firm.Id, now);

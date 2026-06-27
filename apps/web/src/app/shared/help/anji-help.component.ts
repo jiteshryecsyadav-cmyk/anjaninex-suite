@@ -166,9 +166,7 @@ export class AnjiHelpComponent {
 
   // Sarvam TTS playback state — base64 WAV chunks played sequentially via one
   // <audio> element. Reference rakhi jaati hai taaki stopAll() pause/reset kar sake.
-  private sarvamAudio: HTMLAudioElement | null = null;
-  private sarvamQueue: string[] = [];
-  private sarvamIdx = 0;
+  private sarvamEls: HTMLAudioElement[] = [];   // saare chunk preload — gapless playback
   private speakToken = 0;   // har naye speak() par badhta — purani async TTS race se bachata
 
   open = signal(false);
@@ -315,41 +313,36 @@ export class AnjiHelpComponent {
     return l === 'english' ? 'en' : l === 'gujarati' ? 'gu' : 'hi';
   }
 
-  // Sequentially play base64 WAV chunks via one <audio> element; chain via onended.
+  // GAPLESS playback — saare WAV chunks pehle se Audio elements me preload karo, fir
+  // back-to-back bajao. Pehle ek hi element me src badalte the → har chunk par decode gap
+  // = "atak atak". Ab agla chunk pehle se buffered hota hai → gap bahut kam.
   private playSarvam(audios: string[], token: number) {
-    this.sarvamQueue = audios;
-    this.sarvamIdx = 0;
     this.speaking.set(true);
-    const audio = new Audio();
-    this.sarvamAudio = audio;
-    audio.onended = () => {
+    const els = audios.map(b64 => {
+      const a = new Audio('data:audio/wav;base64,' + b64);
+      a.preload = 'auto';
+      try { a.load(); } catch {}
+      return a;
+    });
+    this.sarvamEls = els;
+
+    const playAt = (idx: number) => {
       if (token !== this.speakToken) return;
-      this.sarvamIdx++;
-      if (this.sarvamIdx < this.sarvamQueue.length) {
-        audio.src = 'data:audio/wav;base64,' + this.sarvamQueue[this.sarvamIdx];
-        audio.play().catch(() => this.speaking.set(false));
-      } else {
-        this.speaking.set(false);
-      }
+      if (idx >= els.length) { this.speaking.set(false); return; }
+      const a = els[idx];
+      a.onended = () => { if (token === this.speakToken) playAt(idx + 1); };
+      a.onerror = () => { if (token === this.speakToken) playAt(idx + 1); };
+      a.play().catch(() => { if (token === this.speakToken) this.speaking.set(false); });
     };
-    audio.onerror = () => { if (token === this.speakToken) this.speaking.set(false); };
-    audio.src = 'data:audio/wav;base64,' + this.sarvamQueue[0];
-    audio.play().catch(() => this.speaking.set(false));
+    playAt(0);
   }
 
-  // Pause + reset Sarvam audio and clear the queue (used by stop + new speak).
+  // Pause + reset saare Sarvam audio elements (used by stop + new speak).
   private stopAudio() {
-    try {
-      if (this.sarvamAudio) {
-        this.sarvamAudio.onended = null;
-        this.sarvamAudio.onerror = null;
-        this.sarvamAudio.pause();
-        this.sarvamAudio.src = '';
-      }
-    } catch {}
-    this.sarvamAudio = null;
-    this.sarvamQueue = [];
-    this.sarvamIdx = 0;
+    for (const a of this.sarvamEls) {
+      try { a.onended = null; a.onerror = null; a.pause(); a.src = ''; } catch {}
+    }
+    this.sarvamEls = [];
   }
 
   // FALLBACK — original browser Web Speech voice (kept intact). Sarvam na ho to.
@@ -367,7 +360,7 @@ export class AnjiHelpComponent {
              || voices.find(v => v.lang?.startsWith(bcp.split('-')[0]))
              || voices.find(v => v.lang === 'hi-IN')
              || voices.find(v => v.lang?.startsWith('en')) || null;
-      u.rate = 0.96; u.pitch = 1;
+      u.rate = 0.85; u.pitch = 1;   // dheere/saaf (0.96 tez tha)
       u.onstart = () => this.speaking.set(true);
       u.onend = () => this.speaking.set(false);
       u.onerror = () => this.speaking.set(false);

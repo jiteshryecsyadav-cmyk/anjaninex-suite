@@ -89,7 +89,7 @@ public class SarvamTtsService : ISarvamTtsService
                     target_language_code = targetLang,
                     speaker = speaker,
                     model = "bulbul:v2",
-                    pace = 1.0,
+                    pace = 0.85,   // dheere/saaf bolne ke liye (1.0 tez tha)
                     speech_sample_rate = 22050
                 };
                 var json = JsonSerializer.Serialize(body);

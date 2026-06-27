@@ -133,6 +133,20 @@ const subNavTemplate = `
               </tr>
             </tfoot>
           </table>
+
+          <!-- Pagination — 100 entry per page -->
+          @if (totalPages() > 1) {
+            <div class="flex items-center justify-between p-3 border-t border-[#f0e6ff] text-sm">
+              <span class="text-gray-500 font-mono text-xs">{{ rangeStart() }}–{{ rangeEnd() }} of {{ d.rows.length }}</span>
+              <div class="flex items-center gap-2">
+                <button (click)="prevPage()" [disabled]="page() <= 1"
+                        class="px-3 py-1 rounded border border-[#ddc8f5] text-[#5c1a8b] font-bold disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[#f0e6ff]">‹ Prev</button>
+                <span class="text-gray-500 font-mono text-xs">Page {{ page() }}/{{ totalPages() }}</span>
+                <button (click)="nextPage()" [disabled]="page() >= totalPages()"
+                        class="px-3 py-1 rounded border border-[#ddc8f5] text-[#5c1a8b] font-bold disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[#f0e6ff]">Next ›</button>
+              </div>
+            </div>
+          }
         </div>
       }
     </div>
@@ -145,14 +159,84 @@ export class TrialBalanceComponent {
   loading = signal(true);
   asOf = new Date().toISOString().split('T')[0];
 
+  // Pagination — 100 entry per page, baaki next page.
+  readonly pageSize = 100;
+  page = signal(1);
+  totalPages = computed(() => Math.max(1, Math.ceil((this.data()?.rows.length ?? 0) / this.pageSize)));
+  pagedRows = computed(() => {
+    const rows = this.data()?.rows ?? [];
+    const start = (this.page() - 1) * this.pageSize;
+    return rows.slice(start, start + this.pageSize);
+  });
+  rangeStart = computed(() => (this.data()?.rows.length ?? 0) === 0 ? 0 : (this.page() - 1) * this.pageSize + 1);
+  rangeEnd = computed(() => Math.min(this.page() * this.pageSize, this.data()?.rows.length ?? 0));
+
   ngOnInit() { this.load(); }
 
   load() {
     this.loading.set(true);
+    this.page.set(1);   // naye data par pehle page se
     this.svc.trialBalance(this.asOf).subscribe({
       next: (d) => { this.data.set(d); this.loading.set(false); },
       error: () => this.loading.set(false)
     });
+  }
+
+  prevPage() { if (this.page() > 1) this.page.update(p => p - 1); }
+  nextPage() { if (this.page() < this.totalPages()) this.page.update(p => p + 1); }
+
+  // ===== Print — poori Trial Balance (saari rows) naye window me =====
+  printTB() {
+    const d = this.data();
+    if (!d) return;
+    const fmt = (n: number) => n > 0 ? '₹' + n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—';
+    const rows = d.rows.map((r, i) =>
+      `<tr>
+        <td style="border:1px solid #ccc;padding:4px 6px">${i + 1}</td>
+        <td style="border:1px solid #ccc;padding:4px 6px">${r.ledgerName}</td>
+        <td style="border:1px solid #ccc;padding:4px 6px">${r.groupName || ''}</td>
+        <td style="border:1px solid #ccc;padding:4px 6px;text-align:right">${fmt(r.closingDr)}</td>
+        <td style="border:1px solid #ccc;padding:4px 6px;text-align:right">${fmt(r.closingCr)}</td>
+      </tr>`).join('');
+    const html =
+      `<!doctype html><html><head><meta charset="utf-8"><title>Trial Balance</title></head>
+      <body style="font-family:Arial,sans-serif;padding:20px;color:#222">
+        <h2 style="margin:0 0 2px">${this.features.firmName() || 'Anjaninex'} — Trial Balance</h2>
+        <p style="margin:0 0 12px;color:#666">As of ${d.asOf} &nbsp;·&nbsp; ${d.isBalanced ? 'Balanced' : 'UNBALANCED'}</p>
+        <table style="border-collapse:collapse;width:100%;font-size:12px">
+          <thead><tr style="background:#f0e6ff">
+            <th style="border:1px solid #ccc;padding:4px 6px;text-align:left">S.No</th>
+            <th style="border:1px solid #ccc;padding:4px 6px;text-align:left">Ledger</th>
+            <th style="border:1px solid #ccc;padding:4px 6px;text-align:left">Group</th>
+            <th style="border:1px solid #ccc;padding:4px 6px;text-align:right">Closing Dr</th>
+            <th style="border:1px solid #ccc;padding:4px 6px;text-align:right">Closing Cr</th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+          <tfoot><tr style="font-weight:bold;background:#f5f5f5">
+            <td colspan="3" style="border:1px solid #ccc;padding:4px 6px;text-align:right">TOTALS</td>
+            <td style="border:1px solid #ccc;padding:4px 6px;text-align:right">₹${d.totalDr.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+            <td style="border:1px solid #ccc;padding:4px 6px;text-align:right">₹${d.totalCr.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+          </tr></tfoot>
+        </table>
+      </body></html>`;
+    const w = window.open('', '_blank', 'width=900,height=680');
+    if (!w) { alert('Popup block ho raha — browser me allow karein'); return; }
+    w.document.write(html); w.document.close(); w.focus();
+    setTimeout(() => { try { w.print(); } catch {} }, 350);
+  }
+
+  // ===== WhatsApp — Trial Balance ka summary (poori list bahut badi hoti, isliye totals) =====
+  whatsappTB() {
+    const d = this.data();
+    if (!d) return;
+    const txt =
+      `*Trial Balance — ${this.features.firmName() || 'Anjaninex'}*\n` +
+      `As of ${d.asOf}\n` +
+      `Ledgers: ${d.rows.length}\n` +
+      `Total Dr: ₹${d.totalDr.toLocaleString('en-IN', { minimumFractionDigits: 2 })}\n` +
+      `Total Cr: ₹${d.totalCr.toLocaleString('en-IN', { minimumFractionDigits: 2 })}\n` +
+      `Status: ${d.isBalanced ? 'Balanced ✅' : 'UNBALANCED ⚠️'}`;
+    window.open('https://wa.me/?text=' + encodeURIComponent(txt), '_blank');
   }
 }
 

@@ -127,7 +127,6 @@ export const HELP_PAGES: HelpEntry[] = [
         { q: 'entry date aur bill date me fark', a: 'Entry Date = aaj ki date (jab aap entry kar rahe ho), apne aap aati hai. Supplier Bill Date = bill par chhapi hui date — wo aapko bharni hai.' },
         { q: 'total galat aa raha', a: 'Har row ka qty × rate aur GST% check karo. Discount field ho to wo bhi dekho. Ek row galat hone se grand total badal jata hai.' },
         { q: 'bill submit nahi ho raha', a: 'Supplier, Supplier Bill No, Bill Date aur kam se kam 1 item zaroori hai. Laal (*) wale khaali field bharo, phir Submit.' },
-        { q: 'AI/scan mera data yaad rakhta hai? safe hai?', a: 'Scan sirf bill ko padh kar uska data nikaalta hai — bas, aur kuch nahi. Wo aapka data yaad ya store nahi rakhta, kyunki Anjaninex ne poori security laga rakhi hai. Aapka data bilkul safe hai.' },
       ],
     },
     english: {
@@ -860,7 +859,7 @@ export const HELP_PAGES: HelpEntry[] = [
     match: '/wallet',
     hinglish: {
       title: 'Wallet & Plan',
-      intro: 'Aapka plan, wallet balance aur AI/OCR scan usage yahan dikhta hai. Recharge bhi yahin se hota hai. Bill scan jaise paid features ka paisa isi wallet se katta hai.',
+      intro: 'Aapka plan, wallet balance aur OCR scan usage yahan dikhta hai. Recharge bhi yahin se hota hai. Bill scan jaise paid features ka paisa isi wallet se katta hai.',
       steps: [
         'Upar current plan, validity (kitne din baaki) aur wallet balance dekho.',
         'Is mahine kitne scan/usage hue ye dikhta hai.',
@@ -876,7 +875,7 @@ export const HELP_PAGES: HelpEntry[] = [
     },
     english: {
       title: 'Wallet & Plan',
-      intro: 'Your plan, wallet balance and AI/OCR scan usage. Recharge here too. Paid features like bill scan deduct from this wallet.',
+      intro: 'Your plan, wallet balance and OCR scan usage. Recharge here too. Paid features like bill scan deduct from this wallet.',
       steps: [
         'See current plan, validity (days left) and wallet balance on top.',
         'View this month\'s scans/usage.',
@@ -1053,7 +1052,6 @@ export const GENERIC_HELP: HelpEntry = {
       { q: 'search kaise', a: 'Page ke upar search box ya filter se naam/number daal kar dhundo.' },
       { q: 'save nahi ho raha', a: 'Saare laal (*) wale zaroori field bharo — koi khaali hoga to save nahi hoga.' },
       { q: 'bill kaise banau', a: 'Trading → Bills → "New Bill Entry" par jao.' },
-      { q: 'AI/scan mera data yaad rakhta hai? safe hai?', a: 'Scan sirf bill/order ko padh kar data nikaalta hai — bus. Wo aapka data yaad ya store nahi rakhta, kyunki Anjaninex ne poori security laga rakhi hai. Aapka data bilkul safe hai.' },
     ],
   },
   english: {

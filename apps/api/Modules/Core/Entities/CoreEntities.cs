@@ -20,6 +20,9 @@ public class User
     [MaxLength(20)]
     public string? Phone { get; set; }
 
+    [MaxLength(20)]
+    public string? Whatsapp { get; set; }
+
     [Required, MaxLength(200)]
     public string FullName { get; set; } = "";
 

@@ -188,6 +188,8 @@ const subNav = `
               <div><label class="fl">Admin Name</label><input [(ngModel)]="nf.adminFullName" class="fi"></div>
               <div><label class="fl">Username *</label><input [(ngModel)]="nf.adminUsername" class="fi"></div>
               <div><label class="fl">Password * (min 6)</label><input [(ngModel)]="nf.adminPassword" class="fi"></div>
+              <div><label class="fl">Mobile No</label><input [(ngModel)]="nf.adminMobile" class="fi font-mono" inputmode="numeric"></div>
+              <div><label class="fl">WhatsApp No</label><input [(ngModel)]="nf.adminWhatsapp" class="fi font-mono" inputmode="numeric"></div>
             </div>
 
             <!-- Partners (extra admin, optional) -->
@@ -197,9 +199,11 @@ const subNav = `
                       class="text-xs px-2 py-1 rounded bg-[#f0e6ff] text-[#5c1a8b] font-bold disabled:opacity-40">+ Add Partner</button>
             </div>
             @for (p of nf.partners; track $index; let i = $index) {
-              <div class="grid grid-cols-3 gap-3 mb-2">
+              <div class="grid grid-cols-5 gap-2 mb-2">
                 <div><label class="fl">Partner {{ i + 1 }} Name</label><input [(ngModel)]="p.fullName" class="fi"></div>
                 <div><label class="fl">Username</label><input [(ngModel)]="p.username" class="fi"></div>
+                <div><label class="fl">Mobile No</label><input [(ngModel)]="p.mobile" class="fi font-mono" inputmode="numeric"></div>
+                <div><label class="fl">WhatsApp No</label><input [(ngModel)]="p.whatsapp" class="fi font-mono" inputmode="numeric"></div>
                 <div class="flex gap-1 items-end">
                   <div class="flex-1"><label class="fl">Password (min 6)</label><input [(ngModel)]="p.password" class="fi"></div>
                   <button type="button" (click)="removePartner(i)" class="px-2 pb-2 text-red-600 font-bold" title="Hatao">✕</button>
@@ -274,14 +278,14 @@ export class AdminFirmsComponent {
              firmType: 'proprietorship',
              contactEmail: '', contactPhone: '', planId: null,
              bankName: '', accountNo: '', ifsc: '',
-             adminFullName: '', adminUsername: '', adminPassword: '', agentCode: '',
+             adminFullName: '', adminUsername: '', adminPassword: '', adminMobile: '', adminWhatsapp: '', agentCode: '',
              partners: [] };
   }
 
   // Partner = extra admin login (firm_owner). Main admin + max 3 partner = 4 admin tak.
   addPartner() {
     if ((this.nf.partners?.length ?? 0) < 3)
-      this.nf.partners!.push({ fullName: '', username: '', password: '' });
+      this.nf.partners!.push({ fullName: '', username: '', password: '', mobile: '', whatsapp: '' });
   }
   removePartner(i: number) { this.nf.partners!.splice(i, 1); }
 

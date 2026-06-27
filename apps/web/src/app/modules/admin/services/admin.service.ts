@@ -102,13 +102,13 @@ export interface FirmReport {
   firms: FirmReportRow[];
 }
 
-export interface FirmPartnerReq { fullName: string; username: string; password: string; }
+export interface FirmPartnerReq { fullName: string; username: string; password: string; mobile?: string; whatsapp?: string; }
 export interface CreateFirmReq {
   name: string; legalName?: string; gst?: string; pan?: string; city?: string; state?: string;
   firmType?: string;   // proprietorship | partnership | llp | pvt_ltd
   contactEmail: string; contactPhone: string; planId?: string | null;
   bankName?: string; accountNo?: string; ifsc?: string;
-  adminFullName: string; adminUsername: string; adminPassword: string;
+  adminFullName: string; adminUsername: string; adminPassword: string; adminMobile?: string; adminWhatsapp?: string;
   agentCode?: string;
   partners?: FirmPartnerReq[];   // extra admin logins (2-4), sab firm_owner
 }

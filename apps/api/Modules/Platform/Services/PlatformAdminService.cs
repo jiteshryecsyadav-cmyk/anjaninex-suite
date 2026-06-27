@@ -91,11 +91,12 @@ public record CreateFirmDto(
     string ContactEmail, string ContactPhone, Guid? PlanId,
     string AdminFullName, string AdminUsername, string AdminPassword,
     string? BankName = null, string? AccountNo = null, string? Ifsc = null,
-    string? AgentCode = null,
+    string? AgentCode = null, string? AdminMobile = null, string? AdminWhatsapp = null,
     List<FirmPartnerDto>? Partners = null);   // extra partner admins (2-4), sab firm_owner
 
 // Partner = extra admin login (firm_owner full access). Main admin ke alaava.
-public record FirmPartnerDto(string FullName, string Username, string Password);
+public record FirmPartnerDto(string FullName, string Username, string Password,
+    string? Mobile = null, string? Whatsapp = null);
 
 // =============================================================================
 // Service
@@ -650,7 +651,9 @@ public class PlatformAdminService : IPlatformAdminService
             {
                 Id = Guid.NewGuid(), FirmId = firm.Id,
                 FullName = string.IsNullOrWhiteSpace(dto.AdminFullName) ? dto.Name.Trim() : dto.AdminFullName.Trim(),
-                Username = dto.AdminUsername.Trim(), Email = dto.ContactEmail.Trim(), Phone = dto.ContactPhone?.Trim(),
+                Username = dto.AdminUsername.Trim(), Email = dto.ContactEmail.Trim(),
+                Phone = string.IsNullOrWhiteSpace(dto.AdminMobile) ? dto.ContactPhone?.Trim() : dto.AdminMobile.Trim(),
+                Whatsapp = string.IsNullOrWhiteSpace(dto.AdminWhatsapp) ? null : dto.AdminWhatsapp.Trim(),
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.AdminPassword),
                 DefaultBranchId = branch.Id, CanViewAllBranches = true, IsActive = true,
                 CreatedAt = now, UpdatedAt = now
@@ -679,7 +682,9 @@ public class PlatformAdminService : IPlatformAdminService
                     {
                         Id = Guid.NewGuid(), FirmId = firm.Id,
                         FullName = string.IsNullOrWhiteSpace(p.FullName) ? uname : p.FullName.Trim(),
-                        Username = uname, Email = dto.ContactEmail.Trim(), Phone = dto.ContactPhone?.Trim(),
+                        Username = uname, Email = dto.ContactEmail.Trim(),
+                        Phone = string.IsNullOrWhiteSpace(p.Mobile) ? dto.ContactPhone?.Trim() : p.Mobile.Trim(),
+                        Whatsapp = string.IsNullOrWhiteSpace(p.Whatsapp) ? null : p.Whatsapp.Trim(),
                         PasswordHash = BCrypt.Net.BCrypt.HashPassword(p.Password),
                         DefaultBranchId = branch.Id, CanViewAllBranches = true, IsActive = true,
                         CreatedAt = now, UpdatedAt = now

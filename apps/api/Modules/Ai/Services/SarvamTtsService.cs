@@ -49,9 +49,9 @@ public class SarvamTtsService : ISarvamTtsService
     {
         if (string.IsNullOrWhiteSpace(text)) return null;
 
-        // Voice: male / female. Sarvam bulbul:v3 — young (~19), halki/sweet awaaz:
-        // female "kavya", male "aayan". (v3 me pitch/loudness support nahi — hum bhejte bhi nahi.)
-        var speaker = (voice?.Trim().ToLowerInvariant() == "male") ? "aayan" : "kavya";
+        // Voice: male / female. Sarvam bulbul:v3 — college-student jaisi young, sweet awaaz:
+        // female "simran", male "rehan". (v3 me pitch/loudness support nahi — hum bhejte bhi nahi.)
+        var speaker = (voice?.Trim().ToLowerInvariant() == "male") ? "rehan" : "simran";
 
         // Resolve key: DB platform key wins, warna appsettings AI:SarvamApiKey.
         var apiKey = await ReadPlatformSarvamKeyAsync(ct);

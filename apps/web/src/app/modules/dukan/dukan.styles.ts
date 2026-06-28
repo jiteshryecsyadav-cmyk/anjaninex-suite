@@ -140,4 +140,22 @@ export const DUKAN_STYLES = `
 .dukan-scope .printable, .dukan-scope .printable *{visibility:visible}
 .dukan-scope .printable{position:absolute;left:0;top:0;width:100%;box-shadow:none;border:none}
 .dukan-scope .no-print, .dukan-scope .sidebar, .dukan-scope .topbar{display:none !important}
+
+/* ===== LAYOUT FIX — dukan shell must fit INSIDE the Anjaninex content area =====
+   (admin pages render inside the Anjaninex shell which already has its own outer
+   sidebar; the dukan full-width 100vh shell was overflowing horizontally and
+   pushing content off-screen → page looked blank). */
+.dukan-scope.shell, .dukan-scope .shell{ min-height:auto; width:100%; max-width:100%; overflow-x:hidden; }
+.dukan-scope .sidebar{ position:relative; top:auto; height:auto; align-self:stretch; }
+.dukan-scope .main{ flex:1 1 0%; min-width:0; max-width:100%; }
+.dukan-scope .topbar{ position:relative; }
+.dukan-scope .content{ max-width:100%; }
+/* Horizontal tab nav (Bazaar Link style) — replaces inner vertical sidebar */
+.dukan-scope .dk-tabs{display:flex;gap:2px;border-bottom:1px solid #E4E7EC;overflow-x:auto;margin:6px 0 18px}
+.dukan-scope .dk-tab{padding:10px 16px;font-size:13.5px;font-weight:600;color:#6B7280;border-bottom:2px solid transparent;white-space:nowrap;text-decoration:none;display:inline-flex;gap:6px;align-items:center;background:none;border-top:0;border-left:0;border-right:0;cursor:pointer}
+.dukan-scope .dk-tab:hover{color:#16294F}
+.dukan-scope .dk-tab.dk-tab-on{color:#16294F;border-bottom-color:#E1232A;font-weight:800}
+@media print{
+  .dukan-scope .no-print, .dukan-scope .sidebar, .dukan-scope .topbar{display:none !important}
+}
 `;

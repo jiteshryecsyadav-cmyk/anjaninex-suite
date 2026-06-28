@@ -12,28 +12,30 @@ import { DUKAN_STYLES } from '../../dukan.styles';
   encapsulation: ViewEncapsulation.None,
   styles: [DUKAN_STYLES],
   template: `
-  <div class="shell dukan-scope">
-    <aside class="sidebar" [class.open]="open()">
-      <div class="brand">ONLINE<small>DUKAN</small></div>
-      <nav class="nav">
-        <a class="nav-item" routerLink="/dukan/admin/dashboard" routerLinkActive="on" (click)="open.set(false)"><span class="ic">📊</span> Dashboard</a>
-        <a class="nav-item" routerLink="/dukan/admin/categories" routerLinkActive="on" (click)="open.set(false)"><span class="ic">🗂️</span> Categories</a>
-        <a class="nav-item" routerLink="/dukan/admin/products" routerLinkActive="on" (click)="open.set(false)"><span class="ic">📦</span> Catalog Manage</a>
-        <a class="nav-item" routerLink="/dukan/admin/orders" routerLinkActive="on" (click)="open.set(false)"><span class="ic">🧾</span> Orders</a>
-        <a class="nav-item" routerLink="/dukan/admin/billing" routerLinkActive="on" (click)="open.set(false)"><span class="ic">💳</span> Billing</a>
-        <a class="nav-item" routerLink="/dukan/admin/reviews" routerLinkActive="on" (click)="open.set(false)"><span class="ic">⭐</span> Reviews</a>
-        <a class="nav-item" routerLink="/dukan/admin/bank" routerLinkActive="on" (click)="open.set(false)"><span class="ic">🏦</span> Bank & UPI</a>
-        <a class="nav-item" routerLink="/dukan/admin/profile" routerLinkActive="on" (click)="open.set(false)"><span class="ic">👤</span> Profile</a>
-      </nav>
-      <div class="sidebar-foot"><a class="logout-btn" routerLink="/" style="text-decoration:none">← Back to Suite</a></div>
-    </aside>
-    <div class="main">
-      <header class="topbar">
-        <button class="chip" (click)="open.set(!open())">☰</button>
-        <div><div class="tt">Online Dukan · Admin</div><div class="ts">{{ ds.seller().name }}</div></div>
-      </header>
-      <div class="content"><router-outlet></router-outlet></div>
+  <div class="dukan-scope" style="padding:16px 22px;max-width:1200px;margin:0 auto">
+    <!-- Header -->
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:4px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:24px">🛒</span>
+        <div>
+          <div style="font-size:20px;font-weight:800;color:#16294F">Online Dukan</div>
+          <div style="font-size:12.5px;color:#6B7280">{{ ds.seller().name }} · apni online shop</div>
+        </div>
+      </div>
+      <a routerLink="/" style="font-size:13px;color:#16294F;border:1px solid #d6def0;padding:7px 14px;border-radius:8px;text-decoration:none">← Back to Suite</a>
     </div>
+    <!-- Horizontal tabs (Bazaar Link style) -->
+    <nav class="dk-tabs">
+      <a class="dk-tab" routerLink="/dukan/admin/dashboard" routerLinkActive="dk-tab-on">📊 Dashboard</a>
+      <a class="dk-tab" routerLink="/dukan/admin/categories" routerLinkActive="dk-tab-on">🗂️ Categories</a>
+      <a class="dk-tab" routerLink="/dukan/admin/products" routerLinkActive="dk-tab-on">📦 Catalog Manage</a>
+      <a class="dk-tab" routerLink="/dukan/admin/orders" routerLinkActive="dk-tab-on">🧾 Orders</a>
+      <a class="dk-tab" routerLink="/dukan/admin/billing" routerLinkActive="dk-tab-on">💳 Billing</a>
+      <a class="dk-tab" routerLink="/dukan/admin/reviews" routerLinkActive="dk-tab-on">⭐ Reviews</a>
+      <a class="dk-tab" routerLink="/dukan/admin/bank" routerLinkActive="dk-tab-on">🏦 Bank &amp; UPI</a>
+      <a class="dk-tab" routerLink="/dukan/admin/profile" routerLinkActive="dk-tab-on">👤 Profile</a>
+    </nav>
+    <router-outlet></router-outlet>
 
     <!-- Notification toasts -->
     <div class="toast-wrap">

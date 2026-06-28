@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Namokara.Api.Modules.Accounting.Entities;
 using Namokara.Api.Modules.Ai.Entities;
 using Namokara.Api.Modules.Core.Entities;
+using Namokara.Api.Modules.Dukan.Entities;
 using Namokara.Api.Modules.Hr.Entities;
 using Namokara.Api.Modules.Platform.Entities;
 using Namokara.Api.Modules.Suppliers.Entities;
@@ -95,6 +96,16 @@ public class AppDbContext : DbContext
     public DbSet<LeaveBalance> LeaveBalances => Set<LeaveBalance>();
     public DbSet<LeaveRequest> LeaveRequests => Set<LeaveRequest>();
     public DbSet<PayrollRecord> PayrollRecords => Set<PayrollRecord>();
+
+    // Online Dukan schema (per-firm e-commerce)
+    public DbSet<DukanSettings> DukanSettings => Set<DukanSettings>();
+    public DbSet<DukanCategory> DukanCategories => Set<DukanCategory>();
+    public DbSet<DukanProduct> DukanProducts => Set<DukanProduct>();
+    public DbSet<DukanBuyer> DukanBuyers => Set<DukanBuyer>();
+    public DbSet<DukanBuyerAddress> DukanBuyerAddresses => Set<DukanBuyerAddress>();
+    public DbSet<DukanOrder> DukanOrders => Set<DukanOrder>();
+    public DbSet<DukanOrderItem> DukanOrderItems => Set<DukanOrderItem>();
+    public DbSet<DukanReview> DukanReviews => Set<DukanReview>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -248,5 +259,32 @@ public class AppDbContext : DbContext
         });
         modelBuilder.Entity<LeaveRequest>().ToTable("leave_requests", "hr");
         modelBuilder.Entity<PayrollRecord>().ToTable("payroll_records", "hr");
+
+        // Online Dukan
+        modelBuilder.Entity<DukanSettings>(e =>
+        {
+            e.ToTable("settings", "dukan");
+            e.HasKey(x => x.FirmId);
+            e.Property(x => x.FirmId).ValueGeneratedNever();   // firm_id is the PK, app-supplied
+        });
+        modelBuilder.Entity<DukanCategory>().ToTable("categories", "dukan");
+        modelBuilder.Entity<DukanProduct>().ToTable("products", "dukan");
+        modelBuilder.Entity<DukanBuyer>(e =>
+        {
+            e.ToTable("buyers", "dukan");
+            e.HasMany(x => x.Addresses).WithOne(a => a.Buyer!).HasForeignKey(a => a.BuyerId).OnDelete(DeleteBehavior.Cascade);
+        });
+        modelBuilder.Entity<DukanBuyerAddress>().ToTable("buyer_addresses", "dukan");
+        modelBuilder.Entity<DukanOrder>(e =>
+        {
+            e.ToTable("orders", "dukan");
+            e.HasMany(x => x.Items).WithOne(i => i.Order!).HasForeignKey(i => i.OrderId).OnDelete(DeleteBehavior.Cascade);
+        });
+        modelBuilder.Entity<DukanOrderItem>().ToTable("order_items", "dukan");
+        modelBuilder.Entity<DukanReview>(e =>
+        {
+            e.ToTable("reviews", "dukan");
+            e.HasKey(x => new { x.FirmId, x.OrderId });
+        });
     }
 }

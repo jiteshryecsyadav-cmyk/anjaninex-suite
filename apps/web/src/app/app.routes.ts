@@ -19,6 +19,12 @@ export const routes: Routes = [
     path: 'pricing',
     loadComponent: () => import('./pages/pricing.component').then(m => m.PricingPageComponent)
   },
+  // Online Dukan — BUYER storefront (public-ish, separate buyer login/token).
+  // Top-level (outside the firm shell) so customers reach it without an Anjaninex account.
+  {
+    path: 'dukan/shop',
+    loadChildren: () => import('./modules/dukan/dukan.routes').then(m => m.dukanShopRoutes)
+  },
   {
     path: '',
     canActivate: [authGuard],
@@ -65,6 +71,11 @@ export const routes: Routes = [
       {
         path: 'wallet',
         loadChildren: () => import('./modules/wallet/wallet.routes').then(m => m.walletRoutes)
+      },
+      {
+        // Online Dukan — ADMIN (firm owner manages categories/products/orders/reviews/settings)
+        path: 'dukan/admin',
+        loadChildren: () => import('./modules/dukan/dukan.routes').then(m => m.dukanAdminRoutes)
       },
       {
         path: 'masters',

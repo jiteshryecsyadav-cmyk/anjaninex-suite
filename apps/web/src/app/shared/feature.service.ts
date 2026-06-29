@@ -12,6 +12,7 @@ export type ModuleKey =
   | 'active_directory'
   | 'commission'
   | 'hr'
+  | 'online_dukan'
   | 'wallet'
   | 'white_label'
   | 'api_access'

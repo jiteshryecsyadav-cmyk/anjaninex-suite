@@ -44,6 +44,7 @@ const MODULE_LIST: Array<{ key: string; label: string; icon: string; description
   { key: 'active_directory', label: 'Bazaar Link', icon: '🏭', description: 'Supplier-Buyer Directory + Categories + Photos' },
   { key: 'commission',       label: 'Commission Module', icon: '💰', description: 'Commission e-Invoices, bulk generation' },
   { key: 'hr',               label: 'HR Module',        icon: '👥', description: 'Staff, Attendance, Selfie, Live Location, Leave, Payroll' },
+  { key: 'online_dukan',     label: 'Online Dukan',     icon: '🛍️', description: 'Apni online shop — catalog, orders, buyer storefront link' },
   { key: 'wallet',           label: 'Wallet',           icon: '💵', description: 'Wallet recharge + auto-debit for AI' },
   { key: 'white_label',      label: 'White Label',      icon: '🏷️', description: 'Customer’s own logo / brand colors' },
   { key: 'api_access',       label: 'API Access',       icon: '🔗', description: 'Public REST API for integrations' },

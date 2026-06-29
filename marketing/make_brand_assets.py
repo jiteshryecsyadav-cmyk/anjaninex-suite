@@ -25,7 +25,7 @@ def render(parts, name):
     cairosvg.svg2pdf(bytestring=svg.encode(),write_to=os.path.join(OUT,name+".pdf"))
     print("ok",name)
 
-def T(x,y,s,size,fill,weight="400",anchor="start",ls="0",font="Arial"):
+def T(x,y,s,size,fill,weight="400",anchor="start",ls="0",font="Arial, Noto Sans Devanagari, Nirmala UI"):
     return (f'<text x="{x}" y="{y}" font-family="{font}" font-size="{size}" font-weight="{weight}" '
             f'letter-spacing="{ls}" fill="{fill}" text-anchor="{anchor}">{E(s)}</text>')
 
@@ -106,7 +106,7 @@ o.append(T(cx+P/2,1210,"BUSINESS  SUITE",56,CREAM,"700","middle",ls="8"))
 o.append(T(cx+P/2,1320,"Trade · Accounts · GST · Automation",50,"#c8d2e6","400","middle"))
 o.append(T(cx+P/2,2360,WEB,46,GOLD,"700","middle"))
 # Back panel (left) — Get in touch
-o.append(T(c0,250,"Get in touch",64,NAVY,"800","middle"))
+o.append(T(c0,250,"संपर्क करें",64,NAVY,"800","middle"))
 o.append(f'<rect x="{c0-110}" y="290" width="220" height="6" fill="{GOLD}"/>')
 o.append(T(150,470,"CONTACT",34,RED,"800",ls="1"))
 o.append(T(150,535,P1N,46,NAVY,"700")); o.append(T(150,592,P1P,46,INK))
@@ -116,14 +116,14 @@ o.append(T(150,984,"WEBSITE",34,RED,"800",ls="1")); o.append(T(150,1044,WEB,44,I
 o.append(T(150,1139,"ADDRESS",34,RED,"800",ls="1"))
 o.append(T(150,1199,ADDR1,36,GREY)); o.append(T(150,1252,ADDR2,36,GREY))
 o.append(f'<image href="{LOGO_URI}" x="{c0-190}" y="1740" width="380" height="380" preserveAspectRatio="xMidYMid meet"/>')
-o.append(T(c0,2250,"Made in India",38,GREY,"400","middle"))
+o.append(T(c0,2250,"मेड इन इंडिया",38,GREY,"400","middle"))
 # Flap (right, red) tagline
 o.append(f'<rect x="{2*P}" y="0" width="{P}" height="{BH}" fill="{RED}"/>')
 o.append(f'<circle cx="{c2}" cy="640" r="70" fill="none" stroke="#ffffff" stroke-opacity="0.5" stroke-width="4"/>')
-o.append(T(c2,1130,"Aapka",98,"#fff","800","middle"))
-o.append(T(c2,1262,"poora business",98,"#fff","800","middle"))
-o.append(T(c2,1394,"ek jagah.",98,CREAM,"800","middle"))
-o.append(T(c2,1560,"Free Trial · 15 din",52,"#ffe9c7","700","middle"))
+o.append(T(c2,1130,"आपका पूरा",98,"#fff","800","middle"))
+o.append(T(c2,1262,"बिज़नेस",98,"#fff","800","middle"))
+o.append(T(c2,1394,"एक ही जगह।",98,CREAM,"800","middle"))
+o.append(T(c2,1560,"फ्री ट्रायल · 15 दिन",52,"#ffe9c7","700","middle"))
 o.append('</svg>')
 render(o,"brochure-OUTSIDE")
 
@@ -133,36 +133,35 @@ i.append(f'<rect x="0" y="0" width="{BW}" height="130" fill="url(#nv)"/>')
 i.append(f'<line x1="{P}" y1="0" x2="{P}" y2="{BH}" stroke="#ece6d8" stroke-dasharray="14 14"/>')
 i.append(f'<line x1="{2*P}" y1="0" x2="{2*P}" y2="{BH}" stroke="#ece6d8" stroke-dasharray="14 14"/>')
 # Panel 1 — About
-i.append(H2(c0,"Hum kaun hain","About Anjaninex"))
-for k,ln in enumerate(["Anjaninex Bharat ke chhote evam","madhyam vyapariyon ke liye simple,",
-    "powerful business software banati","hai — jisse trading, hisaab-kitaab","aur GST sab ek jagah aasaani se chale."]):
+i.append(H2(c0,"हम कौन हैं","About Anjaninex"))
+for k,ln in enumerate(["Anjaninex छोटे और मँझले","दुकानदारों के लिए आसान","बिज़नेस सॉफ्टवेयर बनाता है —","जिससे खरीद-बिक्री, हिसाब-किताब","और GST सब एक ही जगह चले।"]):
     i.append(T(120,500+k*64,ln,43,INK))
-i.append(T(c0,1010,"Hamara mission",50,RED,"800","middle"))
-for k,ln in enumerate(["Har vyapari ke paas badi company","jaisa software ho — sasta, saaf","aur apni bhasha me."]):
+i.append(T(c0,1010,"हमारा मकसद",50,RED,"800","middle"))
+for k,ln in enumerate(["हर दुकानदार के पास बड़ी","कंपनी जैसा सॉफ्टवेयर हो —","सस्ता, साफ और अपनी भाषा में।"]):
     i.append(T(120,1110+k*60,ln,42,GREY))
 i.append(f'<image href="{LOGO_URI}" x="{c0-190}" y="1720" width="380" height="380" preserveAspectRatio="xMidYMid meet"/>')
 # Panel 2 — What we offer
-i.append(H2(c1,"Kya milta hai","Anjaninex Business Suite"))
-feats=["Trading — Orders, Bills, Payments, GR","Accounting — Vouchers, Ledgers, P&L, BS",
- "GST — auto CGST/SGST/IGST + reports","OCR Bill Scan — photo se auto entry",
- "WhatsApp Bot — rate broadcast + orders","Reports — Sales, Outstanding, Top parties",
- "HR — Attendance, Payroll, Live location","Bazaar Link — supplier-buyer directory",
- "Multi-branch + Team roles & permissions","Voice Assistant — Hindi/Gujarati madad"]
+i.append(H2(c1,"क्या-क्या मिलता है","Anjaninex Business Suite"))
+feats=["Trading — ऑर्डर, बिल, पेमेंट, GR","Accounting — वाउचर, लेजर, P&L, BS",
+ "GST — अपने आप CGST/SGST/IGST + रिपोर्ट","OCR बिल स्कैन — फोटो से अपने आप एंट्री",
+ "WhatsApp बॉट — रेट भेजें + ऑर्डर लें","रिपोर्ट — बिक्री, बकाया, टॉप पार्टी",
+ "HR — हाज़िरी, पगार, लाइव लोकेशन","Bazaar Link — सप्लायर-खरीदार डायरेक्ट्री",
+ "मल्टी-ब्रांच + टीम के रोल और परमिशन","वॉइस असिस्टेंट — हिंदी/गुजराती में मदद"]
 for k,f in enumerate(feats): i.append(B(P+120,500+k*82,f))
 i.append(f'<rect x="{P+120}" y="1380" width="{P-240}" height="430" rx="24" fill="{CREAM}"/>')
-i.append(T(c1,1490,"Cloud based",50,NAVY,"800","middle"))
-i.append(T(c1,1565,"Mobile + Computer dono par",40,GREY,"400","middle"))
-i.append(T(c1,1630,"Roz ka backup · Poori security",40,GREY,"400","middle"))
+i.append(T(c1,1490,"Cloud पर",50,NAVY,"800","middle"))
+i.append(T(c1,1565,"मोबाइल और कंप्यूटर दोनों पर",40,GREY,"400","middle"))
+i.append(T(c1,1630,"रोज़ का बैकअप · पूरी सेफ्टी",40,GREY,"400","middle"))
 i.append(T(c1,1720,WEB,44,RED,"800","middle"))
 # Panel 3 — Why + contact
-i.append(H2(c2,"Kyun chunein","Why Anjaninex"))
-whys=["Aasaan — Hindi/Hinglish, training nahi","Sasta — chhote vyapari ke budget me",
- "Tezi — minute me bill, scan se entry","Safe — aapka data sirf aapka",
- "Support — WhatsApp/phone par madad","Made in India — desi team, desi soch"]
+i.append(H2(c2,"हमें ही क्यों","Why Anjaninex"))
+whys=["आसान — हिंदी में, सीखने का झंझट नहीं","सस्ता — छोटे दुकानदार के बजट में",
+ "तेज़ — मिनटों में बिल, स्कैन से एंट्री","सेफ — आपका डेटा सिर्फ आपका",
+ "मदद — WhatsApp/फ़ोन पर सपोर्ट","मेड इन इंडिया — अपनी टीम, अपनी सोच"]
 for k,w in enumerate(whys): i.append(B(2*P+120,500+k*82,w))
-i.append(T(c2,1160,"Aaj hi shuru karein",56,NAVY,"800","middle"))
+i.append(T(c2,1160,"आज ही शुरू करें",56,NAVY,"800","middle"))
 i.append(f'<rect x="{c2-340}" y="1230" width="680" height="120" rx="60" fill="{RED}"/>')
-i.append(T(c2,1310,"Free Trial — 15 din",50,"#fff","800","middle"))
+i.append(T(c2,1310,"फ्री ट्रायल — 15 दिन",50,"#fff","800","middle"))
 i.append(T(c2,1470,P1N+" · "+P1P,42,NAVY,"700","middle"))
 i.append(T(c2,1535,P2N+" · "+P2P,42,NAVY,"700","middle"))
 i.append(T(c2,1615,EMAIL,42,INK,"400","middle"))

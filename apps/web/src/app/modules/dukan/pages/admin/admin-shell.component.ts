@@ -1,6 +1,7 @@
 import { Component, signal, inject, ViewEncapsulation, OnInit, HostListener } from '@angular/core';
 import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 import { DukanService } from '../../dukan.service';
+import { AuthService } from '../../../../core/auth/auth.service';
 import { DUKAN_STYLES } from '../../dukan.styles';
 
 @Component({
@@ -23,6 +24,14 @@ import { DUKAN_STYLES } from '../../dukan.styles';
         </div>
       </div>
       <a routerLink="/" style="font-size:13px;color:#16294F;border:1px solid #d6def0;padding:7px 14px;border-radius:8px;text-decoration:none">← Back to Suite</a>
+    </div>
+    <!-- Customer shop link (share with buyers) -->
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:#EEF3FA;border:1px solid #DCE6F5;border-radius:12px;padding:10px 14px;margin:10px 0 4px">
+      <span style="font-size:13px;font-weight:700;color:#16294F">🔗 Customer shop link:</span>
+      <code style="font-size:12.5px;background:#fff;border:1px solid #DCE6F5;padding:5px 9px;border-radius:7px;color:#16294F;max-width:100%;overflow:auto">{{ shopUrl() }}</code>
+      <button (click)="copyLink()" style="font-size:12.5px;font-weight:700;background:#16294F;color:#fff;border:none;padding:7px 13px;border-radius:8px;cursor:pointer">{{ copied() ? '✓ Copied' : '📋 Copy' }}</button>
+      <a [href]="waHref()" target="_blank" style="font-size:12.5px;font-weight:700;background:#22A655;color:#fff;padding:7px 13px;border-radius:8px;text-decoration:none">📲 WhatsApp</a>
+      <span style="font-size:11.5px;color:#6B7280">Ye link customer ko bhejo — wo bina login dukan dekh ke order karega</span>
     </div>
     <!-- Horizontal tabs (Bazaar Link style) -->
     <nav class="dk-tabs">
@@ -68,9 +77,26 @@ import { DUKAN_STYLES } from '../../dukan.styles';
 })
 export class DukanAdminShellComponent implements OnInit {
   ds = inject(DukanService);
+  private auth = inject(AuthService);
   open = signal(false);
+  copied = signal(false);
 
   ngOnInit() { this.ds.boot(); this.ds.enableNotifications(); }
+
+  shopUrl(): string {
+    const fid = this.auth.user()?.firmId ?? '';
+    const origin = typeof location !== 'undefined' ? location.origin : 'https://trade.anjaninex.com';
+    return `${origin}/dukan/shop/${fid}`;
+  }
+  copyLink() {
+    try { navigator.clipboard?.writeText(this.shopUrl()); } catch { /* ignore */ }
+    this.copied.set(true);
+    setTimeout(() => this.copied.set(false), 1800);
+  }
+  waHref(): string {
+    const name = this.ds.seller().name || 'Online Dukan';
+    return 'https://wa.me/?text=' + encodeURIComponent(`${name} — hamari online dukan dekho aur order karo: ${this.shopUrl()}`);
+  }
 
   // ---- Lightbox (ported from KALINDI app.component) ----
   scale = signal(1);

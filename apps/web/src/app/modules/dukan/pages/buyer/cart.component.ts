@@ -31,8 +31,8 @@ type Step = 'cart' | 'address' | 'payment' | 'success';
       <span class="badge off" style="font-size:13px;padding:5px 14px">PAID</span>
       <div style="font-size:12px;color:var(--muted);margin-top:18px">Dhanyawaad! 🎉 Aapka order place ho gaya</div>
       <div class="row" style="justify-content:center;gap:10px;margin-top:18px">
-        <button class="btn" (click)="router.navigate(['/dukan/shop/bills'])">View Bill</button>
-        <button class="btn ghost" (click)="router.navigate(['/dukan/shop/catalog'])">Continue Shopping</button>
+        <button class="btn" (click)="router.navigate(['/dukan/shop', ds.shopFirmId(), 'bills'])">View Bill</button>
+        <button class="btn ghost" (click)="router.navigate(['/dukan/shop', ds.shopFirmId(), 'catalog'])">Continue Shopping</button>
       </div>
     </div>
   }

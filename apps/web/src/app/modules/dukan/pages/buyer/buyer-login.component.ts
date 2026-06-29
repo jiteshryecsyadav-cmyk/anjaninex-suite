@@ -91,9 +91,14 @@ export class DukanBuyerLoginComponent implements OnInit {
   suPin2 = signal('');
   suErr = signal('');
 
+  firmId = '';
+
   ngOnInit() {
+    const m = this.router.url.match(/\/dukan\/shop\/([^\/?#]+)/);
+    this.firmId = m ? decodeURIComponent(m[1]) : '';
+    if (this.firmId && this.firmId !== 'login') this.ds.shopFirmId.set(this.firmId);
     this.ds.boot();
-    if (this.ds.role() === 'buyer') this.router.navigate(['/dukan/shop']);
+    if (this.ds.role() === 'buyer') this.router.navigate(['/dukan/shop', this.firmId, 'catalog']);
   }
 
   busy = signal(false);
@@ -102,7 +107,7 @@ export class DukanBuyerLoginComponent implements OnInit {
     if (this.busy()) return;
     this.err.set(''); this.busy.set(true);
     try {
-      if (await this.ds.loginBuyer(this.user(), this.pwd(), this.remember())) { this.router.navigate(['/dukan/shop']); return; }
+      if (await this.ds.loginBuyer(this.user(), this.pwd(), this.remember())) { this.router.navigate(['/dukan/shop', this.firmId, 'catalog']); return; }
       this.err.set('Galat ID ya PIN. Dobara try karein ya Sign up karein.');
     } catch { this.err.set('Server se connect nahi ho paaya. Dobara try karein.'); }
     finally { this.busy.set(false); }
@@ -116,6 +121,6 @@ export class DukanBuyerLoginComponent implements OnInit {
     const id = await this.ds.signup(this.suName(), this.suPhone(), this.suPin(), this.remember());
     if (!id) { this.suErr.set('Signup nahi hua — ye phone shayad pehle se registered hai'); return; }
     this.showSignup.set(false);
-    this.router.navigate(['/dukan/shop']);
+    this.router.navigate(['/dukan/shop', this.firmId, 'catalog']);
   }
 }

@@ -22,7 +22,7 @@ export const routes: Routes = [
   // Online Dukan — BUYER storefront (public-ish, separate buyer login/token).
   // Top-level (outside the firm shell) so customers reach it without an Anjaninex account.
   {
-    path: 'dukan/shop',
+    path: 'dukan/shop/:firmId',
     loadChildren: () => import('./modules/dukan/dukan.routes').then(m => m.dukanShopRoutes)
   },
   {

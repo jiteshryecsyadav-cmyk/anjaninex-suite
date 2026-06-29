@@ -32,6 +32,9 @@ export class DukanService {
   // ---- Buyer auth / session (storefront) ----
   buyerToken = signal<string>('');
   role = signal<'buyer' | null>(null);
+  /** Public storefront firm id (from /dukan/shop/:firmId). When set, catalog is
+   *  fetched in PUBLIC mode (no Anjaninex login) scoped to this firm. */
+  shopFirmId = signal<string | null>(null);
   buyerName = signal<string>('');
   currentBuyerId = signal<string | null>(null);
   currentBuyer = signal<Buyer | null>(null);
@@ -114,11 +117,15 @@ export class DukanService {
   // ---- Data refresh ----
   async refreshPublic() {
     try {
+      // Storefront (firmId set) → PUBLIC mode + ?firmId. Admin (no firmId) → admin JWT.
+      const fid = this.shopFirmId();
+      const mode: 'admin' | 'public' = fid ? 'public' : 'admin';
+      const qs = fid ? `?firmId=${encodeURIComponent(fid)}` : '';
       const [cats, prods, sel, rev] = await Promise.all([
-        this.req<Category[]>('GET', '/categories', undefined, 'admin'),
-        this.req<Product[]>('GET', '/products', undefined, 'admin'),
-        this.req<Seller>('GET', '/seller', undefined, 'admin'),
-        this.req<Record<string, Review>>('GET', '/reviews', undefined, 'admin'),
+        this.req<Category[]>('GET', '/categories' + qs, undefined, mode),
+        this.req<Product[]>('GET', '/products' + qs, undefined, mode),
+        this.req<Seller>('GET', '/seller' + qs, undefined, mode),
+        this.req<Record<string, Review>>('GET', '/reviews' + qs, undefined, mode),
       ]);
       if (cats) this.categories.set(cats);
       if (prods) this.products.set(prods);
@@ -151,7 +158,7 @@ export class DukanService {
   }
   async loginBuyer(idOrName: string, pin: string, remember = true): Promise<boolean> {
     try {
-      const r = await this.req<{ token: string; buyer: Buyer }>('POST', '/auth/login', { idOrName, pin });
+      const r = await this.req<{ token: string; buyer: Buyer }>('POST', '/auth/login', { idOrName, pin, firmId: this.shopFirmId() });
       this.buyerToken.set(r.token); this.role.set('buyer'); this.currentBuyer.set(r.buyer);
       this.currentBuyerId.set(r.buyer.id); this.buyerName.set(`${r.buyer.name} (${r.buyer.id})`);
       this.persistBuyer(remember); await this.refreshPrivate(); return true;
@@ -159,7 +166,7 @@ export class DukanService {
   }
   async signup(name: string, phone: string, pin: string, remember = true): Promise<string | null> {
     try {
-      const r = await this.req<{ token: string; buyer: Buyer }>('POST', '/auth/signup', { name, phone, pin });
+      const r = await this.req<{ token: string; buyer: Buyer }>('POST', '/auth/signup', { name, phone, pin, firmId: this.shopFirmId() });
       this.buyerToken.set(r.token); this.role.set('buyer'); this.currentBuyer.set(r.buyer);
       this.currentBuyerId.set(r.buyer.id); this.buyerName.set(`${r.buyer.name} (${r.buyer.id})`);
       this.persistBuyer(remember); return r.buyer.id;

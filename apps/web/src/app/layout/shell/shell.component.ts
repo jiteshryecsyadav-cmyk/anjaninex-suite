@@ -206,7 +206,7 @@ import { environment } from '../../../environments/environment';
               <!-- Brand (center) — logged-in firm ka naam (super admin = Anjaninex) -->
               <div class="font-display leading-none text-center mr-2 whitespace-nowrap">
                 <div class="font-black text-sm text-white">{{ isSuperAdmin() ? 'Anjaninex' : (features.firmName() || '—') }}</div>
-                <div class="text-[10px] font-semibold tracking-wide text-white/60">{{ isSuperAdmin() ? 'Super Admin Panel' : 'Powered by Anjaninex' }}</div>
+                <div class="text-[10px] font-semibold tracking-wide text-white/60">{{ isSuperAdmin() ? 'Super Admin Panel' : 'Vyapaar Setu' }}</div>
               </div>
 
               <div class="flex-1"></div>
@@ -326,7 +326,7 @@ import { environment } from '../../../environments/environment';
               rel="noopener"
               class="flex items-center gap-2 hover:text-anjaninex-red font-semibold">
               <img src="anjaninex-logo.jpeg" alt="Anjaninex" width="22" height="22" class="object-contain">
-              Powered by <strong>Anjaninex</strong>
+              <strong>Vyapaar Setu</strong> — an Anjaninex product
             </a>
           </footer>
         </div>

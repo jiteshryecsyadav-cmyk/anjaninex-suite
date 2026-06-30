@@ -1,7 +1,7 @@
 {
-  "name": "Anjaninex Business Suite",
-  "short_name": "Anjaninex",
-  "description": "Trading, Accounting, Suppliers & HR — all in one. Powered by Anjaninex.",
+  "name": "Vyapaar Setu — an Anjaninex product",
+  "short_name": "Vyapaar Setu",
+  "description": "Vyapaar Setu — an Anjaninex product. Trading, Accounting, Suppliers, HR & Online Dukan, all in one.",
   "id": "/?source=pwa",
   "start_url": "/?source=pwa",
   "display": "standalone",

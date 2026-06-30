@@ -15,8 +15,8 @@ import { environment } from '../../../environments/environment';
       <aside class="lx-brandpanel">
         <div class="lx-bp-top">
           <img src="anjaninex-logo.jpeg" alt="Anjaninex" class="lx-bp-logo">
-          <div class="lx-bp-name">Anjaninex</div>
-          <div class="lx-bp-suite">BUSINESS SUITE</div>
+          <div class="lx-bp-name">Vyapaar Setu</div>
+          <div class="lx-bp-suite">AN ANJANINEX PRODUCT</div>
         </div>
         <div class="lx-bp-mid">
           <h2 class="lx-bp-head">Run your entire B2B business in one place.</h2>
@@ -28,7 +28,7 @@ import { environment } from '../../../environments/environment';
           </ul>
         </div>
         <a [href]="anjaninexUrl" target="_blank" rel="noopener" class="lx-bp-bottom">
-          Powered by <strong>Anjaninex</strong> · Building world-class B2B software
+          <strong>Vyapaar Setu</strong> — an Anjaninex product · Building world-class B2B software
         </a>
       </aside>
 

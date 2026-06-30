@@ -167,7 +167,7 @@ public class DukanPublicController : DukanControllerBase
             .OrderBy(c => c.Name).ToListAsync();
         return Ok(list.Select(c => new
         {
-            id = c.Id, name = c.Name, status = c.Status, descr = c.Descr
+            id = c.Id, name = c.Name, status = c.Status, descr = c.Descr, parentId = c.ParentId
         }));
     }
 
@@ -306,7 +306,7 @@ public class DukanAuthController : DukanControllerBase
 // ADMIN — Anjaninex firm user manages categories / products / settings.
 // RLS context already set by Program.cs middleware (firm_id claim present).
 // ============================================================================
-public record DukanCategoryDto(string? Name, string? Status, string? Descr);
+public record DukanCategoryDto(string? Name, string? Status, string? Descr, Guid? ParentId);
 public record DukanProductDto(Guid? CatId, string? Name, string? Code, decimal? Mrp,
     decimal? Rate, int? Stock, string? Img, decimal? Gst, bool? GstInc, bool? Combo);
 public record DukanSettingsDto(string? Name, string? Upi, string? Acc, string? Ifsc,
@@ -331,11 +331,12 @@ public class DukanAdminController : DukanControllerBase
             Name = dto.Name ?? "",
             Status = string.IsNullOrWhiteSpace(dto.Status) ? "active" : dto.Status!,
             Descr = dto.Descr,
+            ParentId = dto.ParentId,
             CreatedAt = DateTimeOffset.UtcNow
         };
         Db.DukanCategories.Add(c);
         await Db.SaveChangesAsync();
-        return Ok(new { id = c.Id, name = c.Name, status = c.Status, descr = c.Descr });
+        return Ok(new { id = c.Id, name = c.Name, status = c.Status, descr = c.Descr, parentId = c.ParentId });
     }
 
     [HttpPut("categories/{id}")]
@@ -346,8 +347,9 @@ public class DukanAdminController : DukanControllerBase
         if (dto.Name is not null) c.Name = dto.Name;
         if (dto.Status is not null) c.Status = dto.Status;
         if (dto.Descr is not null) c.Descr = dto.Descr;
+        c.ParentId = dto.ParentId;   // null = top-level, set = sub-category
         await Db.SaveChangesAsync();
-        return Ok(new { id = c.Id, name = c.Name, status = c.Status, descr = c.Descr });
+        return Ok(new { id = c.Id, name = c.Name, status = c.Status, descr = c.Descr, parentId = c.ParentId });
     }
 
     [HttpDelete("categories/{id}")]

@@ -1,9 +1,12 @@
-import { Component, inject, computed } from '@angular/core';
+import { Component, inject } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { DukanService } from '../../dukan.service';
+import { Product } from '../../models';
 
 @Component({
   selector: 'app-catalog',
   standalone: true,
+  imports: [RouterLink],
   template: `
   <div class="card" style="padding:16px;margin-bottom:18px">
     <div class="row" style="justify-content:space-between;flex-wrap:wrap;gap:8px">
@@ -33,10 +36,11 @@ import { DukanService } from '../../dukan.service';
     </div>
   </div>
 
-  @for (cat of activeCats(); track cat.id) {
-    <div class="sec-head">{{ cat.name }} <span class="pill">{{ countIn(cat.id) }} items</span></div>
+  @for (sec of sections(); track sec.id) {
+    <div class="sec-head" [style.margin-left.px]="sec.sub ? 12 : 0">{{ sec.sub ? '↳ ' : '' }}{{ sec.title }} <span class="pill">{{ sec.products.length }} items</span></div>
+    @if (sec.products.length) {
     <div class="grid cards">
-      @for (p of productsIn(cat.id); track p.id) {
+      @for (p of sec.products; track p.id) {
         <div class="card prod">
           <div class="ph">@if (p.img) { <img [src]="p.img" style="width:100%;height:100%;object-fit:cover;cursor:zoom-in" (click)="ds.openImage(p.img)"> } @else { {{ p.combo ? '🎁' : '📦' }} }</div>
           <div class="body">
@@ -65,14 +69,39 @@ import { DukanService } from '../../dukan.service';
         </div>
       }
     </div>
+    }
+  }
+
+  <!-- Floating Go to Cart button -->
+  @if (ds.cartCount() > 0) {
+    <a [routerLink]="['/dukan/shop', ds.shopFirmId(), 'cart']" style="position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:40;background:linear-gradient(180deg,#23427E,#16294F);color:#fff;font-weight:800;padding:13px 22px;border-radius:30px;box-shadow:0 8px 24px rgba(0,0,0,.28);text-decoration:none;display:inline-flex;align-items:center;gap:10px">🛒 Go to Cart · {{ ds.cartCount() }} item · ₹{{ ds.cartTotal() }}</a>
   }
   `,
 })
 export class CatalogComponent {
   ds = inject(DukanService);
-  activeCats = computed(() => this.ds.categories().filter(c => c.status === 'active' && this.countIn(c.id) > 0));
   productsIn(catId: string) { return this.ds.products().filter(p => p.catId === catId); }
   countIn(catId: string) { return this.productsIn(catId).length; }
+
+  /** Group catalog as: top category (with its direct products) followed by its
+   *  sub-categories (each with their products). Empty categories are skipped. */
+  sections(): { id: string; title: string; sub: boolean; products: Product[] }[] {
+    const cats = this.ds.categories().filter(c => c.status === 'active');
+    const byId = new Map(cats.map(c => [c.id, c]));
+    const tops = cats.filter(c => !c.parentId || !byId.has(c.parentId)); // top, or orphan-sub shown as top
+    const out: { id: string; title: string; sub: boolean; products: Product[] }[] = [];
+    for (const t of tops) {
+      const direct = this.productsIn(t.id);
+      const subs = cats.filter(c => c.parentId === t.id);
+      const anySub = subs.some(s => this.countIn(s.id) > 0);
+      if (direct.length || anySub) out.push({ id: t.id, title: t.name, sub: false, products: direct });
+      for (const s of subs) {
+        const ps = this.productsIn(s.id);
+        if (ps.length) out.push({ id: s.id, title: s.name, sub: true, products: ps });
+      }
+    }
+    return out;
+  }
 
   waUrl(): string { const n = (this.ds.seller().whatsapp || '').replace(/\D/g, ''); return 'https://wa.me/' + (n.length === 10 ? '91' + n : n); }
   igUrl(): string { const v = (this.ds.seller().instagram || '').trim(); return v.startsWith('http') ? v : 'https://instagram.com/' + v.replace(/^@/, ''); }

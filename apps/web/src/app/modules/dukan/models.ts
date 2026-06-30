@@ -58,6 +58,7 @@ export interface Category {
   rate: number;
   status: 'active' | 'inactive';
   desc: string;
+  parentId?: string | null;   // null = top-level; set = sub-category under parentId
 }
 
 export interface Product {

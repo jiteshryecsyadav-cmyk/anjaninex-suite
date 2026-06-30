@@ -52,6 +52,9 @@ public class DukanCategory
 
     public string? Descr { get; set; }
 
+    // Self-reference: null = top-level category; set = sub-category under ParentId.
+    public Guid? ParentId { get; set; }
+
     public DateTimeOffset CreatedAt { get; set; }
 }
 

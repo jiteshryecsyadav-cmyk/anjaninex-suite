@@ -98,10 +98,23 @@ public class DukanBuyer
     public string Phone { get; set; } = "";
 
     [Required]
-    public string PinHash { get; set; } = "";
+    public string PinHash { get; set; } = "";   // bcrypt of chosen password
 
     public string? Email { get; set; }
     public string? Gstin { get; set; }
+
+    // ---- Multi-role member fields (buyer | supplier | transporter) ----
+    [MaxLength(20)]
+    public string Role { get; set; } = "buyer";
+    public string? BusinessName { get; set; }
+    public string? City { get; set; }
+    public string? State { get; set; }
+    public string? Address { get; set; }
+    public string? Whatsapp { get; set; }
+    public string? Categories { get; set; }    // supplier: kya supply karte hain
+    public string? VehicleType { get; set; }   // transporter
+    public string? RouteArea { get; set; }      // transporter: coverage/route
+    public string? Capacity { get; set; }       // transporter: load capacity
 
     public DateTimeOffset CreatedAt { get; set; }
 

@@ -12,6 +12,8 @@ export interface Address {
   lng?: number;
 }
 
+export type MemberRole = 'buyer' | 'supplier' | 'transporter';
+
 export interface Buyer {
   id: string;
   name: string;
@@ -19,6 +21,16 @@ export interface Buyer {
   pin?: string;
   email?: string;
   gstin?: string;
+  role?: MemberRole;
+  businessName?: string;
+  city?: string;
+  state?: string;
+  address?: string;
+  whatsapp?: string;
+  categories?: string;
+  vehicleType?: string;
+  routeArea?: string;
+  capacity?: string;
   addresses?: Address[];
 }
 

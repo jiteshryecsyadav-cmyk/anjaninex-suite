@@ -96,6 +96,12 @@ public abstract class DukanControllerBase : ControllerBase
             new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key)),
             SecurityAlgorithms.HmacSha256);
 
+        var roleClaim = b.Role switch
+        {
+            "supplier" => "dukan_supplier",
+            "transporter" => "dukan_transporter",
+            _ => "dukan_buyer"
+        };
         var claims = new List<Claim>
         {
             // user_id present taaki Program.cs ka OnTokenValidated (jo userId != null
@@ -105,7 +111,8 @@ public abstract class DukanControllerBase : ControllerBase
             new("buyer_id", b.Id.ToString()),
             new("firm_id", b.FirmId.ToString()),   // RLS middleware isse context set karta hai
             new("name", b.Name),
-            new(ClaimTypes.Role, "dukan_buyer"),
+            new("member_role", b.Role),
+            new(ClaimTypes.Role, roleClaim),
         };
 
         var token = new JwtSecurityToken(
@@ -125,6 +132,16 @@ public abstract class DukanControllerBase : ControllerBase
         phone = b.Phone,
         email = b.Email ?? "",
         gstin = b.Gstin ?? "",
+        role = b.Role,
+        businessName = b.BusinessName ?? "",
+        city = b.City ?? "",
+        state = b.State ?? "",
+        address = b.Address ?? "",
+        whatsapp = b.Whatsapp ?? "",
+        categories = b.Categories ?? "",
+        vehicleType = b.VehicleType ?? "",
+        routeArea = b.RouteArea ?? "",
+        capacity = b.Capacity ?? "",
         addresses = (b.Addresses ?? new()).Select(PublicAddress).ToList()
     };
 
@@ -229,7 +246,10 @@ internal static class DukanController_Mappers
 // ============================================================================
 // BUYER AUTH — signup / login (firm-scoped). Returns buyer JWT.
 // ============================================================================
-public record DukanSignupDto(string? Name, string? Phone, string? Pin, Guid? FirmId);
+public record DukanSignupDto(string? Name, string? Phone, string? Pin, Guid? FirmId,
+    string? Role, string? BusinessName, string? City, string? State, string? Address,
+    string? Whatsapp, string? Gstin, string? Categories, string? VehicleType,
+    string? RouteArea, string? Capacity);
 public record DukanLoginDto(string? IdOrName, string? Pin, Guid? FirmId);
 
 [ApiController]
@@ -245,16 +265,18 @@ public class DukanAuthController : DukanControllerBase
         var firmId = dto.FirmId ?? Guid.Empty;
         if (firmId == Guid.Empty) return BadRequest(new { error = "firmId required" });
         var phone = (dto.Phone ?? "").Trim();
-        var pin = (dto.Pin ?? "").Trim();
+        var pin = (dto.Pin ?? "").Trim();   // chosen password (4-20 chars)
+        var role = (dto.Role ?? "buyer").Trim().ToLower();
+        if (role != "buyer" && role != "supplier" && role != "transporter") role = "buyer";
         if (string.IsNullOrWhiteSpace(dto.Name)
             || !System.Text.RegularExpressions.Regex.IsMatch(phone, @"^\d{10}$")
-            || !System.Text.RegularExpressions.Regex.IsMatch(pin, @"^\d{6}$"))
-            return BadRequest(new { error = "Bad input" });
+            || pin.Length < 4 || pin.Length > 20)
+            return BadRequest(new { error = "Naam, 10-digit mobile aur 4-20 char ka password zaroori hai" });
 
         await SetFirmContextAsync(firmId);
 
         var dup = await Db.DukanBuyers.AnyAsync(b => b.FirmId == firmId && b.Phone == phone);
-        if (dup) return Conflict(new { error = "Phone already registered" });
+        if (dup) return Conflict(new { error = "Ye mobile pehle se registered hai" });
 
         var buyer = new DukanBuyer
         {
@@ -264,7 +286,17 @@ public class DukanAuthController : DukanControllerBase
             Phone = phone,
             PinHash = BCrypt.Net.BCrypt.HashPassword(pin),
             Email = "",
-            Gstin = "",
+            Gstin = dto.Gstin ?? "",
+            Role = role,
+            BusinessName = dto.BusinessName,
+            City = dto.City,
+            State = dto.State,
+            Address = dto.Address,
+            Whatsapp = dto.Whatsapp,
+            Categories = dto.Categories,
+            VehicleType = dto.VehicleType,
+            RouteArea = dto.RouteArea,
+            Capacity = dto.Capacity,
             CreatedAt = DateTimeOffset.UtcNow
         };
         Db.DukanBuyers.Add(buyer);

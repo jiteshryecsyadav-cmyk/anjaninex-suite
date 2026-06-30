@@ -2,7 +2,7 @@ import { Injectable, signal, computed, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { AuthService } from '../../core/auth/auth.service';
 import { environment } from '../../../environments/environment';
-import { Category, Product, CartLine, Order, Seller, Review, Buyer, Address } from './models';
+import { Category, Product, CartLine, Order, Seller, Review, Buyer, Address, MemberRole } from './models';
 
 /**
  * DukanService — ported from the KALINDI `DataService`, rebranded "Online Dukan"
@@ -31,7 +31,7 @@ export class DukanService {
 
   // ---- Buyer auth / session (storefront) ----
   buyerToken = signal<string>('');
-  role = signal<'buyer' | null>(null);
+  role = signal<MemberRole | null>(null);
   /** Public storefront firm id (from /dukan/shop/:firmId). When set, catalog is
    *  fetched in PUBLIC mode (no Anjaninex login) scoped to this firm. */
   shopFirmId = signal<string | null>(null);
@@ -83,7 +83,7 @@ export class DukanService {
       const sess = JSON.parse(localStorage.getItem('dukan_buyer_session') || 'null');
       const crt = JSON.parse(localStorage.getItem('dukan_cart') || '[]');
       if (Array.isArray(crt)) this.cart.set(crt);
-      if (tok && sess) { this.buyerToken.set(tok); this.role.set('buyer'); this.buyerName.set(sess.name); this.currentBuyerId.set(sess.buyerId ?? null); }
+      if (tok && sess) { this.buyerToken.set(tok); this.role.set(sess.role ?? 'buyer'); this.buyerName.set(sess.name); this.currentBuyerId.set(sess.buyerId ?? null); }
     } catch { /* ignore */ }
   }
 
@@ -153,21 +153,21 @@ export class DukanService {
   private persistBuyer(remember: boolean) {
     if (remember) {
       localStorage.setItem('dukan_buyer_token', this.buyerToken());
-      localStorage.setItem('dukan_buyer_session', JSON.stringify({ name: this.buyerName(), buyerId: this.currentBuyerId() }));
+      localStorage.setItem('dukan_buyer_session', JSON.stringify({ name: this.buyerName(), buyerId: this.currentBuyerId(), role: this.role() }));
     } else { localStorage.removeItem('dukan_buyer_token'); localStorage.removeItem('dukan_buyer_session'); }
   }
   async loginBuyer(idOrName: string, pin: string, remember = true): Promise<boolean> {
     try {
       const r = await this.req<{ token: string; buyer: Buyer }>('POST', '/auth/login', { idOrName, pin, firmId: this.shopFirmId() });
-      this.buyerToken.set(r.token); this.role.set('buyer'); this.currentBuyer.set(r.buyer);
+      this.buyerToken.set(r.token); this.role.set(r.buyer.role ?? 'buyer'); this.currentBuyer.set(r.buyer);
       this.currentBuyerId.set(r.buyer.id); this.buyerName.set(`${r.buyer.name} (${r.buyer.id})`);
       this.persistBuyer(remember); await this.refreshPrivate(); return true;
     } catch { return false; }
   }
-  async signup(name: string, phone: string, pin: string, remember = true): Promise<string | null> {
+  async signup(data: { name: string; phone: string; pin: string; role: MemberRole; businessName?: string; city?: string; state?: string; address?: string; whatsapp?: string; gstin?: string; categories?: string; vehicleType?: string; routeArea?: string; capacity?: string }, remember = true): Promise<string | null> {
     try {
-      const r = await this.req<{ token: string; buyer: Buyer }>('POST', '/auth/signup', { name, phone, pin, firmId: this.shopFirmId() });
-      this.buyerToken.set(r.token); this.role.set('buyer'); this.currentBuyer.set(r.buyer);
+      const r = await this.req<{ token: string; buyer: Buyer }>('POST', '/auth/signup', { ...data, firmId: this.shopFirmId() });
+      this.buyerToken.set(r.token); this.role.set(r.buyer.role ?? data.role); this.currentBuyer.set(r.buyer);
       this.currentBuyerId.set(r.buyer.id); this.buyerName.set(`${r.buyer.name} (${r.buyer.id})`);
       this.persistBuyer(remember); return r.buyer.id;
     } catch (e: any) { this.toast(e?.message || 'Signup failed', 'error'); return null; }

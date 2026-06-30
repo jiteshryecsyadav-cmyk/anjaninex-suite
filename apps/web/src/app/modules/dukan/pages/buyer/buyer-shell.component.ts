@@ -77,7 +77,7 @@ export class DukanBuyerShellComponent implements OnInit {
     if (this.firmId && this.firmId !== 'login') this.ds.shopFirmId.set(this.firmId);
     this.ds.boot();
     this.ds.enableNotifications();
-    if (this.ds.role() !== 'buyer') this.router.navigate(['/dukan/shop', this.firmId, 'login']);
+    if (!this.ds.role()) this.router.navigate(['/dukan/shop', this.firmId, 'login']);
   }
 
   logout() { this.ds.logoutBuyer(); this.router.navigate(['/dukan/shop', this.firmId, 'login']); }

@@ -5,7 +5,7 @@ import { RouterLink, RouterLinkActive } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../environments/environment';
 
-interface AuditRow { date: string; time: string; user: string; module: string; table: string; label: string; action: string; changes?: string; }
+interface AuditRow { date: string; time: string; user: string; username?: string; module: string; table: string; label: string; action: string; changes?: string; }
 
 /** Accounting-scoped Activity Log — kisne ledger/voucher/group banaya, edit ya delete kiya.
  *  /api/audit/logs?module=accounting ko call karta hai (firm-scoped). */
@@ -35,6 +35,10 @@ interface AuditRow { date: string; time: string; user: string; module: string; t
         <p class="text-sm text-[#6b3fa0]">Kisne ledger/voucher/group banaya · edit kiya · delete kiya</p>
       </div>
       <div class="flex gap-2 items-center flex-wrap">
+        <label class="text-xs text-gray-500">From</label>
+        <input type="date" [(ngModel)]="fromDate" (change)="load()" class="input w-40">
+        <label class="text-xs text-gray-500">To</label>
+        <input type="date" [(ngModel)]="toDate" (change)="load()" class="input w-40">
         <select [(ngModel)]="actionFilter" (change)="load()" class="input w-36">
           <option value="">All Actions</option>
           <option value="insert">➕ Entry</option>
@@ -74,7 +78,7 @@ interface AuditRow { date: string; time: string; user: string; module: string; t
                 <td class="px-3 py-2">{{ $index + 1 }}</td>
                 <td class="px-3 py-2 font-mono text-xs whitespace-nowrap">{{ r.date }}</td>
                 <td class="px-3 py-2 font-mono text-xs whitespace-nowrap">{{ r.time }}</td>
-                <td class="px-3 py-2 font-semibold">{{ r.user }}</td>
+                <td class="px-3 py-2 font-semibold">{{ r.user }}<br><span class="text-xs font-normal text-gray-500">&#64;{{ r.username || '—' }}</span></td>
                 <td class="px-3 py-2">{{ r.label || r.table }}</td>
                 <td class="px-3 py-2 text-center">
                   <span class="px-2 py-0.5 rounded-full text-xs font-bold"
@@ -98,6 +102,8 @@ export class AccountingActivityLogComponent {
   loading = signal(false);
   actionFilter = '';
   search = '';
+  fromDate = '';
+  toDate = '';
 
   constructor() { this.load(); }
 
@@ -106,6 +112,8 @@ export class AccountingActivityLogComponent {
     let params: any = { module: 'accounting', limit: 500 };
     if (this.actionFilter) params.action = this.actionFilter;
     if (this.search.trim()) params.search = this.search.trim();
+    if (this.fromDate) params.from = this.fromDate;
+    if (this.toDate) params.to = this.toDate;
     this.http.get<AuditRow[]>(`${environment.apiUrl}/api/audit/logs`, { params }).subscribe({
       next: r => { this.rows.set(r || []); this.loading.set(false); },
       error: () => { this.rows.set([]); this.loading.set(false); }

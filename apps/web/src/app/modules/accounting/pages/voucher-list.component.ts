@@ -48,6 +48,8 @@ import { InDatePipe } from '../../../shared/in-date.pipe';
            class="px-4 py-2 text-sm font-semibold text-gray-500 border-b-2 border-transparent hover:text-[#5c1a8b] whitespace-nowrap">P&amp;L</a>
         <a routerLink="/accounting/balance-sheet" routerLinkActive="!border-[#5c1a8b] !text-[#5c1a8b]"
            class="px-4 py-2 text-sm font-semibold text-gray-500 border-b-2 border-transparent hover:text-[#5c1a8b] whitespace-nowrap">Balance Sheet</a>
+        <a routerLink="/accounting/activity-log" routerLinkActive="!border-[#5c1a8b] !text-[#5c1a8b]"
+           class="px-4 py-2 text-sm font-semibold text-gray-500 border-b-2 border-transparent hover:text-[#5c1a8b]">🕵️ Log</a>
       </div>
 
       <!-- Filters -->

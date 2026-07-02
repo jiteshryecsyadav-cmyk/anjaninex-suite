@@ -37,5 +37,9 @@ export const accountingRoutes: Routes = [
   {
     path: 'balance-sheet',
     loadComponent: () => import('./pages/reports.components').then(m => m.BalanceSheetComponent)
+  },
+  {
+    path: 'activity-log',
+    loadComponent: () => import('./pages/accounting-activity-log.component').then(m => m.AccountingActivityLogComponent)
   }
 ];

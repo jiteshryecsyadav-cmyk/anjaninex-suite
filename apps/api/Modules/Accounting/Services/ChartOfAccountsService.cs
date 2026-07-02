@@ -292,7 +292,22 @@ public class ChartOfAccountsService : IChartOfAccountsService
             .Where(l => l.FirmId == firmId && l.Name.ToLower() == cleanName.ToLower())
             .FirstOrDefaultAsync();
         if (dup != null)
+        {
+            // Agar same naam ka ledger INACTIVE (soft-deleted) pada hai — usko wapas ACTIVE
+            // kar do (uski purani entries safe rehti hain). Isse woh list me dobara dikhne lagta hai.
+            if (!dup.IsActive)
+            {
+                dup.IsActive = true;
+                dup.SubGroupId = dto.SubGroupId;
+                if (dto.Code is not null) dup.Code = dto.Code;
+                if (dto.ContactId is not null) dup.ContactId = dto.ContactId;
+                dup.UpdatedAt = DateTimeOffset.UtcNow;
+                await _db.SaveChangesAsync();
+                return await BuildLedgerDto(dup.Id);
+            }
+            // Warna sach me duplicate hai (already active).
             throw new ArgumentException($"\"{cleanName}\" naam ka ledger pehle se hai — dobara nahi ban sakta. Usi ko use/edit karein.");
+        }
 
         var ledger = new Ledger
         {

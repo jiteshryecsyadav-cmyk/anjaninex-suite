@@ -32,11 +32,13 @@ public class AuditController : ControllerBase
         if (!string.IsNullOrEmpty(action)) q = q.Where(a => a.Action == action);
         if (!string.IsNullOrEmpty(search))
             q = q.Where(a => (a.EntityLabel ?? "").Contains(search) || a.TableName.Contains(search));
-        // Date range (IST calendar dates → UTC-aware DateTimeOffset bounds)
+        // Date range (IST calendar dates → UTC bounds).
+        // NOTE: Npgsql timestamptz params must be UTC (offset 0) — .ToUniversalTime() zaroori,
+        // warna +05:30 offset par query throw hoti hai aur poora log khaali dikhta hai.
         if (DateTime.TryParse(from, out var fd))
-        { var f = new DateTimeOffset(fd.Date, ist); q = q.Where(a => a.CreatedAt >= f); }
+        { var f = new DateTimeOffset(fd.Date, ist).ToUniversalTime(); q = q.Where(a => a.CreatedAt >= f); }
         if (DateTime.TryParse(to, out var td))
-        { var t = new DateTimeOffset(td.Date, ist).AddDays(1); q = q.Where(a => a.CreatedAt < t); }
+        { var t = new DateTimeOffset(td.Date, ist).AddDays(1).ToUniversalTime(); q = q.Where(a => a.CreatedAt < t); }
 
         var rows = await q.OrderByDescending(a => a.CreatedAt)
             .Take(Math.Clamp(limit, 1, 1000))
@@ -52,12 +54,4 @@ public class AuditController : ControllerBase
             date = r.CreatedAt.ToOffset(ist).ToString("dd-MM-yyyy"),
             time = r.CreatedAt.ToOffset(ist).ToString("HH:mm:ss"),
             user = r.UserId.HasValue && users.TryGetValue(r.UserId.Value, out var n) ? n.FullName : "—",
-            username = r.UserId.HasValue && users.TryGetValue(r.UserId.Value, out var n2) ? n2.Username : "",
-            module = r.Module,
-            table = r.TableName,
-            label = r.EntityLabel,
-            action = r.Action,
-            changes = r.Changes
-        }));
-    }
-}
+            username = r.UserId.HasValue && users.TryGetValue(r.UserId.Value, out var n2) 

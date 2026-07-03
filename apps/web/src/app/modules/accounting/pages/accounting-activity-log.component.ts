@@ -58,6 +58,7 @@ interface AuditRow { date: string; time: string; user: string; username?: string
 
     <div class="card p-0 overflow-x-auto">
       @if (loading()) { <div class="p-8 text-center text-gray-500">Loading…</div> }
+      @else if (errored()) { <div class="p-8 text-center text-red-600">⚠️ Log load nahi hua — server error. Thodi der baad Refresh karein.</div> }
       @else if (rows().length === 0) { <div class="p-8 text-center text-gray-500">Koi activity nahi mili</div> }
       @else {
         <table class="w-full text-sm">
@@ -100,6 +101,7 @@ export class AccountingActivityLogComponent {
   private http = inject(HttpClient);
   rows = signal<AuditRow[]>([]);
   loading = signal(false);
+  errored = signal(false);
   actionFilter = '';
   search = '';
   fromDate = '';
@@ -109,6 +111,7 @@ export class AccountingActivityLogComponent {
 
   load() {
     this.loading.set(true);
+    this.errored.set(false);
     let params: any = { module: 'accounting', limit: 500 };
     if (this.actionFilter) params.action = this.actionFilter;
     if (this.search.trim()) params.search = this.search.trim();

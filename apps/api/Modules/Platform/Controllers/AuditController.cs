@@ -54,4 +54,12 @@ public class AuditController : ControllerBase
             date = r.CreatedAt.ToOffset(ist).ToString("dd-MM-yyyy"),
             time = r.CreatedAt.ToOffset(ist).ToString("HH:mm:ss"),
             user = r.UserId.HasValue && users.TryGetValue(r.UserId.Value, out var n) ? n.FullName : "-",
-            username = r.UserId.HasValue && users.TryGetValue(r.UserId.Value, out var n2) ? n2.U
+            username = r.UserId.HasValue && users.TryGetValue(r.UserId.Value, out var n2) ? n2.Username : "",
+            module = r.Module,
+            table = r.TableName,
+            label = r.EntityLabel,
+            action = r.Action,
+            changes = r.Changes
+        }));
+    }
+}

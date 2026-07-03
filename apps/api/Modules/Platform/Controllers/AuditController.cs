@@ -5,7 +5,7 @@ using Namokara.Api.Infrastructure.Persistence;
 
 namespace Namokara.Api.Modules.Platform.Controllers;
 
-// Activity Log — firm ke andar kisne kya banaya / edit kiya / delete kiya
+// Activity Log - firm ke andar kisne kya banaya / edit kiya / delete kiya
 [ApiController]
 [Route("api/audit")]
 [Authorize]
@@ -32,8 +32,8 @@ public class AuditController : ControllerBase
         if (!string.IsNullOrEmpty(action)) q = q.Where(a => a.Action == action);
         if (!string.IsNullOrEmpty(search))
             q = q.Where(a => (a.EntityLabel ?? "").Contains(search) || a.TableName.Contains(search));
-        // Date range (IST calendar dates → UTC bounds).
-        // NOTE: Npgsql timestamptz params must be UTC (offset 0) — .ToUniversalTime() zaroori,
+        // Date range (IST calendar dates -> UTC bounds).
+        // NOTE: Npgsql timestamptz params must be UTC (offset 0) - .ToUniversalTime() required,
         // warna +05:30 offset par query throw hoti hai aur poora log khaali dikhta hai.
         if (DateTime.TryParse(from, out var fd))
         { var f = new DateTimeOffset(fd.Date, ist).ToUniversalTime(); q = q.Where(a => a.CreatedAt >= f); }
@@ -53,5 +53,5 @@ public class AuditController : ControllerBase
         {
             date = r.CreatedAt.ToOffset(ist).ToString("dd-MM-yyyy"),
             time = r.CreatedAt.ToOffset(ist).ToString("HH:mm:ss"),
-            user = r.UserId.HasValue && users.TryGetValue(r.UserId.Value, out var n) ? n.FullName : "—",
-            username = r.UserId.HasValue && users.TryGetValue(r.UserId.Value, out var n2) 
+            user = r.UserId.HasValue && users.TryGetValue(r.UserId.Value, out var n) ? n.FullName : "-",
+            username = r.UserId.HasValue && users.TryGetValue(r.UserId.Value, out var n2) ? n2.U

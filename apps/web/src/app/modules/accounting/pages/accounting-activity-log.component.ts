@@ -39,6 +39,13 @@ interface AuditRow { date: string; time: string; user: string; username?: string
         <input type="date" [(ngModel)]="fromDate" (change)="load()" class="input w-40">
         <label class="text-xs text-gray-500">To</label>
         <input type="date" [(ngModel)]="toDate" (change)="load()" class="input w-40">
+        <select [(ngModel)]="typeFilter" (change)="load()" class="input w-36">
+          <option value="">All Types</option>
+          <option value="payment">Payment</option>
+          <option value="receipt">Receipt</option>
+          <option value="contra">Contra</option>
+          <option value="journal">Journal</option>
+        </select>
         <select [(ngModel)]="actionFilter" (change)="load()" class="input w-36">
           <option value="">All Actions</option>
           <option value="insert">➕ Entry</option>
@@ -103,6 +110,7 @@ export class AccountingActivityLogComponent {
   loading = signal(false);
   errored = signal(false);
   actionFilter = '';
+  typeFilter = '';
   search = '';
   fromDate = '';
   toDate = '';
@@ -114,24 +122,12 @@ export class AccountingActivityLogComponent {
     this.errored.set(false);
     let params: any = { module: 'accounting', limit: 500 };
     if (this.actionFilter) params.action = this.actionFilter;
-    if (this.search.trim()) params.search = this.search.trim();
+    // Type filter (voucher code se): Payment=-V-P, Receipt=-V-R, Contra=-V-C, Journal=-V-J
+    const typeCode: any = { payment: '-V-P', receipt: '-V-R', contra: '-V-C', journal: '-V-J' };
+    const s = this.typeFilter ? typeCode[this.typeFilter] : this.search.trim();
+    if (s) params.search = s;
     if (this.fromDate) params.from = this.fromDate;
     if (this.toDate) params.to = this.toDate;
     this.http.get<AuditRow[]>(`${environment.apiUrl}/api/audit/logs`, { params }).subscribe({
       next: r => { this.rows.set(r || []); this.loading.set(false); },
-      error: () => { this.rows.set([]); this.loading.set(false); }
-    });
-  }
-  count(a: string) { return this.rows().filter(r => r.action === a).length; }
-  pretty(changes?: string): string {
-    if (!changes) return '—';
-    try {
-      const o = JSON.parse(changes);
-      return Object.keys(o).map(k => {
-        const v = o[k];
-        if (v && typeof v === 'object' && ('old' in v || 'new' in v)) return `${k}: ${v.old ?? '—'} → ${v.new ?? '—'}`;
-        return `${k}: ${v}`;
-      }).join(' · ');
-    } catch { return changes.length > 120 ? changes.slice(0, 120) + '…' : changes; }
-  }
-}
+      er

@@ -288,6 +288,10 @@ import { LedgerStatementComponent } from '../../accounting/components/ledger-sta
                   <label class="lbl">WHATSAPP – BUYER</label>
                   <input formControlName="waBuyer" placeholder="Khareedne wala no." class="ip">
                 </div>
+                <div>
+                  <label class="lbl">GROUP (SISTER FIRMS)</label>
+                  <input formControlName="groupName" placeholder="e.g. Gupta Group" class="ip">
+                </div>
                 <div class="col-span-3">
                   <label class="lbl">ADDRESS</label>
                   <textarea formControlName="address" placeholder="Shop / office address" rows="2" class="ip"></textarea>
@@ -769,6 +773,7 @@ export class PartiesComponent {
     whatsapp: [''],
     waSupplier: [''],
     waBuyer: [''],
+    groupName: [''],
     address: [''],
     city: [''],
     state: [''],
@@ -982,7 +987,8 @@ export class PartiesComponent {
       email: p.email ?? '',
       city: p.city ?? '', creditLimit: p.creditLimit, creditDays: p.creditDays,
       commission: p.commissionRate || 0,
-      waSupplier: p.waSupplier ?? '', waBuyer: p.waBuyer ?? ''
+      waSupplier: p.waSupplier ?? '', waBuyer: p.waBuyer ?? '',
+      groupName: (p as any).groupName ?? ''
     });
     this.showForm.set(true);
     // City bhari ho aur pincode khali — auto le aao
@@ -1012,7 +1018,8 @@ export class PartiesComponent {
       partyType, creditLimit: v.creditLimit || 0, creditDays: v.creditDays || 30,
       commissionRate: v.commission || 0,
       openingBalance: v.openingBalance || 0, openingType: 'Dr',
-      waSupplier: v.waSupplier || null, waBuyer: v.waBuyer || null
+      waSupplier: v.waSupplier || null, waBuyer: v.waBuyer || null,
+      groupName: v.groupName || null
     };
     const id = this.editingId();
     const obs = id ? this.svc.updateParty(id, data) : this.svc.createParty(data);

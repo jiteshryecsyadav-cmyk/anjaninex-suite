@@ -27,7 +27,8 @@ public record PartyDto(
     bool IsActive,
     string? WaSupplier = null,
     string? WaBuyer = null,
-    string? Pan = null);
+    string? Pan = null,
+    string? GroupName = null);
 
 public record CreatePartyDto(
     string DisplayName,
@@ -47,7 +48,8 @@ public record CreatePartyDto(
     decimal OpeningBalance,
     string OpeningType,
     string? WaSupplier = null,
-    string? WaBuyer = null);
+    string? WaBuyer = null,
+    string? GroupName = null);
 
 // =============================================================================
 // Service
@@ -146,7 +148,7 @@ public class PartyService : IPartyService
                 x.c.DisplayName, x.c.PhonePrimary, x.c.EmailPrimary, x.c.GstNumber, city,
                 x.p.PartyType, x.p.CreditLimit, x.p.CreditDays, x.p.CommissionRate,
                 outstanding, x.p.LedgerId, x.p.IsActive, x.c.WaSupplier, x.c.WaBuyer,
-                x.c.PanNumber);
+                x.c.PanNumber, x.c.GroupName);
         }).ToList();
     }
 
@@ -362,6 +364,7 @@ public class PartyService : IPartyService
         contact.PhonePrimary = dto.Phone?.Trim();
         if (dto.WaSupplier != null) contact.WaSupplier = string.IsNullOrWhiteSpace(dto.WaSupplier) ? null : dto.WaSupplier.Trim();
         if (dto.WaBuyer != null) contact.WaBuyer = string.IsNullOrWhiteSpace(dto.WaBuyer) ? null : dto.WaBuyer.Trim();
+        if (dto.GroupName != null) contact.GroupName = string.IsNullOrWhiteSpace(dto.GroupName) ? null : dto.GroupName.Trim();
         contact.EmailPrimary = dto.Email?.Trim();
         contact.GstNumber = string.IsNullOrWhiteSpace(dto.Gst) ? null : dto.Gst.Trim().ToUpperInvariant();
         contact.PanNumber = string.IsNullOrWhiteSpace(dto.Pan) ? null : dto.Pan.Trim().ToUpperInvariant();
@@ -474,6 +477,7 @@ public class PartyService : IPartyService
             PhonePrimary = NormalizePhone(dto.Phone) ?? dto.Phone?.Trim(),
             WaSupplier = string.IsNullOrWhiteSpace(dto.WaSupplier) ? null : dto.WaSupplier.Trim(),
             WaBuyer = string.IsNullOrWhiteSpace(dto.WaBuyer) ? null : dto.WaBuyer.Trim(),
+            GroupName = string.IsNullOrWhiteSpace(dto.GroupName) ? null : dto.GroupName.Trim(),
             EmailPrimary = dto.Email?.Trim(),
             // Trim + upper-case GST/PAN — paste-from-Excel often has trailing spaces or lowercase
             GstNumber = string.IsNullOrWhiteSpace(dto.Gst) ? null : dto.Gst.Trim().ToUpperInvariant(),

@@ -84,6 +84,29 @@ public class AiController : ControllerBase
         }
     }
 
+    [HttpPost("extract-cheque")]
+    [HasPermission("ai.bill_scan.use.branch")]
+    [RequestSizeLimit(10 * 1024 * 1024)]
+    public async Task<IActionResult> ExtractCheque(CancellationToken ct)
+    {
+        var images = Request.Form.Files.ToList();
+        if (images.Count == 0 || images.All(f => f.Length == 0))
+            return BadRequest(new { error = "Cheque image required" });
+        if (images.Any(f => f.Length > 5 * 1024 * 1024))
+            return BadRequest(new { error = "Image too large (max 5 MB)" });
+        try
+        {
+            var result = await _billExtractor.ExtractCheque(images.Take(1).ToList(), CurrentFirmId, ct);
+            return Ok(result);
+        }
+        catch (ArgumentException ex) { return BadRequest(new { error = ex.Message }); }
+        catch (Exception ex)
+        {
+            _log.LogError(ex, "Cheque extraction failed");
+            return StatusCode(500, new { error = "Cheque scan fail: " + ex.Message });
+        }
+    }
+
     // Scan count — is month + total (ai_extraction_logs se real count, cache-hit free hote hain)
     [HttpGet("usage")]
     [HasPermission("ai.bill_scan.use.branch")]

@@ -124,9 +124,18 @@ public class InsufficientWalletException : Exception
 // =============================================================================
 // Service
 // =============================================================================
+public class ChequeDto
+{
+    public string BankName { get; set; } = "";
+    public string ChequeNo { get; set; } = "";
+    public string ChequeDate { get; set; } = "";
+    public decimal Amount { get; set; }
+}
+
 public interface IBillExtractorService
 {
     Task<ExtractedBillDto> ExtractBill(IReadOnlyList<IFormFile> images, Guid firmId, Guid userId, CancellationToken ct, string source = "bill", string? modelChoice = null);
+    Task<ChequeDto> ExtractCheque(IReadOnlyList<IFormFile> images, Guid firmId, CancellationToken ct);
     Task<List<AiExtractionLog>> RecentExtractions(Guid firmId, int limit);
     Task MarkCorrected(Guid extractionId, object correctionDiff);
 }
@@ -634,6 +643,56 @@ public class BillExtractorService : IBillExtractorService
             modelUsed, sw.ElapsedMilliseconds, result.Confidence, result.Cost);
 
         return result;
+    }
+
+    // Cheque / payment-slip scan: Bank, Cheque/UTR no, Date, Amount nikalta hai (Gemini Flash + cheque prompt).
+    public async Task<ChequeDto> ExtractCheque(IReadOnlyList<IFormFile> images, Guid firmId, CancellationToken ct)
+    {
+        var settings = _opts.CurrentValue;
+        var firmKeys = await _db.FirmApiKeys.FindAsync(firmId);
+        var dbKeys = await ReadPlatformAiKeysAsync(ct);
+        var geminiKey = (firmKeys != null && firmKeys.AiProvider == "gemini" && !string.IsNullOrEmpty(firmKeys.AiApiKey))
+            ? firmKeys.AiApiKey!
+            : (!string.IsNullOrEmpty(dbKeys.Gemini) ? dbKeys.Gemini : settings.GeminiApiKey);
+        if (string.IsNullOrEmpty(geminiKey))
+            throw new ArgumentException("AI scan key set nahi hai. Admin se AI key set karwayein.");
+
+        const string model = "gemini-2.5-flash";
+        var url = $"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={geminiKey}";
+        var parts = new List<object>();
+        foreach (var image in images)
+        {
+            using var ms = new MemoryStream();
+            await image.CopyToAsync(ms, ct);
+            parts.Add(new { inlineData = new { mimeType = image.ContentType ?? "image/jpeg", data = Convert.ToBase64String(ms.ToArray()) } });
+        }
+        parts.Add(new { text = "Extract this Indian bank cheque or payment slip as JSON." });
+
+        const string chequePrompt = "You read Indian bank cheques and payment slips (NEFT/RTGS/UPI). Return ONLY JSON: {\"bankName\":string,\"chequeNo\":string,\"chequeDate\":\"YYYY-MM-DD\",\"amount\":number}. bankName = bank name printed on the cheque. chequeNo = the cheque number (6-digit MICR line at bottom) OR the UTR/reference number for NEFT/RTGS/UPI. chequeDate = date on the cheque in YYYY-MM-DD. amount = rupee amount in figures. If a field is not visible use empty string or 0. No extra text.";
+
+        var requestBody = new
+        {
+            system_instruction = new { parts = new[] { new { text = chequePrompt } } },
+            contents = new[] { new { parts = parts.ToArray() } },
+            generationConfig = new { responseMimeType = "application/json", temperature = 0.1, maxOutputTokens = 1024, thinkingConfig = new { thinkingBudget = 0 } }
+        };
+        var reqJson = JsonSerializer.Serialize(requestBody, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+        using var content = new StringContent(reqJson, Encoding.UTF8, "application/json");
+        var response = await _http.PostAsync(url, content, ct);
+        if (!response.IsSuccessStatusCode)
+            throw new Exception($"Gemini {response.StatusCode}: {await response.Content.ReadAsStringAsync(ct)}");
+        var responseText = await response.Content.ReadAsStringAsync(ct);
+        var parsed = JsonDocument.Parse(responseText);
+        var text = parsed.RootElement.GetProperty("candidates")[0].GetProperty("content").GetProperty("parts")[0].GetProperty("text").GetString() ?? "{}";
+        var doc = JsonDocument.Parse(text).RootElement;
+        string Str(string k) => doc.TryGetProperty(k, out var v) ? (v.ValueKind == JsonValueKind.String ? v.GetString() ?? "" : v.ToString()) : "";
+        decimal amt = 0;
+        if (doc.TryGetProperty("amount", out var av))
+        {
+            if (av.ValueKind == JsonValueKind.Number) amt = av.GetDecimal();
+            else decimal.TryParse(av.GetString(), out amt);
+        }
+        return new ChequeDto { BankName = Str("bankName"), ChequeNo = Str("chequeNo"), ChequeDate = Str("chequeDate"), Amount = amt };
     }
 
     public async Task<List<AiExtractionLog>> RecentExtractions(Guid firmId, int limit)

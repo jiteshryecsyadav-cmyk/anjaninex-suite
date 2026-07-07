@@ -287,6 +287,10 @@ interface PartyBehavior {
           <div class="section-head no-border">
             <span class="sec-ico">💳</span> PAYMENT TRANSACTIONS (MULTIPLE CHEQUE / NEFT / UPI)
           </div>
+          <label class="btn-add" style="background:#7c3aed;color:#fff;cursor:pointer">
+            {{ scanningCheque() ? 'Scanning...' : 'Scan Cheque' }}
+            <input type="file" accept="image/*" hidden [disabled]="scanningCheque()" (change)="scanCheque($event)">
+          </label>
           <button type="button" (click)="addTxn()" class="btn-add">+ Add</button>
         </div>
 
@@ -1409,6 +1413,26 @@ export class PaymentReceiptComponent {
     this.txns.update(arr => arr.map((t, i) => i === idx ? { ...t, [field]: value } : t));
   }
   addTxn() { this.txns.update(arr => [...arr, this.newTxn()]); }
+  scanningCheque = signal(false);
+  scanCheque(e: any) {
+    const file = e?.target?.files?.[0];
+    if (!file) return;
+    this.scanningCheque.set(true);
+    const fd = new FormData();
+    fd.append('image', file);
+    this.http.post<any>(`${environment.apiUrl}/api/ai/extract-cheque`, fd).subscribe({
+      next: (r) => {
+        this.scanningCheque.set(false);
+        const t0 = this.newTxn();
+        const row: any = { mode: 'Cheque', bankName: r?.bankName || '', refNo: r?.chequeNo || '', date: r?.chequeDate || t0.date, amount: +r?.amount || 0 };
+        const cur = this.txns();
+        if (cur.length === 1 && !cur[0].amount && !cur[0].bankName && !cur[0].refNo) this.txns.set([row]);
+        else this.txns.update(arr => [...arr, row]);
+      },
+      error: (err) => { this.scanningCheque.set(false); alert('Cheque scan fail: ' + (err?.error?.error || 'try again')); }
+    });
+    if (e?.target) e.target.value = '';
+  }
   removeTxn(idx: number) { this.txns.update(arr => arr.filter((_, i) => i !== idx)); }
 
   // ============ ACTIONS ============

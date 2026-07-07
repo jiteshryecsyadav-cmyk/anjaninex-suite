@@ -103,6 +103,10 @@ export const routes: Routes = [
         loadComponent: () => import('./modules/core-master/party-groups.component').then(m => m.PartyGroupsComponent)
       },
       {
+        path: 'party-group-report',
+        loadComponent: () => import('./modules/trading/pages/party-group-report.component').then(m => m.PartyGroupReportComponent)
+      },
+      {
         path: 'core-master/:id',
         loadComponent: () => import('./modules/core-master/core-master-edit.component').then(m => m.CoreMasterEditComponent)
       },

@@ -19,7 +19,7 @@ interface C { id: string; displayName: string; gst?: string | null; groupName?: 
         <h2 class="font-display font-black text-2xl text-[#5c1a8b]">Party Groups (Sister Firms)</h2>
         <p class="text-sm text-[#6b3fa0]">Ek group banao, uske andar ki saari firms tick karo. Jaise "Gupta Group" me Gupta Sons, Gupta Brothers, Gupta Textile.</p>
       </div>
-      <a routerLink="/core-master" class="px-3 py-1.5 text-sm border border-[#ddc8f5] rounded hover:bg-purple-50">&larr; Back</a>
+      <a routerLink="/party-group-report" class="px-3 py-1.5 text-sm rounded text-white bg-gradient-to-r from-[#5c1a8b] to-[#9333ea] mr-2 no-underline">Group Report</a><a routerLink="/core-master" class="px-3 py-1.5 text-sm border border-[#ddc8f5] rounded hover:bg-purple-50">&larr; Back</a>
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">

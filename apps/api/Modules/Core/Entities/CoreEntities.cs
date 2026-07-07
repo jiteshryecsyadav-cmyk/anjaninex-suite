@@ -207,6 +207,9 @@ public class Contact
     [MaxLength(20)] public string? WaSupplier { get; set; }
     [MaxLength(20)] public string? WaBuyer { get; set; }
 
+    // Sister-concern grouping: "Gupta Group" (member firms ka same group_name).
+    [MaxLength(200)] public string? GroupName { get; set; }
+
     [Column(TypeName = "jsonb")]
     public string Phones { get; set; } = "[]";
 

@@ -31,7 +31,8 @@ public record CoreContactDto(
     bool IsStaff,
     bool IsBuyer = false,
     string? SupplierWa = null,
-    string? BuyerWa = null);
+    string? BuyerWa = null,
+    string? GroupName = null);
 
 public record UpdateCoreContactDto(
     string DisplayName,
@@ -45,7 +46,8 @@ public record UpdateCoreContactDto(
     string? State,
     string? Pincode,
     string? SupplierWa = null,
-    string? BuyerWa = null);
+    string? BuyerWa = null,
+    string? GroupName = null);
 
 [ApiController]
 [Authorize]
@@ -94,6 +96,21 @@ public class ContactsController : ControllerBase
         return Ok(dto);
     }
 
+    // Distinct group names (sister-concern) - supplier form ke datalist ke liye.
+    [HttpGet("groups")]
+    public async Task<IActionResult> Groups()
+    {
+        var firmId = CurrentFirmId;
+        var groups = await _db.Contacts
+            .Where(c => c.FirmId == firmId && c.DeletedAt == null
+                        && c.GroupName != null && c.GroupName != "")
+            .Select(c => c.GroupName!)
+            .Distinct()
+            .OrderBy(g => g)
+            .ToListAsync();
+        return Ok(groups);
+    }
+
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] UpdateCoreContactDto dto)
     {
@@ -137,6 +154,7 @@ public class ContactsController : ControllerBase
             PanNumber = string.IsNullOrWhiteSpace(dto.Pan) ? null : dto.Pan.Trim().ToUpperInvariant(),
             Addresses = addresses,
             Flags = "{}",
+            GroupName = string.IsNullOrWhiteSpace(dto.GroupName) ? null : dto.GroupName.Trim(),
             SourceModule = "core_master",
             CreatedAt = DateTimeOffset.UtcNow,
             UpdatedAt = DateTimeOffset.UtcNow
@@ -242,6 +260,7 @@ public class ContactsController : ControllerBase
         c.EmailPrimary = dto.Email?.Trim();
         c.GstNumber = gstClean;
         c.PanNumber = string.IsNullOrWhiteSpace(dto.Pan) ? null : dto.Pan.Trim().ToUpperInvariant();
+        c.GroupName = string.IsNullOrWhiteSpace(dto.GroupName) ? null : dto.GroupName.Trim();
         if (dto.Address != null || dto.City != null || dto.State != null || dto.Pincode != null)
         {
             // Per-field MERGE — blank aaye to purana value rakho (warna address wipe ho jaata tha).
@@ -332,7 +351,8 @@ public class ContactsController : ControllerBase
         return new CoreContactDto(
             c.Id, c.DisplayName, c.LegalName, c.PhonePrimary, c.EmailPrimary,
             c.GstNumber, c.PanNumber, line1, city, state, pincode,
-            flag("is_party"), flag("is_supplier"), flag("is_staff"));
+            flag("is_party"), flag("is_supplier"), flag("is_staff"),
+            GroupName: c.GroupName);
     }
 
     /// <summary>Normalize Indian phone: digits only, last 10. Null if &lt;10 digits.</summary>

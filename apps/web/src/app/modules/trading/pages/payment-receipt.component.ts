@@ -287,12 +287,17 @@ interface PartyBehavior {
           <div class="section-head no-border">
             <span class="sec-ico">💳</span> PAYMENT TRANSACTIONS (MULTIPLE CHEQUE / NEFT / UPI)
           </div>
-          <label class="btn-add" style="background:#7c3aed;color:#fff;cursor:pointer">
-            {{ scanningCheque() ? 'Scanning...' : 'Scan Cheque' }}
-            <input type="file" accept="image/*" hidden [disabled]="scanningCheque()" (change)="scanCheque($event)">
-          </label>
           <button type="button" (click)="addTxn()" class="btn-add">+ Add</button>
         </div>
+
+        <label style="display:flex;align-items:center;gap:14px;margin:10px 0;padding:16px 18px;border:2px dashed #c4b5fd;border-radius:12px;background:#faf5ff;cursor:pointer">
+          <span style="font-size:34px">🧾</span>
+          <div style="flex:1">
+            <div style="font-weight:800;color:#5c1a8b">{{ scanningCheque() ? '⏳ Scanning cheque...' : '📤 UPLOAD CHEQUE / SLIP — auto-fill' }}</div>
+            <div style="font-size:12px;color:#8b7aa8">JPG, PNG supported · Bank, Cheque/UTR No, Date, Amount apne aap bhar jayega</div>
+          </div>
+          <input type="file" accept="image/*" hidden [disabled]="scanningCheque()" (change)="scanCheque($event)">
+        </label>
 
         <div class="item-table-wrap mt-2">
           <table class="item-table">

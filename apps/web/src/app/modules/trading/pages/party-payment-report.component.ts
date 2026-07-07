@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { TradingService, BillListItem } from '../services/trading.service';
 
 // Supplier vs Buyer report: date range me Paid / Unpaid / Partly-paid.
-// Buyer tab = sales bills (paisa aana), Supplier tab = purchase bills (paisa dena).
+// Buyer + Supplier dono ek table me (Type column). Alag-alag search field (naam / GST).
 @Component({
   selector: 'app-party-payment-report',
   standalone: true,
@@ -18,18 +18,19 @@ import { TradingService, BillListItem } from '../services/trading.service';
 
     <!-- Filters -->
     <div class="card mb-4 flex flex-wrap gap-3 items-end">
-      <div><label class="text-xs text-gray-500 block">From</label><input type="date" [(ngModel)]="from" (change)="load()" class="input w-40"></div>
-      <div><label class="text-xs text-gray-500 block">To</label><input type="date" [(ngModel)]="to" (change)="load()" class="input w-40"></div>
-      <div><label class="text-xs text-gray-500 block">{{ tab()==='buyer' ? 'Buyer' : 'Supplier' }} (naam / GST search)</label>
-        <input [ngModel]="partySearch()" (ngModelChange)="partySearch.set($event)" list="pbPartyList" placeholder="Sab - ya naam/GST type karo" class="input w-64">
-        <datalist id="pbPartyList">@for (p of partyOptions(); track p) { <option [value]="p"></option> }</datalist>
+      <div><label class="text-xs text-gray-500 block">From</label><input type="date" [(ngModel)]="from" class="input w-40"></div>
+      <div><label class="text-xs text-gray-500 block">To</label><input type="date" [(ngModel)]="to" class="input w-40"></div>
+      <div>
+        <label class="text-xs text-gray-500 block">Buyer (naam / GST)</label>
+        <input [ngModel]="buyerSearch()" (ngModelChange)="buyerSearch.set($event)" list="pbBuyerList" placeholder="Buyer dhoondo" class="input w-52">
+        <datalist id="pbBuyerList">@for (p of buyerOptions(); track p) { <option [value]="p"></option> }</datalist>
+      </div>
+      <div>
+        <label class="text-xs text-gray-500 block">Supplier (naam / GST)</label>
+        <input [ngModel]="supplierSearch()" (ngModelChange)="supplierSearch.set($event)" list="pbSuppList" placeholder="Supplier dhoondo" class="input w-52">
+        <datalist id="pbSuppList">@for (p of supplierOptions(); track p) { <option [value]="p"></option> }</datalist>
       </div>
       <button (click)="load()" class="px-5 py-1.5 text-sm font-bold text-white bg-[#5c1a8b] rounded">Get</button>
-      <div class="flex-1"></div>
-      <div class="flex gap-1">
-        <button (click)="setTab('buyer')" [class]="tab()==='buyer' ? 'bg-[#5c1a8b] text-white' : 'bg-white text-[#5c1a8b]'" class="px-4 py-1.5 text-sm font-bold border border-[#ddc8f5] rounded-l">Buyer (Aana)</button>
-        <button (click)="setTab('supplier')" [class]="tab()==='supplier' ? 'bg-[#5c1a8b] text-white' : 'bg-white text-[#5c1a8b]'" class="px-4 py-1.5 text-sm font-bold border border-[#ddc8f5] rounded-r">Supplier (Dena)</button>
-      </div>
     </div>
 
     <!-- Status filter -->
@@ -55,7 +56,8 @@ import { TradingService, BillListItem } from '../services/trading.service';
         <table class="w-full text-sm">
           <thead class="bg-[#f0e6ff] text-[#5c1a8b] uppercase text-xs">
             <tr>
-              <th class="px-3 py-2 text-left">{{ tab()==='buyer' ? 'Buyer' : 'Supplier' }}</th>
+              <th class="px-3 py-2 text-center">Type</th>
+              <th class="px-3 py-2 text-left">Party</th>
               <th class="px-3 py-2 text-left">Bill No</th>
               <th class="px-3 py-2 text-left">Date</th>
               <th class="px-3 py-2 text-right">Total</th>
@@ -67,6 +69,10 @@ import { TradingService, BillListItem } from '../services/trading.service';
           <tbody>
             @for (r of rows(); track r.id) {
               <tr class="border-t hover:bg-[#faf5ff]">
+                <td class="px-3 py-2 text-center">
+                  <span class="px-2 py-0.5 rounded-full text-xs font-bold"
+                    [class]="r._type==='Buyer' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'">{{ r._type }}</span>
+                </td>
                 <td class="px-3 py-2 font-semibold">{{ r._party }}</td>
                 <td class="px-3 py-2 font-mono text-xs">{{ r.billNo }}</td>
                 <td class="px-3 py-2 text-xs">{{ r.billDate }}</td>
@@ -81,7 +87,7 @@ import { TradingService, BillListItem } from '../services/trading.service';
                 </td>
               </tr>
             }
-            @if (rows().length === 0) { <tr><td colspan="7" class="p-6 text-center text-gray-400">Is filter me koi bill nahi.</td></tr> }
+            @if (rows().length === 0) { <tr><td colspan="8" class="p-6 text-center text-gray-400">Is filter me koi bill nahi.</td></tr> }
           </tbody>
         </table>
       }
@@ -93,8 +99,9 @@ export class PartyPaymentReportComponent {
   private svc = inject(TradingService);
   bills = signal<BillListItem[]>([]);
   loading = signal(false);
-  tab = signal<'buyer' | 'supplier'>('buyer');
   statusFilter = signal('');
+  buyerSearch = signal('');
+  supplierSearch = signal('');
   from = '';
   to = '';
 
@@ -115,27 +122,41 @@ export class PartyPaymentReportComponent {
     });
   }
 
-  setTab(t: 'buyer' | 'supplier') { this.tab.set(t); }
-
   st(b: any) { const paid = b.paidAmount || 0, total = b.total || 0; if (paid <= 0) return 'unpaid'; if (total - paid <= 0.01) return 'paid'; return 'partial'; }
-  partyOf(b: any) { return this.tab() === 'buyer' ? (b.buyerName || b.partyName) : b.partyName; }
-  gstOf(b: any) { return this.tab() === 'buyer' ? (b.buyerGst || b.partyGst) : b.partyGst; }
-  partySearch = signal('');
-  partyOptions = computed(() => {
-    const t = this.tab() === 'buyer' ? 'sales' : 'purchase';
+  typeOf(b: any) { return b.billType === 'sales' ? 'Buyer' : 'Supplier'; }
+  partyOf(b: any) { return b.billType === 'sales' ? (b.buyerName || b.partyName) : b.partyName; }
+  gstOf(b: any) { return b.billType === 'sales' ? (b.buyerGst || b.partyGst) : b.partyGst; }
+
+  buyerOptions = computed(() => {
     const set = new Set<string>();
-    for (const b of this.bills()) if (b.billType === t && !b.isDeleted) { const p = this.partyOf(b); if (p) set.add(p); }
+    for (const b of this.bills()) if (b.billType === 'sales' && !(b as any).isDeleted) { const p = this.partyOf(b); if (p) set.add(p); }
+    return [...set].sort();
+  });
+  supplierOptions = computed(() => {
+    const set = new Set<string>();
+    for (const b of this.bills()) if (b.billType !== 'sales' && !(b as any).isDeleted) { const p = this.partyOf(b); if (p) set.add(p); }
     return [...set].sort();
   });
 
   rows = computed(() => {
-    const t = this.tab() === 'buyer' ? 'sales' : 'purchase';
     const sf = this.statusFilter();
-    const ps = this.partySearch().trim().toLowerCase();
+    const bs = this.buyerSearch().trim().toLowerCase();
+    const ss = this.supplierSearch().trim().toLowerCase();
     return this.bills()
-      .filter((b: any) => b.billType === t && !b.isDeleted && (!sf || this.st(b) === sf)
-        && (!ps || (this.partyOf(b) || '').toLowerCase().includes(ps) || (this.gstOf(b) || '').toLowerCase().includes(ps)))
-      .map((b: any) => ({ ...b, _bal: (b.total || 0) - (b.paidAmount || 0), _st: this.st(b), _party: this.partyOf(b) }))
+      .filter((b: any) => {
+        if (b.isDeleted) return false;
+        if (sf && this.st(b) !== sf) return false;
+        const isBuyer = b.billType === 'sales';
+        const party = (this.partyOf(b) || '').toLowerCase();
+        const gst = (this.gstOf(b) || '').toLowerCase();
+        if (isBuyer) { if (bs && !party.includes(bs) && !gst.includes(bs)) return false; }
+        else { if (ss && !party.includes(ss) && !gst.includes(ss)) return false; }
+        // agar sirf ek side search kiya to doosri side hide karo
+        if (bs && !ss && !isBuyer) return false;
+        if (ss && !bs && isBuyer) return false;
+        return true;
+      })
+      .map((b: any) => ({ ...b, _type: this.typeOf(b), _party: this.partyOf(b), _bal: (b.total || 0) - (b.paidAmount || 0), _st: this.st(b) }))
       .sort((a: any, b: any) => b._bal - a._bal);
   });
 

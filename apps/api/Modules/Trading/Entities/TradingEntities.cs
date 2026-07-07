@@ -236,6 +236,7 @@ public class Order
     public Guid? TransporterId { get; set; }                          // freight partner (dropdown)
     [MaxLength(50)] public string? SupplierOrderNo { get; set; }
     [MaxLength(50)] public string? PaymentTerms { get; set; }
+    [MaxLength(200)] public string? SupplierGroupName { get; set; }  // sister-concern group; firm bill par pakki
 
     public string? Notes { get; set; }
     public Guid CreatedBy { get; set; }

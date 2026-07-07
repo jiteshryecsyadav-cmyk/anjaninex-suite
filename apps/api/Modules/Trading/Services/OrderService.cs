@@ -38,7 +38,8 @@ public record OrderListItemDto(
     string? PreparedBy = null,
     bool IsDeleted = false,             // list me DELETED tag ke liye
     DateTimeOffset? CreatedAt = null,   // entry kab punch hui (time ke saath)
-    DateOnly? BilledDate = null);       // is order ka bill kab bana (linked bill ki date)
+    DateOnly? BilledDate = null,        // is order ka bill kab bana (linked bill ki date)
+    string? SupplierGroupName = null);
 
 public record OrderDetailDto(
     Guid Id,
@@ -61,6 +62,7 @@ public record OrderDetailDto(
     string Status,
     string? Notes,
     List<OrderLineDto> Lines,
+    string? SupplierGroupName = null,
     string? PreparedBy = null);
 
 public record CreateOrderDto(
@@ -77,6 +79,7 @@ public record CreateOrderDto(
     string? CdType = "before",       // before = GST se pehle discount | after = GST ke baad
     decimal? CdAmount = null,        // manual override (null = % se auto)
     Guid? TransporterId = null,      // freight partner
+    string? SupplierGroupName = null,
     string? OrderNo = null);         // edit (delete+recreate) me purana number reuse — renumber na ho
 
 // =============================================================================
@@ -152,7 +155,7 @@ public class OrderService : IOrderService
             creators.GetValueOrDefault(o.CreatedBy),
             o.DeletedAt != null,
             o.CreatedAt,
-            BilledOf(o))).ToList();
+            BilledOf(o), SupplierGroupName: o.SupplierGroupName)).ToList();
 
         return (items, total);
     }
@@ -188,7 +191,7 @@ public class OrderService : IOrderService
                 l.Id, l.ItemId, l.ItemName, l.Description, l.HsnSac,
                 l.Qty, l.Unit, l.Rate, l.Rd, l.SgstPct, l.CgstPct,
                 l.TaxableAmount, l.TaxAmount, l.TotalAmount)).ToList(),
-            preparedBy);
+            SupplierGroupName: o.SupplierGroupName, PreparedBy: preparedBy);
     }
 
     public async Task<OrderDetailDto> Create(CreateOrderDto dto, Guid firmId, Guid branchId, Guid userId)
@@ -246,6 +249,7 @@ public class OrderService : IOrderService
             SupplierOrderNo = dto.SupplierOrderNo,
             PaymentTerms = dto.PaymentTerms,
             Notes = dto.Notes,
+            SupplierGroupName = dto.SupplierGroupName,
             CreatedBy = userId,
             CreatedAt = DateTimeOffset.UtcNow,
             UpdatedAt = DateTimeOffset.UtcNow,
@@ -317,6 +321,7 @@ public class OrderService : IOrderService
         order.SupplierOrderNo = dto.SupplierOrderNo;
         order.PaymentTerms = dto.PaymentTerms;
         order.Notes = dto.Notes;
+        order.SupplierGroupName = dto.SupplierGroupName;
         order.UpdatedAt = DateTimeOffset.UtcNow;
 
         // Lines replace — purani delete karo, nayi add karo (navigation reassign NAHI — EF conflict se bachne ke liye)

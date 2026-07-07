@@ -469,6 +469,10 @@ interface LineRow {
               <input [(ngModel)]="supplierOrderNo" type="text" placeholder="Supplier's order ref" class="ip">
             </div>
             <div>
+              <label class="lbl">SUPPLIER GROUP (firm abhi pakki nahi to)</label>
+              <input [(ngModel)]="supplierGroupName" type="text" placeholder="e.g. Gupta Group" class="ip">
+            </div>
+            <div>
               <label class="lbl">TRANSPORTER</label>
               <div class="combo-wrap">
                 <div class="flex gap-2">
@@ -1511,6 +1515,7 @@ export class OrderEntryComponent {
     this.cdAmountOverride.set(null);   // type badla → amount dobara auto-compute
   }
   supplierOrderNo = '';
+  supplierGroupName = '';
   paymentTerms = '';
   orderStatus = 'pending';
   remark = '';
@@ -1723,6 +1728,7 @@ export class OrderEntryComponent {
         this.cdType.set(o.cdType === 'after' ? 'after' : 'before');
         this.cdAmountOverride.set(null);
         this.supplierOrderNo = o.supplierOrderNo || '';
+        this.supplierGroupName = (o as any).supplierGroupName || '';
         this.paymentTerms = o.paymentTerms || '';
         this.orderStatus = o.status || 'pending';
         // Transporter restore (warna edit par blank ho jaata tha aur re-save par null chala jaata tha)
@@ -1962,6 +1968,7 @@ export class OrderEntryComponent {
       cdType: this.cdType(),
       cdAmount: this.cdEnabled() ? this.cdAmount() : 0,
       supplierOrderNo: this.supplierOrderNo || undefined,
+      supplierGroupName: this.supplierGroupName || undefined,
       transporterId: this.transporterId || null,
       paymentTerms: this.paymentTerms || undefined,
       status: this.orderStatus,

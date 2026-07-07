@@ -73,6 +73,10 @@ import { RouterLink, RouterLinkActive, Router } from '@angular/router';
         </div>
       </div>
 
+      <div class="tn-dd">
+        <a routerLink="/trading/cheque-register" (click)="close()" class="tn-btn" style="text-decoration:none">🧾 Cheque Register</a>
+      </div>
+
     </div>
   `,
   styles: [`

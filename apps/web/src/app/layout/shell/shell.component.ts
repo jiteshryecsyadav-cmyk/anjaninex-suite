@@ -116,10 +116,6 @@ import { environment } from '../../../environments/environment';
                  class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-semibold text-white/75 hover:text-white hover:bg-white/10">
                 <span class="w-5 text-center">🛒</span> Trading
               </a>
-              <a routerLink="/trading/cheque-register" routerLinkActive="!bg-anjaninex-red !text-white"
-                 class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-semibold text-white/75 hover:text-white hover:bg-white/10">
-                <span class="w-5 text-center">🧾</span> Cheque Register
-              </a>
             }
             @if (features.has('accounting')) {
               <a routerLink="/accounting" routerLinkActive="!bg-anjaninex-red !text-white"

@@ -107,6 +107,10 @@ export const routes: Routes = [
         loadComponent: () => import('./modules/trading/pages/party-group-report.component').then(m => m.PartyGroupReportComponent)
       },
       {
+        path: 'trading/cheque-register',
+        loadComponent: () => import('./modules/trading/pages/cheque-register.component').then(m => m.ChequeRegisterComponent)
+      },
+      {
         path: 'core-master/:id',
         loadComponent: () => import('./modules/core-master/core-master-edit.component').then(m => m.CoreMasterEditComponent)
       },

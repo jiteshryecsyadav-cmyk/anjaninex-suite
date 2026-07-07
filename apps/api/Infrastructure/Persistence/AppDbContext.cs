@@ -60,6 +60,7 @@ public class AppDbContext : DbContext
     public DbSet<Bill> Bills => Set<Bill>();
     public DbSet<BillLine> BillLines => Set<BillLine>();
     public DbSet<Payment> Payments => Set<Payment>();
+    public DbSet<Namokara.Api.Modules.Trading.Entities.ChequeHandover> ChequeHandovers => Set<Namokara.Api.Modules.Trading.Entities.ChequeHandover>();
     public DbSet<PaymentAllocation> PaymentAllocations => Set<PaymentAllocation>();
     public DbSet<Order> Orders => Set<Order>();
     public DbSet<OrderLine> OrderLines => Set<OrderLine>();

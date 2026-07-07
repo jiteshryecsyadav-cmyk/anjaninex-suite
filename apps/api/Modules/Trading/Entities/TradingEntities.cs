@@ -356,3 +356,24 @@ public class OrderLine
     public int? SortOrder { get; set; }
     public Order? Order { get; set; }
 }
+
+// Cheque Handover Register (commission agent): kaun staff cheque le gaya, kab, commission paid/unpaid.
+[Table("cheque_handovers", Schema = "trading")]
+public class ChequeHandover
+{
+    public Guid Id { get; set; }
+    public Guid FirmId { get; set; }
+    public string? PaymentRef { get; set; }
+    public string? SupplierName { get; set; }
+    public string? ChequeNo { get; set; }
+    public string? BankName { get; set; }
+    [Column(TypeName = "numeric(14,2)")] public decimal Amount { get; set; }
+    public DateOnly? ChequeDate { get; set; }
+    [Required] public string TakenBy { get; set; } = "";
+    public DateOnly HandedDate { get; set; }
+    public string? HandedBy { get; set; }
+    public bool CommissionPaid { get; set; }
+    [Column(TypeName = "numeric(14,2)")] public decimal CommissionAmount { get; set; }
+    public string? Remark { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
+}

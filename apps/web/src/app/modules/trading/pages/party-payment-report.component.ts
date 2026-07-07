@@ -21,14 +21,14 @@ import { TradingService, BillListItem } from '../services/trading.service';
       <div><label class="text-xs text-gray-500 block">From</label><input type="date" [(ngModel)]="from" class="input w-40"></div>
       <div><label class="text-xs text-gray-500 block">To</label><input type="date" [(ngModel)]="to" class="input w-40"></div>
       <div>
-        <label class="text-xs text-gray-500 block">Buyer (naam / GST)</label>
-        <input [ngModel]="buyerSearch()" (ngModelChange)="buyerSearch.set($event)" list="pbBuyerList" placeholder="Buyer dhoondo" class="input w-52">
-        <datalist id="pbBuyerList">@for (p of buyerOptions(); track p) { <option [value]="p"></option> }</datalist>
-      </div>
-      <div>
         <label class="text-xs text-gray-500 block">Supplier (naam / GST)</label>
         <input [ngModel]="supplierSearch()" (ngModelChange)="supplierSearch.set($event)" list="pbSuppList" placeholder="Supplier dhoondo" class="input w-52">
         <datalist id="pbSuppList">@for (p of supplierOptions(); track p) { <option [value]="p"></option> }</datalist>
+      </div>
+      <div>
+        <label class="text-xs text-gray-500 block">Buyer (naam / GST)</label>
+        <input [ngModel]="buyerSearch()" (ngModelChange)="buyerSearch.set($event)" list="pbBuyerList" placeholder="Buyer dhoondo" class="input w-52">
+        <datalist id="pbBuyerList">@for (p of buyerOptions(); track p) { <option [value]="p"></option> }</datalist>
       </div>
       <button (click)="load()" class="px-5 py-1.5 text-sm font-bold text-white bg-[#5c1a8b] rounded">Get</button>
     </div>
@@ -157,7 +157,7 @@ export class PartyPaymentReportComponent {
         return true;
       })
       .map((b: any) => ({ ...b, _type: this.typeOf(b), _party: this.partyOf(b), _bal: (b.total || 0) - (b.paidAmount || 0), _st: this.st(b) }))
-      .sort((a: any, b: any) => b._bal - a._bal);
+      .sort((a: any, b: any) => a._type === b._type ? (b._bal - a._bal) : (a._type === 'Supplier' ? -1 : 1));
   });
 
   sum = computed(() => {

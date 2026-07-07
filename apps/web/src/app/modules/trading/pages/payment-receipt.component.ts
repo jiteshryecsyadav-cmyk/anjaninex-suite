@@ -733,8 +733,9 @@ interface PartyBehavior {
       border-radius: 50%; cursor: pointer; }
     .bp-body { padding: 14px 18px; }
     .bp-empty { text-align: center; color: #6b7280; padding: 24px 0; font-size: 13px; }
-    .bp-table { width: 100%; font-size: 22px; border-collapse: collapse; }
-    .bp-table input { font-size: 22px; }
+    .bp-table { width: 100%; font-size: 24px; border-collapse: collapse; }
+    .bp-table input { font-size: 24px; font-weight: 600; }
+    .bp-table td { font-weight: 600; }
     .bp-table thead { background: #f0e6ff; color: #5c1a8b; }
     .bp-table th { padding: 8px; text-align: left; font-size: 15px; font-weight: 800; text-transform: uppercase; }
     .bp-table th.text-right { text-align: right; }

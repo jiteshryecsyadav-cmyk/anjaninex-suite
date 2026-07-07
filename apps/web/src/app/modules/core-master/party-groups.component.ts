@@ -1,0 +1,127 @@
+import { Component, inject, signal, computed } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
+import { HttpClient } from '@angular/common/http';
+import { environment } from '../../../environments/environment';
+
+interface C { id: string; displayName: string; gst?: string | null; groupName?: string | null; }
+
+// Party Groups (sister firms) - ek jagah se group bana ke member firms tick karo.
+@Component({
+  selector: 'app-party-groups',
+  standalone: true,
+  imports: [CommonModule, FormsModule, RouterLink],
+  template: `
+  <div class="p-6 max-w-6xl mx-auto">
+    <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
+      <div>
+        <h2 class="font-display font-black text-2xl text-[#5c1a8b]">Party Groups (Sister Firms)</h2>
+        <p class="text-sm text-[#6b3fa0]">Ek group banao, uske andar ki saari firms tick karo. Jaise "Gupta Group" me Gupta Sons, Gupta Brothers, Gupta Textile.</p>
+      </div>
+      <a routerLink="/core-master" class="px-3 py-1.5 text-sm border border-[#ddc8f5] rounded hover:bg-purple-50">&larr; Back</a>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <!-- Existing groups -->
+      <div class="card">
+        <h3 class="font-bold text-[#5c1a8b] mb-2">Groups</h3>
+        @if (groups().length === 0) { <p class="text-sm text-gray-400">Abhi koi group nahi. Naya banao &rarr;</p> }
+        <div class="flex flex-col gap-1">
+          @for (g of groups(); track g) {
+            <button (click)="openGroup(g)"
+              [class]="groupName === g ? 'bg-[#5c1a8b] text-white' : 'hover:bg-purple-50 text-[#5c1a8b]'"
+              class="text-left px-3 py-2 rounded text-sm font-semibold border border-[#ddc8f5]">
+              {{ g }} <span class="text-xs opacity-70">({{ countIn(g) }})</span>
+            </button>
+          }
+        </div>
+      </div>
+
+      <!-- Member picker -->
+      <div class="card md:col-span-2">
+        <div class="flex flex-wrap gap-2 items-end mb-3">
+          <div class="flex-1 min-w-[200px]">
+            <label class="text-xs text-gray-500">Group naam</label>
+            <input [(ngModel)]="groupName" list="pgGroups" class="input" placeholder="e.g. Gupta Group">
+            <datalist id="pgGroups">@for (g of groups(); track g) { <option [value]="g"></option> }</datalist>
+          </div>
+          <button (click)="save()" [disabled]="saving()"
+            class="px-4 py-2 bg-[#5c1a8b] text-white rounded font-semibold disabled:opacity-50">
+            {{ saving() ? 'Saving...' : 'Save Group' }}
+          </button>
+        </div>
+        @if (msg()) { <p class="text-sm mb-2" [class]="msg()==='Saved!' ? 'text-green-600' : 'text-red-600'">{{ msg() }}</p> }
+
+        <input [(ngModel)]="search" placeholder="Firm dhoondo (naam / GST)..." class="input mb-2">
+        <p class="text-xs text-gray-500 mb-1">Ticked = is group me. Selected: <b>{{ picked().size }}</b></p>
+        <div class="border border-[#eee] rounded max-h-[52vh] overflow-y-auto divide-y">
+          @for (c of filtered(); track c.id) {
+            <label class="flex items-center gap-3 px-3 py-2 hover:bg-[#faf5ff] cursor-pointer">
+              <input type="checkbox" [checked]="isPicked(c.id)" (change)="toggle(c.id)" class="w-4 h-4">
+              <span class="flex-1">
+                <span class="font-semibold text-sm">{{ c.displayName }}</span>
+                @if (c.gst) { <span class="text-xs text-gray-400 font-mono ml-2">{{ c.gst }}</span> }
+              </span>
+              @if (c.groupName && c.groupName !== groupName) {
+                <span class="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">{{ c.groupName }}</span>
+              }
+            </label>
+          }
+          @if (filtered().length === 0) { <p class="p-4 text-center text-gray-400 text-sm">Koi firm nahi mili.</p> }
+        </div>
+      </div>
+    </div>
+  </div>
+  `,
+})
+export class PartyGroupsComponent {
+  private http = inject(HttpClient);
+  base = `${environment.apiUrl}/api/core/contacts`;
+  all = signal<C[]>([]);
+  groups = signal<string[]>([]);
+  groupName = '';
+  search = '';
+  picked = signal<Set<string>>(new Set<string>());
+  saving = signal(false);
+  msg = signal('');
+
+  filtered = computed(() => {
+    const s = this.search.trim().toLowerCase();
+    return this.all().filter(c => !s
+      || c.displayName.toLowerCase().includes(s)
+      || (c.gst || '').toLowerCase().includes(s));
+  });
+
+  constructor() { this.load(); }
+
+  load() {
+    this.http.get<C[]>(this.base).subscribe({ next: r => this.all.set(r || []), error: () => {} });
+    this.http.get<string[]>(`${this.base}/groups`).subscribe({ next: g => this.groups.set(g || []), error: () => {} });
+  }
+
+  countIn(g: string) { return this.all().filter(c => (c.groupName || '') === g).length; }
+
+  openGroup(name: string) {
+    this.groupName = name;
+    this.picked.set(new Set<string>(this.all().filter(c => (c.groupName || '') === name).map(c => c.id)));
+    this.msg.set('');
+  }
+
+  toggle(id: string) {
+    const set = new Set(this.picked());
+    if (set.has(id)) set.delete(id); else set.add(id);
+    this.picked.set(set);
+  }
+  isPicked(id: string) { return this.picked().has(id); }
+
+  save() {
+    const name = this.groupName.trim();
+    if (!name) { this.msg.set('Group naam daalein.'); return; }
+    this.saving.set(true); this.msg.set('');
+    this.http.post(`${this.base}/groups/save-members`, { groupName: name, memberIds: [...this.picked()] }).subscribe({
+      next: () => { this.saving.set(false); this.msg.set('Saved!'); this.load(); },
+      error: () => { this.saving.set(false); this.msg.set('Error - dobara try karein.'); }
+    });
+  }
+}

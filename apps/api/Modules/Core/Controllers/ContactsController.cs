@@ -49,6 +49,8 @@ public record UpdateCoreContactDto(
     string? BuyerWa = null,
     string? GroupName = null);
 
+public record SaveGroupMembersDto(string GroupName, List<Guid> MemberIds);
+
 [ApiController]
 [Authorize]
 [Route("api/core/contacts")]
@@ -109,6 +111,25 @@ public class ContactsController : ControllerBase
             .OrderBy(g => g)
             .ToListAsync();
         return Ok(groups);
+    }
+
+    // Ek group ke members set karo (ticked = is group me, unticked jo pehle the = hata do).
+    [HttpPost("groups/save-members")]
+    public async Task<IActionResult> SaveGroupMembers([FromBody] SaveGroupMembersDto dto)
+    {
+        var firmId = CurrentFirmId;
+        var name = (dto.GroupName ?? "").Trim();
+        if (string.IsNullOrEmpty(name)) return BadRequest(new { error = "Group naam zaroori hai." });
+        var ids = dto.MemberIds ?? new List<Guid>();
+
+        var members = await _db.Contacts.Where(c => c.FirmId == firmId && ids.Contains(c.Id)).ToListAsync();
+        foreach (var c in members) { c.GroupName = name; c.UpdatedAt = DateTimeOffset.UtcNow; }
+
+        var removed = await _db.Contacts.Where(c => c.FirmId == firmId && c.GroupName == name && !ids.Contains(c.Id)).ToListAsync();
+        foreach (var c in removed) { c.GroupName = null; c.UpdatedAt = DateTimeOffset.UtcNow; }
+
+        await _db.SaveChangesAsync();
+        return Ok(new { group = name, members = members.Count, removed = removed.Count });
     }
 
     [HttpPost]

@@ -99,6 +99,10 @@ export const routes: Routes = [
       },
       {
         // Core Master edit — ek contact ka common data badlo (sab jagah reflect).
+        path: 'core-master/groups',
+        loadComponent: () => import('./modules/core-master/party-groups.component').then(m => m.PartyGroupsComponent)
+      },
+      {
         path: 'core-master/:id',
         loadComponent: () => import('./modules/core-master/core-master-edit.component').then(m => m.CoreMasterEditComponent)
       },

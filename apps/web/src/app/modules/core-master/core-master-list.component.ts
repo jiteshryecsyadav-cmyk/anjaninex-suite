@@ -34,6 +34,7 @@ interface CoreContact {
             Common data yahan badloge to sab jagah update hoga.
           </p>
         </div>
+        <a routerLink="/core-master/groups" class="px-3 py-2 border border-[#ddc8f5] rounded text-sm text-[#5c1a8b] no-underline mr-2 hover:bg-purple-50">Groups (Sister Firms)</a>
         <a routerLink="/core-master/new" class="btn-primary no-underline">+ Add Contact</a>
       </div>
 

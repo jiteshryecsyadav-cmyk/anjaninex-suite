@@ -163,6 +163,18 @@ interface LineRow {
                 </span>
               }
             </label>
+            @if (billGroupName()) {
+              <div class="mb-2 p-2 rounded-lg border border-amber-300 bg-amber-50">
+                <div class="text-xs font-bold text-amber-800 mb-1">Ye order "{{ billGroupName() }}" ka hai - bill wali actual firm chuno:</div>
+                <div class="flex flex-wrap gap-1">
+                  @for (m of groupMembers(); track m.id) {
+                    <button type="button" (click)="selectSupplierFromCombo(m)"
+                      [class]="supplierId === m.id ? 'bg-[#5c1a8b] text-white' : 'bg-white text-[#5c1a8b] hover:bg-purple-50'"
+                      class="px-2 py-1 text-xs font-semibold border border-[#ddc8f5] rounded">{{ m.displayName }}</button>
+                  }
+                </div>
+              </div>
+            }
             <!-- COMBOBOX: single autocomplete field (like legacy) -->
             <div class="combo-wrap">
               <div class="flex gap-1">
@@ -1577,6 +1589,11 @@ export class BillEntryComponent {
 
   // Data
   parties = signal<Party[]>([]);
+  billGroupName = signal('');
+  groupMembers = computed(() => {
+    const g = this.billGroupName();
+    return g ? this.parties().filter((p: any) => p.groupName === g) : [];
+  });
   items = signal<Item[]>([]);
   saving = signal(false);
   error = signal('');
@@ -1603,10 +1620,11 @@ export class BillEntryComponent {
   /** Order select → puri order detail auto-fill (supplier, buyer, items, CD).
       AI scan ki zaroorat nahi — order se hi bill ban jata hai. */
   onOrderSelect(id: string) {
-    if (!id) { this.orderNo = ''; return; }
+    if (!id) { this.orderNo = ''; this.billGroupName.set(''); return; }
     this.svc.getOrder(id).subscribe({
       next: (od) => {
         this.orderNo = od.orderNo;
+        this.billGroupName.set((od as any).supplierGroupName || '');
 
         // Supplier + Buyer auto-select (GST/address/phone bhi bhar jayenge)
         if (od.partyId) {

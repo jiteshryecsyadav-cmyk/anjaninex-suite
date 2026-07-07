@@ -129,8 +129,14 @@ interface LineRow {
                        placeholder="🔍 Name ya GST No se search..." class="ip flex-1">
                 <button type="button" (click)="showAddSupplier.set(true)" class="qa-add-btn" title="Add new supplier to Party Master">+ New</button>
               </div>
-              @if (supplierDropdownOpen() && filteredSuppliers().length > 0) {
+              @if (supplierDropdownOpen() && (filteredGroups().length > 0 || filteredSuppliers().length > 0)) {
                 <div class="combo-dropdown">
+                  @for (g of filteredGroups(); track g.name) {
+                    <div class="combo-option" (mousedown)="selectGroupFromCombo(g)" style="background:#f3e8ff">
+                      <div class="combo-name" style="color:#7c3aed;font-weight:700">{{ g.name }} <span style="font-size:11px">(GROUP - {{ g.count }} firms)</span></div>
+                      <div class="combo-sub">Order group par book - bill par firm chuno (firm pending)</div>
+                    </div>
+                  }
                   @for (p of filteredSuppliers(); track p.id) {
                     <div class="combo-option" (mousedown)="selectSupplierFromCombo(p)">
                       <div class="combo-name">{{ p.displayName }}</div>
@@ -139,7 +145,7 @@ interface LineRow {
                   }
                 </div>
               }
-              @if (supplierDropdownOpen() && supplierFilter() && filteredSuppliers().length === 0) {
+              @if (supplierDropdownOpen() && supplierFilter() && filteredGroups().length === 0 && filteredSuppliers().length === 0) {
                 <div class="combo-dropdown combo-empty">
                   ⚠️ No supplier found. Click <b class="text-green-600">+ New</b> to add "<i>{{ supplierFilter() }}</i>"
                 </div>
@@ -1226,6 +1232,19 @@ export class OrderEntryComponent {
   supplierFilter = signal('');
   buyerFilter = signal('');
   filteredSuppliers = computed(() => this.matchParties(this.supplierFilter()).slice(0, 8));
+  filteredGroups = computed(() => {
+    const t = this.supplierFilter().toLowerCase().trim();
+    if (!t) return [] as { name: string; count: number; firstId: string }[];
+    const map = new Map<string, { name: string; count: number; firstId: string }>();
+    for (const p of this.parties()) {
+      const g = (p as any).groupName as string | null;
+      if (g && g.toLowerCase().includes(t)) {
+        if (!map.has(g)) map.set(g, { name: g, count: 0, firstId: p.id });
+        map.get(g)!.count++;
+      }
+    }
+    return [...map.values()].slice(0, 5);
+  });
   filteredBuyers = computed(() => this.matchParties(this.buyerFilter()).slice(0, 8));
 
   // Combobox state (single-field autocomplete UX — like legacy)
@@ -1241,6 +1260,14 @@ export class OrderEntryComponent {
     this.supplierFilter.set(p.displayName);
     this.supplierDropdownOpen.set(false);
     this.onSupplierChange(p.id);
+  }
+  selectGroupFromCombo(g: { name: string; firstId: string }) {
+    this.aiGstTypeOverride.set(null);
+    this.supplierGroupName = g.name;
+    const first = this.parties().find(p => p.id === g.firstId);
+    if (first) { this.supplierId = first.id; this.onSupplierChange(first.id); }
+    this.supplierFilter.set(g.name + ' (firm pending)');
+    this.supplierDropdownOpen.set(false);
   }
   selectBuyerFromCombo(p: Party) {
     this.aiGstTypeOverride.set(null);   // manual select → GST type state-code se decide ho

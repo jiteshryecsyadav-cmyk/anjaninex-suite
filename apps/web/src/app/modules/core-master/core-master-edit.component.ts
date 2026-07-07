@@ -27,6 +27,7 @@ interface CoreContact {
   isBuyer?: boolean;
   supplierWa?: string | null;
   buyerWa?: string | null;
+  groupName?: string | null;
 }
 
 @Component({
@@ -67,6 +68,11 @@ interface CoreContact {
             <div>
               <label class="lbl">Legal Name</label>
               <input [(ngModel)]="model()!.legalName" class="input">
+            </div>
+            <div>
+              <label class="lbl">Group (sister firms)</label>
+              <input [(ngModel)]="model()!.groupName" class="input" list="cmGroupList" placeholder="e.g. Gupta Group">
+              <datalist id="cmGroupList">@for (g of groups(); track g) { <option [value]="g"></option> }</datalist>
             </div>
             <div>
               <label class="lbl">Phone / WhatsApp</label>
@@ -180,12 +186,14 @@ export class CoreMasterEditComponent {
   private base = `${environment.apiUrl}/api/core/contacts`;
 
   model = signal<CoreContact | null>(null);
+  groups = signal<string[]>([]);
   loading = signal(true);
   saving = signal(false);
   error = signal('');
   isNew = false;
 
   ngOnInit() {
+    this.http.get<string[]>(`${this.base}/groups`).subscribe({ next: g => this.groups.set(g || []), error: () => {} });
     const id = this.route.snapshot.paramMap.get('id');
     if (!id || id === 'new') {
       // Add mode — blank contact.
@@ -193,7 +201,7 @@ export class CoreMasterEditComponent {
       this.model.set({
         id: '', displayName: '', legalName: null, phone: null, email: null,
         gst: null, pan: null, address: null, city: null, state: null, pincode: null,
-        isParty: false, isSupplier: false, isStaff: false, isBuyer: false, supplierWa: null, buyerWa: null
+        isParty: false, isSupplier: false, isStaff: false, isBuyer: false, supplierWa: null, buyerWa: null, groupName: null
       });
       this.loading.set(false);
       return;
@@ -218,7 +226,7 @@ export class CoreMasterEditComponent {
     const body = {
       displayName: m.displayName, legalName: m.legalName, phone: m.phone, email: m.email,
       gst: m.gst, pan: m.pan, address: m.address, city: m.city, state: m.state, pincode: m.pincode,
-      supplierWa: m.supplierWa, buyerWa: m.buyerWa
+      supplierWa: m.supplierWa, buyerWa: m.buyerWa, groupName: m.groupName
     };
     const req = this.isNew
       ? this.http.post<CoreContact>(this.base, body)

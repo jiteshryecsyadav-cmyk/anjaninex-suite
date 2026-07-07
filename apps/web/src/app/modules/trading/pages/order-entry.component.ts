@@ -1265,7 +1265,8 @@ export class OrderEntryComponent {
     this.aiGstTypeOverride.set(null);
     this.supplierGroupName = g.name;
     const first = this.parties().find(p => p.id === g.firstId);
-    if (first) { this.supplierId = first.id; this.onSupplierChange(first.id); }
+    if (first) this.supplierId = first.id;
+    this.supplierGstin = ''; this.supplierPan = ''; this.supplierAddress = ''; this.supplierMobile = ''; this.supplierWhatsapp = '';
     this.supplierFilter.set(g.name + ' (firm pending)');
     this.supplierDropdownOpen.set(false);
   }
@@ -1787,6 +1788,7 @@ export class OrderEntryComponent {
         }
         // Auto-fill party detail fields from loaded supplier/buyer
         if (this.supplierId) this.onSupplierChange(this.supplierId);
+        if (this.supplierGroupName) { this.supplierFilter.set(this.supplierGroupName + ' (firm pending)'); this.supplierGstin = ''; this.supplierPan = ''; this.supplierAddress = ''; this.supplierMobile = ''; this.supplierWhatsapp = ''; }
         if (this.buyerId) this.onBuyerChange(this.buyerId);
         // If the saved CD amount diverges from the auto-computed value
         // (e.g. a manual override at save time), restore it as an override

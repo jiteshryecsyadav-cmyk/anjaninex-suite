@@ -51,6 +51,10 @@ export const reportsRoutes: Routes = [
     loadComponent: () => import('./pages/reports-pages.components').then(m => m.PendingOrdersReportComponent)
   },
   {
+    path: 'supplier-buyer',
+    loadComponent: () => import('../trading/pages/party-payment-report.component').then(m => m.PartyPaymentReportComponent)
+  },
+  {
     path: 'party-wise',
     loadComponent: () => import('./pages/reports-pages.components').then(m => m.PartyWiseReportComponent)
   },

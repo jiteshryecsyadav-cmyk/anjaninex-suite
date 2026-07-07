@@ -20,7 +20,11 @@ import { TradingService, BillListItem } from '../services/trading.service';
     <div class="card mb-4 flex flex-wrap gap-3 items-end">
       <div><label class="text-xs text-gray-500 block">From</label><input type="date" [(ngModel)]="from" (change)="load()" class="input w-40"></div>
       <div><label class="text-xs text-gray-500 block">To</label><input type="date" [(ngModel)]="to" (change)="load()" class="input w-40"></div>
-      <button (click)="load()" class="px-3 py-1.5 text-sm border border-[#ddc8f5] rounded hover:bg-purple-50">Refresh</button>
+      <div><label class="text-xs text-gray-500 block">{{ tab()==='buyer' ? 'Buyer' : 'Supplier' }} (naam / GST search)</label>
+        <input [ngModel]="partySearch()" (ngModelChange)="partySearch.set($event)" list="pbPartyList" placeholder="Sab - ya naam/GST type karo" class="input w-64">
+        <datalist id="pbPartyList">@for (p of partyOptions(); track p) { <option [value]="p"></option> }</datalist>
+      </div>
+      <button (click)="load()" class="px-5 py-1.5 text-sm font-bold text-white bg-[#5c1a8b] rounded">Get</button>
       <div class="flex-1"></div>
       <div class="flex gap-1">
         <button (click)="setTab('buyer')" [class]="tab()==='buyer' ? 'bg-[#5c1a8b] text-white' : 'bg-white text-[#5c1a8b]'" class="px-4 py-1.5 text-sm font-bold border border-[#ddc8f5] rounded-l">Buyer (Aana)</button>
@@ -115,12 +119,22 @@ export class PartyPaymentReportComponent {
 
   st(b: any) { const paid = b.paidAmount || 0, total = b.total || 0; if (paid <= 0) return 'unpaid'; if (total - paid <= 0.01) return 'paid'; return 'partial'; }
   partyOf(b: any) { return this.tab() === 'buyer' ? (b.buyerName || b.partyName) : b.partyName; }
+  gstOf(b: any) { return this.tab() === 'buyer' ? (b.buyerGst || b.partyGst) : b.partyGst; }
+  partySearch = signal('');
+  partyOptions = computed(() => {
+    const t = this.tab() === 'buyer' ? 'sales' : 'purchase';
+    const set = new Set<string>();
+    for (const b of this.bills()) if (b.billType === t && !b.isDeleted) { const p = this.partyOf(b); if (p) set.add(p); }
+    return [...set].sort();
+  });
 
   rows = computed(() => {
     const t = this.tab() === 'buyer' ? 'sales' : 'purchase';
     const sf = this.statusFilter();
+    const ps = this.partySearch().trim().toLowerCase();
     return this.bills()
-      .filter((b: any) => b.billType === t && !b.isDeleted && (!sf || this.st(b) === sf))
+      .filter((b: any) => b.billType === t && !b.isDeleted && (!sf || this.st(b) === sf)
+        && (!ps || (this.partyOf(b) || '').toLowerCase().includes(ps) || (this.gstOf(b) || '').toLowerCase().includes(ps)))
       .map((b: any) => ({ ...b, _bal: (b.total || 0) - (b.paidAmount || 0), _st: this.st(b), _party: this.partyOf(b) }))
       .sort((a: any, b: any) => b._bal - a._bal);
   });

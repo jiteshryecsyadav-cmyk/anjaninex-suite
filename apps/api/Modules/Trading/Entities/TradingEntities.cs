@@ -369,8 +369,8 @@ public class ChequeHandover
     public string? BankName { get; set; }
     [Column(TypeName = "numeric(14,2)")] public decimal Amount { get; set; }
     public DateOnly? ChequeDate { get; set; }
-    [Required] public string TakenBy { get; set; } = "";
-    public DateOnly HandedDate { get; set; }
+    public string? TakenBy { get; set; }
+    public DateOnly? HandedDate { get; set; }
     public string? HandedBy { get; set; }
     public bool CommissionPaid { get; set; }
     [Column(TypeName = "numeric(14,2)")] public decimal CommissionAmount { get; set; }

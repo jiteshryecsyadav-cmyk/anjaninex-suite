@@ -48,8 +48,6 @@ public class ChequeHandoverController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] ChequeHandoverDto dto)
     {
-        if (string.IsNullOrWhiteSpace(dto.TakenBy))
-            return BadRequest(new { error = "Kis ne liya - naam zaroori hai." });
         var c = new ChequeHandover
         {
             Id = Guid.NewGuid(),
@@ -59,16 +57,30 @@ public class ChequeHandoverController : ControllerBase
             ChequeNo = dto.ChequeNo,
             BankName = dto.BankName,
             Amount = dto.Amount,
-            TakenBy = dto.TakenBy.Trim(),
+            TakenBy = string.IsNullOrWhiteSpace(dto.TakenBy) ? null : dto.TakenBy.Trim(),
             HandedBy = MyName,
             CommissionPaid = dto.CommissionPaid,
             CommissionAmount = dto.CommissionAmount,
             Remark = dto.Remark,
-            HandedDate = DateOnly.TryParse(dto.HandedDate, out var hd) ? hd : DateOnly.FromDateTime(DateTime.UtcNow),
+            HandedDate = DateOnly.TryParse(dto.HandedDate, out var hd) ? hd : (DateOnly?)null,
             CreatedAt = DateTimeOffset.UtcNow
         };
         if (DateOnly.TryParse(dto.ChequeDate, out var cd)) c.ChequeDate = cd;
         _db.ChequeHandovers.Add(c);
+        await _db.SaveChangesAsync();
+        return Ok(c);
+    }
+
+    public record SetHandoverDto(string TakenBy, string? HandedDate);
+    [HttpPut("{id}/handover")]
+    public async Task<IActionResult> SetHandover(Guid id, [FromBody] SetHandoverDto dto)
+    {
+        var c = await _db.ChequeHandovers.FirstOrDefaultAsync(x => x.Id == id && x.FirmId == FirmId);
+        if (c is null) return NotFound();
+        c.TakenBy = string.IsNullOrWhiteSpace(dto.TakenBy) ? null : dto.TakenBy.Trim();
+        if (DateOnly.TryParse(dto.HandedDate, out var hd)) c.HandedDate = hd;
+        else c.HandedDate = DateOnly.FromDateTime(DateTime.UtcNow);
+        c.HandedBy = MyName;
         await _db.SaveChangesAsync();
         return Ok(c);
     }

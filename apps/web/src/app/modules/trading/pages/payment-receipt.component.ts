@@ -1591,6 +1591,14 @@ export class PaymentReceiptComponent {
       reuseNo: (this.editMode && this.editPaymentNo) ? this.editPaymentNo : undefined   // edit me same number
     }).subscribe({
       next: (p: any) => {
+        // Cheque txns -> Cheque Handover Register (pending: taken_by khaali)
+        const supName = this.supplier()?.displayName || '';
+        this.txns().filter(t => (t.mode || '').toLowerCase() === 'cheque' && t.amount > 0).forEach(t => {
+          this.http.post(`${environment.apiUrl}/api/trading/cheque-handovers`, {
+            supplierName: supName, paymentRef: p.paymentNo, chequeNo: t.refNo || '', bankName: t.bankName || '',
+            amount: t.amount, chequeDate: t.date || '', takenBy: '', handedDate: '', commissionPaid: false, commissionAmount: 0
+          }).subscribe({ next: () => {}, error: () => {} });
+        });
         this.toast.success(`Receipt ${p.paymentNo} successfully save ho gaya — ₹${this.totalReceived().toFixed(2)} received, ${allocations.length} bill clear.`);
         this.router.navigate(['/trading/payments']);
       },

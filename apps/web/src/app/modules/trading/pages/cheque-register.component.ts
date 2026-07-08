@@ -6,7 +6,7 @@ import { environment } from '../../../../environments/environment';
 
 interface Handover {
   id: string; paymentRef?: string; supplierName?: string; chequeNo?: string; bankName?: string;
-  amount: number; chequeDate?: string; takenBy: string; handedDate: string; handedBy?: string;
+  amount: number; chequeDate?: string; takenBy?: string; handedDate?: string; handedBy?: string;
   commissionPaid: boolean; commissionAmount: number; remark?: string;
 }
 
@@ -59,12 +59,15 @@ interface Handover {
           <tbody>
             @for (r of rows(); track r.id) {
               <tr class="border-t hover:bg-[#faf5ff]">
-                <td class="px-3 py-2 whitespace-nowrap">{{ r.handedDate }}</td>
+                <td class="px-3 py-2 whitespace-nowrap">{{ r.handedDate || '-' }}</td>
                 <td class="px-3 py-2 font-semibold">{{ r.supplierName || '-' }}</td>
                 <td class="px-3 py-2 font-mono text-xs">{{ r.chequeNo || '-' }}</td>
                 <td class="px-3 py-2 text-xs">{{ r.bankName || '-' }}</td>
                 <td class="px-3 py-2 text-right font-mono">Rs {{ money(r.amount) }}</td>
-                <td class="px-3 py-2 font-semibold">{{ r.takenBy }}</td>
+                <td class="px-3 py-2 font-semibold">
+                  @if (r.takenBy) { {{ r.takenBy }} }
+                  @else { <button (click)="recordHandover(r)" class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-xs font-bold hover:bg-amber-200">Pending - Record</button> }
+                </td>
                 <td class="px-3 py-2 text-xs text-gray-500">{{ r.handedBy || '-' }}</td>
                 <td class="px-3 py-2 text-center">
                   @if (r.commissionPaid) {
@@ -163,6 +166,16 @@ export class ChequeRegisterComponent {
     const amt = prompt('Commission amount (Rs) jo mila:', String(r.amount ? Math.round(r.amount * 0.02) : 0));
     if (amt === null) return;
     this.http.put(`${this.base}/${r.id}/commission`, { paid: true, amount: +amt || 0 }).subscribe({
+      next: () => this.load(), error: () => alert('Update fail')
+    });
+  }
+
+  recordHandover(r: Handover) {
+    const name = prompt('Kis ne liya (supplier ka staff naam):', r.takenBy || '');
+    if (!name || !name.trim()) return;
+    const today = new Date().toISOString().slice(0, 10);
+    const date = prompt('Kab liya (YYYY-MM-DD):', today) || today;
+    this.http.put(`${this.base}/${r.id}/handover`, { takenBy: name.trim(), handedDate: date }).subscribe({
       next: () => this.load(), error: () => alert('Update fail')
     });
   }

@@ -31,6 +31,8 @@ import { BackButtonComponent } from '../../../shared/back-button.component';
            class="px-4 py-2 text-sm font-semibold text-gray-500 border-b-2 border-transparent hover:text-[#5c1a8b]">Outstanding</a>
         <a routerLink="/reports/supplier-buyer" routerLinkActive="!border-[#5c1a8b] !text-[#5c1a8b]"
            class="px-4 py-2 text-sm font-semibold text-gray-500 border-b-2 border-transparent hover:text-[#5c1a8b]">Supplier vs Buyer</a>
+        <a routerLink="/reports/cheque-handover" routerLinkActive="!border-[#5c1a8b] !text-[#5c1a8b]"
+           class="px-4 py-2 text-sm font-semibold text-gray-500 border-b-2 border-transparent hover:text-[#5c1a8b]">Cheque Handover</a>
         <a routerLink="/reports/party-outstanding" routerLinkActive="!border-[#5c1a8b] !text-[#5c1a8b]"
            class="px-4 py-2 text-sm font-semibold text-gray-500 border-b-2 border-transparent hover:text-[#5c1a8b]">Aging</a>
         <a routerLink="/reports/top-parties" routerLinkActive="!border-[#5c1a8b] !text-[#5c1a8b]"

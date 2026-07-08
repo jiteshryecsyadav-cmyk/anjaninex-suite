@@ -77,6 +77,18 @@ import { RouterLink, RouterLinkActive, Router } from '@angular/router';
         <a routerLink="/trading/cheque-register" (click)="close()" class="tn-btn" style="text-decoration:none">🧾 Cheque Register</a>
       </div>
 
+      <div class="tn-dd" [class.tn-open]="open() === 'rep'">
+        <button type="button" class="tn-btn" (click)="toggle('rep', $event)">📊 Reports <span class="tn-caret">▼</span></button>
+        <div class="tn-menu">
+          <a routerLink="/reports/supplier-buyer" (click)="close()">Supplier vs Buyer</a>
+          <a routerLink="/reports/cheque-handover" (click)="close()">Cheque Handover</a>
+          <a routerLink="/reports/outstanding" (click)="close()">Outstanding</a>
+          <a routerLink="/reports/sales-register" (click)="close()">Sales Register</a>
+          <a routerLink="/reports/order-vs-bill" (click)="close()">Order vs Bill</a>
+          <a routerLink="/reports/dashboard" (click)="close()">All Reports</a>
+        </div>
+      </div>
+
     </div>
   `,
   styles: [`

@@ -55,6 +55,10 @@ export const reportsRoutes: Routes = [
     loadComponent: () => import('../trading/pages/party-payment-report.component').then(m => m.PartyPaymentReportComponent)
   },
   {
+    path: 'cheque-handover',
+    loadComponent: () => import('../trading/pages/cheque-handover-report.component').then(m => m.ChequeHandoverReportComponent)
+  },
+  {
     path: 'party-wise',
     loadComponent: () => import('./pages/reports-pages.components').then(m => m.PartyWiseReportComponent)
   },

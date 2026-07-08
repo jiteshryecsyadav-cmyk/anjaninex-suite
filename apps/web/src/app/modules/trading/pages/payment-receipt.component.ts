@@ -1593,9 +1593,10 @@ export class PaymentReceiptComponent {
       next: (p: any) => {
         // Cheque txns -> Cheque Handover Register (pending: taken_by khaali)
         const supName = this.supplier()?.displayName || '';
+        const buyName = this.buyer()?.displayName || '';
         this.txns().filter(t => (t.mode || '').toLowerCase() === 'cheque' && t.amount > 0).forEach(t => {
           this.http.post(`${environment.apiUrl}/api/trading/cheque-handovers`, {
-            supplierName: supName, paymentRef: p.paymentNo, chequeNo: t.refNo || '', bankName: t.bankName || '',
+            supplierName: supName, buyerName: buyName, paymentRef: p.paymentNo, chequeNo: t.refNo || '', bankName: t.bankName || '',
             amount: t.amount, chequeDate: t.date || '', takenBy: '', handedDate: '', commissionPaid: false, commissionAmount: 0
           }).subscribe({ next: () => {}, error: () => {} });
         });

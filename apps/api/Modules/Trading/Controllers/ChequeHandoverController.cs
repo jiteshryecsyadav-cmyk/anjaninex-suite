@@ -7,7 +7,7 @@ using Namokara.Api.Modules.Trading.Entities;
 namespace Namokara.Api.Modules.Trading.Controllers;
 
 public record ChequeHandoverDto(
-    string? PaymentRef, string? SupplierName, string? ChequeNo, string? BankName,
+    string? PaymentRef, string? SupplierName, string? BuyerName, string? ChequeNo, string? BankName,
     decimal Amount, string? ChequeDate, string TakenBy, string? HandedDate,
     bool CommissionPaid, decimal CommissionAmount, string? Remark);
 
@@ -54,6 +54,7 @@ public class ChequeHandoverController : ControllerBase
             FirmId = FirmId,
             PaymentRef = dto.PaymentRef,
             SupplierName = dto.SupplierName,
+            BuyerName = dto.BuyerName,
             ChequeNo = dto.ChequeNo,
             BankName = dto.BankName,
             Amount = dto.Amount,
@@ -103,11 +104,13 @@ public class ChequeHandoverController : ControllerBase
         var firmId = FirmId;
         var payments = await _db.Payments.AsNoTracking()
             .Where(p => p.FirmId == firmId && p.DeletedAt == null && p.Notes != null && p.Notes.Contains("TXN:"))
-            .Select(p => new { p.PaymentNo, p.PartyId, p.Notes }).ToListAsync();
+            .Select(p => new { p.PaymentNo, p.PartyId, p.BuyerPartyId, p.Notes }).ToListAsync();
         var existing = (await _db.ChequeHandovers.AsNoTracking().Where(c => c.FirmId == firmId)
             .Select(c => new { c.PaymentRef, c.ChequeNo }).ToListAsync())
             .Select(x => (x.PaymentRef ?? "") + "|" + (x.ChequeNo ?? "")).ToHashSet();
-        var partyIds = payments.Select(p => p.PartyId).Distinct().ToList();
+        var partyIds = payments.Select(p => p.PartyId)
+            .Concat(payments.Where(p => p.BuyerPartyId.HasValue).Select(p => p.BuyerPartyId!.Value))
+            .Distinct().ToList();
         var names = await _db.PartyProfiles.AsNoTracking()
             .Where(pp => partyIds.Contains(pp.Id))
             .Join(_db.Contacts, pp => pp.ContactId, c => c.Id, (pp, c) => new { pp.Id, c.DisplayName })
@@ -126,7 +129,9 @@ public class ChequeHandoverController : ControllerBase
                 var ch = new ChequeHandover
                 {
                     Id = Guid.NewGuid(), FirmId = firmId, PaymentRef = p.PaymentNo,
-                    SupplierName = names.GetValueOrDefault(p.PartyId), ChequeNo = parts[2], BankName = parts[1],
+                    SupplierName = names.GetValueOrDefault(p.PartyId),
+                    BuyerName = p.BuyerPartyId.HasValue ? names.GetValueOrDefault(p.BuyerPartyId.Value) : null,
+                    ChequeNo = parts[2], BankName = parts[1],
                     Amount = amt, TakenBy = null, HandedDate = null, CommissionPaid = false, CommissionAmount = 0,
                     CreatedAt = DateTimeOffset.UtcNow
                 };

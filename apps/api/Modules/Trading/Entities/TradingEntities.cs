@@ -365,6 +365,7 @@ public class ChequeHandover
     public Guid FirmId { get; set; }
     public string? PaymentRef { get; set; }
     public string? SupplierName { get; set; }
+    public string? BuyerName { get; set; }
     public string? ChequeNo { get; set; }
     public string? BankName { get; set; }
     [Column(TypeName = "numeric(14,2)")] public decimal Amount { get; set; }

@@ -143,12 +143,6 @@ import { environment } from '../../../environments/environment';
                 <span class="w-5 text-center">👥</span> HR
               </a>
             }
-            @if (features.hasAny('reports_core', 'reports_advanced')) {
-              <a routerLink="/reports" routerLinkActive="!bg-anjaninex-red !text-white"
-                 class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-semibold text-white/75 hover:text-white hover:bg-white/10">
-                <span class="w-5 text-center">📈</span> Reports
-              </a>
-            }
             <!-- Online Dukan — firm ka apna e-commerce store (categories/products/orders/reviews) -->
             @if (features.has('online_dukan')) {
             <a routerLink="/dukan/admin" routerLinkActive="!bg-anjaninex-red !text-white"

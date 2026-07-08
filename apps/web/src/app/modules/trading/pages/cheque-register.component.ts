@@ -22,7 +22,7 @@ interface Handover {
         <h2 class="font-display font-black text-2xl text-[#5c1a8b]">Cheque Handover Register</h2>
         <p class="text-sm text-[#6b3fa0]">Kaunsa cheque, kis supplier ka, kaun staff le gaya, kab - aur commission Paid/Unpaid.</p>
       </div>
-      <div class="flex gap-2"><button (click)="backfill()" class="px-3 py-2 border border-[#ddc8f5] text-[#5c1a8b] rounded-lg font-bold">Purani cheque laao</button><button (click)="openAdd()" class="px-4 py-2 bg-[#5c1a8b] text-white rounded-lg font-bold">+ Cheque diya</button></div>
+      <button (click)="openAdd()" class="px-4 py-2 bg-[#5c1a8b] text-white rounded-lg font-bold">+ Cheque diya</button>
     </div>
 
     <!-- Filters -->

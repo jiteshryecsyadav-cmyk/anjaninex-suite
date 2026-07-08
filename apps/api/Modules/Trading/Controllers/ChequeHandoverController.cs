@@ -104,13 +104,11 @@ public class ChequeHandoverController : ControllerBase
         var firmId = FirmId;
         var payments = await _db.Payments.AsNoTracking()
             .Where(p => p.FirmId == firmId && p.DeletedAt == null && p.Notes != null && p.Notes.Contains("TXN:"))
-            .Select(p => new { p.PaymentNo, p.PartyId, p.BuyerPartyId, p.Notes }).ToListAsync();
+            .Select(p => new { p.PaymentNo, p.PartyId, p.Notes }).ToListAsync();
         var existing = (await _db.ChequeHandovers.AsNoTracking().Where(c => c.FirmId == firmId)
             .Select(c => new { c.PaymentRef, c.ChequeNo }).ToListAsync())
             .Select(x => (x.PaymentRef ?? "") + "|" + (x.ChequeNo ?? "")).ToHashSet();
-        var partyIds = payments.Select(p => p.PartyId)
-            .Concat(payments.Where(p => p.BuyerPartyId.HasValue).Select(p => p.BuyerPartyId!.Value))
-            .Distinct().ToList();
+        var partyIds = payments.Select(p => p.PartyId).Distinct().ToList();
         var names = await _db.PartyProfiles.AsNoTracking()
             .Where(pp => partyIds.Contains(pp.Id))
             .Join(_db.Contacts, pp => pp.ContactId, c => c.Id, (pp, c) => new { pp.Id, c.DisplayName })
@@ -130,7 +128,7 @@ public class ChequeHandoverController : ControllerBase
                 {
                     Id = Guid.NewGuid(), FirmId = firmId, PaymentRef = p.PaymentNo,
                     SupplierName = names.GetValueOrDefault(p.PartyId),
-                    BuyerName = p.BuyerPartyId.HasValue ? names.GetValueOrDefault(p.BuyerPartyId.Value) : null,
+                    BuyerName = null,
                     ChequeNo = parts[2], BankName = parts[1],
                     Amount = amt, TakenBy = null, HandedDate = null, CommissionPaid = false, CommissionAmount = 0,
                     CreatedAt = DateTimeOffset.UtcNow

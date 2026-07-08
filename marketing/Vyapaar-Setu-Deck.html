@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vyapaar Setu — Pitch Deck</title>
+<style>
+  :root{
+    --purple:#5c1a8b; --purple2:#7b2fb0; --lilac:#f0e6ff; --ink:#241033;
+    --gold:#e8b530; --green:#1f9d55; --line:#ddc8f5;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{height:100%; font-family:"Segoe UI",system-ui,Arial,sans-serif; color:var(--ink); background:#2a1240;}
+  .deck{height:100vh; overflow:hidden;}
+  .slide{
+    position:absolute; inset:0; display:none; flex-direction:column;
+    padding:6vh 8vw; background:linear-gradient(135deg,#ffffff 0%,#faf5ff 100%);
+  }
+  .slide.active{display:flex;}
+  .slide.title{background:linear-gradient(135deg,var(--purple) 0%,#3d1060 100%); color:#fff; justify-content:center; align-items:center; text-align:center;}
+  .kicker{font-size:1.1rem; letter-spacing:.28em; text-transform:uppercase; color:var(--purple2); font-weight:700; margin-bottom:1.2rem;}
+  .title .kicker{color:var(--gold);}
+  h1{font-size:5.5rem; font-weight:900; line-height:1.02; letter-spacing:-1px;}
+  h2{font-size:3.2rem; font-weight:900; color:var(--purple); line-height:1.05; margin-bottom:.4rem;}
+  .sub{font-size:1.5rem; color:#6b3fa0; margin-bottom:3vh; font-weight:600;}
+  .title .brandline{font-size:1.6rem; margin-top:1.6rem; opacity:.9; font-weight:600;}
+  .title .tag{margin-top:3rem; font-size:2rem; font-weight:800; color:var(--gold);}
+  .devnagri{font-size:2.6rem; font-weight:800; margin-top:.6rem; opacity:.92;}
+  ul{list-style:none; margin-top:1.5vh; display:flex; flex-direction:column; gap:2.2vh;}
+  li{font-size:2rem; line-height:1.3; padding-left:3.4rem; position:relative; font-weight:500;}
+  li::before{content:"›"; position:absolute; left:0; top:-.35rem; font-size:2.6rem; color:var(--purple2); font-weight:900;}
+  li b{color:var(--purple);}
+  .modtag{display:inline-block; background:var(--lilac); color:var(--purple); font-weight:800; font-size:1.1rem; padding:.4rem 1.1rem; border-radius:999px; letter-spacing:.12em; text-transform:uppercase; margin-bottom:1.4rem; width:max-content;}
+  .grid{display:grid; grid-template-columns:repeat(3,1fr); gap:2.2vh 3vw; margin-top:3vh;}
+  .card{background:#fff; border:2px solid var(--line); border-radius:18px; padding:2.4vh 1.8vw; text-align:center; font-size:1.5rem; font-weight:800; color:var(--purple); box-shadow:0 6px 18px rgba(92,26,139,.06);}
+  .card small{display:block; font-weight:600; color:#7a6b8d; font-size:1rem; margin-top:.5rem;}
+  .center{justify-content:center; align-items:center; text-align:center;}
+  .trial{background:linear-gradient(135deg,var(--green) 0%,#0f6b39 100%); color:#fff;}
+  .trial h2, .trial .big{color:#fff;}
+  .big{font-size:4.5rem; font-weight:900;}
+  .contact{background:linear-gradient(135deg,var(--purple) 0%,#3d1060 100%); color:#fff; justify-content:center; align-items:center; text-align:center;}
+  .contact h2{color:#fff;}
+  .contact .row{font-size:1.8rem; margin-top:1.2rem; font-weight:600;}
+  .contact .url{color:var(--gold); font-size:2.2rem; font-weight:800; margin-top:2rem;}
+  .foot{position:absolute; bottom:2.5vh; left:8vw; right:8vw; display:flex; justify-content:space-between; font-size:.95rem; color:#9a86ad; font-weight:600;}
+  .title .foot,.trial .foot,.contact .foot{color:rgba(255,255,255,.7);}
+  .nav{position:fixed; bottom:14px; right:18px; z-index:50; display:flex; gap:8px; align-items:center;}
+  .nav button{background:var(--purple); color:#fff; border:none; width:42px; height:42px; border-radius:50%; font-size:1.3rem; cursor:pointer; opacity:.85;}
+  .nav button:hover{opacity:1;}
+  .pageno{position:fixed; bottom:22px; left:22px; z-index:50; color:#b79bd0; font-size:.9rem; font-weight:700;}
+  @media print{
+    html,body,.deck{height:auto; background:#fff;}
+    .slide{display:flex !important; position:relative; inset:auto; page-break-after:always; height:100vh; width:100vw;}
+    .nav,.pageno{display:none;}
+  }
+</style>
+</head>
+<body>
+<div class="deck" id="deck">
+
+  <!-- 1 TITLE -->
+  <section class="slide title active">
+    <div class="kicker">An Anjaninex Product</div>
+    <h1>VYAPAAR SETU</h1>
+    <div class="devnagri">व्यापार सेतु</div>
+    <div class="brandline">Aapka poora business — ab ek hi app mein</div>
+    <div class="tag">Har vyapar ka saathi</div>
+    <div class="foot"><span>vyaparsetu.anjaninex.com</span><span>Made in India</span></div>
+  </section>
+
+  <!-- 2 PROBLEM -->
+  <section class="slide">
+    <div class="kicker">The Daily Struggle</div>
+    <h2>Register, hisaab aur udhaari — din bhar peecha karte hain</h2>
+    <ul>
+      <li>Bill haath se banao, GST khud calculate karo — ghante lag jaate hain</li>
+      <li>Kis party ka kitna <b>baaki</b> hai — sab yaad ya register par</li>
+      <li>Order, payment, commission — alag-alag diary, ek galti mahangi</li>
+      <li>Data bikhra hua — na report, na control</li>
+    </ul>
+    <div class="foot"><span>Vyapaar Setu</span><span>an Anjaninex product</span></div>
+  </section>
+
+  <!-- 3 ONE APP -->
+  <section class="slide">
+    <div class="kicker">One App, Whole Business</div>
+    <h2>Ek app — har kaam ki alag jagah</h2>
+    <div class="grid">
+      <div class="card">Dashboard</div>
+      <div class="card">Orders</div>
+      <div class="card">Bills</div>
+      <div class="card">Payments</div>
+      <div class="card">Commission</div>
+      <div class="card">Reports</div>
+      <div class="card">Accounts</div>
+      <div class="card">HR</div>
+      <div class="card">Bazaar Link</div>
+    </div>
+    <div class="foot"><span>Vyapaar Setu</span><span>an Anjaninex product</span></div>
+  </section>
+
+  <!-- 4 DASHBOARD -->
+  <section class="slide">
+    <div class="modtag">Module 1 · Dashboard</div>
+    <h2>Poore business ki live jhalak — graph mein</h2>
+    <ul>
+      <li><b>4 KPI cards</b> (har ek me mini trend graph): Total Sales · Commission · Received (+pending) · GR Returns</li>
+      <li><b>Monthly Sales Trend</b> — poore saal ka sales/commission/returns line graph</li>
+      <li><b>Party Outstanding</b> — Receivable vs Payable, aur Outstanding-by-days (aging)</li>
+      <li><b>Top Buyers</b> aur <b>Trending Items</b> — kaun sabse zyada, kya sabse zyada bika</li>
+      <li><b>AI Insight</b> — auto alert (jaise "es party ka payment late chal raha hai")</li>
+    </ul>
+    <div class="foot"><span>Vyapaar Setu</span><span>an Anjaninex product</span></div>
+  </section>
+
+  <!-- 5 ORDERS -->
+  <section class="slide">
+    <div class="modtag">Module 2 · Orders</div>
+    <h2>Order lena ab seconds ka kaam</h2>
+    <ul>
+      <li>Fast order entry — party, item, qty, rate</li>
+      <li>Order list with <b>status</b> — pending, done</li>
+      <li>Order → Bill <b>ek click</b> mein convert</li>
+    </ul>
+    <div class="foot"><span>Vyapaar Setu</span><span>an Anjaninex product</span></div>
+  </section>
+
+  <!-- 6 BILLS -->
+  <section class="slide">
+    <div class="modtag">Module 3 · Bills</div>
+    <h2>Bill minutes mein, GST apne aap</h2>
+    <ul>
+      <li><b>GST auto-split</b> — CGST / SGST / IGST khud bat jaata hai</li>
+      <li>Bill ki <b>photo kheencho → 1-click entry</b> — typing khatam</li>
+      <li>Professional bill — print aur WhatsApp share</li>
+    </ul>
+    <div class="foot"><span>Vyapaar Setu</span><span>an Anjaninex product</span></div>
+  </section>
+
+  <!-- 7 PAYMENTS -->
+  <section class="slide">
+    <div class="modtag">Module 4 · Payments</div>
+    <h2>Paisa kis se, kab, kitna — sab clear</h2>
+    <ul>
+      <li>Payment aur receipt entry — cash ya bank</li>
+      <li><b>Party-wise outstanding</b> — kaun kitna baaki hai</li>
+      <li>Late-payment alert — kaun der kar raha hai</li>
+    </ul>
+    <div class="foot"><span>Vyapaar Setu</span><span>an Anjaninex product</span></div>
+  </section>
+
+  <!-- 8 COMMISSION -->
+  <section class="slide">
+    <div class="modtag">Module 5 · Commission</div>
+    <h2>Agent ka commission — apne aap</h2>
+    <ul>
+      <li>Auto agent/broker <b>commission calculation</b></li>
+      <li>Agent-wise commission report — kaun kitna kamaaya</li>
+      <li>No manual math, no bhool-chook</li>
+    </ul>
+    <div class="foot"><span>Vyapaar Setu</span><span>an Anjaninex product</span></div>
+  </section>
+
+  <!-- 9 REPORTS -->
+  <section class="slide">
+    <div class="modtag">Module 6 · Reports</div>
+    <h2>Number bolte hain — business samajh aata hai</h2>
+    <ul>
+      <li><b>Order vs Bill</b> compare — kitna order, kitna bill bana</li>
+      <li><b>Payment-late</b> report — kaun der se de raha hai</li>
+      <li><b>City-wise aur party-wise</b> buyer report</li>
+    </ul>
+    <div class="foot"><span>Vyapaar Setu</span><span>an Anjaninex product</span></div>
+  </section>
+
+  <!-- 10 ACCOUNTS -->
+  <section class="slide">
+    <div class="modtag">Module 7 · Accounts</div>
+    <h2>Poori accounting — CA jaisa, aapke haath mein</h2>
+    <ul>
+      <li>Ledgers aur vouchers (Payment/Receipt/Contra/Journal)</li>
+      <li><b>Trial Balance · P&amp;L · Balance Sheet</b> — auto ready</li>
+      <li><b>Activity Log</b> — kisne kya banaya, edit ya delete kiya</li>
+    </ul>
+    <div class="foot"><span>Vyapaar Setu</span><span>an Anjaninex product</span></div>
+  </section>
+
+  <!-- 11 HR -->
+  <section class="slide">
+    <div class="modtag">Module 8 · HR</div>
+    <h2>Staff ka hisaab bhi saath</h2>
+    <ul>
+      <li>Live <b>attendance</b> — late/early apne aap</li>
+      <li>Leave aur leave-balance tracking</li>
+      <li>Staff records — ek jagah</li>
+    </ul>
+    <div class="foot"><span>Vyapaar Setu</span><span>an Anjaninex product</span></div>
+  </section>
+
+  <!-- 12 BAZAAR LINK -->
+  <section class="slide">
+    <div class="modtag">Module 9 · Bazaar Link</div>
+    <h2>Apne bazaar se judiye — naye buyer, naye supplier</h2>
+    <ul>
+      <li>B2B marketplace — connect with the trade network</li>
+      <li>Zyada buyers aur suppliers tak pahunch</li>
+      <li>Rate broadcast — ek click, sabhi tak</li>
+    </ul>
+    <div class="foot"><span>Vyapaar Setu</span><span>an Anjaninex product</span></div>
+  </section>
+
+  <!-- 13 AI -->
+  <section class="slide">
+    <div class="modtag">Bonus · AI</div>
+    <h2>Anji — aapka apna smart assistant</h2>
+    <ul>
+      <li><b>Bolkar poochho</b> — "falane ka balance kitna hai?" — jawab aapki bhasha mein</li>
+      <li><b>Bill scan</b> — photo se seedhi entry, OCR khud kar de</li>
+      <li>Har page par guide — kahin atko mat</li>
+    </ul>
+    <div class="foot"><span>Vyapaar Setu</span><span>an Anjaninex product</span></div>
+  </section>
+
+  <!-- 14 TRIAL -->
+  <section class="slide trial center">
+    <div class="kicker" style="color:#eafff2">Try Before You Trust</div>
+    <div class="big">15-Din Free Trial</div>
+    <h2 style="margin-top:1.5rem">Koi risk nahi — pehle chalaao, phir bharosa karo</h2>
+    <div class="foot"><span>Vyapaar Setu</span><span>an Anjaninex product</span></div>
+  </section>
+
+  <!-- 15 CONTACT -->
+  <section class="slide contact">
+    <div class="kicker" style="color:var(--gold)">Aaiye, digital ho jaaiye</div>
+    <h2>Har vyapar ka saathi — Vyapaar Setu</h2>
+    <div class="url">vyaparsetu.anjaninex.com</div>
+    <div class="row">Kapil Sharma&nbsp; +91 96642 50416</div>
+    <div class="row">Jitesh Yadav&nbsp; +91 95115 40583</div>
+    <div class="foot"><span>Vyapaar Setu</span><span>an Anjaninex product</span></div>
+  </section>
+
+</div>
+
+<div class="pageno" id="pageno">1 / 15</div>
+<div class="nav">
+  <button onclick="go(-1)">‹</button>
+  <button onclick="go(1)">›</button>
+</div>
+
+<script>
+  const slides=[...document.querySelectorAll('.slide')];
+  let i=0;
+  function show(n){slides[i].classList.remove('active'); i=(n+slides.length)%slides.length; slides[i].classList.add('active'); document.getElementById('pageno').textContent=(i+1)+' / '+slides.length;}
+  function go(d){show(i+d);}
+  document.addEventListener('keydown',e=>{
+    if(e.key==='ArrowRight'||e.key===' '||e.key==='PageDown')go(1);
+    if(e.key==='ArrowLeft'||e.key==='PageUp')go(-1);
+    if(e.key==='Home')show(0);
+    if(e.key==='End')show(slides.length-1);
+    if(e.key==='f'||e.key==='F'){if(!document.fullscreenElement)document.documentElement.requestFullscreen();else document.exitFullscreen();}
+  });
+</script>
+</body>
+</html>

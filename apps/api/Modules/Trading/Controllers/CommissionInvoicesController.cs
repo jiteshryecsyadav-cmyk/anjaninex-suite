@@ -218,6 +218,59 @@ public class CommissionInvoicesController : ControllerBase
                     });
                 }
 
+                // Buyer Agent (del-credere) earnings: har line ke bill ka buyer -> uska agent -> share%.
+                var lineBillIds = dto.Lines.Select(l => l.BillId).Distinct().ToList();
+                var billBuyers = await _db.Bills.AsNoTracking()
+                    .Where(b => lineBillIds.Contains(b.Id) && b.FirmId == firmId)
+                    .Select(b => new { b.Id, b.BuyerPartyId }).ToListAsync();
+                var billToBuyer = billBuyers.Where(b => b.BuyerPartyId.HasValue)
+                    .ToDictionary(b => b.Id, b => b.BuyerPartyId!.Value);
+                var buyerPartyIds = billToBuyer.Values.Distinct().ToList();
+                if (buyerPartyIds.Count > 0)
+                {
+                    var buyerInfo = await _db.PartyProfiles.AsNoTracking()
+                        .Where(p => buyerPartyIds.Contains(p.Id))
+                        .Join(_db.Contacts.AsNoTracking(), p => p.ContactId, c => c.Id,
+                            (p, c) => new { PartyId = p.Id, c.BuyerAgentId, c.BuyerAgentSharePct, c.DisplayName })
+                        .ToListAsync();
+                    var buyerMap = buyerInfo.ToDictionary(x => x.PartyId, x => x);
+                    var agentIds = buyerInfo.Where(x => x.BuyerAgentId.HasValue)
+                        .Select(x => x.BuyerAgentId!.Value).Distinct().ToList();
+                    var agentDefaults = await _db.BuyerAgents.AsNoTracking()
+                        .Where(a => agentIds.Contains(a.Id) && a.FirmId == firmId)
+                        .ToDictionaryAsync(a => a.Id, a => a.DefaultSharePct);
+
+                    var acc = new Dictionary<Guid, (decimal gross, decimal share, decimal pct, HashSet<string> buyers)>();
+                    foreach (var line in dto.Lines)
+                    {
+                        if (!billToBuyer.TryGetValue(line.BillId, out var bpid)) continue;
+                        if (!buyerMap.TryGetValue(bpid, out var bi) || bi.BuyerAgentId == null) continue;
+                        var aid = bi.BuyerAgentId.Value;
+                        var pct = bi.BuyerAgentSharePct ?? agentDefaults.GetValueOrDefault(aid, 0m);
+                        if (pct <= 0) continue;
+                        var sh = Math.Round(line.CommissionAmount * pct / 100m, 2);
+                        (decimal gross, decimal share, decimal pct, HashSet<string> buyers) cur;
+                        if (!acc.TryGetValue(aid, out cur)) cur = (0m, 0m, pct, new HashSet<string>());
+                        cur.gross += line.CommissionAmount;
+                        cur.share += sh;
+                        cur.pct = pct;
+                        if (!string.IsNullOrWhiteSpace(bi.DisplayName)) cur.buyers.Add(bi.DisplayName);
+                        acc[aid] = cur;
+                    }
+                    foreach (var kv in acc)
+                    {
+                        _db.BuyerAgentEarnings.Add(new BuyerAgentEarning
+                        {
+                            Id = Guid.NewGuid(), FirmId = firmId, BuyerAgentId = kv.Key,
+                            CommissionInvoiceId = inv.Id,
+                            BuyerName = kv.Value.buyers.Count == 1 ? kv.Value.buyers.First()
+                                        : (kv.Value.buyers.Count > 1 ? "(multiple)" : null),
+                            GrossCommission = kv.Value.gross, SharePct = kv.Value.pct, ShareAmount = kv.Value.share,
+                            RefNo = inv.InvoiceNo, CreatedAt = DateTimeOffset.UtcNow
+                        });
+                    }
+                }
+
                 await _db.SaveChangesAsync();
                 await tx.CommitAsync();
                 return Ok(new { id = inv.Id, invoiceNo = inv.InvoiceNo, totalAmount });

@@ -1,0 +1,77 @@
+VYAPAAR SETU - an Anjaninex product
+	Aapka poora business, ab ek hi app mein
+	Har vyapar ka saathi
+	vyaparsetu.anjaninex.com
+
+The Daily Struggle
+	Bill haath se banao, GST khud calculate - ghante lagte hain
+	Kis party ka kitna baaki - sab register par
+	Order, payment, commission - alag diary, ek galti mahangi
+	Data bikhra hua - na report, na control
+
+One App, Whole Business
+	Dashboard, Orders, Bills, Payments
+	Commission, Reports, Accounts
+	HR, Bazaar Link
+
+Dashboard
+	4 KPI cards (har ek me mini trend graph): Total Sales, Commission, Received (+pending), GR Returns
+	Monthly Sales Trend - poore saal ka sales/commission/returns line graph
+	Party Outstanding - Receivable vs Payable + Outstanding-by-days (aging)
+	Top Buyers aur Trending Items - kaun sabse zyada, kya sabse zyada bika
+	AI Insight - auto alert (jaise es party ka payment late chal raha hai)
+
+Orders
+	Fast order entry - party, item, qty, rate
+	Order list with status - pending, done
+	Order to Bill ek click mein convert
+
+Bills
+	GST auto-split - CGST / SGST / IGST khud bat jaata hai
+	Bill ki photo kheencho, 1-click entry - typing khatam
+	Professional bill - print aur WhatsApp share
+
+Payments
+	Payment aur receipt entry - cash ya bank
+	Party-wise outstanding - kaun kitna baaki hai
+	Late-payment alert - kaun der kar raha hai
+
+Commission
+	Auto agent/broker commission calculation
+	Agent-wise commission report - kaun kitna kamaaya
+	No manual math, no bhool-chook
+
+Reports
+	Order vs Bill compare - kitna order, kitna bill bana
+	Payment-late report - kaun der se de raha hai
+	City-wise aur party-wise buyer report
+
+Accounts
+	Ledgers aur vouchers (Payment/Receipt/Contra/Journal)
+	Trial Balance, P&L, Balance Sheet - auto ready
+	Activity Log - kisne kya banaya, edit ya delete kiya
+
+HR
+	Live attendance - late/early apne aap
+	Leave aur leave-balance tracking
+	Staff records - ek jagah
+
+Bazaar Link
+	B2B marketplace - trade network se connect
+	Zyada buyers aur suppliers tak pahunch
+	Rate broadcast - ek click, sabhi tak
+
+AI - Anji Assistant
+	Bolkar poochho - falane ka balance kitna hai - jawab aapki bhasha mein
+	Bill scan - photo se seedhi entry, OCR khud kare
+	Har page par guide - kahin atko mat
+
+15-Din Free Trial
+	Koi risk nahi - pehle chalaao, phir bharosa karo
+	Poore features 15 din free
+
+Contact
+	Har vyapar ka saathi - Vyapaar Setu
+	vyaparsetu.anjaninex.com
+	Kapil Sharma  +91 96642 50416
+	Jitesh Yadav  +91 95115 40583

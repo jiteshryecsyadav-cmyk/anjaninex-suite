@@ -292,6 +292,21 @@ import { LedgerStatementComponent } from '../../accounting/components/ledger-sta
                   <label class="lbl">GROUP (SISTER FIRMS)</label>
                   <input formControlName="groupName" placeholder="e.g. Gupta Group" class="ip">
                 </div>
+                @if (newType() === 'buyer' || newType() === 'both') {
+                <div>
+                  <label class="lbl">🤝 BUYER AGENT (payment guarantee)</label>
+                  <select formControlName="buyerAgentId" class="ip" (change)="onAgentChange()">
+                    <option value="">- None -</option>
+                    @for (a of agents(); track a.id) {
+                      <option [value]="a.id">{{ a.name }}{{ a.city ? ' (' + a.city + ')' : '' }}</option>
+                    }
+                  </select>
+                </div>
+                <div>
+                  <label class="lbl">AGENT SHARE % <small style="color:#9CA3AF">(hamari commission ka)</small></label>
+                  <input formControlName="buyerAgentSharePct" type="number" step="0.01" placeholder="e.g. 25" class="ip">
+                </div>
+                }
                 <div class="col-span-3">
                   <label class="lbl">ADDRESS</label>
                   <textarea formControlName="address" placeholder="Shop / office address" rows="2" class="ip"></textarea>
@@ -774,6 +789,8 @@ export class PartiesComponent {
     waSupplier: [''],
     waBuyer: [''],
     groupName: [''],
+    buyerAgentId: [''],
+    buyerAgentSharePct: [''],
     address: [''],
     city: [''],
     state: [''],
@@ -936,6 +953,13 @@ export class PartiesComponent {
     });
   }
 
+  agents = signal<any[]>([]);
+  onAgentChange() {
+    const id = this.form.value.buyerAgentId;
+    const a = this.agents().find(x => x.id === id);
+    if (a && !this.form.value.buyerAgentSharePct) this.form.patchValue({ buyerAgentSharePct: a.defaultSharePct });
+  }
+
   ngOnInit() {
     this.load();
     this.loadBehaviour();
@@ -945,6 +969,8 @@ export class PartiesComponent {
         this.supCount.set(c.suppliers); this.buyCount.set(c.buyers);
         this.multiCount.set(c.both); this.staffCount.set(c.staff);
       }, error: () => {} });
+    this.http.get<any[]>(`${environment.apiUrl}/api/trading/buyer-agents`)
+      .subscribe({ next: a => this.agents.set(a || []), error: () => {} });
   }
 
   load() {
@@ -988,7 +1014,9 @@ export class PartiesComponent {
       city: p.city ?? '', creditLimit: p.creditLimit, creditDays: p.creditDays,
       commission: p.commissionRate || 0,
       waSupplier: p.waSupplier ?? '', waBuyer: p.waBuyer ?? '',
-      groupName: (p as any).groupName ?? ''
+      groupName: (p as any).groupName ?? '',
+      buyerAgentId: (p as any).buyerAgentId ?? '',
+      buyerAgentSharePct: (p as any).buyerAgentSharePct ?? ''
     });
     this.showForm.set(true);
     // City bhari ho aur pincode khali — auto le aao
@@ -1019,7 +1047,9 @@ export class PartiesComponent {
       commissionRate: v.commission || 0,
       openingBalance: v.openingBalance || 0, openingType: 'Dr',
       waSupplier: v.waSupplier || null, waBuyer: v.waBuyer || null,
-      groupName: v.groupName || null
+      groupName: v.groupName || null,
+      buyerAgentId: v.buyerAgentId || null,
+      buyerAgentSharePct: (v.buyerAgentSharePct === '' || v.buyerAgentSharePct == null) ? null : Number(v.buyerAgentSharePct)
     };
     const id = this.editingId();
     const obs = id ? this.svc.updateParty(id, data) : this.svc.createParty(data);

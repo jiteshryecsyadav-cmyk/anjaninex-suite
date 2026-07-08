@@ -15,6 +15,7 @@ import { RouterLink, RouterLinkActive, Router } from '@angular/router';
         <button type="button" class="tn-btn" (click)="toggle('master', $event)">📁 Master <span class="tn-caret">▼</span></button>
         <div class="tn-menu">
           <a routerLink="/trading/parties" (click)="close()">👥 Parties</a>
+          <a routerLink="/trading/buyer-agents" (click)="close()">🤝 Buyer Agents</a>
           <a routerLink="/masters/branches" (click)="close()">🏢 Branches</a>
           <a routerLink="/masters/transporters" (click)="close()">🚚 Transporters</a>
           <a routerLink="/masters/credit-limits" (click)="close()">💳 Credit Limits</a>
@@ -82,6 +83,7 @@ import { RouterLink, RouterLinkActive, Router } from '@angular/router';
         <div class="tn-menu">
           <a routerLink="/reports/supplier-buyer" (click)="close()">Supplier vs Buyer</a>
           <a routerLink="/reports/cheque-handover" (click)="close()">Cheque Handover</a>
+          <a routerLink="/trading/buyer-agents" (click)="close()">Buyer Agent Commission</a>
           <a routerLink="/reports/outstanding" (click)="close()">Outstanding</a>
           <a routerLink="/reports/sales-register" (click)="close()">Sales Register</a>
           <a routerLink="/reports/order-vs-bill" (click)="close()">Order vs Bill</a>

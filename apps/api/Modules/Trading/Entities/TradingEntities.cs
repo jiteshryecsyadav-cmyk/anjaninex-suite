@@ -378,3 +378,49 @@ public class ChequeHandover
     public string? Remark { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
 }
+
+// Buyer Agent (del-credere): buyer ka agent jo payment guarantee leta hai; hamari commission ka X% leta hai.
+[Table("buyer_agents", Schema = "trading")]
+public class BuyerAgent
+{
+    public Guid Id { get; set; }
+    public Guid FirmId { get; set; }
+    [Required, MaxLength(200)] public string Name { get; set; } = "";
+    [MaxLength(20)] public string? Phone { get; set; }
+    [MaxLength(100)] public string? City { get; set; }
+    [Column(TypeName = "numeric(5,2)")] public decimal DefaultSharePct { get; set; }
+    public string? Notes { get; set; }
+    public bool IsActive { get; set; } = true;
+    public DateTimeOffset CreatedAt { get; set; }
+}
+
+[Table("buyer_agent_earnings", Schema = "trading")]
+public class BuyerAgentEarning
+{
+    public Guid Id { get; set; }
+    public Guid FirmId { get; set; }
+    public Guid BuyerAgentId { get; set; }
+    public Guid? CommissionInvoiceId { get; set; }
+    public Guid? BuyerPartyId { get; set; }
+    public string? BuyerName { get; set; }
+    [Column(TypeName = "numeric(14,2)")] public decimal GrossCommission { get; set; }
+    [Column(TypeName = "numeric(5,2)")] public decimal SharePct { get; set; }
+    [Column(TypeName = "numeric(14,2)")] public decimal ShareAmount { get; set; }
+    public string? RefNo { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
+}
+
+[Table("buyer_agent_payouts", Schema = "trading")]
+public class BuyerAgentPayout
+{
+    public Guid Id { get; set; }
+    public Guid FirmId { get; set; }
+    public Guid BuyerAgentId { get; set; }
+    public DateOnly PayoutDate { get; set; }
+    [Column(TypeName = "numeric(14,2)")] public decimal Amount { get; set; }
+    [MaxLength(30)] public string? Mode { get; set; }
+    [MaxLength(80)] public string? RefNo { get; set; }
+    public string? Notes { get; set; }
+    public Guid? CreatedBy { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
+}

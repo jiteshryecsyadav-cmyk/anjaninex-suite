@@ -68,6 +68,9 @@ public class AppDbContext : DbContext
     public DbSet<GoodsReturnLine> GoodsReturnLines => Set<GoodsReturnLine>();
     public DbSet<CommissionInvoice> CommissionInvoices => Set<CommissionInvoice>();
     public DbSet<CommissionInvoiceLine> CommissionInvoiceLines => Set<CommissionInvoiceLine>();
+    public DbSet<Namokara.Api.Modules.Trading.Entities.BuyerAgent> BuyerAgents => Set<Namokara.Api.Modules.Trading.Entities.BuyerAgent>();
+    public DbSet<Namokara.Api.Modules.Trading.Entities.BuyerAgentEarning> BuyerAgentEarnings => Set<Namokara.Api.Modules.Trading.Entities.BuyerAgentEarning>();
+    public DbSet<Namokara.Api.Modules.Trading.Entities.BuyerAgentPayout> BuyerAgentPayouts => Set<Namokara.Api.Modules.Trading.Entities.BuyerAgentPayout>();
 
     // Suppliers schema
     public DbSet<SupplierCategory> SupplierCategories => Set<SupplierCategory>();

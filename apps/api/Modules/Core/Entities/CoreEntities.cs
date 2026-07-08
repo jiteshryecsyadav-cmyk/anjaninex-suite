@@ -210,6 +210,10 @@ public class Contact
     // Sister-concern grouping: "Gupta Group" (member firms ka same group_name).
     [MaxLength(200)] public string? GroupName { get; set; }
 
+    // Buyer ka default agent (del-credere / payment guarantee) + uska commission share%.
+    public Guid? BuyerAgentId { get; set; }
+    [Column(TypeName = "numeric(5,2)")] public decimal? BuyerAgentSharePct { get; set; }
+
     [Column(TypeName = "jsonb")]
     public string Phones { get; set; } = "[]";
 

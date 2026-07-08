@@ -7,6 +7,10 @@ export const tradingRoutes: Routes = [
     loadComponent: () => import('./pages/parties.component').then(m => m.PartiesComponent)
   },
   {
+    path: 'buyer-agents',
+    loadComponent: () => import('./pages/buyer-agents.component').then(m => m.BuyerAgentsComponent)
+  },
+  {
     path: 'items',
     loadComponent: () => import('./pages/items.component').then(m => m.ItemsComponent)
   },

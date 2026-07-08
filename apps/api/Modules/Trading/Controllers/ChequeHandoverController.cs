@@ -96,6 +96,50 @@ public class ChequeHandoverController : ControllerBase
         return Ok(c);
     }
 
+    // Purani cheque payments (notes me TXN:Cheque...) ko register me laao (dedupe).
+    [HttpPost("backfill")]
+    public async Task<IActionResult> Backfill()
+    {
+        var firmId = FirmId;
+        var payments = await _db.Payments.AsNoTracking()
+            .Where(p => p.FirmId == firmId && p.DeletedAt == null && p.Notes != null && p.Notes.Contains("TXN:"))
+            .Select(p => new { p.PaymentNo, p.PartyId, p.Notes }).ToListAsync();
+        var existing = (await _db.ChequeHandovers.AsNoTracking().Where(c => c.FirmId == firmId)
+            .Select(c => new { c.PaymentRef, c.ChequeNo }).ToListAsync())
+            .Select(x => (x.PaymentRef ?? "") + "|" + (x.ChequeNo ?? "")).ToHashSet();
+        var partyIds = payments.Select(p => p.PartyId).Distinct().ToList();
+        var names = await _db.PartyProfiles.AsNoTracking()
+            .Where(pp => partyIds.Contains(pp.Id))
+            .Join(_db.Contacts, pp => pp.ContactId, c => c.Id, (pp, c) => new { pp.Id, c.DisplayName })
+            .ToDictionaryAsync(x => x.Id, x => x.DisplayName);
+        int added = 0;
+        foreach (var p in payments)
+        {
+            foreach (var piece in (p.Notes ?? "").Split(" | "))
+            {
+                if (!piece.StartsWith("TXN:")) continue;
+                var parts = piece.Substring(4).Split('|');
+                if (parts.Length < 5 || !parts[0].Equals("Cheque", StringComparison.OrdinalIgnoreCase)) continue;
+                var key = (p.PaymentNo ?? "") + "|" + (parts[2] ?? "");
+                if (existing.Contains(key)) continue;
+                decimal.TryParse(parts[4], out var amt);
+                var ch = new ChequeHandover
+                {
+                    Id = Guid.NewGuid(), FirmId = firmId, PaymentRef = p.PaymentNo,
+                    SupplierName = names.GetValueOrDefault(p.PartyId), ChequeNo = parts[2], BankName = parts[1],
+                    Amount = amt, TakenBy = null, HandedDate = null, CommissionPaid = false, CommissionAmount = 0,
+                    CreatedAt = DateTimeOffset.UtcNow
+                };
+                if (DateOnly.TryParse(parts[3], out var cd)) ch.ChequeDate = cd;
+                _db.ChequeHandovers.Add(ch);
+                existing.Add(key);
+                added++;
+            }
+        }
+        if (added > 0) await _db.SaveChangesAsync();
+        return Ok(new { added });
+    }
+
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(Guid id)
     {

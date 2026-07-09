@@ -97,7 +97,9 @@ public class ChequeHandoverController : ControllerBase
         return Ok(c);
     }
 
-    // Purani cheque payments (notes me TXN:Cheque...) ko register me laao (dedupe).
+    // Purani cheque payments ko register me laao/sync karo.
+    // Receipt me Payment.PartyId = BUYER; asli SUPPLIER notes ke "Supplier: X" piece me hota hai.
+    // Purani galat rows (jinme buyer ka naam supplier column me tha) ko bhi update kar deta hai.
     [HttpPost("backfill")]
     public async Task<IActionResult> Backfill()
     {
@@ -105,42 +107,58 @@ public class ChequeHandoverController : ControllerBase
         var payments = await _db.Payments.AsNoTracking()
             .Where(p => p.FirmId == firmId && p.DeletedAt == null && p.Notes != null && p.Notes.Contains("TXN:"))
             .Select(p => new { p.PaymentNo, p.PartyId, p.Notes }).ToListAsync();
-        var existing = (await _db.ChequeHandovers.AsNoTracking().Where(c => c.FirmId == firmId)
-            .Select(c => new { c.PaymentRef, c.ChequeNo }).ToListAsync())
-            .Select(x => (x.PaymentRef ?? "") + "|" + (x.ChequeNo ?? "")).ToHashSet();
         var partyIds = payments.Select(p => p.PartyId).Distinct().ToList();
-        var names = await _db.PartyProfiles.AsNoTracking()
+        var buyerNames = await _db.PartyProfiles.AsNoTracking()
             .Where(pp => partyIds.Contains(pp.Id))
             .Join(_db.Contacts, pp => pp.ContactId, c => c.Id, (pp, c) => new { pp.Id, c.DisplayName })
             .ToDictionaryAsync(x => x.Id, x => x.DisplayName);
-        int added = 0;
+        var existingRows = await _db.ChequeHandovers.Where(c => c.FirmId == firmId).ToListAsync();
+        var existingMap = new Dictionary<string, ChequeHandover>();
+        foreach (var r in existingRows)
+        {
+            var k = (r.PaymentRef ?? "") + "|" + (r.ChequeNo ?? "");
+            if (!existingMap.ContainsKey(k)) existingMap[k] = r;
+        }
+        int added = 0, updated = 0;
         foreach (var p in payments)
         {
+            string? supFromNotes = null;
+            foreach (var piece in (p.Notes ?? "").Split(" | "))
+                if (piece.StartsWith("Supplier: ")) supFromNotes = piece.Substring(10).Trim();
+            var buyerNm = buyerNames.GetValueOrDefault(p.PartyId);
             foreach (var piece in (p.Notes ?? "").Split(" | "))
             {
                 if (!piece.StartsWith("TXN:")) continue;
                 var parts = piece.Substring(4).Split('|');
                 if (parts.Length < 5 || !parts[0].Equals("Cheque", StringComparison.OrdinalIgnoreCase)) continue;
-                var key = (p.PaymentNo ?? "") + "|" + (parts[2] ?? "");
-                if (existing.Contains(key)) continue;
+                var chequeNo = parts[2];
+                var key = (p.PaymentNo ?? "") + "|" + (chequeNo ?? "");
                 decimal.TryParse(parts[4], out var amt);
-                var ch = new ChequeHandover
+                if (existingMap.TryGetValue(key, out var row))
                 {
-                    Id = Guid.NewGuid(), FirmId = firmId, PaymentRef = p.PaymentNo,
-                    SupplierName = names.GetValueOrDefault(p.PartyId),
-                    BuyerName = null,
-                    ChequeNo = parts[2], BankName = parts[1],
-                    Amount = amt, TakenBy = null, HandedDate = null, CommissionPaid = false, CommissionAmount = 0,
-                    CreatedAt = DateTimeOffset.UtcNow
-                };
-                if (DateOnly.TryParse(parts[3], out var cd)) ch.ChequeDate = cd;
-                _db.ChequeHandovers.Add(ch);
-                existing.Add(key);
-                added++;
+                    if (!string.IsNullOrWhiteSpace(supFromNotes)) row.SupplierName = supFromNotes;
+                    if (!string.IsNullOrWhiteSpace(buyerNm)) row.BuyerName = buyerNm;
+                    updated++;
+                }
+                else
+                {
+                    var ch = new ChequeHandover
+                    {
+                        Id = Guid.NewGuid(), FirmId = firmId, PaymentRef = p.PaymentNo,
+                        SupplierName = supFromNotes, BuyerName = buyerNm,
+                        ChequeNo = chequeNo, BankName = parts[1],
+                        Amount = amt, TakenBy = null, HandedDate = null, CommissionPaid = false, CommissionAmount = 0,
+                        CreatedAt = DateTimeOffset.UtcNow
+                    };
+                    if (DateOnly.TryParse(parts[3], out var cd)) ch.ChequeDate = cd;
+                    _db.ChequeHandovers.Add(ch);
+                    existingMap[key] = ch;
+                    added++;
+                }
             }
         }
-        if (added > 0) await _db.SaveChangesAsync();
-        return Ok(new { added });
+        await _db.SaveChangesAsync();
+        return Ok(new { added, updated });
     }
 
     [HttpDelete("{id}")]

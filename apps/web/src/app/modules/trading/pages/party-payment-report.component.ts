@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { TradingService, BillListItem } from '../services/trading.service';
 
 // Supplier vs Buyer report: date range me Paid / Unpaid / Partly-paid.
-// Buyer + Supplier dono ek table me (Type column). Alag-alag search field (naam / GST).
+// Har bill me Supplier + Buyer dono naam. Alag-alag search field (naam / GST).
 @Component({
   selector: 'app-party-payment-report',
   standalone: true,
@@ -56,8 +56,8 @@ import { TradingService, BillListItem } from '../services/trading.service';
         <table class="w-full text-sm">
           <thead class="bg-[#f0e6ff] text-[#5c1a8b] uppercase text-xs">
             <tr>
-              <th class="px-3 py-2 text-center">Type</th>
-              <th class="px-3 py-2 text-left">Party</th>
+              <th class="px-3 py-2 text-left">Supplier</th>
+              <th class="px-3 py-2 text-left">Buyer</th>
               <th class="px-3 py-2 text-left">Bill No</th>
               <th class="px-3 py-2 text-left">Date</th>
               <th class="px-3 py-2 text-right">Total</th>
@@ -69,11 +69,8 @@ import { TradingService, BillListItem } from '../services/trading.service';
           <tbody>
             @for (r of rows(); track r.id) {
               <tr class="border-t hover:bg-[#faf5ff]">
-                <td class="px-3 py-2 text-center">
-                  <span class="px-2 py-0.5 rounded-full text-xs font-bold"
-                    [class]="r._type==='Buyer' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'">{{ r._type }}</span>
-                </td>
-                <td class="px-3 py-2 font-semibold">{{ r._party }}</td>
+                <td class="px-3 py-2 font-semibold text-purple-800">{{ r._supplier || '-' }}</td>
+                <td class="px-3 py-2 font-semibold text-blue-800">{{ r._buyer || '-' }}</td>
                 <td class="px-3 py-2 font-mono text-xs">{{ r.billNo }}</td>
                 <td class="px-3 py-2 text-xs">{{ r.billDate }}</td>
                 <td class="px-3 py-2 text-right font-mono">Rs {{ money(r.total) }}</td>
@@ -131,20 +128,17 @@ export class PartyPaymentReportComponent {
   }
 
   st(b: any) { const paid = b.paidAmount || 0, total = b.total || 0; if (paid <= 0) return 'unpaid'; if (total - paid <= 0.01) return 'paid'; return 'partial'; }
-  typeOf(b: any) { return b.billType === 'sales' ? 'Buyer' : 'Supplier'; }
-  partyOf(b: any) { return b.billType === 'sales' ? (b.buyerName || b.partyName) : b.partyName; }
-  gstOf(b: any) { return b.billType === 'sales' ? (b.buyerGst || b.partyGst) : b.partyGst; }
 
   buyerOptions = computed(() => {
     const set = new Set<string>();
-    for (const p of this.parties()) if (p.partyType === 'buyer' || p.partyType === 'both') { if (p.displayName) set.add(p.displayName); }
-    for (const b of this.bills()) if (b.billType === 'sales' && !(b as any).isDeleted) { const p = this.partyOf(b); if (p) set.add(p); }
+    for (const p of this.parties()) if (p.partyType === 'buyer' || p.partyType === 'both') { if (p.displayName) set.add(p.displayName); if (p.gst) set.add(p.gst); }
+    for (const b of this.bills()) if (!(b as any).isDeleted) { if (b.buyerName) set.add(b.buyerName); if ((b as any).buyerGst) set.add((b as any).buyerGst); }
     return [...set].sort();
   });
   supplierOptions = computed(() => {
     const set = new Set<string>();
-    for (const p of this.parties()) if (p.partyType === 'seller' || p.partyType === 'both') { if (p.displayName) set.add(p.displayName); }
-    for (const b of this.bills()) if (b.billType !== 'sales' && !(b as any).isDeleted) { const p = this.partyOf(b); if (p) set.add(p); }
+    for (const p of this.parties()) if (p.partyType === 'seller' || p.partyType === 'both') { if (p.displayName) set.add(p.displayName); if (p.gst) set.add(p.gst); }
+    for (const b of this.bills()) if (!(b as any).isDeleted) { if (b.partyName) set.add(b.partyName); if ((b as any).partyGst) set.add((b as any).partyGst); }
     return [...set].sort();
   });
 
@@ -156,18 +150,16 @@ export class PartyPaymentReportComponent {
       .filter((b: any) => {
         if (b.isDeleted) return false;
         if (sf && this.st(b) !== sf) return false;
-        const isBuyer = b.billType === 'sales';
-        const party = (this.partyOf(b) || '').toLowerCase();
-        const gst = (this.gstOf(b) || '').toLowerCase();
-        if (isBuyer) { if (bs && !party.includes(bs) && !gst.includes(bs)) return false; }
-        else { if (ss && !party.includes(ss) && !gst.includes(ss)) return false; }
-        // agar sirf ek side search kiya to doosri side hide karo
-        if (bs && !ss && !isBuyer) return false;
-        if (ss && !bs && isBuyer) return false;
+        const sup = (b.partyName || '').toLowerCase();
+        const supGst = (b.partyGst || '').toLowerCase();
+        const buy = (b.buyerName || '').toLowerCase();
+        const buyGst = (b.buyerGst || '').toLowerCase();
+        if (ss && !sup.includes(ss) && !supGst.includes(ss)) return false;
+        if (bs && !buy.includes(bs) && !buyGst.includes(bs)) return false;
         return true;
       })
-      .map((b: any) => ({ ...b, _type: this.typeOf(b), _party: this.partyOf(b), _bal: (b.total || 0) - (b.paidAmount || 0), _st: this.st(b) }))
-      .sort((a: any, b: any) => a._type === b._type ? (b._bal - a._bal) : (a._type === 'Supplier' ? -1 : 1));
+      .map((b: any) => ({ ...b, _supplier: b.partyName, _buyer: b.buyerName, _bal: (b.total || 0) - (b.paidAmount || 0), _st: this.st(b) }))
+      .sort((a: any, b: any) => b._bal - a._bal);
   });
 
   sum = computed(() => {

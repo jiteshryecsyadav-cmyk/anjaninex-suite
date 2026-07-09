@@ -75,6 +75,8 @@ interface Handover {
                 <td class="px-3 py-2 text-center">
                   @if (r.commissionPaid) {
                     <span class="px-2 py-0.5 rounded-full bg-green-100 text-green-700 text-xs font-bold">Paid Rs {{ money(r.commissionAmount) }}</span>
+                  } @else if (!hasInvoice(r)) {
+                    <button (click)="noInvoice(r)" class="px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 text-xs font-bold hover:bg-gray-200" title="Pehle commission invoice banao">Invoice pending</button>
                   } @else {
                     <button (click)="markCommission(r)" class="px-2 py-0.5 rounded-full bg-red-100 text-red-700 text-xs font-bold hover:bg-red-200">Unpaid - mark Paid</button>
                   }
@@ -134,7 +136,25 @@ export class ChequeRegisterComponent {
   err = signal('');
   f: any = {};
 
-  constructor() { this.load(); }
+  // Kaunse suppliers ka commission invoice ban chuka hai (naam se). Isse hi "mark Paid" enable hota hai.
+  invoicedSuppliers = signal<Set<string>>(new Set());
+  private norm(x?: string) { return (x || '').toLowerCase().replace(/[^a-z0-9]/g, ''); }
+  hasInvoice(r: any): boolean { const n = this.norm(r.supplierName); return !!n && this.invoicedSuppliers().has(n); }
+  noInvoice(r: any) {
+    alert(`"${r.supplierName || 'Is supplier'}" ka commission invoice abhi nahi bana.\n\nPehle Commission > New Commission me is supplier ka invoice banao, phir yaha "Paid" mark kar paoge.`);
+  }
+  private loadInvoicedSuppliers() {
+    this.http.get<any[]>(`${environment.apiUrl}/api/trading/commission-invoices`).subscribe({
+      next: (list) => {
+        const set = new Set<string>();
+        for (const inv of (list || [])) { const n = this.norm(inv?.partyName); if (n) set.add(n); }
+        this.invoicedSuppliers.set(set);
+      },
+      error: () => {}
+    });
+  }
+
+  constructor() { this.load(); this.loadInvoicedSuppliers(); }
 
   load() {
     this.loading.set(true);

@@ -619,13 +619,13 @@ export class CommissionGenerateComponent {
   }
   searchSuppliers(): Party[] {
     const q = this.norm(this.supplierSearch);
-    const base = this.supplierList();
+    const base = this.buyers();
     if (!q) return base.slice(0, 50);
     return base.filter(p => this.norm(p.displayName).includes(q) || this.norm(p.gst || '').includes(q)).slice(0, 50);
   }
   searchBuyers(): Party[] {
     const q = this.norm(this.buyerSearch);
-    const base = this.buyerList();
+    const base = this.buyers();
     if (!q) return base.slice(0, 50);
     return base.filter(p => this.norm(p.displayName).includes(q) || this.norm(p.gst || '').includes(q)).slice(0, 50);
   }

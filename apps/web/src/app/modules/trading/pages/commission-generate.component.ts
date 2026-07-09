@@ -672,9 +672,34 @@ export class CommissionGenerateComponent {
     });
   }
 
+  /** Type kiya naam/GST -> party (agar dropdown se pick nahi kiya). Ek hi match ho to auto-select. */
+  private resolveTyped(text: string): { id: string; name: string } | 'many' | null {
+    const q = this.norm(text);
+    if (!q) return null;
+    const hits = this.buyers().filter(p => this.norm(p.displayName).includes(q) || this.norm(p.gst || '').includes(q));
+    const exact = hits.find(p => this.norm(p.displayName) === q);
+    if (exact) return { id: exact.id, name: exact.displayName };
+    if (hits.length === 1) return { id: hits[0].id, name: hits[0].displayName };
+    if (hits.length > 1) return 'many';
+    return null;
+  }
+
   fetchBills() {
+    // Agar naam type kiya par dropdown se select nahi kiya -> auto-resolve
+    if (!this.supplierId && this.supplierSearch.trim()) {
+      const r = this.resolveTyped(this.supplierSearch);
+      if (r === 'many') { alert('Supplier: "' + this.supplierSearch + '" se kai parties match hui - dropdown se ek chuno.'); return; }
+      if (r) { this.supplierId = r.id; this.supplierSearch = r.name; }
+      else { alert('Supplier: "' + this.supplierSearch + '" se koi party match nahi hui. Sahi naam type karo ya dropdown se chuno.'); return; }
+    }
+    if (!this.buyerId && this.buyerSearch.trim()) {
+      const r = this.resolveTyped(this.buyerSearch);
+      if (r === 'many') { alert('Buyer: "' + this.buyerSearch + '" se kai parties match hui - dropdown se ek chuno.'); return; }
+      if (r) { this.buyerId = r.id; this.buyerSearch = r.name; }
+      else { alert('Buyer: "' + this.buyerSearch + '" se koi party match nahi hui. Sahi naam type karo ya dropdown se chuno.'); return; }
+    }
     const missing: string[] = [];
-    if (!this.supplierId && !this.buyerId) missing.push('SUPPLIER ya BUYER (dropdown se select karo)');
+    if (!this.supplierId && !this.buyerId) missing.push('SUPPLIER ya BUYER (naam type karo ya dropdown se select karo)');
     if (!this.fromDate) missing.push('FROM DATE');
     if (!this.toDate) missing.push('TO DATE');
     if (missing.length > 0) {

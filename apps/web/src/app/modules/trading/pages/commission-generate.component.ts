@@ -47,21 +47,16 @@ interface CommRow {
       <div class="text-xs font-bold text-[#DC2626] uppercase tracking-wide mb-3">STEP 1 — SELECT PARTY &amp; DATE RANGE</div>
       <div class="grid grid-cols-5 gap-3 items-end">
         <div>
-          <label class="lbl">SUPPLIER</label>
+          <label class="lbl">SUPPLIER <small style="color:#9CA3AF">({{ partyNames().length }})</small></label>
           <input [(ngModel)]="supplierSearch" (ngModelChange)="supplierId = ''"
-                 list="cgSuppList" placeholder="🔍 Supplier naam / GST..." class="ip" autocomplete="off">
-          <datalist id="cgSuppList">
-            @for (p of buyers(); track p.id) { <option [value]="p.displayName">{{ p.gst || '' }}</option> }
-          </datalist>
+                 list="cgPartyList" placeholder="🔍 Supplier naam / GST..." class="ip" autocomplete="off">
         </div>
         <div>
           <label class="lbl">BUYER</label>
           <input [(ngModel)]="buyerSearch" (ngModelChange)="buyerId = ''"
-                 list="cgBuyerList" placeholder="🔍 Buyer naam / GST..." class="ip" autocomplete="off">
-          <datalist id="cgBuyerList">
-            @for (p of buyers(); track p.id) { <option [value]="p.displayName">{{ p.gst || '' }}</option> }
-          </datalist>
+                 list="cgPartyList" placeholder="🔍 Buyer naam / GST..." class="ip" autocomplete="off">
         </div>
+        <datalist id="cgPartyList">@for (n of partyNames(); track n) { <option [value]="n"></option> }</datalist>
         <div>
           <label class="lbl">FROM DATE *</label>
           <input [(ngModel)]="fromDate" type="date" class="ip">
@@ -512,6 +507,12 @@ export class CommissionGenerateComponent {
   private toast = inject(ToastService);
 
   buyers = signal<Party[]>([]);
+  // Datalist options: naam + GST dono (report jaisa proven pattern).
+  partyNames = computed(() => {
+    const set = new Set<string>();
+    for (const p of this.buyers()) { if (p.displayName) set.add(p.displayName); if (p.gst) set.add(p.gst); }
+    return [...set].sort();
+  });
   buyerId = '';
   supplierId = '';
   fromDate = this.firstOfMonth();

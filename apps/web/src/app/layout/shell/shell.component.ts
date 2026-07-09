@@ -313,6 +313,12 @@ import { environment } from '../../../environments/environment';
               </button>
               <span class="opacity-50">·</span>
               <span>© 2026 {{ features.firmName() || 'Anjaninex' }}</span>
+              <span class="opacity-50">·</span>
+              <a href="/about.html" target="_blank" rel="noopener" class="hover:text-anjaninex-red">About</a>
+              <a href="/contact.html" target="_blank" rel="noopener" class="hover:text-anjaninex-red">Contact</a>
+              <a href="/privacy.html" target="_blank" rel="noopener" class="hover:text-anjaninex-red">Privacy</a>
+              <a href="/terms.html" target="_blank" rel="noopener" class="hover:text-anjaninex-red">Terms</a>
+              <a href="/refund.html" target="_blank" rel="noopener" class="hover:text-anjaninex-red">Refund</a>
             </div>
             <a
               [href]="anjaninexUrl"

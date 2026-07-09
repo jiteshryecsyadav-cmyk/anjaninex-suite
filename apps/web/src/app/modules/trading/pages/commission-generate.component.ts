@@ -48,61 +48,19 @@ interface CommRow {
       <div class="grid grid-cols-5 gap-3 items-end">
         <div>
           <label class="lbl">SUPPLIER</label>
-          <div style="position:relative">
-            <input type="text" [(ngModel)]="supplierSearch"
-                   (focus)="supDropOpen = true"
-                   (ngModelChange)="supDropOpen = true; supplierId = ''; supIdx = 0"
-                   (blur)="closeSupSoon()"
-                   (keydown.arrowdown)="$event.preventDefault(); supDropOpen = true; supIdx = Math.min(supIdx + 1, searchSuppliers().length - 1)"
-                   (keydown.arrowup)="$event.preventDefault(); supIdx = Math.max(supIdx - 1, 0)"
-                   (keydown.enter)="$event.preventDefault(); searchSuppliers()[supIdx] && pickSupplier(searchSuppliers()[supIdx])"
-                   (keydown.escape)="supDropOpen = false"
-                   placeholder="🔍 Supplier naam / GST..."
-                   class="ip">
-            @if (supDropOpen && searchSuppliers().length > 0) {
-              <div class="party-dd">
-                @for (p of searchSuppliers(); track p.id; let i = $index) {
-                  <div class="party-opt" [class.party-active]="i === supIdx"
-                       (mousedown)="pickSupplier(p)" (mouseenter)="supIdx = i">
-                    <strong>{{ p.displayName }}</strong>
-                    <small>{{ p.gst || '—' }} · Comm {{ p.commissionRate }}%</small>
-                  </div>
-                }
-              </div>
-            }
-            @if (supDropOpen && supplierSearch && searchSuppliers().length === 0) {
-              <div class="party-dd party-empty">⚠️ Koi supplier nahi mili</div>
-            }
-          </div>
+          <input [(ngModel)]="supplierSearch" (ngModelChange)="supplierId = ''"
+                 list="cgSuppList" placeholder="🔍 Supplier naam / GST..." class="ip" autocomplete="off">
+          <datalist id="cgSuppList">
+            @for (p of buyers(); track p.id) { <option [value]="p.displayName">{{ p.gst || '' }}</option> }
+          </datalist>
         </div>
         <div>
           <label class="lbl">BUYER</label>
-          <div style="position:relative">
-            <input type="text" [(ngModel)]="buyerSearch"
-                   (focus)="buyDropOpen = true"
-                   (ngModelChange)="buyDropOpen = true; buyerId = ''; buyIdx = 0"
-                   (blur)="closeBuySoon()"
-                   (keydown.arrowdown)="$event.preventDefault(); buyDropOpen = true; buyIdx = Math.min(buyIdx + 1, searchBuyers().length - 1)"
-                   (keydown.arrowup)="$event.preventDefault(); buyIdx = Math.max(buyIdx - 1, 0)"
-                   (keydown.enter)="$event.preventDefault(); searchBuyers()[buyIdx] && pickBuyer(searchBuyers()[buyIdx])"
-                   (keydown.escape)="buyDropOpen = false"
-                   placeholder="🔍 Buyer naam / GST..."
-                   class="ip">
-            @if (buyDropOpen && searchBuyers().length > 0) {
-              <div class="party-dd">
-                @for (p of searchBuyers(); track p.id; let i = $index) {
-                  <div class="party-opt" [class.party-active]="i === buyIdx"
-                       (mousedown)="pickBuyer(p)" (mouseenter)="buyIdx = i">
-                    <strong>{{ p.displayName }}</strong>
-                    <small>{{ p.gst || '—' }} · Comm {{ p.commissionRate }}%</small>
-                  </div>
-                }
-              </div>
-            }
-            @if (buyDropOpen && buyerSearch && searchBuyers().length === 0) {
-              <div class="party-dd party-empty">⚠️ Koi buyer nahi mili</div>
-            }
-          </div>
+          <input [(ngModel)]="buyerSearch" (ngModelChange)="buyerId = ''"
+                 list="cgBuyerList" placeholder="🔍 Buyer naam / GST..." class="ip" autocomplete="off">
+          <datalist id="cgBuyerList">
+            @for (p of buyers(); track p.id) { <option [value]="p.displayName">{{ p.gst || '' }}</option> }
+          </datalist>
         </div>
         <div>
           <label class="lbl">FROM DATE *</label>
@@ -657,7 +615,7 @@ export class CommissionGenerateComponent {
 
   ngOnInit() {
     this.svc.listParties().subscribe(ps => {
-      this.buyers.set(ps.filter(p => p.isActive));
+      this.buyers.set(ps || []);
     });
     // Bills se role pata karo — partyId = supplier, buyerPartyId = buyer
     this.svc.listBills({ size: 1000 }).subscribe(res => {

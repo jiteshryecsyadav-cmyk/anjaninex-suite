@@ -112,7 +112,15 @@ export class PartyPaymentReportComponent {
     { key: 'partial', label: 'Partly Paid', on: 'bg-amber-500 text-white border-amber-500' },
   ];
 
-  constructor() { this.load(); }
+  parties = signal<any[]>([]);
+  constructor() { this.load(); this.loadParties(); }
+
+  loadParties() {
+    (this.svc as any).listParties().subscribe({
+      next: (p: any[]) => this.parties.set(p || []),
+      error: () => {}
+    });
+  }
 
   load() {
     this.loading.set(true);
@@ -129,11 +137,13 @@ export class PartyPaymentReportComponent {
 
   buyerOptions = computed(() => {
     const set = new Set<string>();
+    for (const p of this.parties()) if (p.partyType === 'buyer' || p.partyType === 'both') { if (p.displayName) set.add(p.displayName); }
     for (const b of this.bills()) if (b.billType === 'sales' && !(b as any).isDeleted) { const p = this.partyOf(b); if (p) set.add(p); }
     return [...set].sort();
   });
   supplierOptions = computed(() => {
     const set = new Set<string>();
+    for (const p of this.parties()) if (p.partyType === 'seller' || p.partyType === 'both') { if (p.displayName) set.add(p.displayName); }
     for (const b of this.bills()) if (b.billType !== 'sales' && !(b as any).isDeleted) { const p = this.partyOf(b); if (p) set.add(p); }
     return [...set].sort();
   });

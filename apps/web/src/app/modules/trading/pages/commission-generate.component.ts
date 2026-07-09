@@ -47,39 +47,60 @@ interface CommRow {
       <div class="text-xs font-bold text-[#DC2626] uppercase tracking-wide mb-3">STEP 1 — SELECT PARTY &amp; DATE RANGE</div>
       <div class="grid grid-cols-5 gap-3 items-end">
         <div>
-          <label class="lbl">PARTY TYPE</label>
-          <select [(ngModel)]="partyType" (ngModelChange)="buyerId = ''; partySearch = ''" class="ip">
-            <option value="buyer">🛒 Buyer</option>
-            <option value="supplier">🏭 Supplier</option>
-            <option value="all">Both (Sab)</option>
-          </select>
-        </div>
-        <div>
-          <label class="lbl">PARTY *</label>
+          <label class="lbl">SUPPLIER</label>
           <div style="position:relative">
-            <input type="text" [(ngModel)]="partySearch"
-                   (focus)="partyDropOpen = true"
-                   (ngModelChange)="partyDropOpen = true; buyerId = ''; partyIdx = 0"
-                   (blur)="closePartyDropSoon()"
-                   (keydown.arrowdown)="$event.preventDefault(); partyDropOpen = true; partyIdx = Math.min(partyIdx + 1, searchParties().length - 1)"
-                   (keydown.arrowup)="$event.preventDefault(); partyIdx = Math.max(partyIdx - 1, 0)"
-                   (keydown.enter)="$event.preventDefault(); searchParties()[partyIdx] && pickParty(searchParties()[partyIdx])"
-                   (keydown.escape)="partyDropOpen = false"
-                   [placeholder]="'🔍 ' + (partyType === 'supplier' ? 'Supplier' : partyType === 'all' ? 'Party' : 'Buyer') + ' naam se search...'"
+            <input type="text" [(ngModel)]="supplierSearch"
+                   (focus)="supDropOpen = true"
+                   (ngModelChange)="supDropOpen = true; supplierId = ''; supIdx = 0"
+                   (blur)="closeSupSoon()"
+                   (keydown.arrowdown)="$event.preventDefault(); supDropOpen = true; supIdx = Math.min(supIdx + 1, searchSuppliers().length - 1)"
+                   (keydown.arrowup)="$event.preventDefault(); supIdx = Math.max(supIdx - 1, 0)"
+                   (keydown.enter)="$event.preventDefault(); searchSuppliers()[supIdx] && pickSupplier(searchSuppliers()[supIdx])"
+                   (keydown.escape)="supDropOpen = false"
+                   placeholder="🔍 Supplier naam / GST..."
                    class="ip">
-            @if (partyDropOpen && searchParties().length > 0) {
+            @if (supDropOpen && searchSuppliers().length > 0) {
               <div class="party-dd">
-                @for (p of searchParties(); track p.id; let i = $index) {
-                  <div class="party-opt" [class.party-active]="i === partyIdx"
-                       (mousedown)="pickParty(p)" (mouseenter)="partyIdx = i">
+                @for (p of searchSuppliers(); track p.id; let i = $index) {
+                  <div class="party-opt" [class.party-active]="i === supIdx"
+                       (mousedown)="pickSupplier(p)" (mouseenter)="supIdx = i">
                     <strong>{{ p.displayName }}</strong>
                     <small>{{ p.gst || '—' }} · Comm {{ p.commissionRate }}%</small>
                   </div>
                 }
               </div>
             }
-            @if (partyDropOpen && partySearch && searchParties().length === 0) {
-              <div class="party-dd party-empty">⚠️ Koi {{ partyType === 'supplier' ? 'supplier' : 'party' }} nahi mili</div>
+            @if (supDropOpen && supplierSearch && searchSuppliers().length === 0) {
+              <div class="party-dd party-empty">⚠️ Koi supplier nahi mili</div>
+            }
+          </div>
+        </div>
+        <div>
+          <label class="lbl">BUYER</label>
+          <div style="position:relative">
+            <input type="text" [(ngModel)]="buyerSearch"
+                   (focus)="buyDropOpen = true"
+                   (ngModelChange)="buyDropOpen = true; buyerId = ''; buyIdx = 0"
+                   (blur)="closeBuySoon()"
+                   (keydown.arrowdown)="$event.preventDefault(); buyDropOpen = true; buyIdx = Math.min(buyIdx + 1, searchBuyers().length - 1)"
+                   (keydown.arrowup)="$event.preventDefault(); buyIdx = Math.max(buyIdx - 1, 0)"
+                   (keydown.enter)="$event.preventDefault(); searchBuyers()[buyIdx] && pickBuyer(searchBuyers()[buyIdx])"
+                   (keydown.escape)="buyDropOpen = false"
+                   placeholder="🔍 Buyer naam / GST..."
+                   class="ip">
+            @if (buyDropOpen && searchBuyers().length > 0) {
+              <div class="party-dd">
+                @for (p of searchBuyers(); track p.id; let i = $index) {
+                  <div class="party-opt" [class.party-active]="i === buyIdx"
+                       (mousedown)="pickBuyer(p)" (mouseenter)="buyIdx = i">
+                    <strong>{{ p.displayName }}</strong>
+                    <small>{{ p.gst || '—' }} · Comm {{ p.commissionRate }}%</small>
+                  </div>
+                }
+              </div>
+            }
+            @if (buyDropOpen && buyerSearch && searchBuyers().length === 0) {
+              <div class="party-dd party-empty">⚠️ Koi buyer nahi mili</div>
             }
           </div>
         </div>
@@ -287,7 +308,7 @@ interface CommRow {
               </div>
               <div class="ft-arrow">➜</div>
               <div class="ft-box ft-to">
-                <div class="ft-lbl">TO &mdash; {{ partyType === 'supplier' ? 'SUPPLIER' : partyType === 'buyer' ? 'BUYER' : 'PARTY' }}</div>
+                <div class="ft-lbl">TO &mdash; {{ supplierId ? 'SUPPLIER' : 'BUYER' }}</div>
                 @if (selectedBuyer(); as b) {
                   <div class="ft-name">{{ b.displayName }}</div>
                   @if (b.gst)   { <div class="ft-line">GSTIN: {{ b.gst }}</div> }
@@ -534,6 +555,7 @@ export class CommissionGenerateComponent {
 
   buyers = signal<Party[]>([]);
   buyerId = '';
+  supplierId = '';
   fromDate = this.firstOfMonth();
   toDate = this.today();
   invoiceNo = '';
@@ -565,7 +587,6 @@ export class CommissionGenerateComponent {
   saving = signal(false);
   savedId = signal<string | null>(null);
 
-  partyType: 'buyer' | 'supplier' | 'all' = 'buyer';
   // Bills se nikale gaye role-wise party IDs (broker model — role transactions se)
   supplierIds = signal<Set<string>>(new Set());
   buyerIds = signal<Set<string>>(new Set());
@@ -575,45 +596,47 @@ export class CommissionGenerateComponent {
   // (Pehle sirf bills-derived role par depend karta tha jo async listBills ke
   //  load-timing par nirbhar tha — isliye alag desktop/refresh par alag result
   //  aata tha. Ab master partyType bhi shaamil — har jagah same list.)
-  filteredParties = computed(() => {
-    const t = this.partyType;
-    const sup = this.supplierIds(), buy = this.buyerIds();
+  supplierList = computed(() => {
+    const sup = this.supplierIds();
     const isSup = (p: Party) => p.partyType === 'seller' || p.partyType === 'both' || sup.has(p.id);
-    const isBuy = (p: Party) => p.partyType === 'buyer'  || p.partyType === 'both' || buy.has(p.id);
-    return this.buyers().filter(p => {
-      if (t === 'supplier') return isSup(p);
-      if (t === 'buyer')    return isBuy(p);
-      return isSup(p) && isBuy(p);   // 'all' (Both) = dono role wali party
-    });
+    return this.buyers().filter(isSup);
+  });
+  buyerList = computed(() => {
+    const buy = this.buyerIds();
+    const isBuy = (p: Party) => p.partyType === 'buyer' || p.partyType === 'both' || buy.has(p.id);
+    return this.buyers().filter(isBuy);
   });
 
   // Searchable party combo (method — computed plain-prop track nahi karta)
   Math = Math;
-  partySearch = '';
-  partyDropOpen = false;
-  partyIdx = 0;
+  supplierSearch = '';
+  buyerSearch = '';
+  supDropOpen = false; supIdx = 0;
+  buyDropOpen = false; buyIdx = 0;
   /** Normalize — space/hyphen/punctuation hata do taaki "shiv sag" = "Shiv-Sagar" match kare */
   private norm(s: string): string {
     return (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
   }
-  searchParties(): Party[] {
-    const q = this.norm(this.partySearch);
-    const base = this.filteredParties();
+  searchSuppliers(): Party[] {
+    const q = this.norm(this.supplierSearch);
+    const base = this.supplierList();
     if (!q) return base.slice(0, 50);
-    return base.filter(p =>
-      this.norm(p.displayName).includes(q) ||
-      this.norm(p.gst || '').includes(q)
-    ).slice(0, 50);
+    return base.filter(p => this.norm(p.displayName).includes(q) || this.norm(p.gst || '').includes(q)).slice(0, 50);
   }
-  pickParty(p: Party) {
-    this.buyerId = p.id;
-    this.partySearch = p.displayName;
-    this.partyDropOpen = false;
+  searchBuyers(): Party[] {
+    const q = this.norm(this.buyerSearch);
+    const base = this.buyerList();
+    if (!q) return base.slice(0, 50);
+    return base.filter(p => this.norm(p.displayName).includes(q) || this.norm(p.gst || '').includes(q)).slice(0, 50);
   }
-  closePartyDropSoon() { setTimeout(() => this.partyDropOpen = false, 200); }
+  pickSupplier(p: Party) { this.supplierId = p.id; this.supplierSearch = p.displayName; this.supDropOpen = false; }
+  pickBuyer(p: Party) { this.buyerId = p.id; this.buyerSearch = p.displayName; this.buyDropOpen = false; }
+  closeSupSoon() { setTimeout(() => this.supDropOpen = false, 200); }
+  closeBuySoon() { setTimeout(() => this.buyDropOpen = false, 200); }
+  targetId(): string { return this.supplierId || this.buyerId; }
 
   // METHOD (computed nahi) — buyerId plain property hai, signal use track nahi karta
-  selectedBuyer(): Party | undefined { return this.buyers().find(p => p.id === this.buyerId); }
+  selectedBuyer(): Party | undefined { return this.buyers().find(p => p.id === this.targetId()); }
   selectedCount = computed(() => this.rows().filter(r => r.selected).length);
   selectedRows = computed(() => this.rows().filter(r => r.selected));
   selectedBillTotal = computed(() => this.selectedRows().reduce((s, r) => s + r.bill.total, 0));
@@ -630,7 +653,7 @@ export class CommissionGenerateComponent {
   /** Indian number-to-words for display. */
   words = amountInWords;
 
-  canFetch = computed(() => !!this.buyerId && !!this.fromDate && !!this.toDate);
+  canFetch = computed(() => !!(this.supplierId || this.buyerId) && !!this.fromDate && !!this.toDate);
 
   ngOnInit() {
     this.svc.listParties().subscribe(ps => {
@@ -651,23 +674,26 @@ export class CommissionGenerateComponent {
 
   fetchBills() {
     const missing: string[] = [];
-    if (!this.buyerId) missing.push('BUYER PARTY (select from dropdown)');
+    if (!this.supplierId && !this.buyerId) missing.push('SUPPLIER ya BUYER (dropdown se select karo)');
     if (!this.fromDate) missing.push('FROM DATE');
     if (!this.toDate) missing.push('TO DATE');
     if (missing.length > 0) {
       alert('⚠️ Please fill the following:\n\n• ' + missing.join('\n• '));
       return;
     }
+    const buyFilter = this.buyerId;
     this.svc.listBills({
-      partyId: this.buyerId,
+      partyId: this.supplierId || undefined,
       from: this.fromDate,
       to: this.toDate
     }).subscribe({
       next: (res) => {
-        // Party Master ka commission rate auto — selected party fresh nikalo
-        const party = this.buyers().find(p => p.id === this.buyerId);
+        // Party Master ka commission rate auto — target (supplier > buyer) se
+        const party = this.buyers().find(p => p.id === this.targetId());
         const defaultPct = +(party?.commissionRate ?? 0);
-        const rows: CommRow[] = res.items.filter(b => !b.isDeleted).map(b => ({
+        let items = res.items.filter(b => !b.isDeleted);
+        if (buyFilter) items = items.filter(b => b.buyerPartyId === buyFilter);
+        const rows: CommRow[] = items.map(b => ({
           selected: true,
           bill: b,
           commPct: defaultPct,
@@ -701,7 +727,7 @@ export class CommissionGenerateComponent {
       alert('Please select at least one bill.');
       return;
     }
-    if (!this.buyerId) {
+    if (!this.supplierId && !this.buyerId) {
       alert('Please select a party first.');
       return;
     }
@@ -712,7 +738,7 @@ export class CommissionGenerateComponent {
       ? +(this.selectedCommTotal() / this.selectedBillTotal() * 100).toFixed(2)
       : 0;
     const payload = {
-      partyId: this.buyerId,
+      partyId: this.targetId(),
       commissionPct: effPct,
       gstPct: this.gstPct,
       notes: `Period ${this.fromDate} to ${this.toDate}`,

@@ -91,6 +91,10 @@ import { environment } from '../../../environments/environment';
                  class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-semibold text-white/75 hover:text-white hover:bg-white/10">
                 <span class="w-5 text-center">🔑</span> AI Keys
               </a>
+              <a routerLink="/admin/whatsapp" routerLinkActive="!bg-anjaninex-red !text-white"
+                 class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-semibold text-white/75 hover:text-white hover:bg-white/10">
+                <span class="w-5 text-center">📱</span> WhatsApp
+              </a>
               <a routerLink="/admin/changelog" routerLinkActive="!bg-anjaninex-red !text-white"
                  class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-semibold text-white/75 hover:text-white hover:bg-white/10">
                 <span class="w-5 text-center">📝</span> Changelog

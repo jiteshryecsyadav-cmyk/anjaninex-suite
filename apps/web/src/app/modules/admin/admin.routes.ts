@@ -55,6 +55,10 @@ export const adminRoutes: Routes = [
     loadComponent: () => import('./pages/admin-ai-keys.component').then(m => m.AdminAiKeysComponent)
   },
   {
+    path: 'whatsapp',
+    loadComponent: () => import('./pages/admin-whatsapp.component').then(m => m.AdminWhatsAppComponent)
+  },
+  {
     path: 'changelog',
     loadComponent: () => import('./pages/admin-pages.components').then(m => m.AdminChangelogComponent)
   }

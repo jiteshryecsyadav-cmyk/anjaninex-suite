@@ -1,4 +1,6 @@
 using System.Data;
+using System.Text;
+using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -21,6 +23,7 @@ public record SaveFirmWaDto(string? WabaNumber, string? PhoneNumberId, string? W
 public class WhatsAppSettingsController : ControllerBase
 {
     private readonly AppDbContext _db;
+    private static readonly HttpClient Http = new HttpClient();
     public WhatsAppSettingsController(AppDbContext db) => _db = db;
 
     private async Task<NpgsqlCommand> CmdAsync(string sql)
@@ -133,6 +136,58 @@ public class WhatsAppSettingsController : ControllerBase
         cmd.Parameters.Add(new NpgsqlParameter("en", dto.Enabled));
         await cmd.ExecuteNonQueryAsync();
         return Ok(new { success = true });
+    }
+
+    // ---- Test send (Anjaninex/firm ke number se template message) ----
+    public record WaTestDto(Guid FirmId, string To, string? TemplateName, string? LanguageCode);
+
+    [HttpPost("test")]
+    [HasPermission("platform.firm.edit.platform")]
+    public async Task<IActionResult> TestSend([FromBody] WaTestDto dto)
+    {
+        // provider config
+        string? baseUrl = null, apiKey = null; bool enabled = false;
+        await using (var cmd = await CmdAsync("SELECT base_url, api_key, enabled FROM platform.wa_provider_settings WHERE id = 1"))
+        await using (var r = await cmd.ExecuteReaderAsync())
+            if (await r.ReadAsync()) { baseUrl = r["base_url"] as string; apiKey = r["api_key"] as string; enabled = r["enabled"] is bool b && b; }
+        if (!enabled || string.IsNullOrWhiteSpace(baseUrl) || string.IsNullOrWhiteSpace(apiKey))
+            return BadRequest(new { error = "WhatsApp provider configure/enable nahi hai." });
+
+        // firm ka WABA number (sender)
+        string? wabaNumber = null;
+        await using (var cmd = await CmdAsync("SELECT waba_number FROM platform.firm_whatsapp WHERE firm_id = @f AND enabled = true"))
+        {
+            cmd.Parameters.Add(new NpgsqlParameter("f", dto.FirmId));
+            wabaNumber = (await cmd.ExecuteScalarAsync()) as string;
+        }
+        if (string.IsNullOrWhiteSpace(wabaNumber))
+            return BadRequest(new { error = "Is firm ka WhatsApp number map/enable nahi hai." });
+
+        var to = new string((dto.To ?? "").Where(char.IsDigit).ToArray());
+        if (to.Length < 10) return BadRequest(new { error = "To number sahi nahi (91XXXXXXXXXX)." });
+        var tmpl = string.IsNullOrWhiteSpace(dto.TemplateName) ? "hello_world" : dto.TemplateName.Trim();
+        var lang = string.IsNullOrWhiteSpace(dto.LanguageCode) ? "en_US" : dto.LanguageCode.Trim();
+
+        var bodyJson = JsonSerializer.Serialize(new
+        {
+            messaging_product = "whatsapp",
+            recipient_type = "individual",
+            to,
+            type = "template",
+            template = new { name = tmpl, language = new { code = lang } }
+        });
+
+        var url = baseUrl!.TrimEnd('/') + "/wrapper/waba/message";
+        using var req = new HttpRequestMessage(HttpMethod.Post, url);
+        req.Headers.TryAddWithoutValidation("key", apiKey);
+        req.Headers.TryAddWithoutValidation("wabaNumber", wabaNumber);
+        req.Content = new StringContent(bodyJson, Encoding.UTF8, "application/json");
+
+        HttpResponseMessage resp; string text;
+        try { resp = await Http.SendAsync(req); text = await resp.Content.ReadAsStringAsync(); }
+        catch (Exception ex) { return BadRequest(new { error = "wabanow se connect nahi ho paya: " + ex.Message }); }
+
+        return Ok(new { status = (int)resp.StatusCode, ok = resp.IsSuccessStatusCode, response = text, sentFrom = wabaNumber, to, template = tmpl });
     }
 
     [HttpDelete("firms/{firmId}")]

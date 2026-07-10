@@ -89,8 +89,11 @@ import { BackButtonComponent } from '../../../shared/back-button.component';
                     <td class="px-2 py-2"><input [(ngModel)]="f.wabaNumber" class="input !py-1 font-mono" placeholder="9195..."></td>
                     <td class="px-2 py-2"><input [(ngModel)]="f.phoneNumberId" class="input !py-1 font-mono" placeholder="111152..."></td>
                     <td class="px-2 py-2 text-center"><input type="checkbox" [(ngModel)]="f.enabled"></td>
-                    <td class="px-2 py-2 text-center">
+                    <td class="px-2 py-2 text-center whitespace-nowrap">
                       <button (click)="saveFirm(f)" class="px-3 py-1 bg-[#5c1a8b] text-white rounded text-xs font-bold">Save</button>
+                      @if (f.linked) {
+                        <button (click)="testFirm(f)" class="ml-1 px-3 py-1 border border-[#5c1a8b] text-[#5c1a8b] rounded text-xs font-bold">📤 Test</button>
+                      }
                     </td>
                   </tr>
                 }
@@ -139,6 +142,18 @@ export class AdminWhatsAppComponent implements OnInit {
     this.http.put<any>(`${this.base}/settings`, body).subscribe({
       next: d => { this.s = d; this.apiKey = ''; this.saving.set(false); this.flash('✅ Settings saved!'); },
       error: (e) => { this.saving.set(false); alert('Failed: ' + (e?.error?.error ?? 'unknown')); }
+    });
+  }
+
+  testFirm(f: any) {
+    const to = prompt('Kis number pe TEST message bhejein? (91XXXXXXXXXX)', '');
+    if (!to) return;
+    const tmpl = prompt('Template naam (wabanow me approved):', 'hello_world') || 'hello_world';
+    this.http.post<any>(`${this.base}/test`, { firmId: f.firmId, to, templateName: tmpl, languageCode: 'en_US' }).subscribe({
+      next: (r) => alert(r.ok
+        ? ('\u2705 Sent from ' + r.sentFrom + ' (template: ' + r.template + ')\n\nwabanow response:\n' + r.response)
+        : ('\u26A0\uFE0F Fail (HTTP ' + r.status + '):\n' + r.response)),
+      error: (e) => alert('Error: ' + (e?.error?.error ?? 'unknown'))
     });
   }
 

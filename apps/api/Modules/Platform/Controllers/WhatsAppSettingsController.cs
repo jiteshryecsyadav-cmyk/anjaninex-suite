@@ -183,11 +183,34 @@ public class WhatsAppSettingsController : ControllerBase
         req.Headers.TryAddWithoutValidation("wabaNumber", wabaNumber);
         req.Content = new StringContent(bodyJson, Encoding.UTF8, "application/json");
 
-        HttpResponseMessage resp; string text;
-        try { resp = await Http.SendAsync(req); text = await resp.Content.ReadAsStringAsync(); }
+        HttpResponseMessage resp; string text; string? ctype;
+        try
+        {
+            resp = await Http.SendAsync(req);
+            text = await resp.Content.ReadAsStringAsync();
+            ctype = resp.Content.Headers.ContentType?.MediaType;
+        }
         catch (Exception ex) { return BadRequest(new { error = "wabanow se connect nahi ho paya: " + ex.Message }); }
 
-        return Ok(new { status = (int)resp.StatusCode, ok = resp.IsSuccessStatusCode, response = text, sentFrom = wabaNumber, to, template = tmpl });
+        // SPA HTML page mila (JSON ki jagah) => Base URL galat hai.
+        var trimmed = (text ?? "").TrimStart();
+        bool looksHtml = trimmed.StartsWith("<") ||
+                         (ctype != null && ctype.Contains("html", StringComparison.OrdinalIgnoreCase));
+        // Sirf JSON response ko hi "real API reply" maano.
+        bool realApi = !looksHtml && (trimmed.StartsWith("{") || trimmed.StartsWith("["));
+
+        return Ok(new
+        {
+            status = (int)resp.StatusCode,
+            ok = resp.IsSuccessStatusCode && realApi,
+            httpOk = resp.IsSuccessStatusCode,
+            looksHtml,
+            realApi,
+            contentType = ctype,
+            url,
+            response = (text != null && text.Length > 600) ? text.Substring(0, 600) + "..." : text,
+            sentFrom = wabaNumber, to, template = tmpl
+        });
     }
 
     [HttpDelete("firms/{firmId}")]

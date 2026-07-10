@@ -150,9 +150,16 @@ export class AdminWhatsAppComponent implements OnInit {
     if (!to) return;
     const tmpl = prompt('Template naam (wabanow me approved):', 'hello_world') || 'hello_world';
     this.http.post<any>(`${this.base}/test`, { firmId: f.firmId, to, templateName: tmpl, languageCode: 'en_US' }).subscribe({
-      next: (r) => alert(r.ok
-        ? ('\u2705 Sent from ' + r.sentFrom + ' (template: ' + r.template + ')\n\nwabanow response:\n' + r.response)
-        : ('\u26A0\uFE0F Fail (HTTP ' + r.status + '):\n' + r.response)),
+      next: (r) => {
+        const head = 'URL: ' + r.url + '\nHTTP: ' + r.status + '  (from ' + r.sentFrom + ', template: ' + r.template + ')';
+        if (r.looksHtml) {
+          alert('\u26A0\uFE0F BASE URL GALAT LAG RAHA HAI\n\nwabanow ne JSON ki jagah HTML page bheja \u2014 matlab yeh API ka sahi address nahi hai. Message actually nahi gaya.\n\n' + head + '\n\nDocs me se sahi Base URL daalo (Central Provider me).\n\nResponse:\n' + r.response);
+        } else if (r.ok) {
+          alert('\u2705 API ne accept kiya! (JSON reply mila)\n\n' + head + '\n\nWhatsApp pe message check karo.\n\nResponse:\n' + r.response);
+        } else {
+          alert('\u26A0\uFE0F API ne reject kiya (HTTP ' + r.status + ')\n\n' + head + '\n\nResponse:\n' + r.response);
+        }
+      },
       error: (e) => alert('Error: ' + (e?.error?.error ?? 'unknown'))
     });
   }

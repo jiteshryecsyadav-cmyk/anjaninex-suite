@@ -876,9 +876,66 @@ export class RechargeModalComponent {
     } catch {}
   }
 
-  payViaGateway(): void {
-    // Online gateway (Razorpay) abhi wired nahi — UPI/Bank manual flow use karein
-    alert('💳 Online gateway (Card / Net Banking / UPI AutoPay) jald aa raha hai.\n\nAbhi QR scan ya Bank transfer se payment karein, phir UPI Transaction ID daal ke "Payment Done — Submit" dabayein.');
+  private loadRzpScript(): Promise<void> {
+    return new Promise((res, rej) => {
+      if ((window as any).Razorpay) { res(); return; }
+      const sc = document.createElement('script');
+      sc.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      sc.onload = () => res();
+      sc.onerror = () => rej(new Error('checkout.js load fail'));
+      document.body.appendChild(sc);
+    });
+  }
+
+  async payViaGateway(): Promise<void> {
+    const amt = this.payPlan()?.price ?? this.amount();
+    if (!amt || amt < 1) { alert('Amount sahi nahi hai.'); return; }
+    this.processing.set(true);
+    try {
+      await this.loadRzpScript();
+      const order: any = await new Promise((res, rej) =>
+        this.http.post(`${environment.apiUrl}/api/billing/razorpay/order`, { amount: amt })
+          .subscribe({ next: r => res(r), error: e => rej(e) }));
+      const Rzp = (window as any).Razorpay;
+      if (!Rzp) throw new Error('Razorpay load nahi hua');
+      const rzp = new Rzp({
+        key: order.keyId,
+        order_id: order.orderId,
+        amount: order.amount,
+        currency: order.currency || 'INR',
+        name: order.name || 'Vyapaar Setu',
+        description: this.payPlan()?.name || 'Wallet Recharge',
+        theme: { color: '#5c1a8b' },
+        handler: (resp: any) => {
+          this.http.post<any>(`${environment.apiUrl}/api/billing/razorpay/verify`, {
+            orderId: resp.razorpay_order_id,
+            paymentId: resp.razorpay_payment_id,
+            signature: resp.razorpay_signature,
+            amount: amt
+          }).subscribe({
+            next: () => {
+              this.processing.set(false);
+              alert('\u2705 Payment successful! Wallet update ho gaya.');
+              this.wallet.refresh();
+              this.closePlanQr();
+            },
+            error: (e) => {
+              this.processing.set(false);
+              alert('\u26A0\uFE0F Payment hua par verify fail: ' + (e?.error?.error ?? 'unknown') + '\nSupport se sampark karo.');
+            }
+          });
+        },
+        modal: { ondismiss: () => this.processing.set(false) }
+      });
+      rzp.on('payment.failed', (r: any) => {
+        this.processing.set(false);
+        alert('\u274C Payment fail: ' + (r?.error?.description ?? ''));
+      });
+      rzp.open();
+    } catch (e: any) {
+      this.processing.set(false);
+      alert('\u26A0\uFE0F Gateway error: ' + (e?.error?.error ?? e?.message ?? 'unknown'));
+    }
   }
 
   async submit(): Promise<void> {

@@ -64,7 +64,7 @@ public class RazorpayController : ControllerBase
         {
             amount = paise,
             currency = "INR",
-            receipt = $"rcpt_{CurrentFirmId:N}_{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}"
+            receipt = $"rcpt_{CurrentFirmId.ToString("N").Substring(0, 8)}_{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}"
         });
         using var req = new HttpRequestMessage(HttpMethod.Post, "https://api.razorpay.com/v1/orders");
         req.Headers.Authorization = new AuthenticationHeaderValue("Basic",

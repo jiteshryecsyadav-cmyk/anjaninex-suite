@@ -77,8 +77,8 @@ public class BillingSettingsController : ControllerBase
                 payee_name=@payee, upi_id=@upi, bank_name=@bank, account_name=@accName,
                 account_no=@accNo, ifsc=@ifsc, qr_image_url=@qr, instructions=@instr,
                 gateway=@gw, razorpay_key_id=@rzpId, gateway_enabled=@gwEn,
-                razorpay_key_secret = CASE WHEN @rzpSecret IS NULL OR @rzpSecret = ''
-                                           THEN razorpay_key_secret ELSE @rzpSecret END,
+                razorpay_key_secret = CASE WHEN @rzpSecret::text IS NULL OR @rzpSecret::text = ''
+                                           THEN razorpay_key_secret ELSE @rzpSecret::text END,
                 books_firm_id = @booksFirm,
                 gstin = @gstin,
                 updated_at = now()

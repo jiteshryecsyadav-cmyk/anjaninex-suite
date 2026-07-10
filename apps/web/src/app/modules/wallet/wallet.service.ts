@@ -106,7 +106,7 @@ export class WalletService {
 
   /** Compute GST + gateway fee + cashback for a recharge amount. */
   static computeBreakdown(amount: number, method: PayMethod) {
-    const gst = Math.round(amount * 0.18);
+    const gst = 0; // GST 20 lakh turnover tak nahi lagti (aur uske baad price-inclusive). Payable = base.
     const fee = method === 'razorpay' ? Math.round(amount * 0.02) : 0;
     let cashback = 0;
     if (amount >= 50000) cashback = 1200;

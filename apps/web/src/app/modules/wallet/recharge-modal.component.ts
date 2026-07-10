@@ -91,7 +91,7 @@ type Tab = 'recharge' | 'history' | 'pricing' | 'auto';
                   <span class="rs">₹</span>
                   <input type="number" [ngModel]="customInput()" (ngModelChange)="onCustom($event)"
                          placeholder="Enter custom amount (min ₹100)" min="100" max="500000">
-                  <span class="gst">+ 18% GST</span>
+                  <span class="gst"></span>
                 </div>
 
                 <!-- Payment methods -->
@@ -155,7 +155,7 @@ type Tab = 'recharge' | 'history' | 'pricing' | 'auto';
                   <span class="sum-val">₹{{ breakdown().amount | number:'1.2-2' }}</span>
                 </div>
                 <div class="sum-row">
-                  <span class="sum-label">GST (18%)</span>
+                  <span class="sum-label">GST (20L tak 0%)</span>
                   <span class="sum-val">₹{{ breakdown().gst | number:'1.2-2' }}</span>
                 </div>
                 <div class="sum-row">
@@ -407,7 +407,7 @@ type Tab = 'recharge' | 'history' | 'pricing' | 'auto';
           <div class="qr-pop-amt">
             <span>Total Payable</span>
             <strong>₹{{ breakdown().total | number:'1.0-0' }}</strong>
-            <small>₹{{ pp.price | number:'1.0-0' }} + 18% GST</small>
+            <small>Bina GST (20 lakh tak)</small>
           </div>
 
           <div class="qr-pop-img" style="position:relative">

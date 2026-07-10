@@ -100,6 +100,16 @@ export interface LocationPoint {
   accuracy: number | null;
 }
 
+export interface LiveStaff {
+  employeeId: string;
+  name: string;
+  latitude: number;
+  longitude: number;
+  capturedAt: string;
+  speed: number | null;
+  minutesAgo: number;
+}
+
 export interface Payslip {
   id: string;
   employeeId: string;
@@ -209,6 +219,10 @@ export class HrService {
     return this.http.get<{ employeeId: string; points: LocationPoint[] }[]>(`${this.base}/location/all-trails`, { params: { date } });
   }
   liveLocations() { return this.http.get<LocationPoint[]>(`${this.base}/location/live`); }
+  // Ola/Rapido style: per-staff latest position (last 30 min) for live moving markers.
+  liveLatest() { return this.http.get<LiveStaff[]>(`${this.base}/location/live-latest`); }
+  // Central Anjaninex Google Maps key (browser-safe, referrer-restricted).
+  mapsKey() { return this.http.get<{ key: string | null }>(`${environment.apiUrl}/api/config/maps-key`); }
 
   // Leaves
   myBalance() { return this.http.get<LeaveBalance[]>(`${this.base}/leaves/my-balance`); }

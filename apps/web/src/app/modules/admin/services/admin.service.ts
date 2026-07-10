@@ -226,7 +226,7 @@ export class AdminService {
   // ---- Platform AI keys (super-admin, common for all firms) ----
   getAiKeys() { return this.http.get<AiKeysInfo>(`${this.base}/ai-keys`); }
   saveAiKeys(body: SaveAiKeys) { return this.http.put<AiKeysInfo>(`${this.base}/ai-keys`, body); }
-  clearAiKey(provider: 'gemini' | 'claude' | 'openai' | 'sarvam') { return this.http.delete<AiKeysInfo>(`${this.base}/ai-keys/${provider}`); }
+  clearAiKey(provider: 'gemini' | 'claude' | 'openai' | 'sarvam' | 'maps') { return this.http.delete<AiKeysInfo>(`${this.base}/ai-keys/${provider}`); }
 
   // Add-on services (admin catalog)
   listAddonServices() { return this.http.get<AddonService[]>(`${this.base}/addon-services`); }
@@ -289,12 +289,14 @@ export interface AiKeysInfo {
   claudeSet: boolean; claudeLast4: string;
   openaiSet: boolean; openaiLast4: string;
   sarvamSet: boolean; sarvamLast4: string;   // Anji ki voice (Sarvam AI TTS)
+  mapsSet: boolean; mapsLast4: string;       // central Google Maps key
 }
 export interface SaveAiKeys {
   geminiKey?: string | null;   // blank/null = no change
   claudeKey?: string | null;
   openaiKey?: string | null;
   sarvamKey?: string | null;   // Anji voice (Sarvam AI)
+  mapsKey?: string | null;     // Google Maps (Live Map)
 }
 
 export interface AddonService {

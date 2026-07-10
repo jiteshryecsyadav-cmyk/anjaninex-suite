@@ -108,6 +108,23 @@ import { AdminService, AiKeysInfo } from '../services/admin.service';
             }
           </div>
 
+          <!-- GOOGLE MAPS (Live Location Map) -->
+          <div class="card">
+            <h3 class="font-bold text-[#5c1a8b] mb-1">🗺 Google Maps (Live Location Map)</h3>
+            <p class="text-xs text-gray-500 mb-3">HR → Live Map me field staff ki live movement is key se chalti hai (sab firms common). console.cloud.google.com → Maps JavaScript API enable karke key banao (referrer-restrict karna better).</p>
+            <label class="lbl">
+              Nayi key paste karein (khali = koi change nahi)
+              @if (info().mapsSet) {
+                <span class="ml-2 text-green-600 normal-case font-semibold">set ✓ (…{{ info().mapsLast4 }})</span>
+              }
+            </label>
+            <input [(ngModel)]="mapsKey" type="password" class="input font-mono"
+                   [placeholder]="info().mapsSet ? '•••••• (saved)' : 'AIza...'">
+            @if (info().mapsSet) {
+              <button (click)="clear('maps')" class="text-xs text-red-600 mt-2 hover:underline">🗑 Clear / Delete key</button>
+            }
+          </div>
+
           @if (msg()) { <div class="bg-green-50 border border-green-200 text-green-700 px-3 py-2 rounded text-sm">{{ msg() }}</div> }
           @if (err()) { <div class="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded text-sm">{{ err() }}</div> }
 
@@ -132,13 +149,15 @@ export class AdminAiKeysComponent {
   err = signal('');
   info = signal<AiKeysInfo>({
     geminiSet: false, geminiLast4: '', claudeSet: false, claudeLast4: '',
-    openaiSet: false, openaiLast4: '', sarvamSet: false, sarvamLast4: ''
+    openaiSet: false, openaiLast4: '', sarvamSet: false, sarvamLast4: '',
+    mapsSet: false, mapsLast4: ''
   });
 
   geminiKey = '';
   claudeKey = '';
   openaiKey = '';
   sarvamKey = '';
+  mapsKey = '';
 
   ngOnInit() {
     this.svc.getAiKeys().subscribe({
@@ -153,11 +172,12 @@ export class AdminAiKeysComponent {
       geminiKey: this.geminiKey || null,
       claudeKey: this.claudeKey || null,
       openaiKey: this.openaiKey || null,
-      sarvamKey: this.sarvamKey || null
+      sarvamKey: this.sarvamKey || null,
+      mapsKey: this.mapsKey || null
     }).subscribe({
       next: (s) => {
         this.info.set(s);
-        this.geminiKey = ''; this.claudeKey = ''; this.openaiKey = ''; this.sarvamKey = '';
+        this.geminiKey = ''; this.claudeKey = ''; this.openaiKey = ''; this.sarvamKey = ''; this.mapsKey = '';
         this.saving.set(false);
         this.msg.set('✅ AI keys save ho gayi! Sab firms ke scan ab inhi se chalenge.');
       },
@@ -165,7 +185,7 @@ export class AdminAiKeysComponent {
     });
   }
 
-  clear(provider: 'gemini' | 'claude' | 'openai' | 'sarvam') {
+  clear(provider: 'gemini' | 'claude' | 'openai' | 'sarvam' | 'maps') {
     if (!confirm('Is key ko delete karein? Iske baad us provider ke model platform key se nahi chalenge (jab tak nayi key na daalein).')) return;
     this.msg.set(''); this.err.set('');
     this.svc.clearAiKey(provider).subscribe({

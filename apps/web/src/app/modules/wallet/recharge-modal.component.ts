@@ -90,7 +90,7 @@ type Tab = 'recharge' | 'history' | 'pricing' | 'auto';
                 <div class="custom-amt">
                   <span class="rs">₹</span>
                   <input type="number" [ngModel]="customInput()" (ngModelChange)="onCustom($event)"
-                         placeholder="Enter custom amount (min ₹100)" min="100" max="500000">
+                         placeholder="Koi bhi amount daalo (₹1+)" min="1" max="500000">
                   <span class="gst"></span>
                 </div>
 
@@ -380,7 +380,7 @@ type Tab = 'recharge' | 'history' | 'pricing' | 'auto';
             <button class="btn-block" style="width:auto;padding:10px 20px" (click)="close()">Cancel</button>
             @if (activeTab() === 'recharge') {
               <button class="btn-block primary" style="width:auto;padding:10px 26px;font-size:13px"
-                      [disabled]="amount() < 100"
+                      [disabled]="amount() < 1"
                       (click)="openRechargePay()">
                 💳 Pay ₹{{ breakdown().total | number:'1.0-0' }}
               </button>
@@ -859,7 +859,7 @@ export class RechargeModalComponent {
   }
   /** Recharge tab ka Pay button — same QR popup (Wallet Recharge naam se) */
   openRechargePay(): void {
-    if (this.amount() < 100) return;
+    if (this.amount() < 1) return;
     this.method.set('upi');
     this.upiTxnId = '';
     this.payPlan.set({ name: 'Wallet Recharge', price: this.amount() });
@@ -939,7 +939,7 @@ export class RechargeModalComponent {
   }
 
   async submit(): Promise<void> {
-    if (this.amount() < 100) return;
+    if (this.amount() < 1) return;
     this.processing.set(true);
     try {
       const newBal = await this.wallet.recharge({

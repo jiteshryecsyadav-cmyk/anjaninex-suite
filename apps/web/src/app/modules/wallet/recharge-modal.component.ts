@@ -204,7 +204,7 @@ type Tab = 'recharge' | 'history' | 'pricing' | 'auto';
                   <thead>
                     <tr><th>Date</th><th>Type</th><th>Description</th><th>Reference</th>
                         <th style="text-align:right">Debit</th><th style="text-align:right">Credit</th>
-                        <th style="text-align:right">Balance</th></tr>
+                        <th style="text-align:right">Balance</th><th style="text-align:center">Receipt</th></tr>
                   </thead>
                   <tbody>
                     @for (e of wallet.history(); track e.id) {
@@ -216,6 +216,12 @@ type Tab = 'recharge' | 'history' | 'pricing' | 'auto';
                         <td style="text-align:right" class="txn-dr">{{ e.amount < 0 ? ('— ₹' + (-e.amount | number:'1.2-2')) : '—' }}</td>
                         <td style="text-align:right" class="txn-cr">{{ e.amount > 0 ? '+ ₹' + (e.amount | number:'1.2-2') : '—' }}</td>
                         <td style="text-align:right" class="mono"><strong>₹{{ e.balanceAfter | number:'1.2-2' }}</strong></td>
+                        <td style="text-align:center">
+                          @if (e.amount > 0) {
+                            <button (click)="downloadReceipt(e)" title="Receipt download / print"
+                              style="border:1px solid #ddc8f5;background:#fff;border-radius:6px;padding:2px 8px;cursor:pointer;font-size:13px">🧾</button>
+                          }
+                        </td>
                       </tr>
                     }
                   </tbody>
@@ -989,6 +995,65 @@ export class RechargeModalComponent {
 
   onBackdropClick(e: MouseEvent): void {
     if ((e.target as HTMLElement).classList.contains('modal-backdrop')) this.close();
+  }
+
+  async downloadReceipt(e: any): Promise<void> {
+    try {
+      const claims: any[] = await new Promise((res, rej) =>
+        this.http.get<any[]>(`${environment.apiUrl}/api/billing/my-claims`).subscribe({ next: r => res(r || []), error: rej }));
+      let claim = claims.find(c => c.reference && e.referenceId && c.reference === e.referenceId && c.status === 'approved');
+      if (!claim) claim = claims.find(c => c.status === 'approved' && Math.abs(c.amount - e.amount) < 0.01);
+      if (!claim) { alert('Is transaction ka receipt nahi mila (sirf approved payments ka receipt banta hai).'); return; }
+      const inv: any = await new Promise((res, rej) =>
+        this.http.get<any>(`${environment.apiUrl}/api/billing/invoice/${claim.id}`).subscribe({ next: r => res(r), error: rej }));
+      this.openReceiptWindow(inv);
+    } catch {
+      alert('Receipt load nahi hua. Dobara try karein.');
+    }
+  }
+
+  private openReceiptWindow(inv: any): void {
+    const money = (n: number) => '\u20B9' + (n || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const gstRow = (inv.gstRate > 0)
+      ? `<tr><td>Taxable</td><td class="r">${money(inv.taxable)}</td></tr><tr><td>GST @ ${inv.gstRate}%</td><td class="r">${money(inv.gstAmount)}</td></tr>`
+      : `<tr><td>GST</td><td class="r">\u20B90.00 (20L tak exempt)</td></tr>`;
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Receipt ${inv.invoiceNo}</title>
+    <style>
+      body{font-family:system-ui,Segoe UI,Arial,sans-serif;color:#1f2430;max-width:640px;margin:24px auto;padding:0 20px}
+      .hd{display:flex;justify-content:space-between;border-bottom:3px solid #5c1a8b;padding-bottom:12px;margin-bottom:16px}
+      .hd h1{color:#5c1a8b;margin:0;font-size:22px}
+      .sub{font-size:12px;color:#6b7280}
+      .paid{display:inline-block;background:#dcfce7;color:#15803d;border:1px solid #86efac;border-radius:8px;padding:4px 12px;font-weight:800;font-size:13px}
+      table{width:100%;border-collapse:collapse;margin-top:10px}
+      td{padding:7px 4px;border-bottom:1px solid #eee;font-size:14px}
+      .r{text-align:right}
+      .tot td{font-weight:800;font-size:16px;border-top:2px solid #5c1a8b;border-bottom:none}
+      .meta{font-size:12px;color:#6b7280;margin-top:6px}
+      .foot{margin-top:22px;font-size:11px;color:#9ca3af;text-align:center}
+      @media print{.noprint{display:none}}
+    </style></head><body>
+      <div class="hd">
+        <div><h1>${inv.payeeName || 'Anjaninex'}</h1><div class="sub">Vyapaar Setu &middot; Subscription Payment Receipt</div>
+          ${inv.payeeGstin ? '<div class="sub">GSTIN: ' + inv.payeeGstin + '</div>' : ''}</div>
+        <div style="text-align:right"><div class="paid">&#10003; PAID</div>
+          <div class="meta">Receipt: <b>${inv.invoiceNo}</b><br>Date: ${inv.date || '-'}</div></div>
+      </div>
+      <table>
+        <tr><td>Billed To</td><td class="r"><b>${inv.firmName || '-'}</b></td></tr>
+        ${inv.firmGst ? '<tr><td>GSTIN</td><td class="r">' + inv.firmGst + '</td></tr>' : ''}
+        <tr><td>Payment Method</td><td class="r">${(inv.method || 'online').toUpperCase()}</td></tr>
+        ${inv.reference ? '<tr><td>Txn Ref</td><td class="r" style="font-family:monospace">' + inv.reference + '</td></tr>' : ''}
+        ${gstRow}
+        <tr class="tot"><td>Total Paid</td><td class="r">${money(inv.amount)}</td></tr>
+      </table>
+      <div class="foot">Computer-generated receipt &middot; Vyapaar Setu &mdash; an Anjaninex product &middot; support@anjaninex.com</div>
+      <div class="noprint" style="text-align:center;margin-top:18px">
+        <button onclick="window.print()" style="background:#5c1a8b;color:#fff;border:0;border-radius:8px;padding:10px 22px;font-weight:700;cursor:pointer">Print / Save PDF</button>
+      </div>
+    </body></html>`;
+    const w = window.open('', '_blank', 'width=720,height=800');
+    if (!w) { alert('Popup block ho gaya - browser me popups allow karein.'); return; }
+    w.document.write(html); w.document.close();
   }
 
   close(): void { this.closed.emit(); }

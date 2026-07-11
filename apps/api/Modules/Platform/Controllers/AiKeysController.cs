@@ -21,9 +21,11 @@ public record AiKeysDto(
     bool ClaudeSet, string ClaudeLast4,
     bool OpenaiSet, string OpenaiLast4,
     bool SarvamSet, string SarvamLast4,
-    bool MapsSet, string MapsLast4);
+    bool MapsSet, string MapsLast4,
+    bool OlaMapsSet, string OlaMapsLast4,
+    string MapsProvider);
 
-public record SaveAiKeysDto(string? GeminiKey, string? ClaudeKey, string? OpenaiKey, string? SarvamKey, string? MapsKey);
+public record SaveAiKeysDto(string? GeminiKey, string? ClaudeKey, string? OpenaiKey, string? SarvamKey, string? MapsKey, string? OlaMapsKey, string? MapsProvider);
 
 [ApiController]
 [Route("api/admin/ai-keys")]
@@ -55,24 +57,28 @@ public class AiKeysController : ControllerBase
     public async Task<IActionResult> Get()
     {
         await using var cmd = await CmdAsync(
-            @"SELECT ai_gemini_key, ai_claude_key, ai_openai_key, ai_sarvam_key, maps_key
+            @"SELECT ai_gemini_key, ai_claude_key, ai_openai_key, ai_sarvam_key, maps_key, maps_ola_key, COALESCE(maps_provider, 'osm') AS maps_provider
               FROM platform.billing_settings WHERE id = 1");
         await using var r = await cmd.ExecuteReaderAsync();
         if (!await r.ReadAsync())
-            return Ok(new AiKeysDto(false, "", false, "", false, "", false, "", false, ""));
+            return Ok(new AiKeysDto(false, "", false, "", false, "", false, "", false, "", false, "", "osm"));
 
         var gemini = r["ai_gemini_key"] as string;
         var claude = r["ai_claude_key"] as string;
         var openai = r["ai_openai_key"] as string;
         var sarvam = r["ai_sarvam_key"] as string;
         var maps = r["maps_key"] as string;
+        var ola = r["maps_ola_key"] as string;
+        var mapsProvider = (r["maps_provider"] as string) ?? "osm";
 
         return Ok(new AiKeysDto(
             !string.IsNullOrEmpty(gemini), Last4(gemini),
             !string.IsNullOrEmpty(claude), Last4(claude),
             !string.IsNullOrEmpty(openai), Last4(openai),
             !string.IsNullOrEmpty(sarvam), Last4(sarvam),
-            !string.IsNullOrEmpty(maps), Last4(maps)));
+            !string.IsNullOrEmpty(maps), Last4(maps),
+            !string.IsNullOrEmpty(ola), Last4(ola),
+            mapsProvider));
     }
 
     [HttpPut]
@@ -93,6 +99,9 @@ public class AiKeysController : ControllerBase
                                      THEN ai_sarvam_key ELSE @sarvam END,
                 maps_key = CASE WHEN @maps IS NULL OR @maps = ''
                                 THEN maps_key ELSE @maps END,
+                maps_ola_key = CASE WHEN @ola IS NULL OR @ola = ''
+                                THEN maps_ola_key ELSE @ola END,
+                maps_provider = COALESCE(NULLIF(@mprov, ''), maps_provider),
                 updated_at = now()
               WHERE id = 1");
         // Blank ke liye EMPTY STRING bhejo (null nahi) — SQL '' ko "keep old" maanta hai.
@@ -104,6 +113,8 @@ public class AiKeysController : ControllerBase
         P("openai", string.IsNullOrWhiteSpace(dto.OpenaiKey) ? "" : dto.OpenaiKey.Trim());
         P("sarvam", string.IsNullOrWhiteSpace(dto.SarvamKey) ? "" : dto.SarvamKey.Trim());
         P("maps", string.IsNullOrWhiteSpace(dto.MapsKey) ? "" : dto.MapsKey.Trim());
+        P("ola", string.IsNullOrWhiteSpace(dto.OlaMapsKey) ? "" : dto.OlaMapsKey.Trim());
+        P("mprov", string.IsNullOrWhiteSpace(dto.MapsProvider) ? "" : dto.MapsProvider.Trim());
         await cmd.ExecuteNonQueryAsync();
         return await Get();
     }
@@ -121,6 +132,7 @@ public class AiKeysController : ControllerBase
             "openai" => "ai_openai_key",
             "sarvam" => "ai_sarvam_key",
             "maps" => "maps_key",
+            "ola" => "maps_ola_key",
             _ => null
         };
         if (col is null) return BadRequest(new { error = "Invalid provider (gemini/claude/openai/sarvam)" });

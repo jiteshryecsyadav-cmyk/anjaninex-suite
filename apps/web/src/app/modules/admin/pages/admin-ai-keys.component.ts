@@ -108,20 +108,39 @@ import { AdminService, AiKeysInfo } from '../services/admin.service';
             }
           </div>
 
-          <!-- GOOGLE MAPS (Live Location Map) -->
+          <!-- LIVE MAP PROVIDER (HR -> Live Map) -->
           <div class="card">
-            <h3 class="font-bold text-[#5c1a8b] mb-1">🗺 Google Maps (Live Location Map)</h3>
-            <p class="text-xs text-gray-500 mb-3">HR → Live Map me field staff ki live movement is key se chalti hai (sab firms common). console.cloud.google.com → Maps JavaScript API enable karke key banao (referrer-restrict karna better).</p>
-            <label class="lbl">
-              Nayi key paste karein (khali = koi change nahi)
-              @if (info().mapsSet) {
-                <span class="ml-2 text-green-600 normal-case font-semibold">set ✓ (…{{ info().mapsLast4 }})</span>
-              }
-            </label>
-            <input [(ngModel)]="mapsKey" type="password" class="input font-mono"
-                   [placeholder]="info().mapsSet ? '•••••• (saved)' : 'AIza...'">
-            @if (info().mapsSet) {
-              <button (click)="clear('maps')" class="text-xs text-red-600 mt-2 hover:underline">🗑 Clear / Delete key</button>
+            <h3 class="font-bold text-[#5c1a8b] mb-1">🗺 Live Map Provider (HR → Live Map)</h3>
+            <p class="text-xs text-gray-500 mb-3">Field staff ki live movement is provider pe dikhti hai. <b>OpenStreetMap = bilkul free</b> (koi key/card nahi). Google/Ola ke liye niche key daalo.</p>
+            <label class="lbl">Provider chuno</label>
+            <select [(ngModel)]="mapsProvider" class="input">
+              <option value="osm">OpenStreetMap — FREE (no key, recommended)</option>
+              <option value="ola">Ola Maps (Indian, sasta) — key chahiye</option>
+              <option value="google">Google Maps — key + billing chahiye</option>
+            </select>
+
+            @if (mapsProvider === 'osm') {
+              <p class="mt-3 text-sm text-green-700 bg-green-50 border border-green-200 rounded px-3 py-2">✅ OpenStreetMap free hai — koi key nahi chahiye. Save karo, turant chalega.</p>
+            }
+            @if (mapsProvider === 'google') {
+              <div class="mt-4">
+                <label class="lbl">Google Maps key
+                  @if (info().mapsSet) { <span class="ml-2 text-green-600 normal-case font-semibold">set ✓ (…{{ info().mapsLast4 }})</span> }
+                </label>
+                <p class="text-xs text-gray-400 mb-1">console.cloud.google.com → Maps JavaScript API enable → key banao.</p>
+                <input [(ngModel)]="mapsKey" type="password" class="input font-mono" [placeholder]="info().mapsSet ? '•••••• (saved)' : 'AIza...'">
+                @if (info().mapsSet) { <button (click)="clear('maps')" class="text-xs text-red-600 mt-2 hover:underline">🗑 Clear Google key</button> }
+              </div>
+            }
+            @if (mapsProvider === 'ola') {
+              <div class="mt-4">
+                <label class="lbl">Ola Maps key
+                  @if (info().olaMapsSet) { <span class="ml-2 text-green-600 normal-case font-semibold">set ✓ (…{{ info().olaMapsLast4 }})</span> }
+                </label>
+                <p class="text-xs text-gray-400 mb-1">maps.olakrutrim.com → Project → API key. Koi card/prepayment nahi.</p>
+                <input [(ngModel)]="olaMapsKey" type="password" class="input font-mono" [placeholder]="info().olaMapsSet ? '•••••• (saved)' : 'Ola API key'">
+                @if (info().olaMapsSet) { <button (click)="clear('ola')" class="text-xs text-red-600 mt-2 hover:underline">🗑 Clear Ola key</button> }
+              </div>
             }
           </div>
 
@@ -150,7 +169,8 @@ export class AdminAiKeysComponent {
   info = signal<AiKeysInfo>({
     geminiSet: false, geminiLast4: '', claudeSet: false, claudeLast4: '',
     openaiSet: false, openaiLast4: '', sarvamSet: false, sarvamLast4: '',
-    mapsSet: false, mapsLast4: ''
+    mapsSet: false, mapsLast4: '',
+    olaMapsSet: false, olaMapsLast4: '', mapsProvider: 'osm'
   });
 
   geminiKey = '';
@@ -158,10 +178,12 @@ export class AdminAiKeysComponent {
   openaiKey = '';
   sarvamKey = '';
   mapsKey = '';
+  olaMapsKey = '';
+  mapsProvider = 'osm';
 
   ngOnInit() {
     this.svc.getAiKeys().subscribe({
-      next: (s) => { this.info.set(s); this.loading.set(false); },
+      next: (s) => { this.info.set(s); this.mapsProvider = s.mapsProvider || 'osm'; this.loading.set(false); },
       error: () => this.loading.set(false)
     });
   }
@@ -173,11 +195,14 @@ export class AdminAiKeysComponent {
       claudeKey: this.claudeKey || null,
       openaiKey: this.openaiKey || null,
       sarvamKey: this.sarvamKey || null,
-      mapsKey: this.mapsKey || null
+      mapsKey: this.mapsKey || null,
+      olaMapsKey: this.olaMapsKey || null,
+      mapsProvider: this.mapsProvider || 'osm'
     }).subscribe({
       next: (s) => {
         this.info.set(s);
-        this.geminiKey = ''; this.claudeKey = ''; this.openaiKey = ''; this.sarvamKey = ''; this.mapsKey = '';
+        this.mapsProvider = s.mapsProvider || 'osm';
+        this.geminiKey = ''; this.claudeKey = ''; this.openaiKey = ''; this.sarvamKey = ''; this.mapsKey = ''; this.olaMapsKey = '';
         this.saving.set(false);
         this.msg.set('✅ AI keys save ho gayi! Sab firms ke scan ab inhi se chalenge.');
       },
@@ -185,7 +210,7 @@ export class AdminAiKeysComponent {
     });
   }
 
-  clear(provider: 'gemini' | 'claude' | 'openai' | 'sarvam' | 'maps') {
+  clear(provider: 'gemini' | 'claude' | 'openai' | 'sarvam' | 'maps' | 'ola') {
     if (!confirm('Is key ko delete karein? Iske baad us provider ke model platform key se nahi chalenge (jab tak nayi key na daalein).')) return;
     this.msg.set(''); this.err.set('');
     this.svc.clearAiKey(provider).subscribe({

@@ -148,8 +148,10 @@ public class RazorpayController : ControllerBase
         var (invoiceNo, taxable, gst) = await ComputeGstInvoice(payReqId, dto.Amount);
         await _svc.RechargeFirmWallet(firmId, dto.Amount, "razorpay", dto.PaymentId, CurrentUserId ?? Guid.Empty);
 
-        // Anjaninex ke apne books me income voucher auto-post (fail ho to payment nahi rukta).
+        // Anjaninex ke books me income (Dr Bank / Cr Income) + payer firm ke books me expense (Dr Expense / Cr Bank).
         await PostIncomeToBooks(firmId, dto.Amount, taxable, gst, dto.PaymentId);
+        await PostExpenseToPayerBooks(firmId, dto.Amount, dto.PaymentId);
+        await SetFirmContext(firmId);   // context wapas payer firm par (safety)
 
         return Ok(new { success = true, invoiceNo });
     }
@@ -206,6 +208,7 @@ public class RazorpayController : ControllerBase
                 if (v is Guid g && g != Guid.Empty) booksFirmId = g;
             }
             if (booksFirmId == null) return;
+            await SetFirmContext(booksFirmId.Value);   // RLS: Anjaninex books me post karne ke liye
 
             var branchId = await _db.Branches
                 .Where(b => b.FirmId == booksFirmId.Value)
@@ -241,6 +244,48 @@ public class RazorpayController : ControllerBase
         catch
         {
             // Books posting fail hone par payment fail NAHI hona chahiye - wallet already recharged.
+        }
+    }
+
+    // RLS context switch - kisi bhi firm ke books me post karne ke liye.
+    private async Task SetFirmContext(Guid firmId)
+    {
+        await using var cmd = await CmdAsync("SELECT set_config('app.current_firm_id', @f, false)");
+        cmd.Parameters.Add(new NpgsqlParameter("f", firmId.ToString()));
+        await cmd.ExecuteNonQueryAsync();
+    }
+
+    // Payer firm ke apne books me: Dr Vyapaar Setu Subscription (expense) / Cr Bank A/c.
+    private async Task PostExpenseToPayerBooks(Guid payerFirmId, decimal amount, string reference)
+    {
+        try
+        {
+            await SetFirmContext(payerFirmId);
+
+            var branchId = await _db.Branches
+                .Where(b => b.FirmId == payerFirmId)
+                .OrderByDescending(b => b.IsHeadOffice)
+                .Select(b => (Guid?)b.Id)
+                .FirstOrDefaultAsync();
+            if (branchId == null) return;
+
+            var expenseLedger = await EnsureLedger(payerFirmId, "Indirect Expenses", "Vyapaar Setu Subscription", "Dr");
+            var bankLedger = await EnsureLedger(payerFirmId, "Bank Accounts", "Bank A/c", "Cr");
+
+            var lines = new List<CreateVoucherLineDto>
+            {
+                new(expenseLedger, "Dr", amount, null),
+                new(bankLedger, "Cr", amount, null)
+            };
+            var dto = new CreateVoucherDto(
+                "payment", DateOnly.FromDateTime(DateTime.Today),
+                $"Vyapaar Setu wallet recharge (Razorpay) - ref: {reference}",
+                lines);
+            await _vouchers.Create(dto, payerFirmId, branchId.Value, CurrentUserId ?? Guid.Empty);
+        }
+        catch
+        {
+            // Firm ke books me post fail ho to payment nahi rukta.
         }
     }
 

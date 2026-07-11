@@ -1,5 +1,8 @@
+using System.Data;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using Namokara.Api.Common.Auth;
 using Namokara.Api.Infrastructure.Storage;
 using Namokara.Api.Modules.Hr.Services;
@@ -228,6 +231,43 @@ public class LocationController : HrControllerBase
     [HttpGet("live")]
     [HasPermission("hr.attendance.view.firm")]
     public async Task<IActionResult> Live() => Ok(await _svc.LiveLast15Min());
+
+    // Ola/Rapido style: har staff ka LATEST location (last 30 min) - live moving marker ke liye poll hota hai.
+    [HttpGet("live-latest")]
+    [HasPermission("hr.attendance.view.firm")]
+    public async Task<IActionResult> LiveLatest()
+    {
+        var conn = (NpgsqlConnection)_db.Database.GetDbConnection();
+        if (conn.State != ConnectionState.Open) await conn.OpenAsync();
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = @"SELECT DISTINCT ON (lt.employee_id)
+                   lt.employee_id, lt.latitude, lt.longitude, lt.captured_at, lt.speed,
+                   COALESCE(c.display_name, ep.employee_code, 'Staff') AS emp_name
+            FROM hr.location_trails lt
+            JOIN hr.employee_profiles ep ON ep.id = lt.employee_id
+            LEFT JOIN core.contacts c ON c.id = ep.contact_id
+            WHERE lt.firm_id = @firm
+              AND lt.captured_at >= now() - interval '30 minutes'
+            ORDER BY lt.employee_id, lt.captured_at DESC";
+        cmd.Parameters.Add(new NpgsqlParameter("firm", CurrentFirmId));
+        var list = new List<object>();
+        await using var r = await cmd.ExecuteReaderAsync();
+        while (await r.ReadAsync())
+        {
+            var cap = (DateTimeOffset)r["captured_at"];
+            list.Add(new
+            {
+                employeeId = (Guid)r["employee_id"],
+                name = r["emp_name"] as string,
+                latitude = (decimal)r["latitude"],
+                longitude = (decimal)r["longitude"],
+                capturedAt = cap,
+                speed = r["speed"] is DBNull ? (decimal?)null : (decimal?)r["speed"],
+                minutesAgo = (int)System.Math.Round((DateTimeOffset.Now - cap).TotalMinutes)
+            });
+        }
+        return Ok(list);
+    }
 }
 
 // =============================================================================

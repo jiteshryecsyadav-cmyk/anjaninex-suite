@@ -889,6 +889,7 @@ export class RechargeModalComponent {
               alert('\u2705 Payment successful! Wallet update ho gaya.');
               this.wallet.refresh();
               this.closePlanQr();
+              this.close();   // OK ke baad poora recharge modal band -> seedha wallet page
             },
             error: (e) => {
               this.processing.set(false);

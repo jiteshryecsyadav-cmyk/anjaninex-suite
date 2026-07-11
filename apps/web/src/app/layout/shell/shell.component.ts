@@ -231,13 +231,13 @@ import { environment } from '../../../environments/environment';
               }
 
               <!-- Notifications -->
-              <div class="relative" (mouseleave)="notifOpen.set(false)">
+              <div class="relative" (mouseleave)="scheduleClose()" (mouseenter)="cancelClose()">
                 <button (click)="toggleNotifs()" class="relative p-1.5 hover:bg-white/10 rounded">
-                  <span class="inline-block" [class.animate-pulse]="unreadCount() > 0">🔔</span>
+                  <span class="inline-block" [class.bell-wiggle]="unreadCount() > 0">🔔</span>
                   @if (unreadCount() > 0) {
                     <span class="absolute top-0.5 right-0.5 flex h-2.5 w-2.5">
-                      <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-anjaninex-red opacity-75"></span>
-                      <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-anjaninex-red ring-1 ring-white/60"></span>
+                      <span class="notif-ping absolute inline-flex h-full w-full rounded-full bg-anjaninex-red"></span>
+                      <span class="notif-dot relative inline-flex rounded-full h-2.5 w-2.5 bg-anjaninex-red ring-1 ring-white/70"></span>
                     </span>
                   }
                 </button>
@@ -423,6 +423,12 @@ import { environment } from '../../../environments/environment';
     }
   `,
   styles: [`
+    @keyframes bellWiggle { 0%,100%{transform:rotate(0)} 20%{transform:rotate(-12deg)} 40%{transform:rotate(10deg)} 60%{transform:rotate(-7deg)} 80%{transform:rotate(4deg)} }
+    .bell-wiggle { display:inline-block; animation: bellWiggle 1s ease-in-out infinite; transform-origin: 50% 0; }
+    @keyframes notifBlink { 0%,100%{opacity:1; transform:scale(1)} 50%{opacity:.3; transform:scale(1.4)} }
+    .notif-dot { animation: notifBlink 1s ease-in-out infinite; }
+    @keyframes notifPing { 0%{transform:scale(1);opacity:.7} 75%,100%{transform:scale(2.3);opacity:0} }
+    .notif-ping { animation: notifPing 1.2s cubic-bezier(0,0,.2,1) infinite; }
     .m-lbl { display:block; font-size:10px; font-weight:700; color:#6b3fa0; text-transform:uppercase; letter-spacing:.5px; margin:10px 0 4px; }
     .m-input { width:100%; padding:8px 10px; border:1.5px solid #ddc8f5; border-radius:8px; font-size:13px; outline:none; background:#faf5ff; color:#2d1040; }
     .m-btn { padding:8px 16px; background:linear-gradient(135deg,#4a1080,#5c1a8b); color:#fff; border:none; border-radius:8px; font-size:13px; font-weight:700; cursor:pointer; }
@@ -538,6 +544,15 @@ export class ShellComponent {
   notifOpen = signal(false);
   notifs = signal<any[]>([]);
   unreadCount = signal(0);
+  private notifCloseTimer: any = null;
+
+  // Cursor bell se hate to turant band nahi — 2 sec baad.
+  scheduleClose() { this.cancelClose(); this.notifCloseTimer = setTimeout(() => this.notifOpen.set(false), 2000); }
+  cancelClose() { if (this.notifCloseTimer) { clearTimeout(this.notifCloseTimer); this.notifCloseTimer = null; } }
+
+  private lastSeen(): number {
+    try { return +(localStorage.getItem('notif_last_seen') || 0); } catch { return 0; }
+  }
 
   toggleNotifs() {
     this.notifOpen.set(!this.notifOpen());
@@ -545,11 +560,20 @@ export class ShellComponent {
   }
   loadNotifs() {
     this.http.get<any[]>(`${environment.apiUrl}/api/me/notifications`).subscribe({
-      next: n => { this.notifs.set(n); this.unreadCount.set(n.filter(x => !x.read).length); },
+      next: n => {
+        this.notifs.set(n);
+        const seen = this.lastSeen();
+        // Unread = jo abhi tak padha nahi (real read=false) AUR last-seen ke baad aaya.
+        this.unreadCount.set(n.filter(x => !x.read && new Date(x.createdAt).getTime() > seen).length);
+      },
       error: () => {}
     });
   }
   markAllRead() {
+    // Pending-payment notifications derived hote hain (DB me nahi) — isliye "last seen" time yaad
+    // rakho; usse purane notifications red-dot me count nahi honge. Naya aaya to phir dot aayega.
+    try { localStorage.setItem('notif_last_seen', String(Date.now())); } catch {}
+    this.unreadCount.set(0);
     this.http.post(`${environment.apiUrl}/api/me/notifications/read-all`, {}).subscribe({
       next: () => this.loadNotifs(),
       error: () => {}

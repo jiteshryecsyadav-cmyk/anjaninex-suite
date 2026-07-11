@@ -9,6 +9,8 @@ using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using Namokara.Api.Infrastructure.Persistence;
 using Namokara.Api.Modules.Platform.Services;
+using Namokara.Api.Modules.Accounting.Entities;
+using Namokara.Api.Modules.Accounting.Services;
 
 namespace Namokara.Api.Modules.Platform.Controllers;
 
@@ -25,8 +27,9 @@ public class RazorpayController : ControllerBase
 {
     private readonly AppDbContext _db;
     private readonly IPlatformAdminService _svc;
+    private readonly IVoucherService _vouchers;
     private static readonly HttpClient Http = new HttpClient();
-    public RazorpayController(AppDbContext db, IPlatformAdminService svc) { _db = db; _svc = svc; }
+    public RazorpayController(AppDbContext db, IPlatformAdminService svc, IVoucherService vouchers) { _db = db; _svc = svc; _vouchers = vouchers; }
 
     private Guid CurrentFirmId => Guid.Parse(User.FindFirst("firm_id")?.Value
         ?? throw new InvalidOperationException("firm_id claim missing"));
@@ -142,14 +145,17 @@ public class RazorpayController : ControllerBase
             payReqId = (Guid)(await cmd.ExecuteScalarAsync())!;
         }
 
-        var invoiceNo = await ComputeGstInvoice(payReqId, dto.Amount);
+        var (invoiceNo, taxable, gst) = await ComputeGstInvoice(payReqId, dto.Amount);
         await _svc.RechargeFirmWallet(firmId, dto.Amount, "razorpay", dto.PaymentId, CurrentUserId ?? Guid.Empty);
+
+        // Anjaninex ke apne books me income voucher auto-post (fail ho to payment nahi rukta).
+        await PostIncomeToBooks(firmId, dto.Amount, taxable, gst, dto.PaymentId);
 
         return Ok(new { success = true, invoiceNo });
     }
 
     // GST + invoice no (AdminPaymentRequestsController jaisa hi: FY 20L tak GST 0%, uske baad 18% inclusive).
-    private async Task<string> ComputeGstInvoice(Guid payReqId, decimal amount)
+    private async Task<(string invoiceNo, decimal taxable, decimal gst)> ComputeGstInvoice(Guid payReqId, decimal amount)
     {
         var today = DateTime.Today;
         var fyStart = today.Month >= 4 ? new DateTime(today.Year, 4, 1) : new DateTime(today.Year - 1, 4, 1);
@@ -185,6 +191,78 @@ public class RazorpayController : ControllerBase
             upd.Parameters.Add(new NpgsqlParameter("id", payReqId));
             await upd.ExecuteNonQueryAsync();
         }
-        return invoiceNo;
+        return (invoiceNo, taxable, gst);
+    }
+
+    // Anjaninex Books: Dr Bank / Cr Subscription Income (Razorpay payment par auto-post).
+    private async Task PostIncomeToBooks(Guid payerFirmId, decimal amount, decimal taxable, decimal gst, string reference)
+    {
+        try
+        {
+            Guid? booksFirmId = null;
+            await using (var cmd = await CmdAsync("SELECT books_firm_id FROM platform.billing_settings WHERE id = 1"))
+            {
+                var v = await cmd.ExecuteScalarAsync();
+                if (v is Guid g && g != Guid.Empty) booksFirmId = g;
+            }
+            if (booksFirmId == null) return;
+
+            var branchId = await _db.Branches
+                .Where(b => b.FirmId == booksFirmId.Value)
+                .OrderByDescending(b => b.IsHeadOffice)
+                .Select(b => (Guid?)b.Id)
+                .FirstOrDefaultAsync();
+            if (branchId == null) return;
+
+            var bankLedger = await EnsureLedger(booksFirmId.Value, "Bank Accounts", "Bank A/c", "Dr");
+            var incomeLedger = await EnsureLedger(booksFirmId.Value, "Sales", "Subscription Income", "Cr");
+
+            var payerName = await _db.Firms.IgnoreQueryFilters()
+                .Where(f => f.Id == payerFirmId).Select(f => f.Name).FirstOrDefaultAsync() ?? "firm";
+
+            var lines = new List<CreateVoucherLineDto>
+            {
+                new(bankLedger, "Dr", amount, null),
+                new(incomeLedger, "Cr", taxable, null)
+            };
+            if (gst > 0)
+            {
+                var gstLedger = await EnsureLedger(booksFirmId.Value, "Duties & Taxes", "GST Payable", "Cr");
+                lines.Add(new CreateVoucherLineDto(gstLedger, "Cr", gst, null));
+            }
+
+            var dto = new CreateVoucherDto(
+                "receipt", DateOnly.FromDateTime(DateTime.Today),
+                $"Razorpay recharge received from {payerName} - ref: {reference}",
+                lines);
+
+            await _vouchers.Create(dto, booksFirmId.Value, branchId.Value, CurrentUserId ?? Guid.Empty);
+        }
+        catch
+        {
+            // Books posting fail hone par payment fail NAHI hona chahiye - wallet already recharged.
+        }
+    }
+
+    private async Task<Guid> EnsureLedger(Guid firmId, string subGroupName, string ledgerName, string type)
+    {
+        var existing = await _db.Ledgers
+            .Where(l => l.FirmId == firmId && l.Name == ledgerName)
+            .Select(l => (Guid?)l.Id).FirstOrDefaultAsync();
+        if (existing != null) return existing.Value;
+
+        var sg = await _db.SubGroups.FirstOrDefaultAsync(s => s.FirmId == firmId && s.Name == subGroupName)
+              ?? await _db.SubGroups.FirstOrDefaultAsync(s => s.FirmId == firmId);
+        if (sg == null)
+            throw new InvalidOperationException("Books firm me chart of accounts nahi hai.");
+
+        var led = new Ledger
+        {
+            Id = Guid.NewGuid(), FirmId = firmId, SubGroupId = sg.Id,
+            Name = ledgerName, OpeningBalance = 0, OpeningType = type
+        };
+        _db.Ledgers.Add(led);
+        await _db.SaveChangesAsync();
+        return led.Id;
     }
 }

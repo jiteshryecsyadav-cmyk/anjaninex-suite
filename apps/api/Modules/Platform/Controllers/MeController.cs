@@ -2,7 +2,9 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Namokara.Api.Infrastructure.Persistence;
+using System.Data;
 using System.Text.Json;
+using Npgsql;
 
 namespace Namokara.Api.Modules.Platform.Controllers;
 
@@ -101,7 +103,40 @@ public class MeController : ControllerBase
     public async Task<IActionResult> Notifications([FromQuery] int limit = 20)
     {
         var firmClaim = User.FindFirst("firm_id")?.Value;
-        if (firmClaim == null) return Ok(Array.Empty<object>());   // super admin — firm notifs nahi
+        if (firmClaim == null)
+        {
+            // Super admin ke paas firm_id nahi hota. Uske bell me PENDING manual payment
+            // approvals ko live notifications ki tarah dikhao (approve/reject hote hi hat jaate hain).
+            var conn = (NpgsqlConnection)_db.Database.GetDbConnection();
+            if (conn.State != ConnectionState.Open) await conn.OpenAsync();
+            await using var pcmd = conn.CreateCommand();
+            pcmd.CommandText = @"SELECT pr.id, pr.amount, pr.method, f.name AS firm_name, pr.created_at
+                                 FROM platform.payment_requests pr
+                                 JOIN platform.firms f ON f.id = pr.firm_id
+                                 WHERE pr.status = 'pending'
+                                 ORDER BY pr.created_at DESC
+                                 LIMIT @lim";
+            pcmd.Parameters.Add(new NpgsqlParameter("lim", Math.Clamp(limit, 1, 50)));
+            var plist = new List<object>();
+            await using var prr = await pcmd.ExecuteReaderAsync();
+            while (await prr.ReadAsync())
+            {
+                var amt = Convert.ToDecimal(prr["amount"]);
+                plist.Add(new
+                {
+                    id = (Guid)prr["id"],
+                    type = "payment_pending",
+                    severity = "warning",
+                    title = "Payment approval pending",
+                    body = $"{prr["firm_name"]} - Rs {amt:0} ({prr["method"]})",
+                    ctaLabel = "Review",
+                    ctaUrl = "/admin/billing",
+                    read = false,
+                    createdAt = (DateTimeOffset)prr["created_at"]
+                });
+            }
+            return Ok(plist);
+        }
 
         var firmId = Guid.Parse(firmClaim);
         var uid = CurrentUserId;

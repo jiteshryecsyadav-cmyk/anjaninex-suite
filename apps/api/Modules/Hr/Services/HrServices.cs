@@ -221,6 +221,10 @@ public class EmployeeService : IEmployeeService
                 structureId = st.Id;
             }
 
+            // Contact + salary structure pehle persist karo. Warna EF galat order me EmployeeProfile
+            // insert kar de to contact_id / salary_structure_id FK fail hota hai (23503).
+            await _db.SaveChangesAsync();
+
             var emp = new EmployeeProfile
             {
                 Id = Guid.NewGuid(),
@@ -242,6 +246,7 @@ public class EmployeeService : IEmployeeService
                 UpdatedAt = DateTimeOffset.UtcNow
             };
             _db.EmployeeProfiles.Add(emp);
+            await _db.SaveChangesAsync();   // emp persist -> leave_balances ka employee_id FK valid rahe
 
             // Init leave balances
             var year = DateTime.Now.Year;

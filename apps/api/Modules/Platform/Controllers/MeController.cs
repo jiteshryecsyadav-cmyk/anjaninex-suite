@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Namokara.Api.Infrastructure.Persistence;
+using Namokara.Api.Modules.Platform.Services;
 using System.Data;
 using System.Text.Json;
 using Npgsql;
@@ -18,7 +19,8 @@ namespace Namokara.Api.Modules.Platform.Controllers;
 public class MeController : ControllerBase
 {
     private readonly AppDbContext _db;
-    public MeController(AppDbContext db) => _db = db;
+    private readonly IPermissionService _perms;
+    public MeController(AppDbContext db, IPermissionService perms) { _db = db; _perms = perms; }
 
     private Guid CurrentFirmId =>
         Guid.Parse(User.FindFirst("firm_id")?.Value
@@ -102,11 +104,12 @@ public class MeController : ControllerBase
     [HttpGet("notifications")]
     public async Task<IActionResult> Notifications([FromQuery] int limit = 20)
     {
-        var firmClaim = User.FindFirst("firm_id")?.Value;
-        if (firmClaim == null)
+        var results = new List<object>();
+        var perms = await _perms.GetUserPermissions(CurrentUserId);
+        // Super admin / payment-approver: pending manual payment approvals ko live notifications dikhao.
+        var isPlatformAdmin = perms.Contains("*") || perms.Contains("platform.wallet.recharge.platform");
+        if (isPlatformAdmin)
         {
-            // Super admin ke paas firm_id nahi hota. Uske bell me PENDING manual payment
-            // approvals ko live notifications ki tarah dikhao (approve/reject hote hi hat jaate hain).
             var conn = (NpgsqlConnection)_db.Database.GetDbConnection();
             if (conn.State != ConnectionState.Open) await conn.OpenAsync();
             await using var pcmd = conn.CreateCommand();
@@ -115,14 +118,12 @@ public class MeController : ControllerBase
                                  JOIN platform.firms f ON f.id = pr.firm_id
                                  WHERE pr.status = 'pending'
                                  ORDER BY pr.created_at DESC
-                                 LIMIT @lim";
-            pcmd.Parameters.Add(new NpgsqlParameter("lim", Math.Clamp(limit, 1, 50)));
-            var plist = new List<object>();
+                                 LIMIT 50";
             await using var prr = await pcmd.ExecuteReaderAsync();
             while (await prr.ReadAsync())
             {
                 var amt = Convert.ToDecimal(prr["amount"]);
-                plist.Add(new
+                results.Add(new
                 {
                     id = (Guid)prr["id"],
                     type = "payment_pending",
@@ -135,26 +136,31 @@ public class MeController : ControllerBase
                     createdAt = (DateTimeOffset)prr["created_at"]
                 });
             }
-            return Ok(plist);
         }
 
-        var firmId = Guid.Parse(firmClaim);
-        var uid = CurrentUserId;
-        var rows = await _db.Notifications.AsNoTracking()
-            .Where(n => n.FirmId == firmId
-                     && (n.UserId == null || n.UserId == uid)
-                     && (n.ExpiresAt == null || n.ExpiresAt > DateTimeOffset.UtcNow))
-            .OrderByDescending(n => n.CreatedAt)
-            .Take(Math.Clamp(limit, 1, 50))
-            .Select(n => new
-            {
-                n.Id, n.Type, n.Severity, n.Title, n.Body,
-                n.CtaLabel, n.CtaUrl,
-                read = n.ReadAt != null,
-                n.CreatedAt
-            })
-            .ToListAsync();
-        return Ok(rows);
+        // Firm ki apni notifications (agar firm_id ho).
+        var firmClaim = User.FindFirst("firm_id")?.Value;
+        if (firmClaim != null)
+        {
+            var firmId = Guid.Parse(firmClaim);
+            var uid = CurrentUserId;
+            var rows = await _db.Notifications.AsNoTracking()
+                .Where(n => n.FirmId == firmId
+                         && (n.UserId == null || n.UserId == uid)
+                         && (n.ExpiresAt == null || n.ExpiresAt > DateTimeOffset.UtcNow))
+                .OrderByDescending(n => n.CreatedAt)
+                .Take(Math.Clamp(limit, 1, 50))
+                .Select(n => new
+                {
+                    id = n.Id, type = n.Type, severity = n.Severity, title = n.Title, body = n.Body,
+                    ctaLabel = n.CtaLabel, ctaUrl = n.CtaUrl,
+                    read = n.ReadAt != null, createdAt = n.CreatedAt
+                })
+                .ToListAsync();
+            results.AddRange(rows);
+        }
+
+        return Ok(results);
     }
 
     [HttpPost("notifications/read-all")]

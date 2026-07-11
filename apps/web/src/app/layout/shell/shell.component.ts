@@ -233,9 +233,12 @@ import { environment } from '../../../environments/environment';
               <!-- Notifications -->
               <div class="relative" (mouseleave)="notifOpen.set(false)">
                 <button (click)="toggleNotifs()" class="relative p-1.5 hover:bg-white/10 rounded">
-                  🔔
+                  <span class="inline-block" [class.animate-pulse]="unreadCount() > 0">🔔</span>
                   @if (unreadCount() > 0) {
-                    <span class="absolute top-0.5 right-0.5 w-2 h-2 bg-anjaninex-red rounded-full"></span>
+                    <span class="absolute top-0.5 right-0.5 flex h-2.5 w-2.5">
+                      <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-anjaninex-red opacity-75"></span>
+                      <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-anjaninex-red ring-1 ring-white/60"></span>
+                    </span>
                   }
                 </button>
                 @if (notifOpen()) {

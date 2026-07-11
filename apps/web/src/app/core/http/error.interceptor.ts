@@ -1,19 +1,15 @@
 import { HttpInterceptorFn, HttpErrorResponse } from '@angular/common/http';
 import { inject } from '@angular/core';
-import { Router } from '@angular/router';
 import { catchError, throwError, from, switchMap } from 'rxjs';
 import { AuthService } from '../auth/auth.service';
 
 export const errorInterceptor: HttpInterceptorFn = (req, next) => {
   const auth = inject(AuthService);
-  const router = inject(Router);
 
   return next(req).pipe(
     catchError((err: HttpErrorResponse) => {
       if (err.status === 401 && !req.url.includes('/auth/login') && !req.url.includes('/auth/refresh')) {
-        // Silent refresh (single-flight), then REPLAY with the NEW token.
-        // BUG FIX: pehle replay purane stale token ke saath hota tha → 401 → refresh →
-        // 401 → infinite loop (screen blink + rate-limit). Ab naya token lagta hai.
+        // Silent refresh (single-flight), phir NAYE token ke saath REPLAY.
         return from(auth.refresh()).pipe(
           switchMap((ok) => {
             if (!ok) {
@@ -28,9 +24,10 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
           })
         );
       }
-      if (err.status === 403) {
-        router.navigate(['/forbidden']);
-      }
+      // 403: page-access to route-guards (requirePermission) pehle hi rok dete hain.
+      // Background API 403 (jaise dashboard ki branches call) par poori app ko /forbidden
+      // MAT bhejo — warna ek chhoti call bhi user ko poore app se lock kar deti thi.
+      // Error ko propagate karo; component gracefully handle karega (khali data).
       return throwError(() => err);
     })
   );

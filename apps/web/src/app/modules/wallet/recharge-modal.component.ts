@@ -911,6 +911,9 @@ export class RechargeModalComponent {
         currency: order.currency || 'INR',
         name: order.name || 'Vyapaar Setu',
         description: this.payPlan()?.name || 'Wallet Recharge',
+        // Firm ka phone+email prefill (editable) — customer ko dobara type na karna pade;
+        // number galat/khaali ho to customer badal sakta hai (locked nahi).
+        prefill: { email: order.email || undefined, contact: order.contact || undefined },
         theme: { color: '#5c1a8b' },
         handler: (resp: any) => {
           this.http.post<any>(`${environment.apiUrl}/api/billing/razorpay/verify`, {

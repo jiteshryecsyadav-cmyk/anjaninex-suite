@@ -87,7 +87,16 @@ public class RazorpayController : ControllerBase
 
         using var doc = JsonDocument.Parse(text);
         var orderId = doc.RootElement.GetProperty("id").GetString();
-        return Ok(new { orderId, keyId, amount = paise, currency = "INR", name = "Vyapaar Setu" });
+
+        // Firm ka contact -> Razorpay prefill (customer ko mobile/email type na karna pade).
+        var firm = await _db.Firms.Where(f => f.Id == CurrentFirmId)
+            .Select(f => new { f.ContactEmail, f.ContactPhone }).FirstOrDefaultAsync();
+
+        return Ok(new
+        {
+            orderId, keyId, amount = paise, currency = "INR", name = "Vyapaar Setu",
+            email = firm?.ContactEmail, contact = firm?.ContactPhone
+        });
     }
 
     // 2) Payment verify + auto-approve + wallet recharge.

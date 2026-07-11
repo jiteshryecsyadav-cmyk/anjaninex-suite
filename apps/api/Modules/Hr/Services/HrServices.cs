@@ -184,6 +184,10 @@ public class EmployeeService : IEmployeeService
         using var tx = await _db.Database.BeginTransactionAsync();
         try
         {
+            // RLS context is transaction ke liye pakka set karo — warna leave_balances ki
+            // EXISTS-subquery policy me current_firm_id() NULL/miss ho ke 42501 (insufficient_privilege) aata hai.
+            await _db.Database.ExecuteSqlRawAsync("SELECT set_config('app.current_firm_id', {0}, false)", firmId.ToString());
+
             var contact = new Contact
             {
                 Id = Guid.NewGuid(),

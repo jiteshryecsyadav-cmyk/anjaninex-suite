@@ -107,7 +107,7 @@ public class MeController : ControllerBase
         var results = new List<object>();
         var perms = await _perms.GetUserPermissions(CurrentUserId);
         // Super admin / payment-approver: pending manual payment approvals ko live notifications dikhao.
-        var isPlatformAdmin = perms.Contains("*") || perms.Contains("platform.wallet.recharge.platform");
+        var isPlatformAdmin = perms.Contains("*") || perms.Any(p => p.EndsWith(".platform", System.StringComparison.OrdinalIgnoreCase));
         if (isPlatformAdmin)
         {
             var conn = (NpgsqlConnection)_db.Database.GetDbConnection();

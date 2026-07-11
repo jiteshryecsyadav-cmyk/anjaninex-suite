@@ -306,7 +306,7 @@ type TxFilter = 'all' | 'recharge' | 'debit' | 'subscription' | 'refund';
     </div>
 
     @if (showModal()) {
-      <app-recharge-modal (closed)="showModal.set(false)"></app-recharge-modal>
+      <app-recharge-modal [initialAmount]="presetAmount()" (closed)="showModal.set(false)"></app-recharge-modal>
     }
   `,
   styles: [`
@@ -475,6 +475,7 @@ export class WalletPageComponent {
   search = signal('');
   recharging = signal(false);
   showModal = signal(false);
+  presetAmount = signal<number | null>(null);
   rates = signal<any[]>([]);
 
   // Usage report
@@ -627,18 +628,11 @@ export class WalletPageComponent {
 
   openRecharge(): void { this.showModal.set(true); }
 
-  async quickRecharge(amount: number): Promise<void> {
-    if (this.recharging()) return;
-    if (!confirm(`Recharge ₹${amount.toLocaleString('en-IN')}?`)) return;
-    this.recharging.set(true);
-    try {
-      const newBal = await this.wallet.recharge({ amount, source: 'manual', reference: `quick_${Date.now()}` });
-      alert(`✅ Recharged ₹${amount}. New balance: ₹${newBal.toLocaleString('en-IN')}`);
-    } catch (e: any) {
-      alert('❌ Failed: ' + (e?.error?.error ?? e?.message));
-    } finally {
-      this.recharging.set(false);
-    }
+  // Quick amount buttons: seedha credit NAHI karte (woh free-recharge bug tha).
+  // Ab recharge modal khulta hai jahan Razorpay se actual payment hota hai (auto-confirm).
+  quickRecharge(amount: number): void {
+    this.presetAmount.set(amount);
+    this.showModal.set(true);
   }
 
   exportCsv(): void {

@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Output, computed, inject, signal, effect } from '@angular/core';
+import { Component, EventEmitter, Input, Output, computed, inject, signal, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
@@ -404,8 +404,8 @@ type Tab = 'recharge' | 'history' | 'pricing' | 'auto';
         <div class="qr-pop" (click)="$event.stopPropagation()">
           <div class="qr-pop-head">
             <div>
-              <div class="qr-pop-title">{{ pp.name }} Plan</div>
-              <div class="qr-pop-sub">Scan karke payment karein</div>
+              <div class="qr-pop-title">{{ pp.name }}</div>
+              <div class="qr-pop-sub">Secure payment · Razorpay</div>
             </div>
             <button class="qr-pop-x" (click)="closePlanQr()">✕</button>
           </div>
@@ -416,51 +416,13 @@ type Tab = 'recharge' | 'history' | 'pricing' | 'auto';
             <small>Bina GST (20 lakh tak)</small>
           </div>
 
-          <div class="qr-pop-img" style="position:relative">
-            <img [src]="qrUrl()" alt="Payment QR" width="220" height="220"
-                 [style.filter]="qrExpired() ? 'blur(5px) grayscale(1)' : 'none'" />
-            @if (qrExpired()) {
-              <div class="qr-expired" (click)="refreshQr()">
-                <div style="font-weight:800;margin-bottom:6px">⏱ QR Expired</div>
-                <button class="qr-refresh-btn" (click)="refreshQr()">🔄 Refresh QR</button>
-              </div>
-            }
-          </div>
-
-          <div class="qr-timer" [class.qr-timer-red]="qrLeft() <= 30 && !qrExpired()">
-            @if (!qrExpired()) { ⏱ Valid for <strong>{{ qrClock() }}</strong> } @else { ⛔ QR expired — Refresh karein }
-          </div>
-
-          <div class="qr-pop-upi">
-            <span class="mono">{{ payUpiId() || 'UPI ID set nahi hai' }}</span>
-            @if (payUpiId()) {
-              <button class="qr-copy" (click)="copyUpi()">📋 Copy</button>
-            }
-          </div>
-
-          @if (payInfo()?.accountNo || payInfo()?.bankName) {
-            <div class="qr-bank">
-              <div class="qr-bank-head">🏦 Bank Transfer (NEFT / IMPS)</div>
-              @if (payInfo()?.accountName) { <div class="qr-bank-row"><span>Name</span><b>{{ payInfo()?.accountName }}</b></div> }
-              @if (payInfo()?.bankName) { <div class="qr-bank-row"><span>Bank</span><b>{{ payInfo()?.bankName }}</b></div> }
-              @if (payInfo()?.accountNo) { <div class="qr-bank-row"><span>A/C No</span><b class="mono">{{ payInfo()?.accountNo }}</b></div> }
-              @if (payInfo()?.ifsc) { <div class="qr-bank-row"><span>IFSC</span><b class="mono">{{ payInfo()?.ifsc }}</b></div> }
-            </div>
-          }
-
           <div class="qr-pop-note">
-            UPI app (GPay / PhonePe / Paytm) se QR scan karein — amount
-            <strong>₹{{ breakdown().total | number:'1.0-0' }}</strong> already set hai.
+            💳 Card / UPI / NetBanking — kisi bhi tarike se pay karein.
+            Payment hote hi wallet <strong>turant</strong> update ho jayega (auto-confirm).
           </div>
 
-          <button class="qr-gateway-btn" (click)="payViaGateway()">💳 Pay via Card / Net Banking</button>
-
-          <label class="qr-pop-lbl">Payment ke baad UPI Transaction ID daalein</label>
-          <input class="qr-pop-input" [(ngModel)]="upiTxnId" placeholder="e.g. 4039XXXXXXXX" />
-
-          <button class="qr-pop-submit" [disabled]="processing() || !upiTxnId"
-                  (click)="submit()">
-            {{ processing() ? 'Processing...' : '✅ Payment Done — Submit' }}
+          <button class="qr-gateway-btn" (click)="payViaGateway()" [disabled]="processing()">
+            {{ processing() ? 'Processing...' : '💳 Pay Now — Razorpay' }}
           </button>
           <button class="qr-pop-cancel" (click)="closePlanQr()">Cancel</button>
         </div>
@@ -775,8 +737,10 @@ export class RechargeModalComponent {
 
   activeTab = signal<Tab>('recharge');
   amount = signal<number>(2500);
+  // Quick button se aaya preset amount (wallet page). Set ho to wahi amount le lo.
+  @Input() set initialAmount(v: number | null) { if (v && v > 0) this.amount.set(v); }
   customInput = signal<string>('');
-  method = signal<PayMethod>('upi');
+  method = signal<PayMethod>('razorpay');
   gstin = '';
   upiTxnId = '';
   processing = signal<boolean>(false);
@@ -797,9 +761,7 @@ export class RechargeModalComponent {
   ];
 
   methods = [
-    { id: 'upi'      as PayMethod, icon: '📱', name: 'UPI',                     desc: 'Instant · PhonePe, GPay, Paytm',     fee: 'FREE', feePercent: 0, color: '#16a34a' },
-    { id: 'razorpay' as PayMethod, icon: '💳', name: 'Razorpay (Card/NetBanking)', desc: 'Visa · Mastercard · RuPay · 50+ banks', fee: '+2%',  feePercent: 2, color: '#2563eb' },
-    { id: 'neft'     as PayMethod, icon: '🏦', name: 'NEFT / RTGS / IMPS',       desc: 'Bank transfer · Manual confirm',     fee: 'FREE', feePercent: 0, color: '#9333ea' }
+    { id: 'razorpay' as PayMethod, icon: '💳', name: 'Card / UPI / NetBanking', desc: 'Visa · Mastercard · RuPay · UPI · 50+ banks · Auto-confirm', fee: '', feePercent: 0, color: '#2563eb' }
   ];
 
   plans = [

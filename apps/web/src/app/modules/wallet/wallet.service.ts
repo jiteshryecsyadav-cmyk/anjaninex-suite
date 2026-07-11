@@ -107,12 +107,8 @@ export class WalletService {
   /** Compute GST + gateway fee + cashback for a recharge amount. */
   static computeBreakdown(amount: number, method: PayMethod) {
     const gst = 0; // GST 20 lakh turnover tak nahi lagti (aur uske baad price-inclusive). Payable = base.
-    const fee = method === 'razorpay' ? Math.round(amount * 0.02) : 0;
-    let cashback = 0;
-    if (amount >= 50000) cashback = 1200;
-    else if (amount >= 25000) cashback = 500;
-    else if (amount >= 10000) cashback = 150;
-    else if (amount >= 5000) cashback = 50;
+    const fee = 0; // Razorpay-only; recharge = exact amount (no extra gateway fee shown).
+    const cashback = 0; // No promo cashback (avoid showing credit that is not actually added).
     return { amount, gst, fee, cashback, total: amount + gst + fee - cashback };
   }
 

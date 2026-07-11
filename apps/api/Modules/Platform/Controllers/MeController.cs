@@ -133,7 +133,7 @@ public class MeController : ControllerBase
                     ctaLabel = "Review",
                     ctaUrl = "/admin/billing",
                     read = false,
-                    createdAt = (DateTimeOffset)prr["created_at"]
+                    createdAt = Convert.ToDateTime(prr["created_at"])
                 });
             }
         }

@@ -269,7 +269,7 @@ import { environment } from '../../../environments/environment';
               </button>
 
               <!-- User menu -->
-              <div class="relative" (mouseleave)="menuOpen.set(false)">
+              <div class="relative" (mouseleave)="scheduleMenuClose()" (mouseenter)="cancelMenuClose()">
                 <button (click)="menuOpen.set(!menuOpen())" class="flex items-center gap-2 p-1 hover:bg-white/10 rounded">
                   <span class="w-7 h-7 rounded-full bg-anjaninex-red text-white flex items-center justify-center text-xs font-bold">
                     {{ initials() }}
@@ -483,6 +483,7 @@ export class ShellComponent {
   features = inject(FeatureService);
   private http = inject(HttpClient);
   menuOpen = signal(false);
+  private menuCloseTimer: any = null;
   // Mobile par sidebar default band (overlay), desktop par khula
   sidebarOpen = signal(window.innerWidth >= 768);
 
@@ -549,6 +550,9 @@ export class ShellComponent {
   // Cursor bell se hate to turant band nahi — 2 sec baad.
   scheduleClose() { this.cancelClose(); this.notifCloseTimer = setTimeout(() => this.notifOpen.set(false), 2000); }
   cancelClose() { if (this.notifCloseTimer) { clearTimeout(this.notifCloseTimer); this.notifCloseTimer = null; } }
+  // Profile menu: cursor hatne ke 4 sec baad band.
+  scheduleMenuClose() { this.cancelMenuClose(); this.menuCloseTimer = setTimeout(() => this.menuOpen.set(false), 4000); }
+  cancelMenuClose() { if (this.menuCloseTimer) { clearTimeout(this.menuCloseTimer); this.menuCloseTimer = null; } }
 
   private lastSeen(): number {
     try { return +(localStorage.getItem('notif_last_seen') || 0); } catch { return 0; }

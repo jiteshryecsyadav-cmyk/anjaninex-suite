@@ -42,11 +42,23 @@ BEGIN
             LEAST(100, GREATEST(0,
                 round( LEAST(70, ln(x.billed + 1) * 6) + LEAST(15, x.firms_count * 5) + LEAST(15, x.tenure_months) )
             ))::numeric AS vol,
-            -- Red flags
+            -- Red flags (sab par 90-din guard: fresh/naye bills par unfair flag nahi)
             (
                 CASE WHEN x.overdue_12m > 0
                      THEN jsonb_build_array(jsonb_build_object('type','bill_pending_12m',
                             'msg', x.overdue_12m || ' bill(s) 12+ mahine se pending (default risk)'))
+                     ELSE '[]'::jsonb END
+                ||
+                -- Payment record bahut kharab: 20% se kam paid + kam se kam 1 bill 90+ din purana pending
+                CASE WHEN x.billed > 0 AND (x.paid / x.billed) < 0.20 AND x.overdue_90 > 0
+                     THEN jsonb_build_array(jsonb_build_object('type','low_payment',
+                            'msg', 'Payment record kharab — ab tak sirf ' || round((x.paid / x.billed) * 100) || '% payment aaya'))
+                     ELSE '[]'::jsonb END
+                ||
+                -- Zyadatar bills unpaid: 80%+ bills pending (min 3 bills) + 90+ din purana pending
+                CASE WHEN x.bills_count >= 3 AND x.unpaid_count::numeric / x.bills_count >= 0.80 AND x.overdue_90 > 0
+                     THEN jsonb_build_array(jsonb_build_object('type','mostly_unpaid',
+                            'msg', x.bills_count || ' me se ' || x.unpaid_count || ' bills abhi tak unpaid'))
                      ELSE '[]'::jsonb END
             ) AS flags
         FROM (
@@ -59,6 +71,9 @@ BEGIN
                 COALESCE(SUM(b.total - b.paid_amount), 0) AS pending,
                 COUNT(*) FILTER (WHERE b.status IN ('pending','partial','overdue')
                                    AND b.bill_date < current_date - INTERVAL '365 days') AS overdue_12m,
+                COUNT(*) FILTER (WHERE b.status IN ('pending','partial','overdue')
+                                   AND b.bill_date < current_date - INTERVAL '90 days') AS overdue_90,
+                COUNT(*) FILTER (WHERE b.status IN ('pending','partial','overdue')) AS unpaid_count,
                 COALESCE((SELECT SUM(gr.total_return_amount) FROM trading.goods_returns gr
                           JOIN trading.party_profiles p2 ON p2.id = gr.buyer_party_id
                           JOIN core.contacts c2 ON c2.id = p2.contact_id

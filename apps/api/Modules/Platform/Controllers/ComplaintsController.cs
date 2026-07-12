@@ -77,7 +77,7 @@ public class ComplaintsController : ControllerBase
     {
         var list = new List<object>();
         await using var cmd = await CmdAsync(
-            @"SELECT c.id, c.subject, c.status, c.created_at, c.last_msg_at,
+            @"SELECT c.id, c.subject, c.status, c.created_at, c.last_msg_at, c.created_by_name,
                      -- Admin ke unread replies (user badge ke liye)
                      (SELECT count(*) FROM platform.complaint_messages m
                        WHERE m.complaint_id = c.id AND m.sender = 'admin' AND m.read_at IS NULL) AS unread,
@@ -97,6 +97,7 @@ public class ComplaintsController : ControllerBase
                 id = (Guid)r["id"],
                 subject = r["subject"] as string,
                 status = r["status"] as string,
+                createdByName = r["created_by_name"] as string,
                 createdAt = Convert.ToDateTime(r["created_at"]),
                 lastMsgAt = Convert.ToDateTime(r["last_msg_at"]),
                 unread = Convert.ToInt32(r["unread"]),

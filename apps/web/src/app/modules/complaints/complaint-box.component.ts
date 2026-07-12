@@ -3,6 +3,7 @@ import { CommonModule, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
+import { FeatureService } from '../../shared/feature.service';
 
 // =============================================================================
 // COMPLAINT BOX (user side) — Anjaninex ko complaint bhejo, WhatsApp jaisi chat.
@@ -13,7 +14,7 @@ import { environment } from '../../../environments/environment';
 // =============================================================================
 
 interface ComplaintRow {
-  id: string; subject: string; status: string;
+  id: string; subject: string; status: string; createdByName: string | null;
   createdAt: string; lastMsgAt: string; unread: number; allRead: boolean;
 }
 interface Msg {
@@ -51,12 +52,14 @@ interface Msg {
             <span class="text-xl">{{ c.status === 'resolved' ? '✅' : '📢' }}</span>
             <span class="flex-1 min-w-0">
               <span class="flex items-center gap-2">
-                <span class="font-semibold text-sm text-anjaninex-navy truncate">{{ c.subject }}</span>
+                <span class="font-semibold text-sm text-anjaninex-navy truncate">{{ features.firmName() || 'Meri Firm' }}</span>
                 @if (c.unread > 0) {
                   <span class="bg-green-500 text-white text-[10px] font-bold rounded-full px-1.5 py-0.5">{{ c.unread }} naya</span>
                 }
               </span>
               <span class="block text-xs text-gray-400">
+                <span class="text-gray-600">{{ c.subject }}</span> ·
+                👤 {{ c.createdByName || '—' }} ·
                 {{ c.lastMsgAt | date:'dd MMM, HH:mm' }} ·
                 <span [class]="c.status === 'resolved' ? 'text-green-600 font-semibold' : 'text-amber-600 font-semibold'">
                   {{ c.status === 'resolved' ? 'Resolved' : 'Open' }}
@@ -94,8 +97,8 @@ interface Msg {
           <!-- header -->
           <div class="px-4 py-3 border-b border-anjaninex-navy-soft flex items-center justify-between">
             <div>
-              <div class="font-bold text-sm text-anjaninex-navy">{{ subject() }}</div>
-              <div class="text-[11px] text-gray-400">Team Vyapaar Setu ·
+              <div class="font-bold text-sm text-anjaninex-navy">{{ features.firmName() || 'Meri Firm' }}</div>
+              <div class="text-[11px] text-gray-400">{{ subject() }} · Team Vyapaar Setu ·
                 <span [class]="status() === 'resolved' ? 'text-green-600 font-semibold' : 'text-amber-600 font-semibold'">
                   {{ status() === 'resolved' ? 'Resolved ✅' : 'Open' }}
                 </span>
@@ -165,6 +168,7 @@ interface Msg {
 })
 export class ComplaintBoxComponent implements OnDestroy {
   private http = inject(HttpClient);
+  features = inject(FeatureService);
   apiUrl = environment.apiUrl;
 
   view = signal<'list' | 'new' | 'chat'>('list');

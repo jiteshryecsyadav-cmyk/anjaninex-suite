@@ -279,8 +279,8 @@ public class AdminComplaintsController : ControllerBase
     public AdminComplaintsController(AppDbContext db, IWebHostEnvironment env) { _db = db; _env = env; }
 
     private Guid? CurrentUserId => Guid.TryParse(User.FindFirst("user_id")?.Value, out var u) ? u : null;
-    // User ko hamesha "Anjaninex Team" dikhe — staff ka personal naam expose nahi hota.
-    private string CurrentName => "Anjaninex Team";
+    // User ko hamesha "Team Vyapaar Setu" dikhe — staff ka personal naam expose nahi hota.
+    private string CurrentName => "Team Vyapaar Setu";
 
     private async Task<NpgsqlCommand> CmdAsync(string sql)
     {

@@ -67,7 +67,9 @@ BEGIN
                            + EXTRACT(MONTH FROM age(current_date, MIN(b.bill_date))))::int) AS tenure_months
             FROM core.contacts c
             JOIN trading.party_profiles p ON p.contact_id = c.id
-            JOIN trading.bills b ON b.party_id = p.id
+            -- BUYER score hai: broker bills me buyer_party_id = asli buyer (migration 18).
+            -- Legacy sales bills me buyer party_id me tha — isliye COALESCE fallback.
+            JOIN trading.bills b ON COALESCE(b.buyer_party_id, b.party_id) = p.id
                  AND b.bill_type = 'sales' AND b.status <> 'cancelled'
             WHERE c.gst_number IS NOT NULL AND length(trim(c.gst_number)) >= 10
             GROUP BY c.gst_number

@@ -1,4 +1,4 @@
-# Build & Test Report — Namokara Suite
+# Build & Test Report — Anjaninex Suite
 
 **Date:** 2026-05-27
 **Mode:** Static code analysis (sandbox cannot run `dotnet build`, `ng build`, or `docker compose`)

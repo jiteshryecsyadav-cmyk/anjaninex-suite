@@ -1,5 +1,5 @@
 // ============================================================================
-// Namokara Suite — .NET Core 8 API
+// Anjaninex Suite — .NET Core 8 API
 // Built by Anjaninex
 // ============================================================================
 
@@ -370,7 +370,7 @@ try
     {
         c.SwaggerDoc("v1", new OpenApiInfo
         {
-            Title = "Namokara Suite API",
+            Title = "Anjaninex Suite API",
             Version = "v1",
             Description = "Multi-tenant B2B SaaS platform — Built by Anjaninex",
             Contact = new OpenApiContact { Name = "Anjaninex", Email = "support@anjaninex.com" }
@@ -418,7 +418,7 @@ try
         app.UseSwagger();
         app.UseSwaggerUI(c =>
         {
-            c.SwaggerEndpoint("/swagger/v1/swagger.json", "Namokara Suite API v1");
+            c.SwaggerEndpoint("/swagger/v1/swagger.json", "Anjaninex Suite API v1");
             c.RoutePrefix = "swagger";
             c.DocumentTitle = "Namokara API — Powered by Anjaninex";
         });

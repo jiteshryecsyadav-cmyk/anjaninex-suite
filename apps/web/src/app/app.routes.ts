@@ -73,6 +73,11 @@ export const routes: Routes = [
         loadChildren: () => import('./modules/wallet/wallet.routes').then(m => m.walletRoutes)
       },
       {
+        // CREDIL — network payment/trust score card (per-firm enabled; page itself guards).
+        path: 'credil',
+        loadChildren: () => import('./modules/credil/credil.routes').then(m => m.credilRoutes)
+      },
+      {
         // Online Dukan — ADMIN (firm owner manages categories/products/orders/reviews/settings)
         path: 'dukan/admin',
         loadChildren: () => import('./modules/dukan/dukan.routes').then(m => m.dukanAdminRoutes)
@@ -91,6 +96,11 @@ export const routes: Routes = [
         path: 'migration',
         canActivate: [requirePermission('trading.party.view.firm')],
         loadComponent: () => import('./modules/migration/migration.component').then(m => m.MigrationComponent)
+      },
+      {
+        // Complaint Box — user Anjaninex ko complaint bheje (WhatsApp jaisi chat + blue ticks).
+        path: 'complaints',
+        loadComponent: () => import('./modules/complaints/complaint-box.component').then(m => m.ComplaintBoxComponent)
       },
       {
         // Core Master list — saare contacts ek jagah (Trading + AD + HR).

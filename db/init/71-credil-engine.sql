@@ -54,9 +54,9 @@ BEGIN
                 c.gst_number AS gst,
                 COUNT(DISTINCT b.firm_id) AS firms_count,
                 COUNT(b.id) AS bills_count,
-                COALESCE(SUM(b.total_amount), 0) AS billed,
+                COALESCE(SUM(b.total), 0) AS billed,
                 COALESCE(SUM(b.paid_amount), 0) AS paid,
-                COALESCE(SUM(b.total_amount - b.paid_amount), 0) AS pending,
+                COALESCE(SUM(b.total - b.paid_amount), 0) AS pending,
                 COUNT(*) FILTER (WHERE b.status IN ('pending','partial','overdue')
                                    AND b.bill_date < current_date - INTERVAL '365 days') AS overdue_12m,
                 COALESCE((SELECT SUM(gr.total_return_amount) FROM trading.goods_returns gr

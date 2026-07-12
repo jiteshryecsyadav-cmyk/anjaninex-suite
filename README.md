@@ -1,7 +1,7 @@
-# Namokara Suite
+# Anjaninex Suite — Vyapaar Setu
 
 > Multi-tenant B2B SaaS platform — **Trading · Accounting · Suppliers · HR**
-> **Built by [Anjaninex](https://anjaninex.com)** for Namokara Agencies (first client)
+> Application: **Vyapaar Setu** · **Built by [Anjaninex](https://anjaninex.com)** · First client: Namokara Agencies
 
 [![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)]()
 [![Stack](https://img.shields.io/badge/stack-Angular_19_+_.NET_8_+_PostgreSQL_16-purple.svg)]()

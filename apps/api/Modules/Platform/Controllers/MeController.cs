@@ -136,6 +136,31 @@ public class MeController : ControllerBase
                     createdAt = Convert.ToDateTime(prr["created_at"])
                 });
             }
+
+            // CREDIL: paid report requests awaiting admin approval.
+            await using var ccmd = conn.CreateCommand();
+            ccmd.CommandText = @"SELECT rr.id, rr.target_gst, rr.amount, f.name AS firm_name, rr.created_at
+                                 FROM credil.report_requests rr
+                                 JOIN platform.firms f ON f.id = rr.requesting_firm_id
+                                 WHERE rr.status = 'paid'
+                                 ORDER BY rr.created_at DESC LIMIT 50";
+            await using var crr = await ccmd.ExecuteReaderAsync();
+            while (await crr.ReadAsync())
+            {
+                var amt = Convert.ToDecimal(crr["amount"]);
+                results.Add(new
+                {
+                    id = (Guid)crr["id"],
+                    type = "credil_pending",
+                    severity = "warning",
+                    title = "CREDIL report approval pending",
+                    body = $"{crr["firm_name"]} - GST {crr["target_gst"]} (Rs {amt:0})",
+                    ctaLabel = "Review",
+                    ctaUrl = "/admin/credil",
+                    read = false,
+                    createdAt = Convert.ToDateTime(crr["created_at"])
+                });
+            }
         }
 
         // Firm ki apni notifications (agar firm_id ho).
@@ -224,6 +249,17 @@ public class MeController : ControllerBase
 
         if (firm == null) return NotFound();
 
+        // CREDIL feature flag (separate column on platform.firms).
+        bool credilEnabled = false;
+        {
+            var conn = (NpgsqlConnection)_db.Database.GetDbConnection();
+            if (conn.State != ConnectionState.Open) await conn.OpenAsync();
+            await using var cmd = conn.CreateCommand();
+            cmd.CommandText = "SELECT COALESCE(credil_enabled,false) FROM platform.firms WHERE id = @f";
+            cmd.Parameters.Add(new NpgsqlParameter("f", firmId));
+            credilEnabled = (await cmd.ExecuteScalarAsync()) is bool b && b;
+        }
+
         // Parse enabled_modules JSON → flat list of enabled module keys
         var enabled = new List<string>();
         if (!string.IsNullOrWhiteSpace(firm.EnabledModules))
@@ -249,6 +285,7 @@ public class MeController : ControllerBase
             firmState = firm.State,
             firmTheme = string.IsNullOrWhiteSpace(firm.Theme) ? "classic" : firm.Theme,
             modules = enabled,
+            credilEnabled,
             planCode = firm.PlanCode ?? "starter",
             limits = new
             {

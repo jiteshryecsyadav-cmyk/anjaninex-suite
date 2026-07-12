@@ -95,6 +95,14 @@ import { environment } from '../../../environments/environment';
                  class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-semibold text-white/75 hover:text-white hover:bg-white/10">
                 <span class="w-5 text-center">📱</span> WhatsApp
               </a>
+              <a routerLink="/admin/credil" routerLinkActive="!bg-anjaninex-red !text-white"
+                 class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-semibold text-white/75 hover:text-white hover:bg-white/10">
+                <span class="w-5 text-center">📈</span> CREDIL
+              </a>
+              <a routerLink="/admin/complaints" routerLinkActive="!bg-anjaninex-red !text-white"
+                 class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-semibold text-white/75 hover:text-white hover:bg-white/10">
+                <span class="w-5 text-center">📢</span> Complaints
+              </a>
               <a routerLink="/admin/changelog" routerLinkActive="!bg-anjaninex-red !text-white"
                  class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-semibold text-white/75 hover:text-white hover:bg-white/10">
                 <span class="w-5 text-center">📝</span> Changelog
@@ -151,6 +159,12 @@ import { environment } from '../../../environments/environment';
                 <span class="w-5 text-center inline-flex justify-center"><app-wallet-icon [size]="18"></app-wallet-icon></span> Wallet
               </a>
             }
+            @if (features.credilEnabled()) {
+              <a routerLink="/credil" routerLinkActive="!bg-anjaninex-red !text-white"
+                 class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-semibold text-white/75 hover:text-white hover:bg-white/10">
+                <span class="w-5 text-center">📈</span> CREDIL
+              </a>
+            }
             @if (auth.hasRole('firm_admin') || auth.hasRole('firm_owner') || auth.hasRole('admin') || auth.hasRole('owner')) {
               <a routerLink="/team" routerLinkActive="!bg-anjaninex-red !text-white"
                  class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-semibold text-white/75 hover:text-white hover:bg-white/10">
@@ -165,6 +179,11 @@ import { environment } from '../../../environments/environment';
             <a routerLink="/migration" routerLinkActive="!bg-anjaninex-red !text-white"
                class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-semibold text-white/75 hover:text-white hover:bg-white/10">
               <span class="w-5 text-center">📥</span> Import &amp; Migration
+            </a>
+            <!-- Complaint Box — Anjaninex ko complaint bhejo (har user; WhatsApp jaise blue ticks) -->
+            <a routerLink="/complaints" routerLinkActive="!bg-anjaninex-red !text-white"
+               class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-semibold text-white/75 hover:text-white hover:bg-white/10">
+              <span class="w-5 text-center">📢</span> Complaint Box
             </a>
             }
             <!-- Theme Color picker removed — theme is now fixed per-firm (set by Anjaninex super-admin). -->

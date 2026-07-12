@@ -26,6 +26,7 @@ export interface MeModulesResponse {
   firmState?: string;
   firmTheme?: string;
   modules: ModuleKey[];
+  credilEnabled?: boolean;
   planCode: string;
   limits: {
     userLimit: number;
@@ -70,6 +71,7 @@ export class FeatureService {
   firmState = signal<string>('');
   /** Fixed UI theme color assigned by Anjaninex super-admin (users can't change). */
   firmTheme = signal<string>('classic');
+  credilEnabled = signal<boolean>(false);
   planCode = signal<string>('starter');
   userLimit = signal<number>(3);
   branchLimit = signal<number>(1);
@@ -115,6 +117,7 @@ export class FeatureService {
         this.firmCity.set(r.firmCity || '');
         this.firmState.set(r.firmState || '');
         this.firmTheme.set(r.firmTheme || 'classic');
+        this.credilEnabled.set(!!r.credilEnabled);
         // is device pe yaad rakho — login page (pre-auth) par bhi yahi theme dikhe
         try { localStorage.setItem('ax_firm_theme', r.firmTheme || 'classic'); } catch {}
         this.planCode.set(r.planCode);

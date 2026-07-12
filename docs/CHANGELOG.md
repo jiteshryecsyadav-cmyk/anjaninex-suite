@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to Namokara Suite will be documented here.
+All notable changes to Anjaninex Suite will be documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning follows [SemVer](https://semver.org/).
 

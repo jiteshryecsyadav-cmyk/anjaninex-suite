@@ -1,4 +1,4 @@
-# Getting Started — Namokara Suite
+# Getting Started — Anjaninex Suite
 
 This guide walks you through running the platform locally in under 10 minutes.
 

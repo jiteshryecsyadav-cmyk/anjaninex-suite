@@ -2,6 +2,7 @@ using System.Data;
 using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using NpgsqlTypes;
 using Namokara.Api.Common.Auth;
@@ -284,6 +285,4 @@ public class AdminCredilController : ControllerBase
     {
         await using var cmd = await CmdAsync("SELECT credil.refresh_scores()");
         var n = Convert.ToInt32(await cmd.ExecuteScalarAsync() ?? 0);
-        return Ok(new { success = true, scored = n });
-    }
-}
+        return Ok(new { su

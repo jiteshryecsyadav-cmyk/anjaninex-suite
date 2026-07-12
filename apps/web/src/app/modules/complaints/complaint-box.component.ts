@@ -95,7 +95,7 @@ interface Msg {
           <div class="px-4 py-3 border-b border-anjaninex-navy-soft flex items-center justify-between">
             <div>
               <div class="font-bold text-sm text-anjaninex-navy">{{ subject() }}</div>
-              <div class="text-[11px] text-gray-400">Anjaninex Support ·
+              <div class="text-[11px] text-gray-400">Anjaninex Team ·
                 <span [class]="status() === 'resolved' ? 'text-green-600 font-semibold' : 'text-amber-600 font-semibold'">
                   {{ status() === 'resolved' ? 'Resolved ✅' : 'Open' }}
                 </span>
@@ -110,7 +110,7 @@ interface Msg {
                 <div class="max-w-[78%] rounded-xl px-3 py-2 shadow-sm text-sm"
                      [class]="m.sender === 'user' ? 'bg-green-100 rounded-br-sm' : 'bg-white rounded-bl-sm'">
                   @if (m.sender === 'admin') {
-                    <div class="text-[10px] font-bold text-anjaninex-red mb-0.5">🛡️ {{ m.senderName || 'Anjaninex Support' }}</div>
+                    <div class="text-[10px] font-bold text-anjaninex-red mb-0.5">🛡️ Anjaninex Team</div>
                   }
                   @if (m.photoUrl) {
                     <a [href]="apiUrl + m.photoUrl" target="_blank" rel="noopener">

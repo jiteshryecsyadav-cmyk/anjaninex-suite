@@ -285,4 +285,6 @@ public class AdminCredilController : ControllerBase
     {
         await using var cmd = await CmdAsync("SELECT credil.refresh_scores()");
         var n = Convert.ToInt32(await cmd.ExecuteScalarAsync() ?? 0);
-        return Ok(new { su
+        return Ok(new { success = true, refreshed = n });
+    }
+}

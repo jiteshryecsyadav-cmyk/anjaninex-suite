@@ -112,6 +112,23 @@ const MODULE_LIST: Array<{ key: string; label: string; icon: string; description
                 </label>
               </div>
             }
+
+            <!-- CREDIL — alag flag (platform.firms.credil_enabled), turant save hota hai -->
+            <div class="mod-row" [class.mod-on]="credilEnabled()">
+              <div class="flex-1">
+                <div class="flex items-center gap-2">
+                  <span class="text-xl">📈</span>
+                  <span class="font-bold text-[#2d1040]">CREDIL</span>
+                  <span class="text-[10px] font-bold text-purple-600 bg-purple-100 rounded-full px-2 py-0.5">INSTANT SAVE</span>
+                </div>
+                <div class="text-xs text-gray-600 ml-7">Payment & Trust Index — network score reports (toggle karte hi save)</div>
+              </div>
+              <label class="switch">
+                <input type="checkbox" [checked]="credilEnabled()" [disabled]="credilBusy()"
+                       (change)="toggleCredil($any($event.target).checked)">
+                <span class="slider"></span>
+              </label>
+            </div>
           </div>
         </div>
 
@@ -389,6 +406,31 @@ export class AdminFirmSubscriptionComponent implements OnInit {
     return Math.round((f.aiUsedThisMonth / f.aiQuotaMonthly) * 100);
   });
 
+  // ---- CREDIL per-firm toggle (platform.firms.credil_enabled — instant save) ----
+  credilEnabled = signal(false);
+  credilBusy = signal(false);
+
+  loadCredil() {
+    this.http.get<Array<{ firmId: string; firmName: string; enabled: boolean }>>(
+      `${environment.apiUrl}/api/admin/credil/firms`).subscribe({
+      next: (list) => {
+        const row = list.find(f => f.firmId === this.firmId);
+        this.credilEnabled.set(!!row?.enabled);
+      },
+      error: () => {}
+    });
+  }
+
+  toggleCredil(on: boolean) {
+    const prev = this.credilEnabled();
+    this.credilEnabled.set(on);   // optimistic
+    this.credilBusy.set(true);
+    this.http.put(`${environment.apiUrl}/api/admin/credil/firms/${this.firmId}`, { enabled: on }).subscribe({
+      next: () => { this.credilBusy.set(false); alert(on ? '✓ CREDIL ON — firm ko sidebar me dikhega (refresh ke baad)' : '✓ CREDIL OFF'); },
+      error: (e) => { this.credilBusy.set(false); this.credilEnabled.set(prev); alert('❌ ' + (e?.error?.error ?? 'fail')); }
+    });
+  }
+
   // BYOK keys
   keysInfo = signal<{ aiProvider: string; aiModel: string | null; aiKeySet: boolean; aiKeyMasked: string | null; mapsKeySet: boolean; mapsKeyMasked: string | null } | null>(null);
   aiProvider = 'gemini';
@@ -578,6 +620,7 @@ export class AdminFirmSubscriptionComponent implements OnInit {
     this.loadKeys();
     this.loadUsers();
     this.loadTheme();
+    this.loadCredil();
   }
 
   loadPlans() {

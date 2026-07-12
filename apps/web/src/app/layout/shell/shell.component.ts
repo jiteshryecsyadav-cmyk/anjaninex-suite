@@ -588,9 +588,41 @@ export class ShellComponent {
         const seen = this.lastSeen();
         // Unread = jo abhi tak padha nahi (real read=false) AUR last-seen ke baad aaya.
         this.unreadCount.set(n.filter(x => !x.read && new Date(x.createdAt).getTime() > seen).length);
+
+        // 🔔 Naya notification aaya (pichli baar se naya timestamp)? Ding bajao — PC + mobile.
+        const newest = n.filter(x => !x.read)
+          .reduce((m, x) => Math.max(m, new Date(x.createdAt).getTime()), 0);
+        if (this.lastNotifStamp > 0 && newest > this.lastNotifStamp) this.playDing();
+        if (newest > 0) this.lastNotifStamp = newest;
       },
       error: () => {}
     });
+  }
+
+  // WhatsApp-style "ding" — Web Audio se generate hota hai (koi file nahi chahiye).
+  // Browser policy: user ne page par ek baar click/tap kiya ho tabhi bajta hai.
+  private lastNotifStamp = 0;
+  private audioCtx: AudioContext | null = null;
+  private playDing() {
+    try {
+      this.audioCtx ??= new (window.AudioContext || (window as any).webkitAudioContext)();
+      const ctx = this.audioCtx;
+      if (ctx.state === 'suspended') { ctx.resume().catch(() => {}); }
+      const t = ctx.currentTime;
+      // do-tone chime: E6 -> C6
+      [[1318.5, 0], [1046.5, 0.12]].forEach(([freq, delay]) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0.0001, t + delay);
+        gain.gain.exponentialRampToValueAtTime(0.25, t + delay + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t + delay + 0.5);
+        osc.connect(gain).connect(ctx.destination);
+        osc.start(t + delay);
+        osc.stop(t + delay + 0.55);
+      });
+    } catch { /* audio blocked/unsupported — chup raho */ }
   }
   markAllRead() {
     // Pending-payment notifications derived hote hain (DB me nahi) — isliye "last seen" time yaad
@@ -721,8 +753,10 @@ export class ShellComponent {
       this.applyColorTheme(k);
     });
 
-    // Notification count (bell ka red dot)
+    // Notification count (bell ka red dot) — har 30s refresh, taaki nayi
+    // complaint/payment aate hi bell blink ho (page reload ke bina).
     this.loadNotifs();
+    setInterval(() => this.loadNotifs(), 30_000);
 
     // Super admin ki koi firm nahi — firm-scoped APIs (wallet/subscription/modules)
     // uske liye call karna = errors + retry loop + rate-limit. Skip karo.

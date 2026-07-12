@@ -193,7 +193,7 @@ import { CredilService, CredilStatus, CredilRequestRow, CredilReport, CredilRequ
 
         <div class="rep-actions">
           <button class="btn" (click)="report.set(null)">Band karo</button>
-          <button class="btn wa" (click)="shareWhatsApp()">📲 WhatsApp</button>
+          <button class="btn wa" (click)="shareWhatsApp()">📲 Share karo</button>
           <button class="btn primary" (click)="printReport()">🖨 Print / PDF</button>
         </div>
       </div>
@@ -226,7 +226,7 @@ import { CredilService, CredilStatus, CredilRequestRow, CredilReport, CredilRequ
     .price-row small{color:#94a3b8}
     .btn{border:1px solid #cbd5e1;background:#fff;padding:11px 18px;border-radius:10px;font-weight:700;cursor:pointer;color:#334155}
     .btn.primary{background:#0d9488;color:#fff;border-color:#0d9488}
-    .btn.wa{background:#25D366;color:#fff;border-color:#25D366}
+    .btn.wa{background:#0f766e;color:#fff;border-color:#0f766e}
     .btn.sm{padding:6px 12px;font-size:13px}
     .btn:disabled{opacity:.6;cursor:default}
     .note{font-size:12px;color:#94a3b8;margin-top:10px}

@@ -161,6 +161,35 @@ public class MeController : ControllerBase
                     createdAt = Convert.ToDateTime(crr["created_at"])
                 });
             }
+
+            // COMPLAINTS: user ke unread messages -> sadmin ke bell me blink.
+            // Thread kholte hi read ho jaate hain, to notification apne aap chali jaati hai.
+            await using var compCmd = conn.CreateCommand();
+            compCmd.CommandText = @"SELECT c.id, c.subject, f.name AS firm_name,
+                                           count(m.id) AS unread, max(m.created_at) AS last_at
+                                    FROM platform.complaints c
+                                    JOIN platform.firms f ON f.id = c.firm_id
+                                    JOIN platform.complaint_messages m
+                                         ON m.complaint_id = c.id AND m.sender = 'user' AND m.read_at IS NULL
+                                    GROUP BY c.id, c.subject, f.name
+                                    ORDER BY last_at DESC LIMIT 50";
+            await using var cor = await compCmd.ExecuteReaderAsync();
+            while (await cor.ReadAsync())
+            {
+                var unread = Convert.ToInt32(cor["unread"]);
+                results.Add(new
+                {
+                    id = (Guid)cor["id"],
+                    type = "complaint_new",
+                    severity = "warning",
+                    title = "📢 Nayi complaint aayi hai",
+                    body = $"{cor["firm_name"]} - {cor["subject"]} ({unread} naya message)",
+                    ctaLabel = "Kholo",
+                    ctaUrl = "/admin/complaints",
+                    read = false,
+                    createdAt = Convert.ToDateTime(cor["last_at"])
+                });
+            }
         }
 
         // Firm ki apni notifications (agar firm_id ho).

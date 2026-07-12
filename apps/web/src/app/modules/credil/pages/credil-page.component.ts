@@ -1,6 +1,7 @@
 import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import jsPDF from 'jspdf';
 import { CredilService, CredilStatus, CredilRequestRow, CredilReport, CredilRequestResult } from '../credil.service';
 
 @Component({
@@ -192,6 +193,7 @@ import { CredilService, CredilStatus, CredilRequestRow, CredilReport, CredilRequ
 
         <div class="rep-actions">
           <button class="btn" (click)="report.set(null)">Band karo</button>
+          <button class="btn wa" (click)="shareWhatsApp()">📲 WhatsApp</button>
           <button class="btn primary" (click)="printReport()">🖨 Print / PDF</button>
         </div>
       </div>
@@ -224,6 +226,7 @@ import { CredilService, CredilStatus, CredilRequestRow, CredilReport, CredilRequ
     .price-row small{color:#94a3b8}
     .btn{border:1px solid #cbd5e1;background:#fff;padding:11px 18px;border-radius:10px;font-weight:700;cursor:pointer;color:#334155}
     .btn.primary{background:#0d9488;color:#fff;border-color:#0d9488}
+    .btn.wa{background:#25D366;color:#fff;border-color:#25D366}
     .btn.sm{padding:6px 12px;font-size:13px}
     .btn:disabled{opacity:.6;cursor:default}
     .note{font-size:12px;color:#94a3b8;margin-top:10px}
@@ -366,6 +369,99 @@ export class CredilPageComponent implements OnInit {
   }
 
   printReport() { window.print(); }
+
+  // ── WhatsApp share: PDF banao -> mobile pe seedha share sheet (WhatsApp attach),
+  //    desktop pe PDF download + wa.me text (user attach kar dega) ──
+  private buildPdf(): jsPDF {
+    const r = this.report()!;
+    const doc = new jsPDF();
+    const pw = doc.internal.pageSize.getWidth();
+
+    // Header
+    doc.setFontSize(24); doc.setTextColor(15, 118, 110); doc.setFont('helvetica', 'bold');
+    doc.text('CREDIL', 14, 20);
+    doc.setFontSize(9); doc.setTextColor(148, 163, 184); doc.setFont('helvetica', 'normal');
+    doc.text('Credit Index Link — Payment & Trust Report', 14, 26);
+    // Score (right)
+    doc.setFontSize(32); doc.setTextColor(15, 23, 42); doc.setFont('helvetica', 'bold');
+    doc.text(String(r.totalScore), pw - 14, 22, { align: 'right' });
+    doc.setFontSize(11);
+    const bandCol: Record<string, [number, number, number]> = {
+      excellent: [21, 128, 61], good: [4, 120, 87], fair: [161, 98, 7], poor: [185, 28, 28]
+    };
+    const bc = bandCol[(r.band || '').toLowerCase()] || [100, 116, 139];
+    doc.setTextColor(bc[0], bc[1], bc[2]);
+    doc.text(r.band || '', pw - 14, 29, { align: 'right' });
+
+    doc.setDrawColor(226, 232, 240); doc.line(14, 33, pw - 14, 33);
+    doc.setFontSize(11); doc.setTextColor(51, 65, 85); doc.setFont('helvetica', 'normal');
+    doc.text(`GST: ${r.gst}   ·   ${r.entityType || ''}`, 14, 41);
+
+    // Sub-scores with bars
+    let y = 52;
+    for (const c of (r.components || [])) {
+      doc.setFontSize(10); doc.setTextColor(71, 85, 105);
+      doc.text(`${c.label}`, 14, y);
+      doc.text(`${c.score}/100`, pw - 14, y, { align: 'right' });
+      doc.setFillColor(241, 245, 249); doc.roundedRect(14, y + 2, pw - 28, 3.5, 1.5, 1.5, 'F');
+      const col: [number, number, number] = c.score >= 70 ? [16, 185, 129] : c.score >= 40 ? [245, 158, 11] : [239, 68, 68];
+      doc.setFillColor(col[0], col[1], col[2]);
+      doc.roundedRect(14, y + 2, Math.max(3, (pw - 28) * Math.min(100, c.score) / 100), 3.5, 1.5, 1.5, 'F');
+      y += 13;
+    }
+
+    // Red flags
+    y += 2;
+    if (r.redFlags?.length) {
+      doc.setFontSize(11); doc.setTextColor(185, 28, 28); doc.setFont('helvetica', 'bold');
+      doc.text('Red Flags', 14, y); y += 6;
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(10); doc.setTextColor(153, 27, 27);
+      for (const f of r.redFlags) {
+        const msg = (f as any).msg || (f as any).type || String(f);
+        doc.text('• ' + msg, 16, y, { maxWidth: pw - 32 }); y += 6;
+      }
+    } else {
+      doc.setFontSize(10); doc.setTextColor(21, 128, 61);
+      doc.text('✓ Koi red flag nahi', 14, y); y += 6;
+    }
+
+    // Meta + disclaimer
+    y += 4;
+    doc.setFontSize(9); doc.setTextColor(148, 163, 184);
+    doc.text(`Network firms: ${r.firmsCount}   ·   Data points: ${r.dataPoints}   ·   ${new Date().toLocaleDateString('en-IN')}`, 14, y);
+    y += 8;
+    doc.setFontSize(8);
+    doc.text('Yeh report Anjaninex network ke internal transaction behaviour par based hai. Yeh RBI/CIBIL ka official credit', 14, y);
+    doc.text('score nahi hai; sirf trade reference ke liye. — Vyapaar Setu, an Anjaninex product', 14, y + 4);
+    return doc;
+  }
+
+  private waText(): string {
+    const r = this.report()!;
+    const subs = (r.components || []).map((c: any) => `${c.label}: ${c.score}/100`).join('\n');
+    const flags = r.redFlags?.length
+      ? r.redFlags.map((f: any) => '🚩 ' + (f.msg || f.type || f)).join('\n')
+      : '✓ Koi red flag nahi';
+    return `*CREDIL Report*\nGST: ${r.gst}\nScore: *${r.totalScore}* (${r.band})\n\n${subs}\n\n${flags}\n\n— Vyapaar Setu (Anjaninex)`;
+  }
+
+  async shareWhatsApp() {
+    const r = this.report()!;
+    const blob = this.buildPdf().output('blob');
+    const file = new File([blob], `CREDIL_${r.gst}.pdf`, { type: 'application/pdf' });
+    const nav: any = navigator;
+    // Mobile: native share sheet — WhatsApp select karo, PDF attach ho ke jayegi
+    if (nav.canShare && nav.canShare({ files: [file] })) {
+      try { await nav.share({ files: [file], title: 'CREDIL Report', text: `CREDIL Report — ${r.gst}` }); } catch { /* user ne cancel kiya */ }
+      return;
+    }
+    // Desktop fallback: PDF download + WhatsApp text kholo (attach manually)
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = file.name;
+    a.click();
+    window.open('https://wa.me/?text=' + encodeURIComponent(this.waText() + '\n\n(PDF download ho gayi hai — chat me attach kar dein)'), '_blank');
+  }
 
   gaugePct() { const s = this.report()!.totalScore; return Math.max(0, Math.min(100, ((s - 300) / 600) * 100)); }
   bandClass(b: string) { return 'b-' + (b || '').toLowerCase(); }

@@ -77,3 +77,4 @@ bot/auth/
 bot/.env
 bot/uploads/
 bot/node_modules/
+apps/web/.angular/

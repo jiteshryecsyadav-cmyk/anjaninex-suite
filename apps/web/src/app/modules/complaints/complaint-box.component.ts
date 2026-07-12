@@ -58,7 +58,6 @@ interface Msg {
                 }
               </span>
               <span class="block text-xs text-gray-400">
-                <span class="text-gray-600">{{ c.subject }}</span> ·
                 👤 {{ c.createdByName || '—' }} ·
                 {{ c.lastMsgAt | date:'dd MMM, HH:mm' }} ·
                 <span [class]="c.status === 'resolved' ? 'text-green-600 font-semibold' : 'text-amber-600 font-semibold'">
@@ -98,7 +97,7 @@ interface Msg {
           <div class="px-4 py-3 border-b border-anjaninex-navy-soft flex items-center justify-between">
             <div>
               <div class="font-bold text-sm text-anjaninex-navy">{{ features.firmName() || 'Meri Firm' }}</div>
-              <div class="text-[11px] text-gray-400">{{ subject() }} · Team Vyapaar Setu ·
+              <div class="text-[11px] text-gray-400">Team Vyapaar Setu ·
                 <span [class]="status() === 'resolved' ? 'text-green-600 font-semibold' : 'text-amber-600 font-semibold'">
                   {{ status() === 'resolved' ? 'Resolved ✅' : 'Open' }}
                 </span>

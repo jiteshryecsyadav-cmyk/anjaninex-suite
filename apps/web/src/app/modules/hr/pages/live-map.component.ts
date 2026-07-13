@@ -191,14 +191,18 @@ export class LiveMapComponent implements AfterViewInit, OnDestroy {
   }
   private loadGoogle(key: string): Promise<void> {
     return new Promise((resolve, reject) => {
-      if (typeof google !== 'undefined' && google.maps) return resolve();
+      // google.maps.Map ready ho tabhi resolve — sirf `google.maps` check kaafi nahi tha
+      if (typeof google !== 'undefined' && (google.maps as any)?.Map) return resolve();
+      // `loading=async` mode me Map constructor seedha nahi milta (importLibrary chahiye hota),
+      // isliye classic mode + callback — callback fire hone par pura namespace ready hota hai.
+      (window as any).__gmapsReady = () => resolve();
       const ex = document.getElementById('gmaps-js') as HTMLScriptElement | null;
-      if (ex) { ex.addEventListener('load', () => resolve()); ex.addEventListener('error', () => reject()); return; }
+      if (ex) { ex.addEventListener('load', () => setTimeout(() => resolve(), 50)); ex.addEventListener('error', () => reject()); return; }
       const s = document.createElement('script');
       s.id = 'gmaps-js';
-      s.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(key)}&loading=async`;
+      s.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(key)}&callback=__gmapsReady`;
       s.async = true; s.defer = true;
-      s.onload = () => resolve(); s.onerror = () => reject();
+      s.onerror = () => reject();
       document.head.appendChild(s);
     });
   }

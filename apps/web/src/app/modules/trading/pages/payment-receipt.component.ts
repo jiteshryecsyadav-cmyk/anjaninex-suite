@@ -1008,11 +1008,10 @@ export class PaymentReceiptComponent {
   // false = broker (paisa seedha supplier ko, sirf record) | true = aadhat (paisa agency ke cash/bank me)
   moneyToAgency = false;
 
-  // PILOT: "Paisa kisko mila" toggle abhi sirf in firms me — test complete hone par
-  // list me firms jodo ya sab ke liye kholne ko pilotMoneyToggle() se `return true;` kar do.
-  private static readonly PILOT_FIRMS = ['riddhi agency'];
+  // PILOT: "Paisa kisko mila" toggle — sadmin panel ke Feature Flags se control hota hai.
+  // (Admin → Feature Flags → 'money_to_agency' → pilot firm on karo ya "Sab firms" master switch.)
   pilotMoneyToggle(): boolean {
-    return PaymentReceiptComponent.PILOT_FIRMS.includes((this.features.firmName() || '').toLowerCase().trim());
+    return this.features.flag('money_to_agency');
   }
 
   // Section 1

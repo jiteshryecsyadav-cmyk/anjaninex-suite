@@ -299,6 +299,21 @@ public class MeController : ControllerBase
             credilEnabled = (await cmd.ExecuteScalarAsync()) is bool b && b;
         }
 
+        // Feature flags — pilot/rollout switches (sadmin Feature Flags page se control hote hain).
+        var features = new List<string>();
+        {
+            var conn = (NpgsqlConnection)_db.Database.GetDbConnection();
+            if (conn.State != ConnectionState.Open) await conn.OpenAsync();
+            await using var cmd = conn.CreateCommand();
+            cmd.CommandText = @"
+                SELECT key FROM platform.feature_flags WHERE enabled_all
+                UNION
+                SELECT flag_key FROM platform.feature_flag_firms WHERE firm_id = @f";
+            cmd.Parameters.Add(new NpgsqlParameter("f", firmId));
+            await using var reader = await cmd.ExecuteReaderAsync();
+            while (await reader.ReadAsync()) features.Add(reader.GetString(0));
+        }
+
         // Parse enabled_modules JSON → flat list of enabled module keys
         var enabled = new List<string>();
         if (!string.IsNullOrWhiteSpace(firm.EnabledModules))
@@ -324,6 +339,7 @@ public class MeController : ControllerBase
             firmState = firm.State,
             firmTheme = string.IsNullOrWhiteSpace(firm.Theme) ? "classic" : firm.Theme,
             modules = enabled,
+            features,
             credilEnabled,
             planCode = firm.PlanCode ?? "starter",
             limits = new

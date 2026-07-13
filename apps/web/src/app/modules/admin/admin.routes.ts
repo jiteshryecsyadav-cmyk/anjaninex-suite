@@ -67,6 +67,10 @@ export const adminRoutes: Routes = [
     loadComponent: () => import('./pages/admin-complaints.component').then(m => m.AdminComplaintsComponent)
   },
   {
+    path: 'feature-flags',
+    loadComponent: () => import('./pages/admin-feature-flags.component').then(m => m.AdminFeatureFlagsComponent)
+  },
+  {
     path: 'changelog',
     loadComponent: () => import('./pages/admin-pages.components').then(m => m.AdminChangelogComponent)
   }

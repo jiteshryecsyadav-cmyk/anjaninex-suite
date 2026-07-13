@@ -26,6 +26,7 @@ export interface MeModulesResponse {
   firmState?: string;
   firmTheme?: string;
   modules: ModuleKey[];
+  features?: string[];   // feature flags (pilot/rollout) — sadmin Feature Flags page se
   credilEnabled?: boolean;
   planCode: string;
   limits: {
@@ -64,6 +65,8 @@ export class FeatureService {
 
   /** Set of enabled module keys for the current firm. */
   modules = signal<Set<ModuleKey>>(new Set());
+  /** Feature flags — naya feature pehle pilot firm me, fir sab ko (sadmin control). */
+  flags = signal<Set<string>>(new Set());
   firmName = signal<string>('');
   firmGst = signal<string>('');
   firmPan = signal<string>('');
@@ -90,6 +93,11 @@ export class FeatureService {
     return this.modules().has(module);
   }
 
+  /** True if this feature flag is on for the current firm (pilot ya sab firms). */
+  flag(key: string): boolean {
+    return this.flags().has(key);
+  }
+
   /** True if any of these modules is enabled (OR check). */
   hasAny(...mods: ModuleKey[]): boolean {
     const set = this.modules();
@@ -111,6 +119,7 @@ export class FeatureService {
     this.http.get<MeModulesResponse>(`${this.base}/modules`).subscribe({
       next: (r) => {
         this.modules.set(new Set<ModuleKey>(r.modules));
+        this.flags.set(new Set<string>(r.features || []));
         this.firmName.set(r.firmName || '');
         this.firmGst.set(r.firmGst || '');
         this.firmPan.set(r.firmPan || '');

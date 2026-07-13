@@ -19,6 +19,10 @@ export const hrRoutes: Routes = [
     loadComponent: () => import('./pages/hr-pages.components').then(m => m.RegisterComponent)
   },
   {
+    path: 'report',
+    loadComponent: () => import('./pages/hr-pages.components').then(m => m.AttendanceReportComponent)
+  },
+  {
     path: 'live-map',
     loadComponent: () => import('./pages/live-map.component').then(m => m.LiveMapComponent)
   },

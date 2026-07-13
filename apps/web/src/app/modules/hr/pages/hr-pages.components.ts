@@ -6,6 +6,9 @@ import { firstValueFrom } from 'rxjs';
 import { HrService, Employee, AttendanceLog, LeaveBalance, LeaveRequest, Payslip, CreateEmployee, FirmLogin } from '../services/hr.service';
 import { ToastService } from '../../../shared/toast.service';
 import { InDatePipe } from '../../../shared/in-date.pipe';
+import { FeatureService } from '../../../shared/feature.service';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 const subNav = `
   <div class="flex gap-1 mb-6 border-b border-[#ddc8f5] flex-wrap">
@@ -18,6 +21,8 @@ const subNav = `
        class="px-4 py-2 text-sm font-semibold text-gray-500 border-b-2 border-transparent hover:text-[#5c1a8b]">📸 My Attendance</a>
     <a routerLink="/hr/register" routerLinkActive="!border-[#5c1a8b] !text-[#5c1a8b]"
        class="px-4 py-2 text-sm font-semibold text-gray-500 border-b-2 border-transparent hover:text-[#5c1a8b]">📋 Register</a>
+    <a routerLink="/hr/report" routerLinkActive="!border-[#5c1a8b] !text-[#5c1a8b]"
+       class="px-4 py-2 text-sm font-semibold text-gray-500 border-b-2 border-transparent hover:text-[#5c1a8b]">🧾 In/Out Report</a>
     <a routerLink="/hr/live-map" routerLinkActive="!border-[#5c1a8b] !text-[#5c1a8b]"
        class="px-4 py-2 text-sm font-semibold text-gray-500 border-b-2 border-transparent hover:text-[#5c1a8b]">🗺 Live Map</a>
     <a routerLink="/hr/leaves" routerLinkActive="!border-[#5c1a8b] !text-[#5c1a8b]"
@@ -906,5 +911,199 @@ export class PayrollComponent {
   markPaid(id: string) {
     if (!confirm('Mark salary as paid + auto-post to Accounting?')) return;
     this.svc.markPaid(id).subscribe(() => this.load());
+  }
+}
+
+// =============================================================================
+// IN/OUT REPORT (check-in / check-out detail + PDF + Excel)
+// =============================================================================
+@Component({
+  selector: 'app-attendance-report',
+  standalone: true,
+  imports: [CommonModule, FormsModule, RouterLink, RouterLinkActive, InDatePipe],
+  template: `
+    <div class="max-w-7xl mx-auto">
+      <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
+        <div>
+          <h2 class="font-display font-black text-2xl text-[#5c1a8b]">🧾 In/Out Report</h2>
+          <p class="text-sm text-[#6b3fa0]">Check-in / check-out detail — {{ months[month-1].label }} {{ year }}</p>
+        </div>
+        <div class="flex gap-2 flex-wrap">
+          <select [(ngModel)]="month" (change)="load()" class="input w-32">
+            @for (m of months; track m.v; let i = $index) { <option [value]="i+1">{{ m.label }}</option> }
+          </select>
+          <select [(ngModel)]="year" (change)="load()" class="input w-24">
+            @for (y of years; track y) { <option [value]="y">{{ y }}</option> }
+          </select>
+          <select [(ngModel)]="empFilter" class="input w-44">
+            <option value="">Saare staff</option>
+            @for (n of staffNames(); track n) { <option [value]="n">{{ n }}</option> }
+          </select>
+          <button (click)="downloadPdf()" class="btn-primary" [disabled]="rows().length === 0">🖨️ PDF</button>
+          <button (click)="downloadExcel()" class="btn-primary" [disabled]="rows().length === 0" style="background:#166534">📥 Excel</button>
+        </div>
+      </div>
+
+      ${subNav}
+
+      <!-- Summary cards -->
+      @if (!loading() && rows().length > 0) {
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4">
+          <div class="card text-center"><div class="text-2xl font-black text-[#5c1a8b]">{{ rows().length }}</div><div class="text-xs text-gray-500">Entries</div></div>
+          <div class="card text-center"><div class="text-2xl font-black text-green-700">{{ count('present') }}</div><div class="text-xs text-gray-500">Present</div></div>
+          <div class="card text-center"><div class="text-2xl font-black text-yellow-600">{{ count('half_day') }}</div><div class="text-xs text-gray-500">Half Day</div></div>
+          <div class="card text-center"><div class="text-2xl font-black text-red-600">{{ lateCount() }}</div><div class="text-xs text-gray-500">Late</div></div>
+          <div class="card text-center"><div class="text-2xl font-black text-[#5c1a8b]">{{ totalHours() }}</div><div class="text-xs text-gray-500">Total Hours</div></div>
+        </div>
+      }
+
+      <div class="card p-0 overflow-x-auto">
+        @if (loading()) { <div class="p-8 text-center text-gray-500">Loading…</div> }
+        @else if (rows().length === 0) { <div class="p-8 text-center text-gray-500">Is month ka koi record nahi</div> }
+        @else {
+          <table class="w-full text-sm">
+            <thead class="bg-[#f0e6ff] text-[#5c1a8b] uppercase text-xs">
+              <tr>
+                <th class="px-3 py-2 text-left">Date</th>
+                <th class="px-3 py-2 text-left">Staff</th>
+                <th class="px-3 py-2 text-center">Check-In</th>
+                <th class="px-3 py-2 text-center">Check-Out</th>
+                <th class="px-3 py-2 text-center">Hours</th>
+                <th class="px-3 py-2 text-center">Status</th>
+                <th class="px-3 py-2 text-center">Flags</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (r of rows(); track r.id) {
+                <tr class="border-t hover:bg-[#faf5ff]">
+                  <td class="px-3 py-2 text-xs">{{ r.logDate | inDate }}</td>
+                  <td class="px-3 py-2 font-semibold">{{ r.employeeName }}</td>
+                  <td class="px-3 py-2 text-center font-mono">{{ fmtT(r.checkInAt) }}</td>
+                  <td class="px-3 py-2 text-center font-mono">{{ fmtT(r.checkOutAt) }}</td>
+                  <td class="px-3 py-2 text-center font-mono">{{ hrs(r.totalMinutes) }}</td>
+                  <td class="px-3 py-2 text-center">
+                    <span class="text-xs px-2 py-0.5 rounded"
+                      [class]="r.status === 'present' ? 'bg-green-100 text-green-700' : (r.status === 'half_day' ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-600')">
+                      {{ r.status === 'half_day' ? 'Half Day' : (r.status || '—') }}
+                    </span>
+                  </td>
+                  <td class="px-3 py-2 text-center text-xs">
+                    @if (r.isLate) { <span class="text-red-600 font-bold">⏰ Late</span> }
+                    @if (r.isEarlyOut) { <span class="text-orange-600 font-bold ml-1">🏃 Early Out</span> }
+                    @if (!r.isLate && !r.isEarlyOut) { <span class="text-gray-400">—</span> }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        }
+      </div>
+    </div>
+  `
+})
+export class AttendanceReportComponent {
+  private svc = inject(HrService);
+  private features = inject(FeatureService);
+  logs = signal<AttendanceLog[]>([]);
+  loading = signal(true);
+  empFilter = '';
+
+  now = new Date();
+  month = this.now.getMonth() + 1;
+  year = this.now.getFullYear();
+
+  months = Array.from({ length: 12 }, (_, i) => ({
+    v: i + 1,
+    label: new Date(2026, i, 1).toLocaleString('en', { month: 'long' })
+  }));
+  years = [this.now.getFullYear() - 1, this.now.getFullYear(), this.now.getFullYear() + 1];
+
+  ngOnInit() { this.load(); }
+
+  load() {
+    this.loading.set(true);
+    this.svc.register(+this.year, +this.month).subscribe({
+      next: (l) => { this.logs.set(l); this.loading.set(false); },
+      error: () => this.loading.set(false)
+    });
+  }
+
+  staffNames(): string[] {
+    return [...new Set(this.logs().map(l => l.employeeName))].sort();
+  }
+
+  rows(): AttendanceLog[] {
+    let r = this.logs();
+    if (this.empFilter) r = r.filter(l => l.employeeName === this.empFilter);
+    return [...r].sort((a, b) => a.logDate.localeCompare(b.logDate) || a.employeeName.localeCompare(b.employeeName));
+  }
+
+  count(status: string) { return this.rows().filter(r => r.status === status).length; }
+  lateCount() { return this.rows().filter(r => r.isLate).length; }
+
+  totalHours(): string {
+    const mins = this.rows().reduce((s, r) => s + (r.totalMinutes ?? 0), 0);
+    return `${Math.floor(mins / 60)}h ${mins % 60}m`;
+  }
+
+  // Time hamesha IST me dikhao (DB me UTC hai)
+  fmtT(iso: string | null): string {
+    if (!iso) return '—';
+    return new Date(iso).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata' });
+  }
+
+  fmtD(iso: string): string {
+    const d = new Date(iso + 'T00:00:00');
+    return d.toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  }
+
+  hrs(mins: number | null): string {
+    if (mins == null) return '—';
+    return `${Math.floor(mins / 60)}h ${mins % 60}m`;
+  }
+
+  private reportTitle() {
+    return `${this.features.firmName() || 'Firm'} — In/Out Report — ${this.months[this.month - 1].label} ${this.year}${this.empFilter ? ' — ' + this.empFilter : ''}`;
+  }
+
+  downloadPdf() {
+    const doc = new jsPDF();
+    doc.setFontSize(14);
+    doc.setTextColor(92, 26, 139);
+    doc.text(this.reportTitle(), 14, 16);
+    doc.setFontSize(9);
+    doc.setTextColor(100);
+    doc.text(`Present: ${this.count('present')}   Half Day: ${this.count('half_day')}   Late: ${this.lateCount()}   Total Hours: ${this.totalHours()}`, 14, 23);
+    autoTable(doc, {
+      startY: 28,
+      head: [['Date', 'Staff', 'Check-In', 'Check-Out', 'Hours', 'Status', 'Flags']],
+      body: this.rows().map(r => [
+        this.fmtD(r.logDate), r.employeeName, this.fmtT(r.checkInAt), this.fmtT(r.checkOutAt),
+        this.hrs(r.totalMinutes), r.status === 'half_day' ? 'Half Day' : (r.status ?? '—'),
+        [r.isLate ? 'Late' : '', r.isEarlyOut ? 'Early Out' : ''].filter(x => x).join(', ') || '—'
+      ]),
+      styles: { fontSize: 8 },
+      headStyles: { fillColor: [92, 26, 139] }
+    });
+    doc.save(`attendance-${this.year}-${String(this.month).padStart(2, '0')}.pdf`);
+  }
+
+  downloadExcel() {
+    const head = ['Date', 'Staff', 'Check-In', 'Check-Out', 'Hours', 'Status', 'Late', 'Early Out'];
+    const lines = this.rows().map(r => [
+      this.fmtD(r.logDate), r.employeeName, this.fmtT(r.checkInAt), this.fmtT(r.checkOutAt),
+      this.hrs(r.totalMinutes), r.status === 'half_day' ? 'Half Day' : (r.status ?? ''),
+      r.isLate ? 'YES' : '', r.isEarlyOut ? 'YES' : ''
+    ]);
+    // BOM (﻿) — Excel me Hindi/symbols sahi dikhein
+    const csv = '﻿' + [head, ...lines]
+      .map(row => row.map(c => '"' + String(c).replace(/"/g, '""') + '"').join(','))
+      .join('\r\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `attendance-${this.year}-${String(this.month).padStart(2, '0')}.csv`;
+    a.click();
+    URL.revokeObjectURL(a.href);
   }
 }

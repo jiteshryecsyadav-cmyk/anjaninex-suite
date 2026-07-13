@@ -17,10 +17,11 @@ export interface Employee {
   salaryStructureName: string | null;
   isActive: boolean;
   leavesAvailable: number;
+  userId: string | null;
+  username: string | null;
 }
 
 export interface EmployeeDetail extends Employee {
-  userId: string | null;
   leavingDate: string | null;
   salaryStructureId: string | null;
   branchName: string | null;
@@ -47,7 +48,10 @@ export interface CreateEmployee {
   esiNumber?: string;
   bankName?: string;
   bankIfsc?: string;
+  userId?: string | null;   // login link — mobile attendance isi se chalti hai
 }
+
+export interface FirmLogin { id: string; username: string; fullName: string; }
 
 export interface AttendanceLog {
   id: string;
@@ -176,6 +180,8 @@ export class HrService {
   getEmployee(id: string) { return this.http.get<EmployeeDetail>(`${this.base}/employees/${id}`); }
   createEmployee(data: CreateEmployee) { return this.http.post<EmployeeDetail>(`${this.base}/employees`, data); }
   updateEmployee(id: string, data: CreateEmployee) { return this.http.put<EmployeeDetail>(`${this.base}/employees/${id}`, data); }
+  // Team & Security wale firm logins — staff ↔ login link dropdown ke liye
+  firmLogins() { return this.http.get<FirmLogin[]>(`${environment.apiUrl}/api/core/team/users`); }
   deleteEmployee(id: string) { return this.http.delete(`${this.base}/employees/${id}`); }
 
   // Attendance

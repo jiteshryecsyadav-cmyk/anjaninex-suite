@@ -18,7 +18,8 @@ public record EmployeeListItemDto(
     DateOnly? JoiningDate, Guid? BranchId,
     decimal? MonthlyCtc, string? SalaryStructureName,
     bool IsActive,
-    int LeavesAvailable);
+    int LeavesAvailable,
+    Guid? UserId = null, string? Username = null);
 
 public record EmployeeDetailDto(
     Guid Id, Guid ContactId, Guid? UserId,
@@ -41,7 +42,8 @@ public record CreateEmployeeDto(
     Guid? SalaryStructureId, Guid? BranchId,
     string? PanNumber, string? PfNumber, string? EsiNumber,
     string? BankName, string? BankIfsc,
-    decimal? MonthlyCtc = null);
+    decimal? MonthlyCtc = null,
+    Guid? UserId = null);   // staff ko login user se link karo — check-in isi se chalti hai
 
 public record AttendanceLogDto(
     Guid Id, Guid EmployeeId, string EmployeeName,
@@ -140,6 +142,11 @@ public class EmployeeService : IEmployeeService
             .Select(g => new { EmpId = g.Key, Total = g.Sum(x => x.Available) })
             .ToDictionaryAsync(x => x.EmpId, x => x.Total);
 
+        // Linked login usernames (staff ↔ login link Team page se ek hi jagah dikhe)
+        var userIds = rows.Where(r => r.e.UserId.HasValue).Select(r => r.e.UserId!.Value).Distinct().ToList();
+        var usernames = await _db.Users.Where(u => userIds.Contains(u.Id))
+            .ToDictionaryAsync(u => u.Id, u => u.Username);
+
         return rows.Select(r => new EmployeeListItemDto(
             r.e.Id, r.c.Id, r.e.EmployeeCode ?? "",
             r.c.DisplayName, r.e.Designation, r.e.Department,
@@ -148,7 +155,9 @@ public class EmployeeService : IEmployeeService
             r.e.SalaryStructureId.HasValue && structs.TryGetValue(r.e.SalaryStructureId.Value, out var s) ? s.MonthlyCtc : null,
             r.e.SalaryStructureId.HasValue && structs.TryGetValue(r.e.SalaryStructureId.Value, out var s2) ? s2.Name : null,
             r.e.IsActive,
-            (int)balances.GetValueOrDefault(r.e.Id, 0))).ToList();
+            (int)balances.GetValueOrDefault(r.e.Id, 0),
+            r.e.UserId,
+            r.e.UserId.HasValue ? usernames.GetValueOrDefault(r.e.UserId.Value) : null)).ToList();
     }
 
     public async Task<EmployeeDetailDto?> Get(Guid id)
@@ -181,6 +190,10 @@ public class EmployeeService : IEmployeeService
 
     public async Task<EmployeeDetailDto> Create(CreateEmployeeDto dto, Guid firmId, Guid byUserId)
     {
+        // Ek login sirf ek active staff se link ho sakta hai (check-in FirstOrDefault pe chalti hai)
+        if (dto.UserId.HasValue && await _db.EmployeeProfiles.AnyAsync(e => e.UserId == dto.UserId && e.IsActive))
+            throw new InvalidOperationException("Ye login pehle se kisi staff se linked hai");
+
         using var tx = await _db.Database.BeginTransactionAsync();
         try
         {
@@ -234,6 +247,7 @@ public class EmployeeService : IEmployeeService
                 Id = Guid.NewGuid(),
                 FirmId = firmId,
                 ContactId = contact.Id,
+                UserId = dto.UserId,
                 EmployeeCode = await GenerateCode(firmId),
                 Designation = dto.Designation,
                 Department = dto.Department,
@@ -271,6 +285,9 @@ public class EmployeeService : IEmployeeService
 
     public async Task<EmployeeDetailDto> Update(Guid id, CreateEmployeeDto dto)
     {
+        if (dto.UserId.HasValue && await _db.EmployeeProfiles.AnyAsync(e => e.UserId == dto.UserId && e.IsActive && e.Id != id))
+            throw new InvalidOperationException("Ye login pehle se kisi aur staff se linked hai");
+
         var emp = await _db.EmployeeProfiles.SingleAsync(e => e.Id == id);
         var contact = await _db.Contacts.SingleAsync(c => c.Id == emp.ContactId);
 
@@ -282,6 +299,7 @@ public class EmployeeService : IEmployeeService
         emp.Designation = dto.Designation;
         emp.Department = dto.Department;
         emp.JoiningDate = dto.JoiningDate;
+        emp.UserId = dto.UserId;
         emp.SalaryStructureId = dto.SalaryStructureId;
 
         // CTC update: linked structure ho to uska CTC badlo, warna naya banao

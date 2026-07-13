@@ -20,9 +20,8 @@ import { RouterLink, RouterLinkActive, Router } from '@angular/router';
           <a routerLink="/masters/transporters" (click)="close()">🚚 Transporters</a>
           <a routerLink="/masters/credit-limits" (click)="close()">💳 Credit Limits</a>
           <div class="tn-divider"></div>
-          <a routerLink="/masters/users" (click)="close()">👤 Users</a>
-          <a routerLink="/masters/roles" (click)="close()">🛡️ Roles</a>
-          <a routerLink="/masters/permissions" (click)="close()">🔐 Role Permissions</a>
+          <!-- Users/Roles/Permissions ab ek hi jagah: Team & Security (sidebar → Team) -->
+          <a routerLink="/team" (click)="close()">👥 Team — Users, Roles & Permissions</a>
         </div>
       </div>
 

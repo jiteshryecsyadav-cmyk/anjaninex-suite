@@ -3,7 +3,7 @@ import { CommonModule, DecimalPipe, DatePipe } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
-import { HrService, Employee, AttendanceLog, LeaveBalance, LeaveRequest, Payslip, CreateEmployee } from '../services/hr.service';
+import { HrService, Employee, AttendanceLog, LeaveBalance, LeaveRequest, Payslip, CreateEmployee, FirmLogin } from '../services/hr.service';
 import { ToastService } from '../../../shared/toast.service';
 import { InDatePipe } from '../../../shared/in-date.pipe';
 
@@ -61,8 +61,10 @@ const subNav = `
                 <th class="px-3 py-2 text-left">Designation</th>
                 <th class="px-3 py-2 text-left">Department</th>
                 <th class="px-3 py-2 text-left">Joining</th>
+                <th class="px-3 py-2 text-left">Login</th>
                 <th class="px-3 py-2 text-right">CTC/Month</th>
                 <th class="px-3 py-2 text-center">Leaves</th>
+                <th class="px-3 py-2 text-center">Action</th>
               </tr>
             </thead>
             <tbody>
@@ -77,8 +79,15 @@ const subNav = `
                   <td class="px-3 py-2 text-sm">{{ e.designation }}</td>
                   <td class="px-3 py-2 text-xs">{{ e.department }}</td>
                   <td class="px-3 py-2 text-xs">{{ e.joiningDate | inDate }}</td>
+                  <td class="px-3 py-2 text-xs">
+                    @if (e.username) { <span class="font-mono font-bold text-green-700">🔗 {{ e.username }}</span> }
+                    @else { <span class="text-gray-400">— link nahi</span> }
+                  </td>
                   <td class="px-3 py-2 text-right font-mono font-bold">₹{{ e.monthlyCtc | number:'1.0-0' }}</td>
                   <td class="px-3 py-2 text-center">{{ e.leavesAvailable }} days</td>
+                  <td class="px-3 py-2 text-center">
+                    <button (click)="openEdit(e)" class="px-2 py-1 text-xs border rounded hover:bg-[#f0e6ff]" title="Edit / Login link karo">✏️ Edit</button>
+                  </td>
                 </tr>
               }
             </tbody>
@@ -90,7 +99,7 @@ const subNav = `
       @if (showAdd()) {
         <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" (click)="showAdd.set(false)">
           <div class="bg-white rounded-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto" (click)="$event.stopPropagation()">
-            <h3 class="font-display font-bold text-lg text-[#5c1a8b] mb-4">➕ Add Employee</h3>
+            <h3 class="font-display font-bold text-lg text-[#5c1a8b] mb-4">{{ editId ? '✏️ Edit Employee' : '➕ Add Employee' }}</h3>
             <div class="grid grid-cols-2 gap-3">
               <div class="col-span-2">
                 <label class="text-xs font-bold uppercase text-[#6b3fa0]">Full Name *</label>
@@ -138,12 +147,22 @@ const subNav = `
                 <label class="text-xs font-bold uppercase text-[#6b3fa0]">PAN</label>
                 <input [(ngModel)]="nf.panNumber" class="input" placeholder="ABCDE1234F">
               </div>
+              <div class="col-span-2">
+                <label class="text-xs font-bold uppercase text-[#6b3fa0]">🔗 Login User (mobile attendance ke liye)</label>
+                <select [(ngModel)]="nf.userId" class="input">
+                  <option [ngValue]="null">— Koi login link nahi —</option>
+                  @for (u of logins(); track u.id) {
+                    <option [ngValue]="u.id">{{ u.fullName }} ({{ u.username }})</option>
+                  }
+                </select>
+                <p class="text-[11px] text-gray-500 mt-1">Staff ko Team wale login se jodo — tabhi wo apne login se Check-In kar payega.</p>
+              </div>
             </div>
             @if (addErr()) { <p class="text-red-600 text-sm mt-3">{{ addErr() }}</p> }
             <div class="flex justify-end gap-2 mt-5">
               <button type="button" (click)="showAdd.set(false)" class="px-4 py-2 border rounded text-sm">Cancel</button>
               <button type="button" (click)="saveEmployee()" class="btn-primary" [disabled]="saving()">
-                {{ saving() ? 'Saving…' : 'Save Employee' }}
+                {{ saving() ? 'Saving…' : (editId ? 'Update Employee' : 'Save Employee') }}
               </button>
             </div>
           </div>
@@ -162,6 +181,8 @@ export class StaffComponent {
   saving = signal(false);
   addErr = signal('');
   nf: CreateEmployee = this.blank();
+  editId: string | null = null;              // null = add mode, warna edit
+  logins = signal<FirmLogin[]>([]);          // Team wale firm logins (link dropdown)
 
   designations = ['Proprietor / Owner', 'Director', 'Manager', 'Sales Manager', 'Marketing Executive', 'Sales Executive', 'Senior Executive', 'Executive', 'D.E.O. (Data Entry Operator)', 'Accountant', 'Cashier', 'Office Assistant', 'Helper / Peon', 'Driver'];
   departments = ['Sales', 'Marketing', 'Accounts', 'Administration', 'Data Entry', 'Operations / Logistics', 'HR', 'Management'];
@@ -180,10 +201,18 @@ export class StaffComponent {
   }
 
   blank(): CreateEmployee {
-    return { fullName: '', phone: '', email: '', designation: '', department: '', joiningDate: '', panNumber: '' };
+    return { fullName: '', phone: '', email: '', designation: '', department: '', joiningDate: '', panNumber: '', userId: null };
+  }
+
+  private loadLogins() {
+    this.svc.firmLogins().subscribe({
+      next: u => this.logins.set(u),
+      error: () => this.logins.set([])   // permission na ho to dropdown khali — page na toote
+    });
   }
 
   openAdd() {
+    this.editId = null;
     this.nf = this.blank();
     this.nf.joiningDate = new Date().toISOString().slice(0, 10);
     this.desigSel = '';
@@ -191,7 +220,42 @@ export class StaffComponent {
     this.desigOther = false;
     this.deptOther = false;
     this.addErr.set('');
+    this.loadLogins();
     this.showAdd.set(true);
+  }
+
+  openEdit(e: Employee) {
+    this.editId = e.id;
+    this.addErr.set('');
+    this.loadLogins();
+    // Detail lao taaki PF/ESI/bank/salary structure jaise fields save pe udd na jayein
+    this.svc.getEmployee(e.id).subscribe({
+      next: d => {
+        this.nf = {
+          fullName: d.fullName,
+          phone: d.phone ?? '',
+          email: d.email ?? '',
+          designation: d.designation ?? '',
+          department: d.department ?? '',
+          joiningDate: d.joiningDate ?? new Date().toISOString().slice(0, 10),
+          salaryStructureId: d.salaryStructureId ?? undefined,
+          monthlyCtc: d.monthlyCtc ?? undefined,
+          branchId: d.branchId ?? undefined,
+          panNumber: d.panNumber ?? '',
+          pfNumber: d.pfNumber ?? '',
+          esiNumber: d.esiNumber ?? '',
+          bankName: d.bankName ?? '',
+          bankIfsc: d.bankIfsc ?? '',
+          userId: d.userId ?? null
+        };
+        this.desigSel = this.designations.includes(d.designation ?? '') ? d.designation! : (d.designation ? '__other' : '');
+        this.desigOther = this.desigSel === '__other';
+        this.deptSel = this.departments.includes(d.department ?? '') ? d.department! : (d.department ? '__other' : '');
+        this.deptOther = this.deptSel === '__other';
+        this.showAdd.set(true);
+      },
+      error: () => this.addErr.set('Employee detail load nahi hui')
+    });
   }
 
   saveEmployee() {
@@ -207,7 +271,18 @@ export class StaffComponent {
     if (this.nf.department?.trim()) payload.department = this.nf.department.trim();
     if (this.nf.panNumber?.trim()) payload.panNumber = this.nf.panNumber.trim();
     if (this.nf.monthlyCtc && +this.nf.monthlyCtc > 0) payload.monthlyCtc = +this.nf.monthlyCtc;
-    this.svc.createEmployee(payload).subscribe({
+    if (this.nf.pfNumber?.trim()) payload.pfNumber = this.nf.pfNumber.trim();
+    if (this.nf.esiNumber?.trim()) payload.esiNumber = this.nf.esiNumber.trim();
+    if (this.nf.bankName?.trim()) payload.bankName = this.nf.bankName.trim();
+    if (this.nf.bankIfsc?.trim()) payload.bankIfsc = this.nf.bankIfsc.trim();
+    if (this.nf.branchId) payload.branchId = this.nf.branchId;
+    if (this.nf.salaryStructureId) payload.salaryStructureId = this.nf.salaryStructureId;
+    payload.userId = this.nf.userId ?? null;   // login link (null = unlink)
+
+    const req = this.editId
+      ? this.svc.updateEmployee(this.editId, payload)
+      : this.svc.createEmployee(payload);
+    req.subscribe({
       next: () => { this.saving.set(false); this.showAdd.set(false); this.load(); },
       error: (e) => { this.saving.set(false); this.addErr.set(e?.error?.error ?? e?.error?.message ?? 'Employee save nahi hua'); }
     });

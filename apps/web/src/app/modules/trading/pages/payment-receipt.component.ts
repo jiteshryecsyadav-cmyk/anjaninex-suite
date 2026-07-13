@@ -1535,14 +1535,10 @@ export class PaymentReceiptComponent {
     this.saving.set(true);
     this.error.set('');
 
-    // Use first txn's mode as primary; bank ledger is mandatory but we don't have a picker here
-    // — pick first bank ledger if available
-    const bankLedgerId = this.bankLedgers()[0]?.id;
-    if (!bankLedgerId) {
-      this.error.set('No bank/cash ledger found. Setup Bank Accounts in Accounting first.');
-      this.saving.set(false);
-      return;
-    }
+    // Bank/cash ledger OPTIONAL — broker receipt (sales bills) me paisa firm ke paas aata hi
+    // nahi, sirf record hota hai (mode/cheque/UTR payment row me save hote hain).
+    // Ledger sirf tab zaroori jab purchase/on-account amount ho — backend khud check karta hai.
+    const bankLedgerId = this.bankLedgers()[0]?.id ?? null;
 
     const primary = this.txns()[0];
     const partyId = this.buyerId;  // Receipt = money in from buyer

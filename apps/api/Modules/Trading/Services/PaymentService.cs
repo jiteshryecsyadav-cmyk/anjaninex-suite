@@ -39,7 +39,7 @@ public record CreatePaymentDto(
     decimal Amount,
     string? ReferenceNo,
     string? BankName,
-    Guid BankLedgerId,
+    Guid? BankLedgerId,   // optional — broker receipt (sales settlement) me cash/bank lagta hi nahi
     string? Notes,
     List<PaymentAllocationDto>? Allocations,
     string? ReuseNo = null);   // edit (delete+recreate) me purana number reuse — renumber na ho
@@ -223,7 +223,7 @@ public class PaymentService : IPaymentService
                 Amount = dto.Amount,
                 ReferenceNo = dto.ReferenceNo,
                 BankName = dto.BankName,
-                BankLedgerId = dto.BankLedgerId,
+                BankLedgerId = dto.BankLedgerId == Guid.Empty ? null : dto.BankLedgerId,
                 Notes = dto.Notes,
                 CreatedBy = userId,
                 CreatedAt = DateTimeOffset.UtcNow,
@@ -427,7 +427,8 @@ public class PaymentService : IPaymentService
         if (bankSideAmount > 0)
         {
             var bankLedger = payment.BankLedgerId
-                ?? throw new InvalidOperationException("Bank/Cash ledger not specified");
+                ?? throw new InvalidOperationException(
+                    "Is amount ka kuch hissa firm ke cash/bank se jata hai — pehle Accounting me Cash ya Bank ledger banao");
 
             // Party ledger: agar purchase bills hain to unka SUPPLIER (party_id),
             // warna (on-account) payment.PartyId.

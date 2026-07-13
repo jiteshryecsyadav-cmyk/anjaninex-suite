@@ -321,10 +321,11 @@ export interface CreatePayment {
   amount: number;
   referenceNo?: string;
   bankName?: string;
-  bankLedgerId: string;
+  bankLedgerId: string | null;   // broker receipt me zaroori nahi
   notes?: string;
   allocations?: PaymentAllocation[];
   reuseNo?: string;   // edit me purana payment number reuse (renumber na ho)
+  moneyToAgency?: boolean;   // true = aadhat: paisa agency ke cash/bank me aaya
 }
 
 // =============================================================================

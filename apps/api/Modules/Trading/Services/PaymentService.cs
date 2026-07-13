@@ -29,7 +29,8 @@ public record PaymentDetailDto(
     Guid? BankLedgerId, string? BankLedgerName,
     Guid? VoucherId, string? VoucherNo,
     string? Notes,
-    List<PaymentAllocationDto> Allocations);
+    List<PaymentAllocationDto> Allocations,
+    bool MoneyToAgency = false);
 
 public record CreatePaymentDto(
     string PaymentType,
@@ -42,7 +43,8 @@ public record CreatePaymentDto(
     Guid? BankLedgerId,   // optional — broker receipt (sales settlement) me cash/bank lagta hi nahi
     string? Notes,
     List<PaymentAllocationDto>? Allocations,
-    string? ReuseNo = null);   // edit (delete+recreate) me purana number reuse — renumber na ho
+    string? ReuseNo = null,    // edit (delete+recreate) me purana number reuse — renumber na ho
+    bool MoneyToAgency = false);   // true = paisa agency ko mila (Dr Cash/Bank, Cr Buyer)
 
 // =============================================================================
 // Service
@@ -179,7 +181,8 @@ public class PaymentService : IPaymentService
             p.PaymentMode, p.Amount,
             p.ReferenceNo, p.BankName, p.BankBranch,
             p.BankLedgerId, bankLedgerName,
-            p.VoucherId, voucherNo, p.Notes, allocations);
+            p.VoucherId, voucherNo, p.Notes, allocations,
+            p.MoneyToAgency);
     }
 
     public async Task<PaymentDetailDto> Create(CreatePaymentDto dto, Guid firmId, Guid branchId, Guid userId)
@@ -224,6 +227,7 @@ public class PaymentService : IPaymentService
                 ReferenceNo = dto.ReferenceNo,
                 BankName = dto.BankName,
                 BankLedgerId = dto.BankLedgerId == Guid.Empty ? null : dto.BankLedgerId,
+                MoneyToAgency = dto.MoneyToAgency,
                 Notes = dto.Notes,
                 CreatedBy = userId,
                 CreatedAt = DateTimeOffset.UtcNow,
@@ -382,8 +386,9 @@ public class PaymentService : IPaymentService
 
         int order = 0;
 
-        // ---------- SALES settlement: NO cash/bank — Dr Supplier / Cr Buyer per bill ----------
-        if (salesBills.Count > 0)
+        // ---------- SALES settlement (BROKER model): NO cash/bank — Dr Supplier / Cr Buyer per bill ----------
+        // MoneyToAgency = true ho to ye skip — paisa agency ke cash/bank me aata hai (neeche bank-side branch).
+        if (salesBills.Count > 0 && !payment.MoneyToAgency)
         {
             foreach (var b in salesBills)
             {
@@ -420,9 +425,13 @@ public class PaymentService : IPaymentService
         // ---------- PURCHASE settlement (UNCHANGED): Dr/Cr Party vs Bank ----------
         // Purchase bills par payment = broker/firm apna paisa deta → cash/bank line lagti hai.
         // Pure on-account (koi allocation nahi) bhi yahin aata hai — purana behavior.
+        var salesAllocated = salesBills.Sum(b => allocByBill.GetValueOrDefault(b.Id, 0m));
         var purchaseAmount = purchaseBills.Sum(b => allocByBill.GetValueOrDefault(b.Id, 0m));
-        var unallocated = payment.Amount - salesBills.Sum(b => allocByBill.GetValueOrDefault(b.Id, 0m)) - purchaseAmount;
-        var bankSideAmount = purchaseAmount + Math.Max(0m, unallocated);
+        var unallocated = payment.Amount - salesAllocated - purchaseAmount;
+        // Aadhat model: sales allocation bhi bank-side se jati hai (Dr Cash/Bank, Cr Buyer)
+        var bankSideAmount = purchaseAmount
+            + (payment.MoneyToAgency ? salesAllocated : 0m)
+            + Math.Max(0m, unallocated);
 
         if (bankSideAmount > 0)
         {

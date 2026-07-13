@@ -188,6 +188,10 @@ public class Payment
     public Guid? VoucherId { get; set; }
     public string? Notes { get; set; }
 
+    // Aadhat/principal model: paisa AGENCY ko mila (Dr Cash/Bank, Cr Buyer).
+    // false = broker model (default): paisa seedha supplier ko gaya (Dr Supplier, Cr Buyer).
+    public bool MoneyToAgency { get; set; }
+
     public Guid CreatedBy { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }

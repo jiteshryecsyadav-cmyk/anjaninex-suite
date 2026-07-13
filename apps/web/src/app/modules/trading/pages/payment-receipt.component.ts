@@ -563,6 +563,26 @@ interface PartyBehavior {
             <div class="stat-value">₹ {{ balancePending() | number:'1.2-2' }}</div>
           </div>
         </div>
+
+        <!-- Paisa kisko mila? — broker vs aadhat model (PILOT: abhi sirf Riddhi Agency) -->
+        @if (pilotMoneyToggle()) {
+        <div class="mt-4 p-3 rounded-lg border border-[#D6DDEA] bg-[#FAF7F0]">
+          <div class="text-xs font-bold uppercase text-[#4A5878] mb-2">💸 Paisa kisko mila?</div>
+          <div class="flex gap-6 flex-wrap">
+            <label class="flex items-center gap-2 cursor-pointer text-sm font-semibold text-[#1B2E5C]">
+              <input type="radio" name="moneyTo" [value]="false" [(ngModel)]="moneyToAgency">
+              🤝 Seedha supplier ko gaya <span class="text-xs font-normal text-gray-500">(broker — sirf record)</span>
+            </label>
+            <label class="flex items-center gap-2 cursor-pointer text-sm font-semibold text-[#1B2E5C]">
+              <input type="radio" name="moneyTo" [value]="true" [(ngModel)]="moneyToAgency">
+              🏦 Agency ko mila <span class="text-xs font-normal text-gray-500">(aadhat — cash/bank me aayega, fir supplier ko payment karna)</span>
+            </label>
+          </div>
+          @if (moneyToAgency && bankLedgers().length === 0) {
+            <p class="text-red-600 text-xs mt-2">⚠️ Agency ko paisa mila hai to Cash/Bank ledger chahiye — Accounting me pehle bana lo.</p>
+          }
+        </div>
+        }
       </div>
 
       <!-- ============ SECTION 5: PAYMENT ANALYTICS (Simple SVG) ============ -->
@@ -985,6 +1005,15 @@ export class PaymentReceiptComponent {
   bankLedgers = signal<any[]>([]);
   saving = signal(false);
   error = signal('');
+  // false = broker (paisa seedha supplier ko, sirf record) | true = aadhat (paisa agency ke cash/bank me)
+  moneyToAgency = false;
+
+  // PILOT: "Paisa kisko mila" toggle abhi sirf in firms me — test complete hone par
+  // list me firms jodo ya sab ke liye kholne ko pilotMoneyToggle() se `return true;` kar do.
+  private static readonly PILOT_FIRMS = ['riddhi agency'];
+  pilotMoneyToggle(): boolean {
+    return PaymentReceiptComponent.PILOT_FIRMS.includes((this.features.firmName() || '').toLowerCase().trim());
+  }
 
   // Section 1
   company = 'namokara';
@@ -1081,6 +1110,7 @@ export class PaymentReceiptComponent {
       const d: any = await firstValueFrom(this.svc.getPayment(id));
       this.editPaymentNo = d.paymentNo || '';   // same number par re-save
       this.receiptDate = d.paymentDate;
+      this.moneyToAgency = !!d.moneyToAgency;   // toggle wapas set
       this.remark = '';
 
       // Buyer (receipt me partyId = buyer)
@@ -1518,6 +1548,7 @@ export class PaymentReceiptComponent {
     this.txns.set([this.newTxn()]);
     this.bills.set([]);
     this.commissionPct = 0; this.remark = ''; this.manualVNo = '';
+    this.moneyToAgency = false;
     this.error.set('');
   }
 
@@ -1535,10 +1566,19 @@ export class PaymentReceiptComponent {
     this.saving.set(true);
     this.error.set('');
 
-    // Bank/cash ledger OPTIONAL — broker receipt (sales bills) me paisa firm ke paas aata hi
-    // nahi, sirf record hota hai (mode/cheque/UTR payment row me save hote hain).
-    // Ledger sirf tab zaroori jab purchase/on-account amount ho — backend khud check karta hai.
+    // PILOT safety: toggle jis firm me nahi khula, wahan hamesha broker default
+    if (!this.pilotMoneyToggle()) this.moneyToAgency = false;
+
+    // Bank/cash ledger OPTIONAL — broker receipt me paisa firm ke paas aata hi nahi.
+    // Par "Agency ko mila" (aadhat) chuna ho to ledger zaroori hai — paisa cash/bank me aayega.
     const bankLedgerId = this.bankLedgers()[0]?.id ?? null;
+    if (this.moneyToAgency && !bankLedgerId) {
+      const msg = 'Agency ko paisa mila hai to Cash/Bank ledger chahiye — Accounting → Ledgers me "Cash" (Cash-in-Hand) ya bank account banao, fir save karo.';
+      this.error.set(msg);
+      alert('⚠️ ' + msg);
+      this.saving.set(false);
+      return;
+    }
 
     const primary = this.txns()[0];
     const partyId = this.buyerId;  // Receipt = money in from buyer
@@ -1584,7 +1624,8 @@ export class PaymentReceiptComponent {
       bankLedgerId,
       notes: notesPieces.join(' | ') || undefined,
       allocations: allocations.length > 0 ? allocations : undefined,
-      reuseNo: (this.editMode && this.editPaymentNo) ? this.editPaymentNo : undefined   // edit me same number
+      reuseNo: (this.editMode && this.editPaymentNo) ? this.editPaymentNo : undefined,   // edit me same number
+      moneyToAgency: this.moneyToAgency
     }).subscribe({
       next: (p: any) => {
         // Cheque txns -> Cheque Handover Register (pending: taken_by khaali)

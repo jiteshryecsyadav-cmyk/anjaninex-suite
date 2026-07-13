@@ -112,83 +112,93 @@ public class MeController : ControllerBase
         {
             var conn = (NpgsqlConnection)_db.Database.GetDbConnection();
             if (conn.State != ConnectionState.Open) await conn.OpenAsync();
-            await using var pcmd = conn.CreateCommand();
-            pcmd.CommandText = @"SELECT pr.id, pr.amount, pr.method, f.name AS firm_name, pr.created_at
-                                 FROM platform.payment_requests pr
-                                 JOIN platform.firms f ON f.id = pr.firm_id
-                                 WHERE pr.status = 'pending'
-                                 ORDER BY pr.created_at DESC
-                                 LIMIT 50";
-            await using var prr = await pcmd.ExecuteReaderAsync();
-            while (await prr.ReadAsync())
+
+            // NOTE: Npgsql ek connection par ek waqt me EK hi command chalne deta hai —
+            // isliye har reader ko apne { } block me band karna zaroori hai (warna
+            // "A command is already in progress" exception -> bell 400 deta tha).
+            await using (var pcmd = conn.CreateCommand())
             {
-                var amt = Convert.ToDecimal(prr["amount"]);
-                results.Add(new
+                pcmd.CommandText = @"SELECT pr.id, pr.amount, pr.method, f.name AS firm_name, pr.created_at
+                                     FROM platform.payment_requests pr
+                                     JOIN platform.firms f ON f.id = pr.firm_id
+                                     WHERE pr.status = 'pending'
+                                     ORDER BY pr.created_at DESC
+                                     LIMIT 50";
+                await using var prr = await pcmd.ExecuteReaderAsync();
+                while (await prr.ReadAsync())
                 {
-                    id = (Guid)prr["id"],
-                    type = "payment_pending",
-                    severity = "warning",
-                    title = "Payment approval pending",
-                    body = $"{prr["firm_name"]} - Rs {amt:0} ({prr["method"]})",
-                    ctaLabel = "Review",
-                    ctaUrl = "/admin/billing",
-                    read = false,
-                    createdAt = Convert.ToDateTime(prr["created_at"])
-                });
+                    var amt = Convert.ToDecimal(prr["amount"]);
+                    results.Add(new
+                    {
+                        id = (Guid)prr["id"],
+                        type = "payment_pending",
+                        severity = "warning",
+                        title = "Payment approval pending",
+                        body = $"{prr["firm_name"]} - Rs {amt:0} ({prr["method"]})",
+                        ctaLabel = "Review",
+                        ctaUrl = "/admin/billing",
+                        read = false,
+                        createdAt = Convert.ToDateTime(prr["created_at"])
+                    });
+                }
             }
 
             // CREDIL: paid report requests awaiting admin approval.
-            await using var ccmd = conn.CreateCommand();
-            ccmd.CommandText = @"SELECT rr.id, rr.target_gst, rr.amount, f.name AS firm_name, rr.created_at
-                                 FROM credil.report_requests rr
-                                 JOIN platform.firms f ON f.id = rr.requesting_firm_id
-                                 WHERE rr.status = 'paid'
-                                 ORDER BY rr.created_at DESC LIMIT 50";
-            await using var crr = await ccmd.ExecuteReaderAsync();
-            while (await crr.ReadAsync())
+            await using (var ccmd = conn.CreateCommand())
             {
-                var amt = Convert.ToDecimal(crr["amount"]);
-                results.Add(new
+                ccmd.CommandText = @"SELECT rr.id, rr.target_gst, rr.amount, f.name AS firm_name, rr.created_at
+                                     FROM credil.report_requests rr
+                                     JOIN platform.firms f ON f.id = rr.requesting_firm_id
+                                     WHERE rr.status = 'paid'
+                                     ORDER BY rr.created_at DESC LIMIT 50";
+                await using var crr = await ccmd.ExecuteReaderAsync();
+                while (await crr.ReadAsync())
                 {
-                    id = (Guid)crr["id"],
-                    type = "credil_pending",
-                    severity = "warning",
-                    title = "CREDIL report approval pending",
-                    body = $"{crr["firm_name"]} - GST {crr["target_gst"]} (Rs {amt:0})",
-                    ctaLabel = "Review",
-                    ctaUrl = "/admin/credil",
-                    read = false,
-                    createdAt = Convert.ToDateTime(crr["created_at"])
-                });
+                    var amt = Convert.ToDecimal(crr["amount"]);
+                    results.Add(new
+                    {
+                        id = (Guid)crr["id"],
+                        type = "credil_pending",
+                        severity = "warning",
+                        title = "CREDIL report approval pending",
+                        body = $"{crr["firm_name"]} - GST {crr["target_gst"]} (Rs {amt:0})",
+                        ctaLabel = "Review",
+                        ctaUrl = "/admin/credil",
+                        read = false,
+                        createdAt = Convert.ToDateTime(crr["created_at"])
+                    });
+                }
             }
 
             // COMPLAINTS: user ke unread messages -> sadmin ke bell me blink.
             // Thread kholte hi read ho jaate hain, to notification apne aap chali jaati hai.
-            await using var compCmd = conn.CreateCommand();
-            compCmd.CommandText = @"SELECT c.id, c.subject, f.name AS firm_name,
-                                           count(m.id) AS unread, max(m.created_at) AS last_at
-                                    FROM platform.complaints c
-                                    JOIN platform.firms f ON f.id = c.firm_id
-                                    JOIN platform.complaint_messages m
-                                         ON m.complaint_id = c.id AND m.sender = 'user' AND m.read_at IS NULL
-                                    GROUP BY c.id, c.subject, f.name
-                                    ORDER BY last_at DESC LIMIT 50";
-            await using var cor = await compCmd.ExecuteReaderAsync();
-            while (await cor.ReadAsync())
+            await using (var compCmd = conn.CreateCommand())
             {
-                var unread = Convert.ToInt32(cor["unread"]);
-                results.Add(new
+                compCmd.CommandText = @"SELECT c.id, c.subject, f.name AS firm_name,
+                                               count(m.id) AS unread, max(m.created_at) AS last_at
+                                        FROM platform.complaints c
+                                        JOIN platform.firms f ON f.id = c.firm_id
+                                        JOIN platform.complaint_messages m
+                                             ON m.complaint_id = c.id AND m.sender = 'user' AND m.read_at IS NULL
+                                        GROUP BY c.id, c.subject, f.name
+                                        ORDER BY last_at DESC LIMIT 50";
+                await using var cor = await compCmd.ExecuteReaderAsync();
+                while (await cor.ReadAsync())
                 {
-                    id = (Guid)cor["id"],
-                    type = "complaint_new",
-                    severity = "warning",
-                    title = "📢 Nayi complaint aayi hai",
-                    body = $"{cor["firm_name"]} - {cor["subject"]} ({unread} naya message)",
-                    ctaLabel = "Kholo",
-                    ctaUrl = "/admin/complaints",
-                    read = false,
-                    createdAt = Convert.ToDateTime(cor["last_at"])
-                });
+                    var unread = Convert.ToInt32(cor["unread"]);
+                    results.Add(new
+                    {
+                        id = (Guid)cor["id"],
+                        type = "complaint_new",
+                        severity = "warning",
+                        title = "📢 Nayi complaint aayi hai",
+                        body = $"{cor["firm_name"]} - {cor["subject"]} ({unread} naya message)",
+                        ctaLabel = "Kholo",
+                        ctaUrl = "/admin/complaints",
+                        read = false,
+                        createdAt = Convert.ToDateTime(cor["last_at"])
+                    });
+                }
             }
         }
 

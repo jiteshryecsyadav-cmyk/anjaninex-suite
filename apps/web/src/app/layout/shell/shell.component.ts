@@ -10,6 +10,7 @@ import { SubscriptionService } from '../../modules/subscription/subscription.ser
 import { TrialBannerComponent } from '../../modules/subscription/trial-banner.component';
 import { SuspendedLockoutComponent } from '../../modules/subscription/suspended-lockout.component';
 import { FeatureService } from '../../shared/feature.service';
+import { NativeTrackingService } from '../../shared/native-tracking.service';
 import { UpgradeNudgeComponent } from '../../shared/upgrade-nudge.component';
 import { WalletIconComponent } from '../../shared/wallet-icon.component';
 import { AnjiHelpComponent } from '../../shared/help/anji-help.component';
@@ -504,6 +505,7 @@ export class ShellComponent {
   wallet = inject(WalletService);
   subscription = inject(SubscriptionService);
   features = inject(FeatureService);
+  private nativeTracking = inject(NativeTrackingService);
   private http = inject(HttpClient);
   menuOpen = signal(false);
   private menuCloseTimer: any = null;
@@ -788,9 +790,18 @@ export class ShellComponent {
     const tick = () => {
       if (!this.features.has('hr')) return;   // HR module hi nahi to kuch mat karo
       this.http.get<any>(`${environment.apiUrl}/api/hr/attendance/today`).subscribe({
-        next: (log) => {
-          // Sirf active check-in wale staff ki location jaye
-          if (log && log.checkInAt && !log.checkOutAt && navigator.geolocation) {
+        next: async (log) => {
+          const checkedIn = !!(log && log.checkInAt && !log.checkOutAt);
+
+          // NATIVE APK: background watcher (app band ho tab bhi chalta hai)
+          if (await this.nativeTracking.isNative()) {
+            if (checkedIn) this.nativeTracking.startTracking();
+            else this.nativeTracking.stopTracking();
+            return;   // native me web-ping ki zaroorat nahi
+          }
+
+          // BROWSER/PWA: app khuli ho tabhi — har 5 min ka ping
+          if (checkedIn && navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(pos => {
               this.http.post(`${environment.apiUrl}/api/hr/location/ping`, {
                 latitude: +pos.coords.latitude.toFixed(6),

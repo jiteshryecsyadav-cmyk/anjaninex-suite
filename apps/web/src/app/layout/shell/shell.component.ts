@@ -777,6 +777,37 @@ export class ShellComponent {
       this.wallet.refresh();
       this.subscription.refresh();
     }, 60_000);
+
+    // STAFF LIVE LOCATION — jo staff aaj check-in hai (check-out nahi hua), uski
+    // location har 5 min me server ko jati hai → HR Live Map par dikhti hai.
+    // Limitation: app/browser khula hona chahiye — band app background me GPS nahi de sakti.
+    this.startLocationPings();
+  }
+
+  private startLocationPings() {
+    const tick = () => {
+      if (!this.features.has('hr')) return;   // HR module hi nahi to kuch mat karo
+      this.http.get<any>(`${environment.apiUrl}/api/hr/attendance/today`).subscribe({
+        next: (log) => {
+          // Sirf active check-in wale staff ki location jaye
+          if (log && log.checkInAt && !log.checkOutAt && navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(pos => {
+              this.http.post(`${environment.apiUrl}/api/hr/location/ping`, {
+                latitude: +pos.coords.latitude.toFixed(6),
+                longitude: +pos.coords.longitude.toFixed(6),
+                accuracy: pos.coords.accuracy != null ? Math.round(pos.coords.accuracy) : null,
+                speed: pos.coords.speed != null ? +pos.coords.speed.toFixed(2) : null,
+                batteryPct: null,
+                isBackground: false
+              }).subscribe({ next: () => {}, error: () => {} });
+            }, () => {}, { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 });
+          }
+        },
+        error: () => {}   // 404 = login employee se linked nahi — chup-chaap skip
+      });
+    };
+    setTimeout(tick, 15_000);                 // login ke 15s baad pehla ping
+    setInterval(tick, 5 * 60_000);            // fir har 5 minute
   }
 
   initials(): string {

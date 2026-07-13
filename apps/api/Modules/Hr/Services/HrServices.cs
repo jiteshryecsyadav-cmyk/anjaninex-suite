@@ -377,8 +377,8 @@ public class AttendanceService : IAttendanceService
 
     public AttendanceService(AppDbContext db) => _db = db;
 
-    // Server VPS UTC pe chalta hai — attendance time IST (UTC+5:30) me hona chahiye warna
-    // sab "late" mark ho jate the. Saari time/date IST se lo.
+    // IST sirf date/late-early CALCULATION ke liye — DB me hamesha UTC save karo,
+    // kyunki Npgsql 'timestamptz' me sirf offset 0 (UTC) accept karta hai.
     private static readonly TimeSpan IST = new TimeSpan(5, 30, 0);
     private static DateTimeOffset NowIst() => DateTimeOffset.UtcNow.ToOffset(IST);
 
@@ -395,13 +395,14 @@ public class AttendanceService : IAttendanceService
             .Where(p => p.FirmId == firmId && p.IsActive)
             .FirstOrDefaultAsync();
 
-        var now = NowIst();
+        var nowIst = NowIst();                 // late calc IST me
+        var now = DateTimeOffset.UtcNow;       // DB me UTC hi jayega
         var isLate = false;
         if (policy != null)
         {
             var workStart = policy.WorkStartTime;
             var graceCutoff = workStart.AddMinutes(policy.LateGraceMin);
-            isLate = TimeOnly.FromDateTime(now.DateTime) > graceCutoff;
+            isLate = TimeOnly.FromDateTime(nowIst.DateTime) > graceCutoff;
         }
 
         AttendanceLog log;
@@ -472,13 +473,14 @@ public class AttendanceService : IAttendanceService
         if (log.CheckOutAt != null)
             throw new InvalidOperationException("Already checked out");
 
-        var now = NowIst();
+        var nowIst = NowIst();                 // early-out calc IST me
+        var now = DateTimeOffset.UtcNow;       // DB me UTC hi jayega
         // Early-out: policy ke work-end-time se pehle nikla to mark karo
         var coPolicy = await _db.AttendancePolicies
             .Where(p => p.FirmId == log.FirmId && p.IsActive)
             .FirstOrDefaultAsync();
         if (coPolicy != null)
-            log.IsEarlyOut = TimeOnly.FromDateTime(now.DateTime) < coPolicy.WorkEndTime;
+            log.IsEarlyOut = TimeOnly.FromDateTime(nowIst.DateTime) < coPolicy.WorkEndTime;
         log.CheckOutAt = now;
         log.CheckOutLat = dto.Latitude;
         log.CheckOutLng = dto.Longitude;
@@ -515,7 +517,7 @@ public class AttendanceService : IAttendanceService
 
     public async Task<AttendanceLogDto?> GetTodayLog(Guid employeeId)
     {
-        var today = DateOnly.FromDateTime(DateTime.Now);
+        var today = DateOnly.FromDateTime(NowIst().DateTime);   // IST date — check-in wali date se match kare
         var log = await _db.AttendanceLogs
             .FirstOrDefaultAsync(a => a.EmployeeId == employeeId && a.LogDate == today);
         return log == null ? null : await ToDto(log);
@@ -611,7 +613,7 @@ public class LocationService : ILocationService
         {
             FirmId = firmId,
             EmployeeId = employeeId,
-            CapturedAt = DateTimeOffset.Now,
+            CapturedAt = DateTimeOffset.UtcNow,   // Npgsql timestamptz = sirf UTC
             Latitude = dto.Latitude,
             Longitude = dto.Longitude,
             Accuracy = dto.Accuracy,
@@ -624,7 +626,7 @@ public class LocationService : ILocationService
 
     public async Task RecordPingsBatch(Guid employeeId, List<LocationPingDto> pings, Guid firmId)
     {
-        var now = DateTimeOffset.Now;
+        var now = DateTimeOffset.UtcNow;   // Npgsql timestamptz = sirf UTC
         foreach (var p in pings)
         {
             _db.LocationTrails.Add(new LocationTrail

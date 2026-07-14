@@ -164,17 +164,26 @@ public class AuthService : IAuthService
                 user.AgentId));
     }
 
-    // Ek hi bande ke (same phone/email/username) alag-alag firms ke ACTIVE logins
-    private IQueryable<User> LinkedUsers(User me) =>
-        _db.Users.Where(u => u.IsActive && u.FirmId != null &&
-            ((me.Phone != null && me.Phone != "" && u.Phone == me.Phone) ||
-             (me.Email != null && me.Email != "" && u.Email == me.Email) ||
-             u.Username == me.Username));
+    // Ek hi bande ke (same phone/email/username) alag-alag firms ke ACTIVE logins.
+    // Phone DIGITS se milta hai (last 10) — "+91 93270 20834" aur "9327020834" ek hi maane jayenge.
+    private async Task<List<User>> LinkedUsersAsync(User me)
+    {
+        var digits = new string((me.Phone ?? "").Where(char.IsDigit).ToArray());
+        var phone10 = digits.Length > 10 ? digits[^10..] : digits;
+        var email = (me.Email ?? "").Trim().ToLowerInvariant();
+        return await _db.Users.FromSqlInterpolated($@"
+            SELECT * FROM core.users u
+            WHERE u.is_active AND u.firm_id IS NOT NULL AND (
+                  ({phone10} <> '' AND right(regexp_replace(coalesce(u.phone,''), '\D', '', 'g'), 10) = {phone10})
+               OR ({email} <> '' AND lower(coalesce(u.email,'')) = {email})
+               OR u.username = {me.Username}
+            )").ToListAsync();
+    }
 
     public async Task<List<FirmChoiceDto>> MyFirms(Guid userId)
     {
         var me = await _db.Users.SingleAsync(u => u.Id == userId);
-        var linked = await LinkedUsers(me).Select(u => u.FirmId!.Value).Distinct().ToListAsync();
+        var linked = (await LinkedUsersAsync(me)).Select(u => u.FirmId!.Value).Distinct().ToList();
         return await _db.Firms.IgnoreQueryFilters()
             .Where(f => linked.Contains(f.Id) && f.Status != "deleted" && f.Status != "suspended")
             .OrderBy(f => f.Name)
@@ -185,7 +194,7 @@ public class AuthService : IAuthService
     public async Task<LoginResponse> SwitchFirm(Guid userId, Guid firmId, string? ip, string? userAgent)
     {
         var me = await _db.Users.SingleAsync(u => u.Id == userId);
-        var target = await LinkedUsers(me).FirstOrDefaultAsync(u => u.FirmId == firmId)
+        var target = (await LinkedUsersAsync(me)).FirstOrDefault(u => u.FirmId == firmId)
             ?? throw new AuthFailedException("Is firm me aapka login nahi mila");
         if (target.IsLocked && target.LockedUntil > DateTimeOffset.UtcNow)
             throw new AuthFailedException("Us firm ka account locked hai");

@@ -25,6 +25,12 @@ export const routes: Routes = [
     path: 'dukan/shop/:firmId',
     loadChildren: () => import('./modules/dukan/dukan.routes').then(m => m.dukanShopRoutes)
   },
+  // Party Chat — PARTY side (public): mobile + OTP se verify hoke firm se chat.
+  // Shell ke bahar — party ke paas Vyapaar Setu login nahi hota.
+  {
+    path: 'pchat/:firmId',
+    loadComponent: () => import('./modules/party-chat/party-chat-public.component').then(m => m.PartyChatPublicComponent)
+  },
   {
     path: '',
     canActivate: [authGuard],
@@ -106,6 +112,11 @@ export const routes: Routes = [
         // Plans — subscription plans + usage meter; wallet se plan kharido/change karo
         path: 'plans',
         loadComponent: () => import('./modules/plans/plans-page.component').then(m => m.PlansPageComponent)
+      },
+      {
+        // Party Chat (firm side) — apni parties se chat; flag 'party_chat' se pilot
+        path: 'party-chat',
+        loadComponent: () => import('./modules/party-chat/party-chat.component').then(m => m.PartyChatComponent)
       },
       {
         // Core Master list — saare contacts ek jagah (Trading + AD + HR).

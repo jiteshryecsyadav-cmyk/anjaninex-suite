@@ -176,6 +176,13 @@ import { environment } from '../../../environments/environment';
                 <span class="w-5 text-center">📢</span> Complaint Box
               </a>
             }
+            <!-- Party Chat — apni parties se chat (feature flag: pilot pehle Riddhi) -->
+            @if (features.flag('party_chat')) {
+              <a routerLink="/party-chat" routerLinkActive="!bg-anjaninex-red !text-white"
+                 class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-semibold text-white/75 hover:text-white hover:bg-white/10">
+                <span class="w-5 text-center">💬</span> Party Chat
+              </a>
+            }
             @if (features.credilEnabled()) {
               <a routerLink="/credil" routerLinkActive="!bg-anjaninex-red !text-white"
                  class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-semibold text-white/75 hover:text-white hover:bg-white/10">

@@ -113,6 +113,35 @@ public class AnjaninexAdminController : ControllerBase
         return Ok(new { ok = true, deactivatedUsers = users.Count });
     }
 
+    public record ComplaintBoxToggleDto(bool Enabled);
+
+    /// <summary>Complaint Box per-firm on/off (CREDIL pattern — instant save).</summary>
+    [HttpPut("firms/{id}/complaint-box")]
+    [HasPermission("platform.firm.edit.platform")]
+    public async Task<IActionResult> ToggleComplaintBox(Guid id, [FromBody] ComplaintBoxToggleDto dto)
+    {
+        var n = await _db.Database.ExecuteSqlRawAsync(
+            "UPDATE platform.firms SET complaint_box_enabled = {0}, updated_at = now() WHERE id = {1}",
+            dto.Enabled, id);
+        return n == 0 ? NotFound() : Ok(new { ok = true, enabled = dto.Enabled });
+    }
+
+    /// <summary>Firm ka complaint-box flag (subscription page toggle load ke liye).</summary>
+    [HttpGet("firms/{id}/complaint-box")]
+    [HasPermission("platform.firm.view.platform")]
+    public async Task<IActionResult> GetComplaintBox(Guid id)
+    {
+        // Column entity me mapped nahi (credil pattern) — raw SQL se padho
+        var conn = (Npgsql.NpgsqlConnection)_db.Database.GetDbConnection();
+        if (conn.State != System.Data.ConnectionState.Open) await conn.OpenAsync();
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = "SELECT COALESCE(complaint_box_enabled,true) FROM platform.firms WHERE id = @f";
+        cmd.Parameters.Add(new Npgsql.NpgsqlParameter("f", id));
+        var v = await cmd.ExecuteScalarAsync();
+        if (v is null) return NotFound();
+        return Ok(new { enabled = v is bool b && b });
+    }
+
     /// <summary>
     /// SUPPORT LOGIN — Anjaninex team ke liye is firm me ek default login banata hai
     /// (ya password reset karta hai) aur credentials wapas deta hai.

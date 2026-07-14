@@ -129,6 +129,23 @@ const MODULE_LIST: Array<{ key: string; label: string; icon: string; description
                 <span class="slider"></span>
               </label>
             </div>
+
+            <!-- Complaint Box — alag flag (platform.firms.complaint_box_enabled), turant save -->
+            <div class="mod-row" [class.mod-on]="complaintBoxEnabled()">
+              <div class="flex-1">
+                <div class="flex items-center gap-2">
+                  <span class="text-xl">📢</span>
+                  <span class="font-bold text-[#2d1040]">Complaint Box</span>
+                  <span class="text-[10px] font-bold text-purple-600 bg-purple-100 rounded-full px-2 py-0.5">INSTANT SAVE</span>
+                </div>
+                <div class="text-xs text-gray-600 ml-7">User → Team Vyapaar Setu chat (blue ticks). Band karne se firm support nahi bhej payegi — soch ke off karo</div>
+              </div>
+              <label class="switch">
+                <input type="checkbox" [checked]="complaintBoxEnabled()" [disabled]="complaintBoxBusy()"
+                       (change)="toggleComplaintBox($any($event.target).checked)">
+                <span class="slider"></span>
+              </label>
+            </div>
           </div>
         </div>
 
@@ -421,6 +438,32 @@ export class AdminFirmSubscriptionComponent implements OnInit {
     });
   }
 
+  // ---- Complaint Box per-firm toggle (platform.firms.complaint_box_enabled — instant save) ----
+  complaintBoxEnabled = signal(true);
+  complaintBoxBusy = signal(false);
+
+  loadComplaintBox() {
+    this.http.get<{ enabled: boolean }>(
+      `${environment.apiUrl}/api/admin/firms/${this.firmId}/complaint-box`).subscribe({
+      next: r => this.complaintBoxEnabled.set(r.enabled !== false),
+      error: () => {}
+    });
+  }
+
+  toggleComplaintBox(on: boolean) {
+    const prev = this.complaintBoxEnabled();
+    if (!on && !confirm('Pakka? Band karne se ye firm aapko complaint/message NAHI bhej payegi.')) {
+      this.complaintBoxEnabled.set(prev);
+      return;
+    }
+    this.complaintBoxEnabled.set(on);   // optimistic
+    this.complaintBoxBusy.set(true);
+    this.http.put(`${environment.apiUrl}/api/admin/firms/${this.firmId}/complaint-box`, { enabled: on }).subscribe({
+      next: () => { this.complaintBoxBusy.set(false); alert(on ? '✓ Complaint Box ON' : '✓ Complaint Box OFF — firm ko sidebar me nahi dikhega (refresh ke baad)'); },
+      error: (e) => { this.complaintBoxBusy.set(false); this.complaintBoxEnabled.set(prev); alert('❌ ' + (e?.error?.error ?? 'fail')); }
+    });
+  }
+
   toggleCredil(on: boolean) {
     const prev = this.credilEnabled();
     this.credilEnabled.set(on);   // optimistic
@@ -621,6 +664,7 @@ export class AdminFirmSubscriptionComponent implements OnInit {
     this.loadUsers();
     this.loadTheme();
     this.loadCredil();
+    this.loadComplaintBox();
   }
 
   loadPlans() {

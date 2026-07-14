@@ -288,15 +288,22 @@ public class MeController : ControllerBase
 
         if (firm == null) return NotFound();
 
-        // CREDIL feature flag (separate column on platform.firms).
+        // CREDIL + Complaint Box flags (separate columns on platform.firms).
         bool credilEnabled = false;
+        bool complaintBoxEnabled = true;
         {
             var conn = (NpgsqlConnection)_db.Database.GetDbConnection();
             if (conn.State != ConnectionState.Open) await conn.OpenAsync();
             await using var cmd = conn.CreateCommand();
-            cmd.CommandText = "SELECT COALESCE(credil_enabled,false) FROM platform.firms WHERE id = @f";
+            cmd.CommandText = @"SELECT COALESCE(credil_enabled,false), COALESCE(complaint_box_enabled,true)
+                                FROM platform.firms WHERE id = @f";
             cmd.Parameters.Add(new NpgsqlParameter("f", firmId));
-            credilEnabled = (await cmd.ExecuteScalarAsync()) is bool b && b;
+            await using var rdr = await cmd.ExecuteReaderAsync();
+            if (await rdr.ReadAsync())
+            {
+                credilEnabled = rdr.GetBoolean(0);
+                complaintBoxEnabled = rdr.GetBoolean(1);
+            }
         }
 
         // Feature flags — pilot/rollout switches (sadmin Feature Flags page se control hote hain).
@@ -345,6 +352,7 @@ public class MeController : ControllerBase
             modules = enabled,
             features,
             credilEnabled,
+            complaintBoxEnabled,
             planCode = firm.PlanCode ?? "starter",
             limits = new
             {

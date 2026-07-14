@@ -28,6 +28,7 @@ export interface MeModulesResponse {
   modules: ModuleKey[];
   features?: string[];   // feature flags (pilot/rollout) — sadmin Feature Flags page se
   credilEnabled?: boolean;
+  complaintBoxEnabled?: boolean;
   planCode: string;
   limits: {
     userLimit: number;
@@ -77,6 +78,7 @@ export class FeatureService {
   /** Fixed UI theme color assigned by Anjaninex super-admin (users can't change). */
   firmTheme = signal<string>('classic');
   credilEnabled = signal<boolean>(false);
+  complaintBoxEnabled = signal<boolean>(true);   // default ON — support ka rasta
   planCode = signal<string>('starter');
   userLimit = signal<number>(3);
   branchLimit = signal<number>(1);
@@ -132,6 +134,7 @@ export class FeatureService {
         this.firmState.set(r.firmState || '');
         this.firmTheme.set(r.firmTheme || 'classic');
         this.credilEnabled.set(!!r.credilEnabled);
+        this.complaintBoxEnabled.set(r.complaintBoxEnabled !== false);   // missing = ON
         // is device pe yaad rakho — login page (pre-auth) par bhi yahi theme dikhe
         try { localStorage.setItem('ax_firm_theme', r.firmTheme || 'classic'); } catch {}
         this.planCode.set(r.planCode);

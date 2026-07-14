@@ -169,11 +169,13 @@ import { environment } from '../../../environments/environment';
                class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-semibold text-white/75 hover:text-white hover:bg-white/10">
               <span class="w-5 text-center">💎</span> Plans
             </a>
-            <!-- Complaint Box — Anjaninex ko complaint bhejo (har user; WhatsApp jaise blue ticks) -->
-            <a routerLink="/complaints" routerLinkActive="!bg-anjaninex-red !text-white"
-               class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-semibold text-white/75 hover:text-white hover:bg-white/10">
-              <span class="w-5 text-center">📢</span> Complaint Box
-            </a>
+            <!-- Complaint Box — Anjaninex ko complaint bhejo (default ON; sadmin firm-wise band kar sakta hai) -->
+            @if (features.complaintBoxEnabled()) {
+              <a routerLink="/complaints" routerLinkActive="!bg-anjaninex-red !text-white"
+                 class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-semibold text-white/75 hover:text-white hover:bg-white/10">
+                <span class="w-5 text-center">📢</span> Complaint Box
+              </a>
+            }
             @if (features.credilEnabled()) {
               <a routerLink="/credil" routerLinkActive="!bg-anjaninex-red !text-white"
                  class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-semibold text-white/75 hover:text-white hover:bg-white/10">

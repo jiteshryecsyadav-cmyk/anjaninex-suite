@@ -136,7 +136,7 @@ interface PMsg {
     .pc-shell {
       display: flex; flex-direction: column;
       height: 100dvh; width: 100%; max-width: 640px; margin: 0 auto;
-      background: #FAF7F0; font-size: 16px;
+      background: #FAF7F0; font-size: 22px;
     }
     .pc-header {
       display: flex; align-items: center; gap: 12px;
@@ -148,19 +148,19 @@ interface PMsg {
       background: #fff; color: #1B2E5C; font-weight: 900; font-size: 20px;
       display: flex; align-items: center; justify-content: center; flex-shrink: 0;
     }
-    .pc-title { font-weight: 800; font-size: 17px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .pc-sub { font-size: 12px; opacity: .8; }
+    .pc-title { font-weight: 800; font-size: 22px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .pc-sub { font-size: 14px; opacity: .85; }
     .pc-body { flex: 1; overflow-y: auto; padding: 12px 0; }
     .pc-center { display: flex; align-items: center; justify-content: center; padding: 16px; }
     .pc-card { background: #fff; border-radius: 20px; padding: 24px 20px; width: 100%; max-width: 400px; box-shadow: 0 4px 20px rgba(27,46,92,.10); }
     .pc-chatbg { background: #ECE5DD; }
     .pc-bubble {
-      background: #fff; border-radius: 12px; padding: 8px 12px;
-      max-width: 82%; font-size: 16px; line-height: 1.35;
+      background: #fff; border-radius: 14px; padding: 10px 14px;
+      max-width: 70%; font-size: 22px; font-weight: 600; line-height: 1.35;
       box-shadow: 0 1px 1px rgba(0,0,0,.08);
     }
     .pc-mine { background: #DCF8C6; }
-    .pc-meta { font-size: 11px; color: #667781; text-align: right; margin-top: 2px; }
+    .pc-meta { font-size: 13px; font-weight: 400; color: #667781; text-align: right; margin-top: 3px; }
     .pc-tick { font-weight: 700; letter-spacing: -2px; }
     .pc-inputbar {
       display: flex; gap: 8px; align-items: flex-end;
@@ -168,13 +168,13 @@ interface PMsg {
       background: #F0F2F5; position: sticky; bottom: 0;
     }
     .pc-input {
-      flex: 1; border: 0; border-radius: 22px; padding: 12px 16px;
-      font-size: 16px; resize: none; outline: none; background: #fff;
-      max-height: 110px;
+      flex: 1; border: 0; border-radius: 26px; padding: 14px 18px;
+      font-size: 22px; font-weight: 500; resize: none; outline: none; background: #fff;
+      max-height: 130px;
     }
     .pc-send {
-      width: 46px; height: 46px; border-radius: 50%; border: 0; flex-shrink: 0;
-      background: #1B2E5C; color: #fff; font-size: 20px; cursor: pointer;
+      width: 54px; height: 54px; border-radius: 50%; border: 0; flex-shrink: 0;
+      background: #1B2E5C; color: #fff; font-size: 24px; cursor: pointer;
     }
     .pc-send:disabled { opacity: .5; }
     .pc-logout {
@@ -184,8 +184,9 @@ interface PMsg {
     .pc-logout:hover { background: rgba(255,255,255,.3); }
     .pc-img { border-radius: 10px; max-width: 100%; max-height: 260px; display: block; margin-bottom: 4px; }
     .pc-doc { display: flex; align-items: center; gap: 6px; background: rgba(255,255,255,.7); border-radius: 10px; padding: 8px 10px; margin-bottom: 4px; color: #1B2E5C; font-weight: 600; text-decoration: none; }
-    .pc-plus { width: 46px; height: 46px; border-radius: 50%; border: 0; flex-shrink: 0; background: #fff; color: #1B2E5C; font-size: 20px; cursor: pointer; }
-    .pc-attmenu { position: absolute; bottom: 70px; left: 10px; background: #fff; border-radius: 14px; box-shadow: 0 6px 24px rgba(0,0,0,.18); padding: 12px; display: flex; gap: 16px; z-index: 20; }
+    .pc-plus { width: 54px; height: 54px; border-radius: 50%; border: 0; flex-shrink: 0; background: #fff; color: #1B2E5C; font-size: 24px; cursor: pointer; }
+    /* FIXED position — sticky/keyboard kisi bhi haal me input ke upar dikhe */
+    .pc-attmenu { position: fixed; bottom: 90px; left: 12px; background: #fff; border-radius: 16px; box-shadow: 0 6px 24px rgba(0,0,0,.25); padding: 14px; display: flex; gap: 18px; z-index: 50; }
     .pc-att { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 12px; font-weight: 700; color: #4A5878; background: none; border: 0; cursor: pointer; }
     .pc-att-ico { width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 22px; color: #fff; }
     .pc-install {

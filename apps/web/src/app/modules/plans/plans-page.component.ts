@@ -156,14 +156,27 @@ export class PlansPageComponent {
 
   buy(p: Plan) {
     const amt = this.price(p);
-    if (!confirm(`"${p.name}" plan (${this.period() === 'yearly' ? '1 saal' : '1 mahina'}) — ₹${amt.toFixed(0)} wallet se katega.\n\nPakka lena hai?`)) return;
+    const periodLabel = this.period() === 'yearly' ? '1 saal' : '1 mahina';
 
     // Receipt pe GST number (optional) — firm ka saved GSTIN prefill, badal/khali kar sakte ho
     const gst = prompt(
       'Receipt pe GST number daalna hai to yahan likho (khali chhodo to receipt bina GST ke banegi):',
       this.features.firmGst() || '');
+    if (gst === null) return;   // cancel
     this.receiptGst = (gst || '').trim().toUpperCase();
 
+    if (this.wallet() >= amt) {
+      // Wallet me paisa hai → seedha wallet se
+      if (!confirm(`"${p.name}" plan (${periodLabel}) — ₹${amt.toFixed(0)} wallet se katega.\n\nPakka lena hai?`)) return;
+      this.buyFromWallet(p);
+    } else {
+      // Wallet kam → online payment (Razorpay) — payment hote hi plan APPLY
+      if (!confirm(`"${p.name}" plan (${periodLabel}) — ₹${amt.toFixed(0)}\n\nWallet me sirf ₹${this.wallet().toFixed(0)} hai.\nOnline payment (UPI/Card/NetBanking) se aage badhein? Payment hote hi plan lag jayega.`)) return;
+      this.buyViaGateway(p);
+    }
+  }
+
+  private buyFromWallet(p: Plan) {
     this.buying.set(p.code);
     this.http.post<any>(`${environment.apiUrl}/api/subscription/purchase`, {
       code: p.code, period: this.period()
@@ -181,6 +194,75 @@ export class PlansPageComponent {
         alert('⚠️ ' + msg);
       }
     });
+  }
+
+  // ============ RAZORPAY GATEWAY — payment hote hi plan apply ============
+  private loadRzpScript(): Promise<void> {
+    return new Promise((res, rej) => {
+      if ((window as any).Razorpay) { res(); return; }
+      const sc = document.createElement('script');
+      sc.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      sc.onload = () => res();
+      sc.onerror = () => rej(new Error('checkout.js load fail'));
+      document.body.appendChild(sc);
+    });
+  }
+
+  private async buyViaGateway(p: Plan) {
+    const amt = this.price(p);
+    this.buying.set(p.code);
+    try {
+      await this.loadRzpScript();
+      const order: any = await new Promise((res, rej) =>
+        this.http.post(`${environment.apiUrl}/api/billing/razorpay/order`, { amount: amt })
+          .subscribe({ next: r => res(r), error: e => rej(e) }));
+      const Rzp = (window as any).Razorpay;
+      if (!Rzp) throw new Error('Razorpay load nahi hua');
+      const rzp = new Rzp({
+        key: order.keyId,
+        order_id: order.orderId,
+        amount: order.amount,
+        currency: order.currency || 'INR',
+        name: order.name || 'Vyapaar Setu',
+        description: `${p.name} plan (${this.period()})`,
+        prefill: { email: order.email || undefined, contact: order.contact || undefined },
+        theme: { color: '#1B2E5C' },
+        handler: (resp: any) => {
+          // Verify + PLAN APPLY ek hi call me (backend paisa wallet me daal ke plan laga deta hai)
+          this.http.post<any>(`${environment.apiUrl}/api/billing/razorpay/verify`, {
+            orderId: resp.razorpay_order_id,
+            paymentId: resp.razorpay_payment_id,
+            signature: resp.razorpay_signature,
+            amount: amt,
+            planCode: p.code,
+            period: this.period()
+          }).subscribe({
+            next: (r) => {
+              this.buying.set(null);
+              if (r.planApplied) {
+                this.toast.success(`🎉 Payment successful — "${p.name}" plan active ho gaya!`);
+                this.downloadReceipt(p, r.planResult ?? { paid: amt, walletBalance: 0 });
+              } else {
+                alert('⚠️ Payment ho gaya (paisa wallet me hai) par plan apply nahi hua: '
+                  + (r.planError ?? '') + '\nWallet se dobara "Ye plan lo" dabao.');
+              }
+              this.features.refresh();
+            },
+            error: (e) => {
+              this.buying.set(null);
+              alert('⚠️ ' + (e?.error?.error ?? 'Payment verify nahi hua — paisa kata ho to support se sampark karo'));
+            }
+          });
+        },
+        modal: { ondismiss: () => this.buying.set(null) }
+      });
+      rzp.open();
+    } catch (e: any) {
+      this.buying.set(null);
+      const msg = e?.error?.error ?? e?.message ?? 'Online payment shuru nahi hua';
+      this.toast.error(msg);
+      alert('⚠️ ' + msg);
+    }
   }
 
   // 🧾 Payment receipt PDF — purchase hote hi auto-download

@@ -67,31 +67,45 @@ public class SubscriptionController : ControllerBase
     /// <summary>
     /// PLAN KHARIDO / CHANGE KARO — wallet se paisa kat ke plan turant switch,
     /// limits update, subscription aage badhti hai. Balance kam ho to saaf error.
+    /// (Razorpay se aaye to RazorpayController pehle wallet bharta hai, fir yahi helper chalata hai.)
     /// </summary>
     [HttpPost("purchase")]
     [HasPermission("settings.wallet.recharge.firm")]
     public async Task<IActionResult> Purchase([FromBody] PurchasePlanDto dto)
     {
-        var firmId = CurrentFirmId;
-        var yearly = string.Equals(dto.Period, "yearly", StringComparison.OrdinalIgnoreCase);
+        var (ok, error, result) = await PlanPurchaseHelper.ApplyFromWallet(_db, CurrentFirmId, dto.Code, dto.Period, CurrentUserId);
+        return ok ? Ok(result) : BadRequest(new { error });
+    }
+}
 
-        var plan = await _db.SubscriptionPlans.IgnoreQueryFilters()
-            .FirstOrDefaultAsync(p => p.IsActive && p.Code.ToLower() == dto.Code.ToLower());
-        if (plan is null) return BadRequest(new { error = "Plan nahi mila" });
+/// <summary>
+/// Shared plan-purchase logic — wallet se paisa kat ke plan apply.
+/// SubscriptionController (seedha wallet) aur RazorpayController (gateway ke baad) dono use karte hain.
+/// </summary>
+public static class PlanPurchaseHelper
+{
+    public static async Task<(bool ok, string? error, object? result)> ApplyFromWallet(
+        AppDbContext db, Guid firmId, string code, string period, Guid userId)
+    {
+        var yearly = string.Equals(period, "yearly", StringComparison.OrdinalIgnoreCase);
+
+        var plan = await db.SubscriptionPlans.IgnoreQueryFilters()
+            .FirstOrDefaultAsync(p => p.IsActive && p.Code.ToLower() == code.ToLower());
+        if (plan is null) return (false, "Plan nahi mila", null);
 
         var price = yearly ? plan.AnnualInr : plan.MonthlyInr;
         if (price is null || price <= 0)
-            return BadRequest(new { error = "Is plan ki keemat set nahi hai — Anjaninex se sampark karein" });
+            return (false, "Is plan ki keemat set nahi hai — Anjaninex se sampark karein", null);
 
-        var firm = await _db.Firms.IgnoreQueryFilters().SingleAsync(f => f.Id == firmId);
+        var firm = await db.Firms.IgnoreQueryFilters().SingleAsync(f => f.Id == firmId);
         if (firm.WalletBalance < price.Value)
-            return BadRequest(new { error = $"Wallet me ₹{firm.WalletBalance:0} hai, plan ke liye ₹{price.Value:0} chahiye — pehle Wallet recharge karo" });
+            return (false, $"Wallet me ₹{firm.WalletBalance:0} hai, plan ke liye ₹{price.Value:0} chahiye — pehle Wallet recharge karo", null);
 
-        using var tx = await _db.Database.BeginTransactionAsync();
+        using var tx = await db.Database.BeginTransactionAsync();
 
         // 1) Wallet se katao + ledger entry
         firm.WalletBalance -= price.Value;
-        _db.WalletLedger.Add(new Entities.WalletLedgerEntry
+        db.WalletLedger.Add(new Entities.WalletLedgerEntry
         {
             FirmId = firmId,
             TxnType = "subscription",
@@ -99,10 +113,10 @@ public class SubscriptionController : ControllerBase
             BalanceAfter = firm.WalletBalance,
             ReferenceId = plan.Code,
             Description = $"Plan '{plan.Name}' ({(yearly ? "yearly" : "monthly")}) — self-service purchase",
-            CreatedBy = CurrentUserId,
+            CreatedBy = userId,
             CreatedAt = DateTimeOffset.UtcNow
         });
-        _db.PlatformRevenue.Add(new Entities.PlatformRevenueEntry
+        db.PlatformRevenue.Add(new Entities.PlatformRevenueEntry
         {
             SourceFirmId = firmId,
             SourceType = "subscription",
@@ -121,7 +135,7 @@ public class SubscriptionController : ControllerBase
 
         // 3) Subscription aage badhao — pehle se time bacha ho to uske UPAR jode
         var baseDate = firm.SubscriptionEndsAt > DateTimeOffset.UtcNow
-            ? firm.SubscriptionEndsAt.Value
+            ? firm.SubscriptionEndsAt!.Value
             : DateTimeOffset.UtcNow;
         firm.SubscriptionEndsAt = baseDate.AddDays(yearly ? 365 : 30);
         firm.SubscriptionStartedAt ??= DateTimeOffset.UtcNow;
@@ -129,10 +143,10 @@ public class SubscriptionController : ControllerBase
         firm.ActivatedAt ??= DateTimeOffset.UtcNow;
         firm.UpdatedAt = DateTimeOffset.UtcNow;
 
-        await _db.SaveChangesAsync();
+        await db.SaveChangesAsync();
         await tx.CommitAsync();
 
-        return Ok(new
+        return (true, null, new
         {
             success = true,
             plan = plan.Code,

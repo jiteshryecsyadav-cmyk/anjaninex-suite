@@ -18,7 +18,9 @@ namespace Namokara.Api.Modules.Platform.Controllers;
 // order create (basic auth) + signature verify (HMAC). Verified payment -> approved
 // payment_request + wallet recharge (manual flow jaisa hi, bas auto).
 public record RzpOrderReqDto(decimal Amount);
-public record RzpVerifyDto(string OrderId, string PaymentId, string Signature, decimal Amount);
+// PlanCode/Period optional — diye ho to payment ke turant baad wahi plan APPLY bhi ho jata hai
+public record RzpVerifyDto(string OrderId, string PaymentId, string Signature, decimal Amount,
+    string? PlanCode = null, string? Period = null);
 
 [ApiController]
 [Route("api/billing/razorpay")]
@@ -152,6 +154,18 @@ public class RazorpayController : ControllerBase
         await PostIncomeToBooks(firmId, dto.Amount, taxable, gst, dto.PaymentId);
         await PostExpenseToPayerBooks(firmId, dto.Amount, dto.PaymentId);
         await SetFirmContext(firmId);   // context wapas payer firm par (safety)
+
+        // PLAN PURCHASE flow: paisa wallet me aa gaya — ab wahi plan turant APPLY karo.
+        // (Wallet ledger me recharge + subscription dono entries — saaf audit trail.)
+        if (!string.IsNullOrWhiteSpace(dto.PlanCode))
+        {
+            var (ok, error, result) = await PlanPurchaseHelper.ApplyFromWallet(
+                _db, firmId, dto.PlanCode!, dto.Period ?? "monthly", CurrentUserId ?? Guid.Empty);
+            if (ok)
+                return Ok(new { success = true, invoiceNo, planApplied = true, planResult = result });
+            // Paisa wallet me safe hai — plan apply nahi hua to user wallet se dobara le sakta hai
+            return Ok(new { success = true, invoiceNo, planApplied = false, planError = error });
+        }
 
         return Ok(new { success = true, invoiceNo });
     }

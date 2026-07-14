@@ -254,6 +254,27 @@ import { environment } from '../../../environments/environment';
 
               <div class="flex-1"></div>
 
+              <!-- MULTI-FIRM switcher: ek owner ki kai firms — bina password switch -->
+              @if (!isSuperAdmin() && myFirms().length > 1) {
+                <div class="relative">
+                  <button (click)="firmMenuOpen.set(!firmMenuOpen())"
+                          class="h-8 px-3 bg-white/10 rounded text-xs flex items-center gap-1.5 hover:bg-white/20 whitespace-nowrap">
+                    🏬 {{ features.firmName() || 'Firm' }} ▾
+                  </button>
+                  @if (firmMenuOpen()) {
+                    <div class="absolute right-0 mt-2 w-60 bg-white rounded-lg shadow-xl text-anjaninex-navy-dark py-2 z-50 border border-anjaninex-navy-soft">
+                      @for (f of myFirms(); track f.firmId) {
+                        <button (click)="switchFirm(f)"
+                                class="block w-full text-left px-4 py-2 text-sm hover:bg-anjaninex-navy-soft"
+                                [class.font-bold]="f.firmId === auth.user()?.firmId">
+                          🏬 {{ f.firmName }} @if (f.firmId === auth.user()?.firmId) { ✓ }
+                        </button>
+                      }
+                    </div>
+                  }
+                </div>
+              }
+
               @if (!isSuperAdmin()) {
                 <!-- Branch switcher (real — select karte hi pura app us branch me) -->
                 <div class="relative">
@@ -547,6 +568,25 @@ export class ShellComponent {
     if (t.closest('a') || t.closest('button')) this.sidebarOpen.set(false);
   }
 
+  // ---- MULTI-FIRM switcher (topbar) — ek owner ki kai firms ----
+  myFirms = signal<{ firmId: string; firmName: string }[]>([]);
+  firmMenuOpen = signal(false);
+
+  loadMyFirms() {
+    this.auth.myFirms().subscribe({
+      next: f => this.myFirms.set(f),
+      error: () => {}
+    });
+  }
+
+  switchFirm(f: { firmId: string; firmName: string }) {
+    this.firmMenuOpen.set(false);
+    if (f.firmId === this.auth.user()?.firmId) return;
+    if (!confirm(`"${f.firmName}" me jayein?`)) return;
+    this.auth.switchFirm(f.firmId).catch((e: any) =>
+      alert('⚠️ ' + (e?.error?.error ?? 'Firm switch nahi hui')));
+  }
+
   // ---- Branch switcher (topbar) ----
   branchMenuOpen = signal(false);
   private branchMenuTimer: any = null;
@@ -791,6 +831,7 @@ export class ShellComponent {
     if (this.isSuperAdmin()) return;
 
     this.loadBranches();
+    this.loadMyFirms();   // multi-firm switcher — 1 se zyada ho tabhi dikhta hai
 
     // Load wallet, subscription status, and feature flags on shell mount
     this.wallet.refresh();

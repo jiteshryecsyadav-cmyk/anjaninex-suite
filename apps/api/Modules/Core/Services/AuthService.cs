@@ -10,11 +10,15 @@ using Namokara.Api.Modules.Platform.Services;
 
 namespace Namokara.Api.Modules.Core.Services;
 
-public record LoginRequest(string Identifier, string Password);
+public record LoginRequest(string Identifier, string Password, Guid? FirmId = null);
+public record FirmChoiceDto(Guid FirmId, string FirmName);
 public record LoginResponse(
     string AccessToken,
     string RefreshToken,
-    UserInfoDto User);
+    UserInfoDto? User,
+    // MULTI-FIRM: same identifier kai firms me ho to token ki jagah ye list aati hai —
+    // frontend firm chunwa ke FirmId ke saath dobara login karta hai.
+    List<FirmChoiceDto>? Firms = null);
 
 public record UserInfoDto(
     Guid Id,
@@ -40,6 +44,9 @@ public interface IAuthService
     Task<LoginResponse> Refresh(string refreshToken);
     Task Logout(Guid sessionId);
     Task<UserInfoDto> Me(Guid userId);
+    // MULTI-FIRM: ek owner ki kai firms — list + bina password switch
+    Task<List<FirmChoiceDto>> MyFirms(Guid userId);
+    Task<LoginResponse> SwitchFirm(Guid userId, Guid firmId, string? ip, string? userAgent);
 }
 
 public class AuthService : IAuthService
@@ -59,29 +66,67 @@ public class AuthService : IAuthService
 
     public async Task<LoginResponse> Login(LoginRequest req, string? ip, string? userAgent)
     {
-        var user = await _db.Users
+        // MULTI-FIRM: same username/email/phone kai firms me ho sakta hai — SAB candidates lao
+        var candidates = await _db.Users
             .Where(u => u.Username == req.Identifier
                      || u.Email == req.Identifier
                      || u.Phone == req.Identifier)
-            .FirstOrDefaultAsync();
+            .ToListAsync();
 
-        if (user is null) throw new AuthFailedException("Invalid credentials");
+        if (candidates.Count == 0) throw new AuthFailedException("Invalid credentials");
+
+        // Password jin par lagta hai wahi asli matches
+        var matched = candidates.Where(u => BCrypt.Net.BCrypt.Verify(req.Password, u.PasswordHash)).ToList();
+        if (matched.Count == 0)
+        {
+            _log.LogWarning("Failed login attempt for {Username} from {IP}", req.Identifier, ip);
+            throw new AuthFailedException("Invalid credentials");
+        }
+
+        User user;
+        if (matched.Count == 1)
+        {
+            user = matched[0];
+        }
+        else if (req.FirmId is Guid chosen && matched.Any(m => m.FirmId == chosen))
+        {
+            user = matched.First(m => m.FirmId == chosen);
+        }
+        else
+        {
+            // Kai firms — frontend ko chunne ke liye list do (token abhi nahi)
+            var firmIds = matched.Where(m => m.FirmId != null).Select(m => m.FirmId!.Value).Distinct().ToList();
+            var names = await _db.Firms.IgnoreQueryFilters()
+                .Where(f => firmIds.Contains(f.Id) && f.Status != "deleted")
+                .ToDictionaryAsync(f => f.Id, f => f.Name);
+            var choices = matched
+                .Where(m => m.FirmId != null && names.ContainsKey(m.FirmId.Value) && m.IsActive)
+                .Select(m => new FirmChoiceDto(m.FirmId!.Value, names[m.FirmId!.Value]))
+                .GroupBy(c => c.FirmId).Select(g => g.First())
+                .OrderBy(c => c.FirmName)
+                .ToList();
+
+            if (choices.Count > 1)
+                return new LoginResponse("", "", null, choices);
+            if (choices.Count == 1)
+                user = matched.First(m => m.FirmId == choices[0].FirmId);
+            else
+                user = matched[0];   // sab firm-less (super admin types) — pehla hi lo
+        }
 
         if (user.IsLocked && user.LockedUntil > DateTimeOffset.UtcNow)
             throw new AuthFailedException("Account temporarily locked. Try again later.");
 
         if (!user.IsActive) throw new AuthFailedException("Account is inactive");
 
-        if (!BCrypt.Net.BCrypt.Verify(req.Password, user.PasswordHash))
-        {
-            _log.LogWarning("Failed login attempt for {Username} from {IP}", req.Identifier, ip);
-            throw new AuthFailedException("Invalid credentials");
-        }
+        return await IssueFor(user, ip, userAgent);
+    }
 
-        // Update last login
+    // Session + tokens banao — Login aur SwitchFirm dono yahi use karte hain
+    private async Task<LoginResponse> IssueFor(User user, string? ip, string? userAgent)
+    {
         user.LastLoginAt = DateTimeOffset.UtcNow;
 
-        // Create session
         var refreshToken = GenerateRefreshToken();
         var session = new Session
         {
@@ -117,6 +162,34 @@ public class AuthService : IAuthService
                 roles,
                 perms.ToList(),
                 user.AgentId));
+    }
+
+    // Ek hi bande ke (same phone/email/username) alag-alag firms ke ACTIVE logins
+    private IQueryable<User> LinkedUsers(User me) =>
+        _db.Users.Where(u => u.IsActive && u.FirmId != null &&
+            ((me.Phone != null && me.Phone != "" && u.Phone == me.Phone) ||
+             (me.Email != null && me.Email != "" && u.Email == me.Email) ||
+             u.Username == me.Username));
+
+    public async Task<List<FirmChoiceDto>> MyFirms(Guid userId)
+    {
+        var me = await _db.Users.SingleAsync(u => u.Id == userId);
+        var linked = await LinkedUsers(me).Select(u => u.FirmId!.Value).Distinct().ToListAsync();
+        return await _db.Firms.IgnoreQueryFilters()
+            .Where(f => linked.Contains(f.Id) && f.Status != "deleted" && f.Status != "suspended")
+            .OrderBy(f => f.Name)
+            .Select(f => new FirmChoiceDto(f.Id, f.Name))
+            .ToListAsync();
+    }
+
+    public async Task<LoginResponse> SwitchFirm(Guid userId, Guid firmId, string? ip, string? userAgent)
+    {
+        var me = await _db.Users.SingleAsync(u => u.Id == userId);
+        var target = await LinkedUsers(me).FirstOrDefaultAsync(u => u.FirmId == firmId)
+            ?? throw new AuthFailedException("Is firm me aapka login nahi mila");
+        if (target.IsLocked && target.LockedUntil > DateTimeOffset.UtcNow)
+            throw new AuthFailedException("Us firm ka account locked hai");
+        return await IssueFor(target, ip, userAgent);
     }
 
     public async Task<LoginResponse> Refresh(string refreshToken)

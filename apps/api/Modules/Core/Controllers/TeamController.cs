@@ -178,8 +178,9 @@ public class TeamController : ControllerBase
             return BadRequest(new { error = "Naam aur username dono zaroori hain" });
         if (dto.Password.Length < 6)
             return BadRequest(new { error = "Password kam se kam 6 characters ka ho" });
-        if (await _db.Users.AnyAsync(u => u.Username == uname))
-            return BadRequest(new { error = $"Username '{uname}' pehle se liya hua hai" });
+        // MULTI-FIRM: username firm ke andar unique — dusri firm me same username chalega
+        if (await _db.Users.AnyAsync(u => u.Username == uname && u.FirmId == firmId))
+            return BadRequest(new { error = $"Username '{uname}' is firm me pehle se liya hua hai" });
 
         var role = await _db.Roles.FirstOrDefaultAsync(r => r.Id == dto.RoleId
             && (r.FirmId == firmId || r.FirmId == null) && r.Code != "super_admin");

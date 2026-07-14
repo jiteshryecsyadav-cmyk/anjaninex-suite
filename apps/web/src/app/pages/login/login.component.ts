@@ -72,6 +72,24 @@ import { environment } from '../../../environments/environment';
           <a href="mailto:support@anjaninex.com" class="lx-help">Need help? support&#64;anjaninex.com</a>
         </form>
       </main>
+
+      <!-- MULTI-FIRM PICKER: same login kai firms me — kaunsi kholni hai? -->
+      @if (firmChoices(); as fc) {
+        <div style="position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:100;padding:16px">
+          <div style="background:#fff;border-radius:18px;padding:24px;width:100%;max-width:380px">
+            <div style="font-weight:900;font-size:19px;color:#1B2E5C;margin-bottom:4px">🏢 Kaunsi firm kholein?</div>
+            <div style="font-size:13px;color:#666;margin-bottom:14px">Aapka login {{ fc.length }} firms me hai</div>
+            @for (f of fc; track f.firmId) {
+              <button (click)="pickFirm(f.firmId)"
+                      style="display:block;width:100%;text-align:left;padding:14px;margin-bottom:8px;border:2px solid #D6DDEA;border-radius:12px;background:#FAF7F0;font-weight:700;font-size:16px;color:#1B2E5C;cursor:pointer">
+                🏢 {{ f.firmName }}
+              </button>
+            }
+            <button (click)="firmChoices.set(null)"
+                    style="display:block;width:100%;text-align:center;padding:10px;border:0;background:none;color:#888;font-size:14px;cursor:pointer">Cancel</button>
+          </div>
+        </div>
+      }
     </div>
   `,
   styles: [`
@@ -215,7 +233,13 @@ export class LoginComponent {
 
     try {
       const { identifier, password } = this.form.getRawValue();
-      await this.auth.login(identifier, password);
+      // MULTI-FIRM: same login kai firms me ho to firms list aati hai — picker dikhao
+      const firms = await this.auth.login(identifier, password, this.chosenFirmId || undefined);
+      if (firms) {
+        this.firmChoices.set(firms);
+        this.loading.set(false);
+        return;   // user firm chunega, fir pickFirm() se dobara login hoga
+      }
       // Agent login → apna reseller dashboard (firm shell se alag)
       if (this.auth.user()?.agentId) {
         this.router.navigateByUrl('/agent/dashboard');
@@ -231,5 +255,15 @@ export class LoginComponent {
     } finally {
       this.loading.set(false);
     }
+  }
+
+  // ============ MULTI-FIRM PICKER ============
+  firmChoices = signal<{ firmId: string; firmName: string }[] | null>(null);
+  private chosenFirmId = '';
+
+  pickFirm(firmId: string) {
+    this.chosenFirmId = firmId;
+    this.firmChoices.set(null);
+    this.login();   // ab firmId ke saath — seedha us firm me ghusega
   }
 }

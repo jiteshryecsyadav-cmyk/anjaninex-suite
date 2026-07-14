@@ -269,8 +269,9 @@ public class UsersController : ControllerBase
 
             var firmId = CurrentFirmId;
 
-            var usernameTaken = await _db.Users.AnyAsync(u => u.Username == dto.Username.Trim());
-            if (usernameTaken) return BadRequest(new { error = $"Username '{dto.Username}' is already taken" });
+            // MULTI-FIRM: username firm ke andar unique — dusri firm me same chalega
+            var usernameTaken = await _db.Users.AnyAsync(u => u.Username == dto.Username.Trim() && u.FirmId == firmId);
+            if (usernameTaken) return BadRequest(new { error = $"Username '{dto.Username}' is firm me already taken" });
 
             var user = new User
             {

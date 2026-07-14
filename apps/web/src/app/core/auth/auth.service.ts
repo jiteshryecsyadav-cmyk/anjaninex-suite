@@ -18,10 +18,14 @@ export interface User {
   permissions: string[];
 }
 
+export interface FirmChoice { firmId: string; firmName: string; }
+
 export interface LoginResponse {
   accessToken: string;
   refreshToken: string;
   user: User;
+  // MULTI-FIRM: same login kai firms me ho to token ki jagah ye list aati hai
+  firms?: FirmChoice[] | null;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -55,14 +59,36 @@ export class AuthService {
     }
   }
 
-  async login(identifier: string, password: string): Promise<void> {
+  /**
+   * Login. MULTI-FIRM: agar same login kai firms me hai to session set NAHI hota —
+   * firms ki list return hoti hai; UI firm chunwa ke firmId ke saath dobara call kare.
+   */
+  async login(identifier: string, password: string, firmId?: string): Promise<FirmChoice[] | null> {
     const res = await firstValueFrom(
       this.http.post<LoginResponse>(`${environment.apiUrl}/api/auth/login`, {
         identifier,
-        password
+        password,
+        firmId: firmId ?? null
       })
     );
+    if (res.firms && res.firms.length > 1) return res.firms;   // firm chunni padegi
     this.setSession(res);
+    return null;
+  }
+
+  /** MULTI-FIRM: current user ki saari firms (top-bar switcher ke liye). */
+  myFirms() {
+    return this.http.get<FirmChoice[]>(`${environment.apiUrl}/api/auth/my-firms`);
+  }
+
+  /** MULTI-FIRM: bina password dusri firm me switch — naya token le ke poora app reload. */
+  async switchFirm(firmId: string): Promise<void> {
+    const res = await firstValueFrom(
+      this.http.post<LoginResponse>(`${environment.apiUrl}/api/auth/switch-firm`, { firmId })
+    );
+    this.setSession(res);
+    localStorage.removeItem('branchId');   // purani firm ki branch nayi me invalid hogi
+    window.location.href = '/';            // full reload — saare caches/signals naya context lein
   }
 
   // SINGLE-FLIGHT: ek waqt me sirf EK refresh call — 5 requests ek saath 401 hon

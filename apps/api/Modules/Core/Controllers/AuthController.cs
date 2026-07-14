@@ -102,6 +102,37 @@ public class AuthController : ControllerBase
         return NoContent();
     }
 
+    /// <summary>MULTI-FIRM: current user ki saari firms (same phone/email/username linked).</summary>
+    [HttpGet("my-firms")]
+    [Authorize]
+    public async Task<IActionResult> MyFirms()
+    {
+        var userIdClaim = User.FindFirst("user_id")?.Value;
+        if (!Guid.TryParse(userIdClaim, out var userId)) return Unauthorized();
+        return Ok(await _auth.MyFirms(userId));
+    }
+
+    /// <summary>MULTI-FIRM: bina password dusri firm me switch (linked login se naya token).</summary>
+    [HttpPost("switch-firm")]
+    [Authorize]
+    public async Task<IActionResult> SwitchFirm([FromBody] SwitchFirmRequest req)
+    {
+        var userIdClaim = User.FindFirst("user_id")?.Value;
+        if (!Guid.TryParse(userIdClaim, out var userId)) return Unauthorized();
+        try
+        {
+            var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
+            var ua = Request.Headers.UserAgent.ToString();
+            var result = await _auth.SwitchFirm(userId, req.FirmId, ip, ua);
+            Response.Cookies.Append(RefreshCookieName, result.RefreshToken, RefreshCookieOptions(7));
+            return Ok(result with { RefreshToken = "" });
+        }
+        catch (AuthFailedException ex)
+        {
+            return Unauthorized(new { error = ex.Message });
+        }
+    }
+
     [HttpGet("me")]
     [Authorize]
     public async Task<IActionResult> Me()
@@ -114,3 +145,4 @@ public class AuthController : ControllerBase
 }
 
 public record RefreshRequest(string RefreshToken);
+public record SwitchFirmRequest(Guid FirmId);

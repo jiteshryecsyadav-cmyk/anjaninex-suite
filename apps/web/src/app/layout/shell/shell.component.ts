@@ -164,6 +164,13 @@ import { environment } from '../../../environments/environment';
                 <span class="w-5 text-center inline-flex justify-center"><app-wallet-icon [size]="18"></app-wallet-icon></span> Wallet
               </a>
             }
+            <!-- Reports — module on ho tabhi (Trading ke andar bhi milte hain, par yahan seedha) -->
+            @if (features.hasAny('reports_core', 'reports_advanced')) {
+              <a routerLink="/reports/dashboard" routerLinkActive="!bg-anjaninex-red !text-white"
+                 class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-semibold text-white/75 hover:text-white hover:bg-white/10">
+                <span class="w-5 text-center">📊</span> Reports
+              </a>
+            }
             <!-- Plans — subscription plans + usage; wallet ke turant neeche -->
             <a routerLink="/plans" routerLinkActive="!bg-anjaninex-red !text-white"
                class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-semibold text-white/75 hover:text-white hover:bg-white/10">

@@ -51,13 +51,18 @@ public class PartyChatController : ControllerBase
     public async Task<IActionResult> Threads()
     {
         var list = new List<object>();
+        // Phone hamesha party MASTER se dikhao (live) — master badle to yahan bhi turant badle
         await using var cmd = await CmdAsync(@"
-            SELECT t.id, t.party_name, t.phone, t.last_msg_at,
+            SELECT t.id, t.party_name,
+                   COALESCE(NULLIF(regexp_replace(COALESCE(c.phone_primary,''), '\D', '', 'g'), ''), t.phone) AS phone,
+                   t.last_msg_at,
                    (SELECT COUNT(*) FROM platform.party_chat_messages m
                      WHERE m.thread_id = t.id AND m.sender = 'party' AND m.read_at IS NULL) AS unread,
                    (SELECT m.body FROM platform.party_chat_messages m
                      WHERE m.thread_id = t.id ORDER BY m.created_at DESC LIMIT 1) AS last_body
             FROM platform.party_chat_threads t
+            LEFT JOIN trading.party_profiles p ON p.id = t.party_id
+            LEFT JOIN core.contacts c ON c.id = p.contact_id
             WHERE t.firm_id = @f
             ORDER BY unread DESC, t.last_msg_at DESC");
         cmd.Parameters.Add(new NpgsqlParameter("f", CurrentFirmId));
@@ -218,14 +223,18 @@ public class PartyChatPublicController : ControllerBase
         return await cmd.ExecuteScalarAsync() != null;
     }
 
-    // Phone se firm ki party dhundo (last-10-digit match)
+    // Phone se firm ki party dhundo (last-10-digit match).
+    // Duplicate numbers ho to: EXACT match pehle, fir sabse nayi party — deterministic.
     private async Task<(Guid partyId, string name)?> FindParty(Guid firmId, string phoneDigits)
     {
         var last10 = phoneDigits.Length > 10 ? phoneDigits[^10..] : phoneDigits;
         await using var cmd = await CmdAsync(@"
             SELECT p.id, c.display_name
             FROM trading.party_profiles p JOIN core.contacts c ON c.id = p.contact_id
-            WHERE p.firm_id = @f AND regexp_replace(COALESCE(c.phone_primary,''), '\D', '', 'g') LIKE '%' || @ph
+            WHERE p.firm_id = @f AND p.is_active
+              AND regexp_replace(COALESCE(c.phone_primary,''), '\D', '', 'g') LIKE '%' || @ph
+            ORDER BY (regexp_replace(COALESCE(c.phone_primary,''), '\D', '', 'g') = @ph) DESC,
+                     p.created_at DESC
             LIMIT 1");
         cmd.Parameters.Add(new NpgsqlParameter("f", firmId));
         cmd.Parameters.Add(new NpgsqlParameter("ph", last10));
@@ -387,14 +396,47 @@ public class PartyChatPublicController : ControllerBase
         return Ok(new { token, threadId, firmName, partyName = party.Value.name });
     }
 
-    // Token → threadId (expired = null)
+    // Token → threadId (expired = null).
+    // SECURITY: master me party ka number BADAL diya gaya ho to purana session turant band —
+    // verify wala number ab master se match nahi karta to session delete + null.
     private async Task<Guid?> ThreadFromToken(string token)
     {
-        await using var cmd = await CmdAsync(
-            "SELECT thread_id FROM platform.party_chat_sessions WHERE token = @t AND expires_at > now()");
-        cmd.Parameters.Add(new NpgsqlParameter("t", token ?? ""));
-        var v = await cmd.ExecuteScalarAsync();
-        return v is Guid g ? g : null;
+        Guid? threadId = null; Guid firmId = Guid.Empty; string threadPhone = "";
+        await using (var cmd = await CmdAsync(@"
+            SELECT s.thread_id, t.firm_id, t.phone
+            FROM platform.party_chat_sessions s
+            JOIN platform.party_chat_threads t ON t.id = s.thread_id
+            WHERE s.token = @t AND s.expires_at > now()"))
+        {
+            cmd.Parameters.Add(new NpgsqlParameter("t", token ?? ""));
+            await using var r = await cmd.ExecuteReaderAsync();
+            if (await r.ReadAsync()) { threadId = r.GetGuid(0); firmId = r.GetGuid(1); threadPhone = r.GetString(2); }
+        }
+        if (threadId is null) return null;
+
+        // RLS ke liye firm context, fir master phone se milao
+        await SetFirmContext(firmId);
+        var last10 = threadPhone.Length > 10 ? threadPhone[^10..] : threadPhone;
+        bool stillValid;
+        await using (var chk = await CmdAsync(@"
+            SELECT 1 FROM platform.party_chat_threads t
+            JOIN trading.party_profiles p ON p.id = t.party_id
+            JOIN core.contacts c ON c.id = p.contact_id
+            WHERE t.id = @th
+              AND regexp_replace(COALESCE(c.phone_primary,''), '\D', '', 'g') LIKE '%' || @ph"))
+        {
+            chk.Parameters.Add(new NpgsqlParameter("th", threadId.Value));
+            chk.Parameters.Add(new NpgsqlParameter("ph", last10));
+            stillValid = await chk.ExecuteScalarAsync() != null;
+        }
+        if (!stillValid)
+        {
+            await using var del = await CmdAsync("DELETE FROM platform.party_chat_sessions WHERE token = @t");
+            del.Parameters.Add(new NpgsqlParameter("t", token ?? ""));
+            await del.ExecuteNonQueryAsync();
+            return null;
+        }
+        return threadId;
     }
 
     // ---- 3) Party: messages (kholte hi firm ke msgs read → firm ko blue tick) ----

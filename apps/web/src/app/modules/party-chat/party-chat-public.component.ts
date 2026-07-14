@@ -132,12 +132,15 @@ interface PMsg {
     </div>
   `,
   styles: [`
-    :host { display: block; }
+    :host { display: block; overflow-x: hidden; }
     .pc-shell {
       display: flex; flex-direction: column;
-      height: 100dvh; width: 100%; max-width: 640px; margin: 0 auto;
+      height: 100vh; height: 100dvh;   /* dvh na ho to vh fallback */
+      width: 100%; max-width: 640px; margin: 0 auto;
       background: #FAF7F0; font-size: 22px;
+      overflow-x: hidden;
     }
+    .pc-input, textarea { width: 100%; min-width: 0; }
     .pc-header {
       display: flex; align-items: center; gap: 12px;
       background: #1B2E5C; color: #fff; padding: 12px 14px;
@@ -282,7 +285,7 @@ export class PartyChatPublicComponent {
         vp.name = 'viewport';
         document.head.appendChild(vp);
       }
-      vp.content = 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover';
+      vp.content = 'width=device-width, initial-scale=1, viewport-fit=cover';
     } catch {}
 
     // Install banner — event app.component pehle hi pakad chuka hota hai (window.__pwaInstallEvt).

@@ -344,7 +344,8 @@ import { environment } from '../../../environments/environment';
           <!-- ============ FOOTER ============ -->
           <footer class="flex justify-between items-center px-5 py-2 bg-white border-t-2 border-anjaninex-navy text-xs text-anjaninex-navy">
             <div class="flex items-center gap-2">
-              <button class="font-mono bg-anjaninex-navy-soft text-anjaninex-navy px-2 py-0.5 rounded hover:bg-anjaninex-navy hover:text-white">
+              <button (click)="showWhatsNew()" title="What's New — is version me kya naya hai"
+                      class="font-mono bg-anjaninex-navy-soft text-anjaninex-navy px-2 py-0.5 rounded hover:bg-anjaninex-navy hover:text-white">
                 v{{ version }}
               </button>
               <span class="opacity-50">·</span>
@@ -834,6 +835,30 @@ export class ShellComponent {
   isSuperAdmin(): boolean {
     // Only Anjaninex super_admin role should see this button — NOT firm_owner/firm_admin
     return this.auth.hasRole('super_admin');
+  }
+
+  // Footer version button → "What's New": latest release ki features/fixes dikhाओ
+  showWhatsNew() {
+    this.http.get<any>(`${environment.apiUrl}/api/version/changelog/latest`).subscribe({
+      next: (c) => {
+        if (!c) { alert(`Vyapaar Setu v${this.version}`); return; }
+        const list = (arr: any, icon: string) => {
+          try {
+            const a = Array.isArray(arr) ? arr : JSON.parse(arr || '[]');
+            return a.map((x: string) => `${icon} ${x}`).join('\n');
+          } catch { return ''; }
+        };
+        const parts = [
+          `✨ Vyapaar Setu v${c.version} — ${c.releaseDate || ''}`,
+          '',
+          list(c.newFeatures, '🆕'),
+          list(c.improvements, '⚡'),
+          list(c.fixes, '🔧')
+        ].filter(Boolean);
+        alert(parts.join('\n'));
+      },
+      error: () => alert(`Vyapaar Setu v${this.version}`)
+    });
   }
 
   openRecharge(): void {

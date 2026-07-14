@@ -31,7 +31,36 @@ public record PchatPublicMsgDto(string Token, string Body);
 public class PartyChatController : ControllerBase
 {
     private readonly AppDbContext _db;
-    public PartyChatController(AppDbContext db) => _db = db;
+    private readonly IWebHostEnvironment _env;
+    public PartyChatController(AppDbContext db, IWebHostEnvironment env) { _db = db; _env = env; }
+
+    // ---- Attachment helpers (Complaint Box photo pattern) ----
+    internal static string UploadDir(IWebHostEnvironment env)
+    {
+        var dir = Path.Combine(env.ContentRootPath, "uploads", "partychat");
+        Directory.CreateDirectory(dir);
+        return dir;
+    }
+
+    private static readonly string[] ImageExt = { ".jpg", ".jpeg", ".png", ".webp" };
+    private static readonly string[] DocExt = { ".pdf", ".doc", ".docx", ".xls", ".xlsx" };
+
+    internal static async Task<(string? url, string? name, string? type, string? error)> SaveFileAsync(IFormFile? file, IWebHostEnvironment env)
+    {
+        if (file == null || file.Length == 0) return (null, null, null, "File khali hai");
+        if (file.Length > 10 * 1024 * 1024) return (null, null, null, "File 10 MB se badi hai");
+        var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
+        string type;
+        if (ImageExt.Contains(ext)) type = "image";
+        else if (DocExt.Contains(ext)) type = "document";
+        else return (null, null, null, "Sirf photo (JPG/PNG/WEBP) ya document (PDF/Word/Excel) bhej sakte hain");
+
+        var fileName = $"{Guid.NewGuid():N}{ext}";
+        var fullPath = Path.Combine(UploadDir(env), fileName);
+        await using (var fs = System.IO.File.Create(fullPath))
+            await file.CopyToAsync(fs);
+        return ($"/api/party-chat/public/file/{fileName}", file.FileName, type, null);
+    }
 
     private Guid CurrentFirmId => Guid.Parse(User.FindFirst("firm_id")?.Value
         ?? throw new InvalidOperationException("firm_id claim missing"));
@@ -133,7 +162,8 @@ public class PartyChatController : ControllerBase
 
         var list = new List<object>();
         await using (var cmd = await CmdAsync(@"
-            SELECT m.id, m.sender, m.sender_name, m.body, m.read_at, m.created_at
+            SELECT m.id, m.sender, m.sender_name, m.body, m.read_at, m.created_at,
+                   m.attachment_url, m.attachment_name, m.attachment_type
             FROM platform.party_chat_messages m
             JOIN platform.party_chat_threads t ON t.id = m.thread_id
             WHERE m.thread_id = @t AND t.firm_id = @f
@@ -150,10 +180,40 @@ public class PartyChatController : ControllerBase
                     senderName = r.IsDBNull(2) ? null : r.GetString(2),
                     body = r.GetString(3),
                     readAt = r.IsDBNull(4) ? (DateTimeOffset?)null : r.GetFieldValue<DateTimeOffset>(4),
-                    createdAt = r.GetFieldValue<DateTimeOffset>(5)
+                    createdAt = r.GetFieldValue<DateTimeOffset>(5),
+                    attachmentUrl = r.IsDBNull(6) ? null : r.GetString(6),
+                    attachmentName = r.IsDBNull(7) ? null : r.GetString(7),
+                    attachmentType = r.IsDBNull(8) ? null : r.GetString(8)
                 });
         }
         return Ok(list);
+    }
+
+    // ---- Firm: photo/document bhejo (multipart) ----
+    [HttpPost("threads/{id}/attachment")]
+    public async Task<IActionResult> SendAttachment(Guid id, [FromForm] string? body, IFormFile file)
+    {
+        var (url, name, type, error) = await SaveFileAsync(file, _env);
+        if (error != null) return BadRequest(new { error });
+
+        await using var cmd = await CmdAsync(@"
+            WITH t AS (SELECT id FROM platform.party_chat_threads WHERE id = @t AND firm_id = @f)
+            INSERT INTO platform.party_chat_messages (thread_id, sender, sender_name, body, attachment_url, attachment_name, attachment_type)
+            SELECT id, 'firm', @n, @b, @u, @an, @at FROM t RETURNING id");
+        cmd.Parameters.Add(new NpgsqlParameter("t", id));
+        cmd.Parameters.Add(new NpgsqlParameter("f", CurrentFirmId));
+        cmd.Parameters.Add(new NpgsqlParameter("n", CurrentName));
+        cmd.Parameters.Add(new NpgsqlParameter("b", (body ?? "").Trim()));
+        cmd.Parameters.Add(new NpgsqlParameter("u", url!));
+        cmd.Parameters.Add(new NpgsqlParameter("an", name!));
+        cmd.Parameters.Add(new NpgsqlParameter("at", type!));
+        var mid = await cmd.ExecuteScalarAsync();
+        if (mid is null) return NotFound();
+
+        await using var touch = await CmdAsync("UPDATE platform.party_chat_threads SET last_msg_at = now() WHERE id = @t");
+        touch.Parameters.Add(new NpgsqlParameter("t", id));
+        await touch.ExecuteNonQueryAsync();
+        return Ok(new { ok = true });
     }
 
     // ---- Firm: reply bhejo ----
@@ -188,8 +248,9 @@ public class PartyChatController : ControllerBase
 public class PartyChatPublicController : ControllerBase
 {
     private readonly AppDbContext _db;
+    private readonly IWebHostEnvironment _env;
     private static readonly HttpClient Http = new HttpClient();
-    public PartyChatPublicController(AppDbContext db) => _db = db;
+    public PartyChatPublicController(AppDbContext db, IWebHostEnvironment env) { _db = db; _env = env; }
 
     private async Task<NpgsqlCommand> CmdAsync(string sql)
     {
@@ -466,7 +527,8 @@ public class PartyChatPublicController : ControllerBase
 
         var list = new List<object>();
         await using (var cmd = await CmdAsync(@"
-            SELECT id, sender, sender_name, body, read_at, created_at
+            SELECT id, sender, sender_name, body, read_at, created_at,
+                   attachment_url, attachment_name, attachment_type
             FROM platform.party_chat_messages WHERE thread_id = @t ORDER BY created_at"))
         {
             cmd.Parameters.Add(new NpgsqlParameter("t", threadId.Value));
@@ -479,10 +541,65 @@ public class PartyChatPublicController : ControllerBase
                     senderName = r.IsDBNull(2) ? null : r.GetString(2),
                     body = r.GetString(3),
                     readAt = r.IsDBNull(4) ? (DateTimeOffset?)null : r.GetFieldValue<DateTimeOffset>(4),
-                    createdAt = r.GetFieldValue<DateTimeOffset>(5)
+                    createdAt = r.GetFieldValue<DateTimeOffset>(5),
+                    attachmentUrl = r.IsDBNull(6) ? null : r.GetString(6),
+                    attachmentName = r.IsDBNull(7) ? null : r.GetString(7),
+                    attachmentType = r.IsDBNull(8) ? null : r.GetString(8)
                 });
         }
         return Ok(new { firmName, partyName, messages = list });
+    }
+
+    // ---- Party: photo/document bhejo (multipart, token se) ----
+    [HttpPost("attachment")]
+    public async Task<IActionResult> SendAttachment([FromForm] string token, [FromForm] string? body, IFormFile file)
+    {
+        var threadId = await ThreadFromToken(token);
+        if (threadId is null) return Unauthorized(new { error = "Session expire — dobara OTP se kholo" });
+
+        var (url, name, type, error) = await PartyChatController.SaveFileAsync(file, _env);
+        if (error != null) return BadRequest(new { error });
+
+        await using (var cmd = await CmdAsync(@"
+            INSERT INTO platform.party_chat_messages (thread_id, sender, sender_name, body, attachment_url, attachment_name, attachment_type)
+            SELECT id, 'party', party_name, @b, @u, @an, @at FROM platform.party_chat_threads WHERE id = @t"))
+        {
+            cmd.Parameters.Add(new NpgsqlParameter("b", (body ?? "").Trim()));
+            cmd.Parameters.Add(new NpgsqlParameter("u", url!));
+            cmd.Parameters.Add(new NpgsqlParameter("an", name!));
+            cmd.Parameters.Add(new NpgsqlParameter("at", type!));
+            cmd.Parameters.Add(new NpgsqlParameter("t", threadId.Value));
+            await cmd.ExecuteNonQueryAsync();
+        }
+        await using (var touch = await CmdAsync("UPDATE platform.party_chat_threads SET last_msg_at = now() WHERE id = @t"))
+        {
+            touch.Parameters.Add(new NpgsqlParameter("t", threadId.Value));
+            await touch.ExecuteNonQueryAsync();
+        }
+        return Ok(new { ok = true });
+    }
+
+    // ---- File serve (dono taraf yahi URL use hota hai; GUID filename = guess nahi hota) ----
+    [HttpGet("file/{name}")]
+    public IActionResult GetFile(string name)
+    {
+        if (name.Contains("..") || name.Contains('/') || name.Contains('\\')) return NotFound();
+        var path = Path.Combine(PartyChatController.UploadDir(_env), name);
+        if (!System.IO.File.Exists(path)) return NotFound();
+        var ext = Path.GetExtension(name).ToLowerInvariant();
+        var mime = ext switch
+        {
+            ".jpg" or ".jpeg" => "image/jpeg",
+            ".png" => "image/png",
+            ".webp" => "image/webp",
+            ".pdf" => "application/pdf",
+            ".doc" => "application/msword",
+            ".docx" => "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            ".xls" => "application/vnd.ms-excel",
+            ".xlsx" => "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            _ => "application/octet-stream"
+        };
+        return PhysicalFile(path, mime);
     }
 
     // ---- 4) Party: message bhejo ----

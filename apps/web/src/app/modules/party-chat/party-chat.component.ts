@@ -1,4 +1,5 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, ElementRef, ViewChild, inject, signal } from '@angular/core';
+import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { CommonModule, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
@@ -14,6 +15,7 @@ interface PchatThread {
 interface PchatMsg {
   id: string; sender: 'firm' | 'party'; senderName: string | null;
   body: string; readAt: string | null; createdAt: string;
+  attachmentUrl?: string | null; attachmentName?: string | null; attachmentType?: string | null;
 }
 
 /**
@@ -80,7 +82,17 @@ interface PchatMsg {
                     @if (m.sender === 'party') {
                       <div class="text-[10px] font-bold text-purple-700">{{ m.senderName || active()!.partyName }}</div>
                     }
-                    <div class="whitespace-pre-wrap break-words">{{ m.body }}</div>
+                    @if (m.attachmentType === 'image') {
+                      <a [href]="fileUrl(m.attachmentUrl!)" target="_blank">
+                        <img [src]="fileUrl(m.attachmentUrl!)" class="rounded-lg max-w-full max-h-64 mb-1" alt="photo">
+                      </a>
+                    } @else if (m.attachmentType === 'document') {
+                      <a [href]="fileUrl(m.attachmentUrl!)" target="_blank"
+                         class="flex items-center gap-2 bg-white/70 rounded-lg px-2 py-2 mb-1 no-underline text-[#1B2E5C] font-semibold">
+                        📄 {{ m.attachmentName || 'Document' }}
+                      </a>
+                    }
+                    @if (m.body) { <div class="whitespace-pre-wrap break-words" [innerHTML]="linkify(m.body)"></div> }
                     <div class="text-[10px] text-gray-500 text-right mt-0.5">
                       {{ m.createdAt | date:'h:mm a' }}
                       @if (m.sender === 'firm') {
@@ -92,7 +104,17 @@ interface PchatMsg {
               }
             </div>
 
-            <div class="p-3 border-t border-[#F0F0F0] flex gap-2">
+            <div class="p-3 border-t border-[#F0F0F0] flex gap-2 items-end relative">
+              <!-- ➕ attach menu (WhatsApp jaisa) -->
+              @if (attachOpen()) {
+                <div class="absolute bottom-16 left-3 bg-white rounded-xl shadow-lg border border-[#D6DDEA] p-2 z-20 flex gap-3">
+                  <button (click)="pickFile('image')" class="pc-att"><span class="pc-att-ico" style="background:#7C3AED">📷</span>Photo</button>
+                  <button (click)="pickFile('doc')" class="pc-att"><span class="pc-att-ico" style="background:#2563EB">📄</span>Document</button>
+                  <button (click)="sendLocation()" class="pc-att"><span class="pc-att-ico" style="background:#059669">📍</span>Location</button>
+                </div>
+              }
+              <button (click)="attachOpen.set(!attachOpen())" class="text-2xl px-2 text-[#1B2E5C]" title="Attach">➕</button>
+              <input #fileInput type="file" class="hidden" (change)="fileChosen($event)">
               <textarea [(ngModel)]="draft" (keydown)="onEnter($event)" rows="1"
                         placeholder="Message likho… (Enter = send)"
                         class="input flex-1 resize-none"></textarea>
@@ -121,7 +143,11 @@ interface PchatMsg {
       }
     </div>
   `,
-  styles: [`.cb-tick{font-weight:700;letter-spacing:-2px}`]
+  styles: [`
+    .cb-tick{font-weight:700;letter-spacing:-2px}
+    .pc-att{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:11px;font-weight:700;color:#4A5878;background:none;border:0;cursor:pointer}
+    .pc-att-ico{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;color:#fff}
+  `]
 })
 export class PartyChatComponent {
   private http = inject(HttpClient);
@@ -130,11 +156,59 @@ export class PartyChatComponent {
   private toast = inject(ToastService);
   private base = `${environment.apiUrl}/api/party-chat`;
 
+  private sanitizer = inject(DomSanitizer);
+  @ViewChild('fileInput') fileInput!: ElementRef<HTMLInputElement>;
+
   threads = signal<PchatThread[]>([]);
   active = signal<PchatThread | null>(null);
   msgs = signal<PchatMsg[]>([]);
   busy = signal(false);
   draft = '';
+  attachOpen = signal(false);
+
+  // Attachment URL relative aata hai (/api/...) — poora banao
+  fileUrl(u: string) { return u.startsWith('http') ? u : environment.apiUrl + u; }
+
+  // Body me links clickable (location messages ke liye) — baaki text escape
+  linkify(body: string): SafeHtml {
+    const esc = body.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const html = esc.replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" style="color:#2563EB;text-decoration:underline">$1</a>');
+    return this.sanitizer.bypassSecurityTrustHtml(html);
+  }
+
+  pickFile(kind: 'image' | 'doc') {
+    this.attachOpen.set(false);
+    const inp = this.fileInput.nativeElement;
+    inp.accept = kind === 'image' ? 'image/jpeg,image/png,image/webp' : '.pdf,.doc,.docx,.xls,.xlsx';
+    inp.value = '';
+    inp.click();
+  }
+
+  fileChosen(e: Event) {
+    const t = this.active();
+    const file = (e.target as HTMLInputElement).files?.[0];
+    if (!t || !file) return;
+    const fd = new FormData();
+    fd.append('file', file);
+    if (this.draft.trim()) { fd.append('body', this.draft.trim()); this.draft = ''; }
+    this.busy.set(true);
+    this.http.post(`${this.base}/threads/${t.id}/attachment`, fd).subscribe({
+      next: () => { this.busy.set(false); this.loadMsgs(t.id); },
+      error: (err) => { this.busy.set(false); alert('⚠️ ' + (err?.error?.error ?? 'File nahi gayi')); }
+    });
+  }
+
+  sendLocation() {
+    this.attachOpen.set(false);
+    const t = this.active();
+    if (!t || !navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(pos => {
+      const link = `https://maps.google.com/?q=${pos.coords.latitude.toFixed(6)},${pos.coords.longitude.toFixed(6)}`;
+      this.http.post(`${this.base}/threads/${t.id}/messages`, { body: `📍 Meri location: ${link}` }).subscribe({
+        next: () => this.loadMsgs(t.id), error: () => alert('⚠️ Location nahi gayi')
+      });
+    }, () => alert('⚠️ Location permission chahiye'), { enableHighAccuracy: true, timeout: 15000 });
+  }
 
   openNew = signal(false);
   parties: any[] = [];
@@ -208,7 +282,7 @@ export class PartyChatComponent {
     if (!t) return;
     const firmId = this.auth.user()?.firmId;
     const link = `${PartyChatComponent.PUBLIC_BASE}/pchat/${firmId}`;
-    const text = `Namaste ${t.partyName} ji,\nHumse seedha baat karne ke liye ye link kholein aur apna mobile number verify karein:\n${link}`;
+    const text = `Namaste ${t.partyName} ji,\nHumse seedha baat karne ke liye ye link *Chrome me* kholein aur apna mobile number verify karein:\n${link}\n\n📲 Upar "App install karo" ka option aaye to install kar lein — agli baar ek tap me chat khulegi.`;
     window.open(`https://wa.me/91${t.phone.slice(-10)}?text=${encodeURIComponent(text)}`, '_blank');
     navigator.clipboard?.writeText(link).then(() => this.toast.success('Link copy bhi ho gaya'));
   }

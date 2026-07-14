@@ -1,13 +1,15 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, ElementRef, ViewChild, inject, signal } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { ActivatedRoute } from '@angular/router';
+import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { environment } from '../../../environments/environment';
 
 interface PMsg {
   id: string; sender: 'firm' | 'party'; senderName: string | null;
   body: string; readAt: string | null; createdAt: string;
+  attachmentUrl?: string | null; attachmentName?: string | null; attachmentType?: string | null;
 }
 
 /**
@@ -93,7 +95,14 @@ interface PMsg {
           @for (m of msgs(); track m.id) {
             <div class="flex mb-1.5 px-3" [class.justify-end]="m.sender === 'party'">
               <div class="pc-bubble" [class.pc-mine]="m.sender === 'party'">
-                <div class="whitespace-pre-wrap break-words">{{ m.body }}</div>
+                @if (m.attachmentType === 'image') {
+                  <a [href]="fileUrl(m.attachmentUrl!)" target="_blank">
+                    <img [src]="fileUrl(m.attachmentUrl!)" class="pc-img" alt="photo">
+                  </a>
+                } @else if (m.attachmentType === 'document') {
+                  <a [href]="fileUrl(m.attachmentUrl!)" target="_blank" class="pc-doc">📄 {{ m.attachmentName || 'Document' }}</a>
+                }
+                @if (m.body) { <div class="whitespace-pre-wrap break-words" [innerHTML]="linkify(m.body)"></div> }
                 <div class="pc-meta">
                   {{ m.createdAt | date:'h:mm a' }}
                   @if (m.sender === 'party') {
@@ -105,6 +114,15 @@ interface PMsg {
           }
         </div>
         <div class="pc-inputbar">
+          @if (attachOpen()) {
+            <div class="pc-attmenu">
+              <button (click)="pickFile('image')" class="pc-att"><span class="pc-att-ico" style="background:#7C3AED">📷</span>Photo</button>
+              <button (click)="pickFile('doc')" class="pc-att"><span class="pc-att-ico" style="background:#2563EB">📄</span>Document</button>
+              <button (click)="sendLocation()" class="pc-att"><span class="pc-att-ico" style="background:#059669">📍</span>Location</button>
+            </div>
+          }
+          <button (click)="attachOpen.set(!attachOpen())" class="pc-plus">➕</button>
+          <input #fileInput type="file" style="display:none" (change)="fileChosen($event)">
           <textarea [(ngModel)]="draft" (keydown)="onEnter($event)" rows="1"
                     placeholder="Message likho…"
                     class="pc-input"></textarea>
@@ -164,6 +182,12 @@ interface PMsg {
       background: rgba(255,255,255,.15); color: #fff; font-size: 18px; cursor: pointer;
     }
     .pc-logout:hover { background: rgba(255,255,255,.3); }
+    .pc-img { border-radius: 10px; max-width: 100%; max-height: 260px; display: block; margin-bottom: 4px; }
+    .pc-doc { display: flex; align-items: center; gap: 6px; background: rgba(255,255,255,.7); border-radius: 10px; padding: 8px 10px; margin-bottom: 4px; color: #1B2E5C; font-weight: 600; text-decoration: none; }
+    .pc-plus { width: 46px; height: 46px; border-radius: 50%; border: 0; flex-shrink: 0; background: #fff; color: #1B2E5C; font-size: 20px; cursor: pointer; }
+    .pc-attmenu { position: absolute; bottom: 70px; left: 10px; background: #fff; border-radius: 14px; box-shadow: 0 6px 24px rgba(0,0,0,.18); padding: 12px; display: flex; gap: 16px; z-index: 20; }
+    .pc-att { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 12px; font-weight: 700; color: #4A5878; background: none; border: 0; cursor: pointer; }
+    .pc-att-ico { width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 22px; color: #fff; }
     .pc-install {
       display: flex; align-items: center; gap: 8px;
       background: #FFF7E0; border-bottom: 1px solid #F5D77A;
@@ -195,6 +219,51 @@ export class PartyChatPublicComponent {
   private token = '';
   private pollTimer: any;
 
+  private sanitizer = inject(DomSanitizer);
+  @ViewChild('fileInput') fileInput!: ElementRef<HTMLInputElement>;
+  attachOpen = signal(false);
+
+  fileUrl(u: string) { return u.startsWith('http') ? u : environment.apiUrl + u; }
+
+  linkify(body: string): SafeHtml {
+    const esc = body.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const html = esc.replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" style="color:#2563EB;text-decoration:underline">$1</a>');
+    return this.sanitizer.bypassSecurityTrustHtml(html);
+  }
+
+  pickFile(kind: 'image' | 'doc') {
+    this.attachOpen.set(false);
+    const inp = this.fileInput.nativeElement;
+    inp.accept = kind === 'image' ? 'image/jpeg,image/png,image/webp' : '.pdf,.doc,.docx,.xls,.xlsx';
+    inp.value = '';
+    inp.click();
+  }
+
+  fileChosen(e: Event) {
+    const file = (e.target as HTMLInputElement).files?.[0];
+    if (!file) return;
+    const fd = new FormData();
+    fd.append('token', this.token);
+    fd.append('file', file);
+    if (this.draft.trim()) { fd.append('body', this.draft.trim()); this.draft = ''; }
+    this.busy.set(true);
+    this.http.post(`${this.base}/attachment`, fd).subscribe({
+      next: () => { this.busy.set(false); this.loadMsgs(); },
+      error: (err) => { this.busy.set(false); alert('⚠️ ' + (err?.error?.error ?? 'File nahi gayi')); }
+    });
+  }
+
+  sendLocation() {
+    this.attachOpen.set(false);
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(pos => {
+      const link = `https://maps.google.com/?q=${pos.coords.latitude.toFixed(6)},${pos.coords.longitude.toFixed(6)}`;
+      this.http.post(`${this.base}/messages`, { token: this.token, body: `📍 Meri location: ${link}` }).subscribe({
+        next: () => this.loadMsgs(), error: () => alert('⚠️ Location nahi gayi')
+      });
+    }, () => alert('⚠️ Location permission chahiye'), { enableHighAccuracy: true, timeout: 15000 });
+  }
+
   // 📲 PWA install (Android Chrome ka beforeinstallprompt)
   installReady = signal(false);
   private installEvt: any = null;
@@ -202,14 +271,16 @@ export class PartyChatPublicComponent {
   ngOnInit() {
     this.firmId = this.route.snapshot.paramMap.get('firmId') || '';
 
-    // Install banner — browser support kare aur user ne pehle dismiss na kiya ho
+    // Install banner — event app.component pehle hi pakad chuka hota hai (window.__pwaInstallEvt).
+    // WhatsApp ke andar wale browser me ye event NAHI aata — tab bhi banner dikhao,
+    // Install dabane par manual steps batayenge (Chrome me kholo → Add to Home screen).
     try {
-      if (!localStorage.getItem('pchat_install_dismissed')) {
-        window.addEventListener('beforeinstallprompt', (e: any) => {
-          e.preventDefault();
-          this.installEvt = e;
-          this.installReady.set(true);
-        });
+      const alreadyApp = matchMedia('(display-mode: standalone)').matches;
+      if (!sessionStorage.getItem('pchat_install_dismissed') && !alreadyApp) {
+        const evt = (window as any).__pwaInstallEvt;
+        if (evt) { this.installEvt = evt; }
+        window.addEventListener('pwa-install-ready', () => { this.installEvt = (window as any).__pwaInstallEvt; });
+        this.installReady.set(true);
       }
     } catch {}
     // Pehle se session ho to seedha chat kholo
@@ -271,16 +342,20 @@ export class PartyChatPublicComponent {
   }
 
   async installApp() {
-    if (!this.installEvt) return;
-    this.installEvt.prompt();
-    try { await this.installEvt.userChoice; } catch {}
-    this.installReady.set(false);
-    this.installEvt = null;
+    if (this.installEvt) {
+      this.installEvt.prompt();
+      try { await this.installEvt.userChoice; } catch {}
+      this.installReady.set(false);
+      this.installEvt = null;
+      return;
+    }
+    // Event nahi mila (WhatsApp ka browser / iPhone) → manual steps
+    alert('App install karne ke liye:\n\n1. Ye page CHROME me kholo (upar ⋮ menu → "Open in Chrome")\n2. Chrome me ⋮ menu → "Add to Home screen" / "Install app"\n\nBas — home screen par Vyapaar Setu aa jayega.');
   }
 
   dismissInstall() {
     this.installReady.set(false);
-    try { localStorage.setItem('pchat_install_dismissed', '1'); } catch {}
+    try { sessionStorage.setItem('pchat_install_dismissed', '1'); } catch {}
   }
 
   // Logout — session token hatao, wapas number screen (dobara OTP lagega)

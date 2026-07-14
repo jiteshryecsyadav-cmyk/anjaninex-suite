@@ -66,6 +66,15 @@ export class AppComponent implements OnInit {
       }
     }, true); // capture phase
 
+    // PWA INSTALL EVENT — Chrome ye event page-load par EK baar deta hai, kabhi-kabhi
+    // component ke ngOnInit se pehle. Isliye app-level par pakad ke window par rakh do —
+    // koi bhi page (jaise Party Chat) baad me use kar sake.
+    window.addEventListener('beforeinstallprompt', (e: any) => {
+      e.preventDefault();
+      (window as any).__pwaInstallEvt = e;
+      window.dispatchEvent(new Event('pwa-install-ready'));
+    });
+
     // GLOBAL PASSWORD EYE 👁 — har password field par show/hide button apne aap.
     // MutationObserver naye render hue fields (modals, lazy pages) bhi pakad leta hai —
     // kisi form ko alag se edit karne ki zaroorat nahi.

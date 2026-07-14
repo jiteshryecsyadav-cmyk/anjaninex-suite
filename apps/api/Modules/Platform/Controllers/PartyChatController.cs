@@ -86,9 +86,9 @@ public class PartyChatController : ControllerBase
                    COALESCE(NULLIF(regexp_replace(COALESCE(c.phone_primary,''), '\D', '', 'g'), ''), t.phone) AS phone,
                    t.last_msg_at,
                    (SELECT COUNT(*) FROM platform.party_chat_messages m
-                     WHERE m.thread_id = t.id AND m.sender = 'party' AND m.read_at IS NULL) AS unread,
+                     WHERE m.thread_id = t.id AND m.sender = 'party' AND m.read_at IS NULL AND NOT m.deleted_for_firm) AS unread,
                    (SELECT m.body FROM platform.party_chat_messages m
-                     WHERE m.thread_id = t.id ORDER BY m.created_at DESC LIMIT 1) AS last_body
+                     WHERE m.thread_id = t.id AND NOT m.deleted_for_firm ORDER BY m.created_at DESC LIMIT 1) AS last_body
             FROM platform.party_chat_threads t
             LEFT JOIN trading.party_profiles p ON p.id = t.party_id
             LEFT JOIN core.contacts c ON c.id = p.contact_id
@@ -166,7 +166,7 @@ public class PartyChatController : ControllerBase
                    m.attachment_url, m.attachment_name, m.attachment_type
             FROM platform.party_chat_messages m
             JOIN platform.party_chat_threads t ON t.id = m.thread_id
-            WHERE m.thread_id = @t AND t.firm_id = @f
+            WHERE m.thread_id = @t AND t.firm_id = @f AND NOT m.deleted_for_firm
             ORDER BY m.created_at"))
         {
             cmd.Parameters.Add(new NpgsqlParameter("t", id));
@@ -187,6 +187,37 @@ public class PartyChatController : ControllerBase
                 });
         }
         return Ok(list);
+    }
+
+    public record DelModeDto(string Mode);   // "everyone" | "me"
+
+    // ---- Firm: EK message delete — WhatsApp jaisa: everyone (dono taraf) ya me (sirf firm ki taraf) ----
+    [HttpPost("messages/{messageId}/delete")]
+    public async Task<IActionResult> DeleteMessage(Guid messageId, [FromBody] DelModeDto dto)
+    {
+        int n;
+        if (string.Equals(dto.Mode, "everyone", StringComparison.OrdinalIgnoreCase))
+        {
+            // Everyone = sirf APNE bheje message (WhatsApp rule)
+            await using var cmd = await CmdAsync(@"
+                DELETE FROM platform.party_chat_messages m
+                USING platform.party_chat_threads t
+                WHERE m.id = @m AND m.thread_id = t.id AND t.firm_id = @f AND m.sender = 'firm'");
+            cmd.Parameters.Add(new NpgsqlParameter("m", messageId));
+            cmd.Parameters.Add(new NpgsqlParameter("f", CurrentFirmId));
+            n = await cmd.ExecuteNonQueryAsync();
+        }
+        else
+        {
+            await using var cmd = await CmdAsync(@"
+                UPDATE platform.party_chat_messages m SET deleted_for_firm = true
+                FROM platform.party_chat_threads t
+                WHERE m.id = @m AND m.thread_id = t.id AND t.firm_id = @f");
+            cmd.Parameters.Add(new NpgsqlParameter("m", messageId));
+            cmd.Parameters.Add(new NpgsqlParameter("f", CurrentFirmId));
+            n = await cmd.ExecuteNonQueryAsync();
+        }
+        return n == 0 ? NotFound(new { error = "Everyone-delete sirf apne bheje message ka ho sakta hai" }) : Ok(new { ok = true });
     }
 
     // ---- Firm: puri chat DELETE (messages + party sessions bhi CASCADE se ud jaate hain) ----
@@ -541,7 +572,8 @@ public class PartyChatPublicController : ControllerBase
         await using (var cmd = await CmdAsync(@"
             SELECT id, sender, sender_name, body, read_at, created_at,
                    attachment_url, attachment_name, attachment_type
-            FROM platform.party_chat_messages WHERE thread_id = @t ORDER BY created_at"))
+            FROM platform.party_chat_messages
+            WHERE thread_id = @t AND NOT deleted_for_party ORDER BY created_at"))
         {
             cmd.Parameters.Add(new NpgsqlParameter("t", threadId.Value));
             await using var r = await cmd.ExecuteReaderAsync();
@@ -589,6 +621,37 @@ public class PartyChatPublicController : ControllerBase
             await touch.ExecuteNonQueryAsync();
         }
         return Ok(new { ok = true });
+    }
+
+    public record PchatDelMsgDto(string Token, Guid MessageId, string Mode);   // Mode: "everyone" | "me"
+
+    // ---- Party: message delete — everyone (sirf apne bheje) ya me (koi bhi, sirf apni taraf chhupe) ----
+    [HttpPost("messages/delete")]
+    public async Task<IActionResult> DeleteMessage([FromBody] PchatDelMsgDto dto)
+    {
+        var threadId = await ThreadFromToken(dto.Token);
+        if (threadId is null) return Unauthorized(new { error = "Session expire — dobara OTP se kholo" });
+
+        int n;
+        if (string.Equals(dto.Mode, "everyone", StringComparison.OrdinalIgnoreCase))
+        {
+            await using var cmd = await CmdAsync(@"
+                DELETE FROM platform.party_chat_messages
+                WHERE id = @m AND thread_id = @t AND sender = 'party'");
+            cmd.Parameters.Add(new NpgsqlParameter("m", dto.MessageId));
+            cmd.Parameters.Add(new NpgsqlParameter("t", threadId.Value));
+            n = await cmd.ExecuteNonQueryAsync();
+        }
+        else
+        {
+            await using var cmd = await CmdAsync(@"
+                UPDATE platform.party_chat_messages SET deleted_for_party = true
+                WHERE id = @m AND thread_id = @t");
+            cmd.Parameters.Add(new NpgsqlParameter("m", dto.MessageId));
+            cmd.Parameters.Add(new NpgsqlParameter("t", threadId.Value));
+            n = await cmd.ExecuteNonQueryAsync();
+        }
+        return n == 0 ? NotFound(new { error = "Everyone-delete sirf apne bheje message ka ho sakta hai" }) : Ok(new { ok = true });
     }
 
     // ---- File serve (dono taraf yahi URL use hota hai; GUID filename = guess nahi hota) ----

@@ -40,10 +40,14 @@ interface PchatMsg {
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
         <!-- Threads -->
         <div class="bg-white rounded-xl border border-[#D6DDEA] overflow-hidden">
-          @if (threads().length === 0) {
-            <div class="p-6 text-center text-gray-500 text-sm">Abhi koi chat nahi — "➕ Nayi chat" se shuru karo</div>
+          <!-- 🔍 Search — naam ya number se -->
+          <div class="p-2 border-b border-[#F0F0F0]">
+            <input [(ngModel)]="searchQ" placeholder="🔍 Naam ya number khojo…" class="input w-full">
+          </div>
+          @if (filteredThreads().length === 0) {
+            <div class="p-6 text-center text-gray-500 text-sm">{{ searchQ ? 'Kuch nahi mila' : 'Abhi koi chat nahi — "➕ Nayi chat" se shuru karo' }}</div>
           }
-          @for (t of threads(); track t.id) {
+          @for (t of filteredThreads(); track t.id) {
             <button (click)="openThread(t)"
                     class="w-full text-left px-4 py-3 border-b border-[#F0F0F0] hover:bg-[#FAF7F0]"
                     [class.bg-purple-50]="active()?.id === t.id">
@@ -82,7 +86,9 @@ interface PchatMsg {
 
             <div #scrollBox class="flex-1 overflow-y-auto p-4 space-y-2" style="max-height:55vh">
               @for (m of msgs(); track m.id) {
-                <div class="flex" [class.justify-end]="m.sender === 'firm'">
+                <div class="flex group" [class.justify-end]="m.sender === 'firm'">
+                  <button (click)="delMsg.set(m)" title="Delete"
+                          class="opacity-0 group-hover:opacity-60 hover:!opacity-100 text-xs self-center mx-1">🗑</button>
                   <div class="rounded-2xl px-3 py-2 max-w-[75%] text-sm"
                        [class]="m.sender === 'firm' ? 'bg-[#DCF8C6]' : 'bg-gray-100'">
                     @if (m.sender === 'party') {
@@ -113,10 +119,12 @@ interface PchatMsg {
             <div class="p-3 border-t border-[#F0F0F0] flex gap-2 items-end relative">
               <!-- ➕ attach menu (WhatsApp jaisa) -->
               @if (attachOpen()) {
-                <div class="absolute bottom-16 left-3 bg-white rounded-xl shadow-lg border border-[#D6DDEA] p-2 z-20 flex gap-3">
-                  <button (click)="pickFile('image')" class="pc-att"><span class="pc-att-ico" style="background:#7C3AED">📷</span>Photo</button>
+                <div class="absolute bottom-16 left-3 bg-white rounded-xl shadow-lg border border-[#D6DDEA] p-2 z-20 flex gap-3 flex-wrap">
+                  <button (click)="pickFile('camera')" class="pc-att"><span class="pc-att-ico" style="background:#DC2626">📷</span>Camera</button>
+                  <button (click)="pickFile('gallery')" class="pc-att"><span class="pc-att-ico" style="background:#7C3AED">🖼️</span>Gallery</button>
                   <button (click)="pickFile('doc')" class="pc-att"><span class="pc-att-ico" style="background:#2563EB">📄</span>Document</button>
                   <button (click)="sendLocation()" class="pc-att"><span class="pc-att-ico" style="background:#059669">📍</span>Location</button>
+                  <button (click)="sendContact()" class="pc-att"><span class="pc-att-ico" style="background:#0EA5E9">👤</span>Contact</button>
                 </div>
               }
               <button (click)="attachOpen.set(!attachOpen())" class="text-2xl px-2 text-[#1B2E5C]" title="Attach">➕</button>
@@ -129,6 +137,22 @@ interface PchatMsg {
           }
         </div>
       </div>
+
+      <!-- WhatsApp jaisa delete dialog: everyone / me / cancel -->
+      @if (delMsg(); as dm) {
+        <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" (click)="delMsg.set(null)">
+          <div class="bg-white rounded-2xl p-5 w-full max-w-xs" (click)="$event.stopPropagation()">
+            <h3 class="font-bold text-[#1B2E5C] mb-4">Message delete karein?</h3>
+            <div class="flex flex-col gap-2 text-sm font-bold">
+              @if (dm.sender === 'firm') {
+                <button (click)="doDelete('everyone')" class="text-red-600 text-left px-2 py-2 rounded hover:bg-red-50">Delete for everyone</button>
+              }
+              <button (click)="doDelete('me')" class="text-[#1B2E5C] text-left px-2 py-2 rounded hover:bg-gray-50">Delete for me</button>
+              <button (click)="delMsg.set(null)" class="text-gray-500 text-left px-2 py-2 rounded hover:bg-gray-50">Cancel</button>
+            </div>
+          </div>
+        </div>
+      }
 
       <!-- New chat modal: party chuno -->
       @if (openNew()) {
@@ -189,12 +213,49 @@ export class PartyChatComponent {
     return v;
   }
 
-  pickFile(kind: 'image' | 'doc') {
+  pickFile(kind: 'camera' | 'gallery' | 'doc') {
     this.attachOpen.set(false);
     const inp = this.fileInput.nativeElement;
-    inp.accept = kind === 'image' ? 'image/jpeg,image/png,image/webp' : '.pdf,.doc,.docx,.xls,.xlsx';
+    inp.accept = kind === 'doc' ? '.pdf,.doc,.docx,.xls,.xlsx' : 'image/jpeg,image/png,image/webp';
+    if (kind === 'camera') inp.setAttribute('capture', 'environment');   // mobile par seedha camera
+    else inp.removeAttribute('capture');
     inp.value = '';
     inp.click();
+  }
+
+  // 👤 Contact bhejo — naam + number puchh ke text message
+  sendContact() {
+    this.attachOpen.set(false);
+    const t = this.active();
+    if (!t) return;
+    const name = prompt('Kiska contact bhejna hai? Naam:');
+    if (!name?.trim()) return;
+    const num = prompt(`${name.trim()} ka mobile number:`);
+    if (!num?.trim()) return;
+    this.http.post(`${this.base}/threads/${t.id}/messages`, { body: `👤 Contact: ${name.trim()} — ${num.trim()}` }).subscribe({
+      next: () => this.loadMsgs(t.id), error: () => alert('⚠️ Contact nahi gaya')
+    });
+  }
+
+  // Threads search — naam ya number se
+  searchQ = '';
+  filteredThreads(): PchatThread[] {
+    const q = this.searchQ.toLowerCase().trim();
+    if (!q) return this.threads();
+    return this.threads().filter(t => t.partyName.toLowerCase().includes(q) || t.phone.includes(q));
+  }
+
+  // WhatsApp jaisa delete dialog
+  delMsg = signal<PchatMsg | null>(null);
+  doDelete(mode: 'everyone' | 'me') {
+    const m = this.delMsg();
+    const t = this.active();
+    this.delMsg.set(null);
+    if (!m || !t) return;
+    this.http.post(`${this.base}/messages/${m.id}/delete`, { mode }).subscribe({
+      next: () => this.loadMsgs(t.id),
+      error: (e) => alert('⚠️ ' + (e?.error?.error ?? 'Delete nahi hua'))
+    });
   }
 
   fileChosen(e: Event) {

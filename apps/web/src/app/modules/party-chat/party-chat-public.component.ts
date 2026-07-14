@@ -38,6 +38,23 @@ interface PMsg {
         }
       </div>
 
+      <!-- WhatsApp jaisa delete dialog: everyone / me / cancel -->
+      @if (delMsg(); as dm) {
+        <div style="position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:60;padding:16px"
+             (click)="delMsg.set(null)">
+          <div style="background:#fff;border-radius:18px;padding:20px;width:100%;max-width:320px" (click)="$event.stopPropagation()">
+            <div style="font-weight:800;color:#1B2E5C;margin-bottom:14px;font-size:18px">Message delete karein?</div>
+            <div style="display:flex;flex-direction:column;gap:4px;font-size:17px;font-weight:700">
+              @if (dm.sender === 'party') {
+                <button (click)="doDelete('everyone')" style="color:#DC2626;text-align:left;background:none;border:0;padding:10px 6px">Delete for everyone</button>
+              }
+              <button (click)="doDelete('me')" style="color:#1B2E5C;text-align:left;background:none;border:0;padding:10px 6px">Delete for me</button>
+              <button (click)="delMsg.set(null)" style="color:#888;text-align:left;background:none;border:0;padding:10px 6px">Cancel</button>
+            </div>
+          </div>
+        </div>
+      }
+
       <!-- 🐞 JS error trap — koi bhi error aaye to yahan LAL patti me dikhega (screenshot se debug) -->
       @if (jsError()) {
         <div style="background:#DC2626;color:#fff;padding:8px 12px;font-size:13px;word-break:break-all">
@@ -100,8 +117,11 @@ interface PMsg {
             <div class="text-center text-gray-500 text-base mt-12 bg-white/70 rounded-xl mx-8 py-4">Pehla message bhejo 👇</div>
           }
           @for (m of msgs(); track m.id) {
-            <div class="flex mb-1.5 px-3" [class.justify-end]="m.sender === 'party'">
-              <div class="pc-bubble" [class.pc-mine]="m.sender === 'party'">
+            <div class="flex mb-1.5 px-3 items-center" [class.justify-end]="m.sender === 'party'">
+              @if (m.sender === 'party') {
+                <button (click)="delMsg.set(m)" class="pc-del">🗑</button>
+              }
+              <div class="pc-bubble" [class.pc-mine]="m.sender === 'party'" (dblclick)="delMsg.set(m)">
                 @if (m.attachmentType === 'image') {
                   <a [href]="fileUrl(m.attachmentUrl!)" target="_blank">
                     <img [src]="fileUrl(m.attachmentUrl!)" class="pc-img" alt="photo">
@@ -123,9 +143,11 @@ interface PMsg {
         <div class="pc-inputbar">
           @if (attachOpen()) {
             <div class="pc-attmenu">
-              <button (click)="pickFile('image')" class="pc-att"><span class="pc-att-ico" style="background:#7C3AED">📷</span>Photo</button>
+              <button (click)="pickFile('camera')" class="pc-att"><span class="pc-att-ico" style="background:#DC2626">📷</span>Camera</button>
+              <button (click)="pickFile('gallery')" class="pc-att"><span class="pc-att-ico" style="background:#7C3AED">🖼️</span>Gallery</button>
               <button (click)="pickFile('doc')" class="pc-att"><span class="pc-att-ico" style="background:#2563EB">📄</span>Document</button>
               <button (click)="sendLocation()" class="pc-att"><span class="pc-att-ico" style="background:#059669">📍</span>Location</button>
+              <button (click)="sendContact()" class="pc-att"><span class="pc-att-ico" style="background:#0EA5E9">👤</span>Contact</button>
             </div>
           }
           <button (click)="attachOpen.set(!attachOpen())" class="pc-plus">➕</button>
@@ -192,6 +214,7 @@ interface PMsg {
       background: rgba(255,255,255,.15); color: #fff; font-size: 18px; cursor: pointer;
     }
     .pc-logout:hover { background: rgba(255,255,255,.3); }
+    .pc-del { background: none; border: 0; font-size: 16px; opacity: .45; padding: 4px; cursor: pointer; }
     .pc-img { border-radius: 10px; max-width: 100%; max-height: 260px; display: block; margin-bottom: 4px; }
     .pc-doc { display: flex; align-items: center; gap: 6px; background: rgba(255,255,255,.7); border-radius: 10px; padding: 8px 10px; margin-bottom: 4px; color: #1B2E5C; font-weight: 600; text-decoration: none; }
     .pc-plus { width: 54px; height: 54px; border-radius: 50%; border: 0; flex-shrink: 0; background: #fff; color: #1B2E5C; font-size: 24px; cursor: pointer; }
@@ -217,7 +240,7 @@ export class PartyChatPublicComponent {
   private base = `${environment.apiUrl}/api/party-chat/public`;
 
   firmId = '';
-  readonly BUILD = 'b5';                     // har fix par badhta hai — phone par yahi dikhna chahiye
+  readonly BUILD = 'b6';                     // har fix par badhta hai — phone par yahi dikhna chahiye
   jsError = signal('');                      // koi JS error → header ke neeche lal patti
   step = signal<'phone' | 'otp' | 'chat'>('phone');
   phone = '';
@@ -251,12 +274,38 @@ export class PartyChatPublicComponent {
     return v;
   }
 
-  pickFile(kind: 'image' | 'doc') {
+  pickFile(kind: 'camera' | 'gallery' | 'doc') {
     this.attachOpen.set(false);
     const inp = this.fileInput.nativeElement;
-    inp.accept = kind === 'image' ? 'image/jpeg,image/png,image/webp' : '.pdf,.doc,.docx,.xls,.xlsx';
+    inp.accept = kind === 'doc' ? '.pdf,.doc,.docx,.xls,.xlsx' : 'image/jpeg,image/png,image/webp';
+    if (kind === 'camera') inp.setAttribute('capture', 'environment');
+    else inp.removeAttribute('capture');
     inp.value = '';
     inp.click();
+  }
+
+  // 👤 Contact bhejo
+  sendContact() {
+    this.attachOpen.set(false);
+    const name = prompt('Kiska contact bhejna hai? Naam:');
+    if (!name?.trim()) return;
+    const num = prompt(`${name.trim()} ka mobile number:`);
+    if (!num?.trim()) return;
+    this.http.post(`${this.base}/messages`, { token: this.token, body: `👤 Contact: ${name.trim()} — ${num.trim()}` }).subscribe({
+      next: () => this.loadMsgs(), error: () => alert('⚠️ Contact nahi gaya')
+    });
+  }
+
+  // WhatsApp jaisa delete: everyone / me / cancel
+  delMsg = signal<PMsg | null>(null);
+  doDelete(mode: 'everyone' | 'me') {
+    const m = this.delMsg();
+    this.delMsg.set(null);
+    if (!m) return;
+    this.http.post(`${this.base}/messages/delete`, { token: this.token, messageId: m.id, mode }).subscribe({
+      next: () => this.loadMsgs(),
+      error: (e) => alert('⚠️ ' + (e?.error?.error ?? 'Delete nahi hua'))
+    });
   }
 
   fileChosen(e: Event) {

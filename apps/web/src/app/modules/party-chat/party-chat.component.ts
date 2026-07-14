@@ -73,22 +73,37 @@ interface PchatMsg {
                 <div class="font-bold text-[#1B2E5C]">{{ active()!.partyName }}</div>
                 <div class="text-xs text-gray-500">📱 {{ active()!.phone }}</div>
               </div>
-              <div class="flex gap-2">
-                <button (click)="shareLink()" class="text-xs font-bold border border-[#1B2E5C] text-[#1B2E5C] rounded px-3 py-1.5 hover:bg-purple-50">
-                  🔗 Chat link bhejo
-                </button>
-                <button (click)="deleteThread()" class="text-xs font-bold border border-red-600 text-red-600 rounded px-3 py-1.5 hover:bg-red-50"
-                        title="Puri chat delete — wapas nahi aayegi">
-                  🗑 Delete chat
-                </button>
+              <div class="flex gap-2 items-center">
+                @if (!selectMode()) {
+                  <button (click)="startSelect()" class="text-xs font-bold border border-gray-400 text-gray-600 rounded px-3 py-1.5 hover:bg-gray-50"
+                          title="Messages select karke delete karo">
+                    ☑ Select
+                  </button>
+                  <button (click)="shareLink()" class="text-xs font-bold border border-[#1B2E5C] text-[#1B2E5C] rounded px-3 py-1.5 hover:bg-purple-50">
+                    🔗 Chat link bhejo
+                  </button>
+                  <button (click)="deleteThread()" class="text-xs font-bold border border-red-600 text-red-600 rounded px-3 py-1.5 hover:bg-red-50"
+                          title="Puri chat delete — wapas nahi aayegi">
+                    🗑 Delete chat
+                  </button>
+                } @else {
+                  <span class="text-sm font-bold text-[#1B2E5C]">{{ selected().size }} selected</span>
+                  <button (click)="openDeleteSelected()" [disabled]="selected().size === 0"
+                          class="text-xs font-bold bg-red-600 text-white rounded px-3 py-1.5 disabled:opacity-40">🗑 Delete</button>
+                  <button (click)="cancelSelect()" class="text-xs font-bold border border-gray-400 text-gray-600 rounded px-3 py-1.5">✕ Cancel</button>
+                }
               </div>
             </div>
 
             <div #scrollBox class="flex-1 overflow-y-auto p-4 space-y-2" style="max-height:55vh">
               @for (m of msgs(); track m.id) {
-                <div class="flex group" [class.justify-end]="m.sender === 'firm'">
-                  <button (click)="delMsg.set(m)" title="Delete"
-                          class="opacity-0 group-hover:opacity-60 hover:!opacity-100 text-xs self-center mx-1">🗑</button>
+                <div class="flex group items-center" [class.justify-end]="m.sender === 'firm'"
+                     [class.bg-blue-50]="selected().has(m.id)"
+                     (click)="selectMode() && toggleSel(m)">
+                  @if (selectMode()) {
+                    <input type="checkbox" class="w-5 h-5 accent-[#1B2E5C] mx-2 shrink-0"
+                           [checked]="selected().has(m.id)" (click)="$event.stopPropagation(); toggleSel(m)">
+                  }
                   <div class="rounded-2xl px-3 py-2 max-w-[75%] text-sm"
                        [class]="m.sender === 'firm' ? 'bg-[#DCF8C6]' : 'bg-gray-100'">
                     @if (m.sender === 'party') {
@@ -138,17 +153,17 @@ interface PchatMsg {
         </div>
       </div>
 
-      <!-- WhatsApp jaisa delete dialog: everyone / me / cancel -->
-      @if (delMsg(); as dm) {
-        <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" (click)="delMsg.set(null)">
+      <!-- WhatsApp jaisa delete dialog (selected messages ke liye): everyone / me / cancel -->
+      @if (showDelDialog()) {
+        <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" (click)="showDelDialog.set(false)">
           <div class="bg-white rounded-2xl p-5 w-full max-w-xs" (click)="$event.stopPropagation()">
-            <h3 class="font-bold text-[#1B2E5C] mb-4">Message delete karein?</h3>
+            <h3 class="font-bold text-[#1B2E5C] mb-4">{{ selected().size }} message delete karein?</h3>
             <div class="flex flex-col gap-2 text-sm font-bold">
-              @if (dm.sender === 'firm') {
-                <button (click)="doDelete('everyone')" class="text-red-600 text-left px-2 py-2 rounded hover:bg-red-50">Delete for everyone</button>
+              @if (allSelectedMine()) {
+                <button (click)="doDeleteSelected('everyone')" class="text-red-600 text-left px-2 py-2 rounded hover:bg-red-50">Delete for everyone</button>
               }
-              <button (click)="doDelete('me')" class="text-[#1B2E5C] text-left px-2 py-2 rounded hover:bg-gray-50">Delete for me</button>
-              <button (click)="delMsg.set(null)" class="text-gray-500 text-left px-2 py-2 rounded hover:bg-gray-50">Cancel</button>
+              <button (click)="doDeleteSelected('me')" class="text-[#1B2E5C] text-left px-2 py-2 rounded hover:bg-gray-50">Delete for me</button>
+              <button (click)="showDelDialog.set(false)" class="text-gray-500 text-left px-2 py-2 rounded hover:bg-gray-50">Cancel</button>
             </div>
           </div>
         </div>
@@ -245,17 +260,39 @@ export class PartyChatComponent {
     return this.threads().filter(t => t.partyName.toLowerCase().includes(q) || t.phone.includes(q));
   }
 
-  // WhatsApp jaisa delete dialog
-  delMsg = signal<PchatMsg | null>(null);
-  doDelete(mode: 'everyone' | 'me') {
-    const m = this.delMsg();
+  // WhatsApp jaisa SELECTION delete — tick karo, fir everyone/me/cancel
+  selectMode = signal(false);
+  selected = signal<Set<string>>(new Set());
+  showDelDialog = signal(false);
+
+  startSelect() { this.selectMode.set(true); this.selected.set(new Set()); }
+  cancelSelect() { this.selectMode.set(false); this.selected.set(new Set()); this.showDelDialog.set(false); }
+
+  toggleSel(m: PchatMsg) {
+    const s = new Set(this.selected());
+    s.has(m.id) ? s.delete(m.id) : s.add(m.id);
+    this.selected.set(s);
+  }
+
+  // "Everyone" tabhi jab SAARE selected apne bheje hue hon (WhatsApp rule)
+  allSelectedMine(): boolean {
+    const s = this.selected();
+    return this.msgs().filter(m => s.has(m.id)).every(m => m.sender === 'firm');
+  }
+
+  openDeleteSelected() { if (this.selected().size > 0) this.showDelDialog.set(true); }
+
+  doDeleteSelected(mode: 'everyone' | 'me') {
     const t = this.active();
-    this.delMsg.set(null);
-    if (!m || !t) return;
-    this.http.post(`${this.base}/messages/${m.id}/delete`, { mode }).subscribe({
-      next: () => this.loadMsgs(t.id),
-      error: (e) => alert('⚠️ ' + (e?.error?.error ?? 'Delete nahi hua'))
-    });
+    const ids = [...this.selected()];
+    this.showDelDialog.set(false);
+    if (!t || ids.length === 0) return;
+    let done = 0;
+    ids.forEach(id =>
+      this.http.post(`${this.base}/messages/${id}/delete`, { mode }).subscribe({
+        next: () => { if (++done === ids.length) { this.cancelSelect(); this.loadMsgs(t.id); } },
+        error: () => { if (++done === ids.length) { this.cancelSelect(); this.loadMsgs(t.id); } }
+      }));
   }
 
   fileChosen(e: Event) {

@@ -34,22 +34,29 @@ interface PMsg {
           <div class="pc-sub">{{ step() === 'chat' ? ('Aap: ' + partyName()) : 'Party Chat — Vyapaar Setu' }} · {{ BUILD }}</div>
         </div>
         @if (step() === 'chat') {
-          <button (click)="logout()" class="pc-logout" title="Logout — dobara OTP lagega">⏻</button>
+          @if (!selectMode()) {
+            <button (click)="startSelect()" class="pc-logout" title="Select karke delete">☑</button>
+            <button (click)="logout()" class="pc-logout" title="Logout — dobara OTP lagega">⏻</button>
+          } @else {
+            <span style="font-size:15px;font-weight:800">{{ selected().size }}</span>
+            <button (click)="openDeleteSelected()" class="pc-logout" title="Delete">🗑</button>
+            <button (click)="cancelSelect()" class="pc-logout" title="Cancel">✕</button>
+          }
         }
       </div>
 
-      <!-- WhatsApp jaisa delete dialog: everyone / me / cancel -->
-      @if (delMsg(); as dm) {
+      <!-- WhatsApp jaisa delete dialog (selected messages): everyone / me / cancel -->
+      @if (showDelDialog()) {
         <div style="position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:60;padding:16px"
-             (click)="delMsg.set(null)">
+             (click)="showDelDialog.set(false)">
           <div style="background:#fff;border-radius:18px;padding:20px;width:100%;max-width:320px" (click)="$event.stopPropagation()">
-            <div style="font-weight:800;color:#1B2E5C;margin-bottom:14px;font-size:18px">Message delete karein?</div>
+            <div style="font-weight:800;color:#1B2E5C;margin-bottom:14px;font-size:18px">{{ selected().size }} message delete karein?</div>
             <div style="display:flex;flex-direction:column;gap:4px;font-size:17px;font-weight:700">
-              @if (dm.sender === 'party') {
-                <button (click)="doDelete('everyone')" style="color:#DC2626;text-align:left;background:none;border:0;padding:10px 6px">Delete for everyone</button>
+              @if (allSelectedMine()) {
+                <button (click)="doDeleteSelected('everyone')" style="color:#DC2626;text-align:left;background:none;border:0;padding:10px 6px">Delete for everyone</button>
               }
-              <button (click)="doDelete('me')" style="color:#1B2E5C;text-align:left;background:none;border:0;padding:10px 6px">Delete for me</button>
-              <button (click)="delMsg.set(null)" style="color:#888;text-align:left;background:none;border:0;padding:10px 6px">Cancel</button>
+              <button (click)="doDeleteSelected('me')" style="color:#1B2E5C;text-align:left;background:none;border:0;padding:10px 6px">Delete for me</button>
+              <button (click)="showDelDialog.set(false)" style="color:#888;text-align:left;background:none;border:0;padding:10px 6px">Cancel</button>
             </div>
           </div>
         </div>
@@ -117,11 +124,14 @@ interface PMsg {
             <div class="text-center text-gray-500 text-base mt-12 bg-white/70 rounded-xl mx-8 py-4">Pehla message bhejo 👇</div>
           }
           @for (m of msgs(); track m.id) {
-            <div class="flex mb-1.5 px-3 items-center" [class.justify-end]="m.sender === 'party'">
-              @if (m.sender === 'party') {
-                <button (click)="delMsg.set(m)" class="pc-del">🗑</button>
+            <div class="flex mb-1.5 px-3 items-center" [class.justify-end]="m.sender === 'party'"
+                 [style.background]="selected().has(m.id) ? 'rgba(27,46,92,.12)' : ''"
+                 (click)="selectMode() && toggleSel(m)">
+              @if (selectMode()) {
+                <input type="checkbox" style="width:22px;height:22px;margin-right:8px;flex-shrink:0"
+                       [checked]="selected().has(m.id)" (click)="$event.stopPropagation(); toggleSel(m)">
               }
-              <div class="pc-bubble" [class.pc-mine]="m.sender === 'party'" (dblclick)="delMsg.set(m)">
+              <div class="pc-bubble" [class.pc-mine]="m.sender === 'party'">
                 @if (m.attachmentType === 'image') {
                   <a [href]="fileUrl(m.attachmentUrl!)" target="_blank">
                     <img [src]="fileUrl(m.attachmentUrl!)" class="pc-img" alt="photo">
@@ -240,7 +250,7 @@ export class PartyChatPublicComponent {
   private base = `${environment.apiUrl}/api/party-chat/public`;
 
   firmId = '';
-  readonly BUILD = 'b6';                     // har fix par badhta hai — phone par yahi dikhna chahiye
+  readonly BUILD = 'b7';                     // har fix par badhta hai — phone par yahi dikhna chahiye
   jsError = signal('');                      // koi JS error → header ke neeche lal patti
   step = signal<'phone' | 'otp' | 'chat'>('phone');
   phone = '';
@@ -296,16 +306,37 @@ export class PartyChatPublicComponent {
     });
   }
 
-  // WhatsApp jaisa delete: everyone / me / cancel
-  delMsg = signal<PMsg | null>(null);
-  doDelete(mode: 'everyone' | 'me') {
-    const m = this.delMsg();
-    this.delMsg.set(null);
-    if (!m) return;
-    this.http.post(`${this.base}/messages/delete`, { token: this.token, messageId: m.id, mode }).subscribe({
-      next: () => this.loadMsgs(),
-      error: (e) => alert('⚠️ ' + (e?.error?.error ?? 'Delete nahi hua'))
-    });
+  // WhatsApp jaisa SELECTION delete — ☑ dabao, tick karo, fir everyone/me/cancel
+  selectMode = signal(false);
+  selected = signal<Set<string>>(new Set());
+  showDelDialog = signal(false);
+
+  startSelect() { this.selectMode.set(true); this.selected.set(new Set()); }
+  cancelSelect() { this.selectMode.set(false); this.selected.set(new Set()); this.showDelDialog.set(false); }
+
+  toggleSel(m: PMsg) {
+    const s = new Set(this.selected());
+    s.has(m.id) ? s.delete(m.id) : s.add(m.id);
+    this.selected.set(s);
+  }
+
+  allSelectedMine(): boolean {
+    const s = this.selected();
+    return this.msgs().filter(m => s.has(m.id)).every(m => m.sender === 'party');
+  }
+
+  openDeleteSelected() { if (this.selected().size > 0) this.showDelDialog.set(true); }
+
+  doDeleteSelected(mode: 'everyone' | 'me') {
+    const ids = [...this.selected()];
+    this.showDelDialog.set(false);
+    if (ids.length === 0) return;
+    let done = 0;
+    ids.forEach(id =>
+      this.http.post(`${this.base}/messages/delete`, { token: this.token, messageId: id, mode }).subscribe({
+        next: () => { if (++done === ids.length) { this.cancelSelect(); this.loadMsgs(); } },
+        error: () => { if (++done === ids.length) { this.cancelSelect(); this.loadMsgs(); } }
+      }));
   }
 
   fileChosen(e: Event) {

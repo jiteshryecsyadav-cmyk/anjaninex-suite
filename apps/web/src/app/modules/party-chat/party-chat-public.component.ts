@@ -272,6 +272,19 @@ export class PartyChatPublicComponent {
   ngOnInit() {
     this.firmId = this.route.snapshot.paramMap.get('firmId') || '';
 
+    // MOBILE FIT: kuch browsers (WhatsApp webview / desktop-mode) page ko chhota
+    // desktop-size me dikhate hain → sab zoom-out lagta hai. Viewport zabardasti set karo
+    // taaki page phone ki screen par 100% fit ho, bina zoom kiye.
+    try {
+      let vp = document.querySelector('meta[name="viewport"]') as HTMLMetaElement | null;
+      if (!vp) {
+        vp = document.createElement('meta');
+        vp.name = 'viewport';
+        document.head.appendChild(vp);
+      }
+      vp.content = 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover';
+    } catch {}
+
     // Install banner — event app.component pehle hi pakad chuka hota hai (window.__pwaInstallEvt).
     // WhatsApp ke andar wale browser me ye event NAHI aata — tab bhi banner dikhao,
     // Install dabane par manual steps batayenge (Chrome me kholo → Add to Home screen).

@@ -189,6 +189,18 @@ public class PartyChatController : ControllerBase
         return Ok(list);
     }
 
+    // ---- Firm: puri chat DELETE (messages + party sessions bhi CASCADE se ud jaate hain) ----
+    [HttpDelete("threads/{id}")]
+    public async Task<IActionResult> DeleteThread(Guid id)
+    {
+        await using var cmd = await CmdAsync(
+            "DELETE FROM platform.party_chat_threads WHERE id = @t AND firm_id = @f");
+        cmd.Parameters.Add(new NpgsqlParameter("t", id));
+        cmd.Parameters.Add(new NpgsqlParameter("f", CurrentFirmId));
+        var n = await cmd.ExecuteNonQueryAsync();
+        return n == 0 ? NotFound() : Ok(new { ok = true });
+    }
+
     // ---- Firm: photo/document bhejo (multipart) ----
     [HttpPost("threads/{id}/attachment")]
     public async Task<IActionResult> SendAttachment(Guid id, [FromForm] string? body, IFormFile file)

@@ -69,9 +69,15 @@ interface PchatMsg {
                 <div class="font-bold text-[#1B2E5C]">{{ active()!.partyName }}</div>
                 <div class="text-xs text-gray-500">📱 {{ active()!.phone }}</div>
               </div>
-              <button (click)="shareLink()" class="text-xs font-bold border border-[#1B2E5C] text-[#1B2E5C] rounded px-3 py-1.5 hover:bg-purple-50">
-                🔗 Chat link bhejo
-              </button>
+              <div class="flex gap-2">
+                <button (click)="shareLink()" class="text-xs font-bold border border-[#1B2E5C] text-[#1B2E5C] rounded px-3 py-1.5 hover:bg-purple-50">
+                  🔗 Chat link bhejo
+                </button>
+                <button (click)="deleteThread()" class="text-xs font-bold border border-red-600 text-red-600 rounded px-3 py-1.5 hover:bg-red-50"
+                        title="Puri chat delete — wapas nahi aayegi">
+                  🗑 Delete chat
+                </button>
+              </div>
             </div>
 
             <div #scrollBox class="flex-1 overflow-y-auto p-4 space-y-2" style="max-height:55vh">
@@ -271,6 +277,22 @@ export class PartyChatComponent {
     this.http.post(`${this.base}/threads/${t.id}/messages`, { body }).subscribe({
       next: () => { this.busy.set(false); this.draft = ''; this.loadMsgs(t.id); },
       error: (e) => { this.busy.set(false); alert('⚠️ ' + (e?.error?.error ?? 'Message nahi gaya')); }
+    });
+  }
+
+  // Puri chat delete — saare messages + party ka session bhi khatam (wapas nahi aata)
+  deleteThread() {
+    const t = this.active();
+    if (!t) return;
+    if (!confirm(`"${t.partyName}" ki PURI chat delete karein?\nSaare messages hamesha ke liye chale jayenge — wapas nahi aayenge.`)) return;
+    this.http.delete(`${this.base}/threads/${t.id}`).subscribe({
+      next: () => {
+        this.active.set(null);
+        this.msgs.set([]);
+        this.loadThreads();
+        this.toast.success('Chat delete ho gayi');
+      },
+      error: (e) => alert('⚠️ ' + (e?.error?.error ?? 'Delete nahi hui'))
     });
   }
 

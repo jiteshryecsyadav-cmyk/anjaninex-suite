@@ -238,10 +238,17 @@ export class PartyChatPublicComponent {
 
   fileUrl(u: string) { return u.startsWith('http') ? u : environment.apiUrl + u; }
 
+  // CACHED — har render par naya object = change-detection ka anant loop (freeze bug)
+  private linkCache = new Map<string, SafeHtml>();
   linkify(body: string): SafeHtml {
-    const esc = body.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    const html = esc.replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" style="color:#2563EB;text-decoration:underline">$1</a>');
-    return this.sanitizer.bypassSecurityTrustHtml(html);
+    let v = this.linkCache.get(body);
+    if (!v) {
+      const esc = body.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      const html = esc.replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" style="color:#2563EB;text-decoration:underline">$1</a>');
+      v = this.sanitizer.bypassSecurityTrustHtml(html);
+      this.linkCache.set(body, v);
+    }
+    return v;
   }
 
   pickFile(kind: 'image' | 'doc') {

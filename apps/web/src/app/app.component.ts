@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, NgZone, OnInit, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { UpdateBannerComponent } from './core/version/update-banner.component';
 import { ToastContainerComponent } from './shared/toast-container.component';
@@ -76,10 +76,13 @@ export class AppComponent implements OnInit {
     });
 
     // GLOBAL PASSWORD EYE 👁 — har password field par show/hide button apne aap.
-    // MutationObserver naye render hue fields (modals, lazy pages) bhi pakad leta hai —
-    // kisi form ko alag se edit karne ki zaroorat nahi.
-    this.initPasswordEyes();
+    // ZAROORI: Angular zone ke BAHAR chalao — warna observer ka har DOM-mutation
+    // change-detection trigger karta hai aur innerHTML jaisi bindings ke saath
+    // anant loop ban jata hai (Page Unresponsive bug).
+    this.zone.runOutsideAngular(() => this.initPasswordEyes());
   }
+
+  private zone = inject(NgZone);
 
   private initPasswordEyes(): void {
     const enhance = (input: HTMLInputElement) => {

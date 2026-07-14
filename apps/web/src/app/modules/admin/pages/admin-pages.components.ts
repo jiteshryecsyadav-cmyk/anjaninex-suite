@@ -158,6 +158,36 @@ const subNav = `
         }
       </div>
 
+      <!-- Support login credentials modal (👁 show/hide + copy) -->
+      @if (supportCreds(); as sc) {
+        <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" (click)="supportCreds.set(null)">
+          <div class="bg-white rounded-2xl p-6 w-full max-w-md" (click)="$event.stopPropagation()">
+            <h3 class="font-display font-bold text-lg text-[#1B2E5C] mb-1">🔑 Support Login — {{ sc.firmName }}</h3>
+            <p class="text-xs text-gray-500 mb-4">{{ sc.created ? 'Naya login ban gaya' : 'Password reset ho gaya' }} — copy kar lo. Dobara chahiye to 🔑 fir dabana (naya password banega).</p>
+
+            <label class="text-xs font-bold uppercase text-gray-500">Username</label>
+            <div class="flex gap-2 mb-3">
+              <input [value]="sc.username" readonly class="input flex-1 font-mono">
+              <button (click)="copyText(sc.username)" class="px-3 border rounded text-sm" title="Copy">📋</button>
+            </div>
+
+            <label class="text-xs font-bold uppercase text-gray-500">Password</label>
+            <div class="flex gap-2">
+              <input [type]="showPw() ? 'text' : 'password'" [value]="sc.password" readonly [attr.data-pw-eye]="1" class="input flex-1 font-mono">
+              <button (click)="showPw.set(!showPw())" class="px-3 border rounded text-sm" [title]="showPw() ? 'Chhupao' : 'Dikhao'">
+                {{ showPw() ? '🙈' : '👁' }}
+              </button>
+              <button (click)="copyText(sc.password)" class="px-3 border rounded text-sm" title="Copy">📋</button>
+            </div>
+
+            <div class="flex justify-end gap-2 mt-5">
+              <button (click)="copyText(sc.username + ' / ' + sc.password)" class="px-4 py-2 border rounded text-sm">📋 Dono copy</button>
+              <button (click)="supportCreds.set(null)" class="btn-primary">Done</button>
+            </div>
+          </div>
+        </div>
+      }
+
       <!-- Add Firm modal -->
       @if (showAdd()) {
         <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" (click)="showAdd.set(false)">
@@ -307,19 +337,25 @@ export class AdminFirmsComponent {
     });
   }
 
-  // SUPPORT LOGIN — is firm ke liye Anjaninex ka default id/password bana ke dikhao
+  // SUPPORT LOGIN — is firm ke liye Anjaninex ka default id/password bana ke modal me dikhao
+  supportCreds = signal<{ firmName: string; username: string; password: string; created: boolean } | null>(null);
+  showPw = signal(false);
+
   supportLogin(f: FirmListItem) {
     if (!confirm(`"${f.name}" ka support login chahiye?\n(Pehle se bana hai to password RESET ho jayega.)`)) return;
     this.busyId.set(f.id);
     this.svc.supportLogin(f.id).subscribe({
       next: (r) => {
         this.busyId.set(null);
-        prompt(
-          `✅ "${f.name}" ka support login ${r.created ? 'ban gaya' : '(password reset)'} —\n\nUsername: ${r.username}\nPassword: ${r.password}\n\nABHI COPY KAR LO (password dobara nahi dikhega, par 🔑 se naya reset ho sakta hai):`,
-          `${r.username} / ${r.password}`);
+        this.showPw.set(false);
+        this.supportCreds.set({ firmName: f.name, username: r.username, password: r.password, created: r.created });
       },
       error: (e: any) => { this.busyId.set(null); alert(e?.error?.error ?? 'Support login nahi bana'); }
     });
+  }
+
+  copyText(t: string) {
+    navigator.clipboard?.writeText(t).then(() => alert('✅ Copy ho gaya')).catch(() => prompt('Copy karo:', t));
   }
 
   plans = signal<Plan[]>([]);

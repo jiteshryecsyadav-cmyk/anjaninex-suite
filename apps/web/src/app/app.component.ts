@@ -65,5 +65,54 @@ export class AppComponent implements OnInit {
         try { el.setSelectionRange(pos, pos); } catch {}
       }
     }, true); // capture phase
+
+    // GLOBAL PASSWORD EYE 👁 — har password field par show/hide button apne aap.
+    // MutationObserver naye render hue fields (modals, lazy pages) bhi pakad leta hai —
+    // kisi form ko alag se edit karne ki zaroorat nahi.
+    this.initPasswordEyes();
+  }
+
+  private initPasswordEyes(): void {
+    const enhance = (input: HTMLInputElement) => {
+      if (input.dataset['pwEye']) return;   // dobara mat lagao (khud ka toggle wale bhi isi se skip)
+      input.dataset['pwEye'] = '1';
+
+      // Input ko relative wrapper me daalo taaki eye button uske andar-right baithe
+      const wrap = document.createElement('span');
+      wrap.style.cssText = 'position:relative;display:inline-block;width:100%;';
+      input.parentNode?.insertBefore(wrap, input);
+      wrap.appendChild(input);
+      if (!input.style.paddingRight) input.style.paddingRight = '34px';
+
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.tabIndex = -1;
+      btn.textContent = '👁';
+      btn.setAttribute('aria-label', 'Password dikhao/chhupao');
+      btn.style.cssText =
+        'position:absolute;right:8px;top:50%;transform:translateY(-50%);' +
+        'background:none;border:0;cursor:pointer;font-size:15px;opacity:.65;padding:2px;line-height:1;z-index:5;';
+      btn.addEventListener('click', () => {
+        const show = input.type === 'password';
+        input.type = show ? 'text' : 'password';
+        btn.textContent = show ? '🙈' : '👁';
+      });
+      wrap.appendChild(btn);
+    };
+
+    const scan = (root: ParentNode) =>
+      root.querySelectorAll?.('input[type="password"]').forEach(el => enhance(el as HTMLInputElement));
+
+    scan(document);
+    new MutationObserver((muts) => {
+      for (const m of muts) {
+        m.addedNodes.forEach(n => {
+          if (n instanceof HTMLElement) {
+            if (n.matches?.('input[type="password"]')) enhance(n as HTMLInputElement);
+            scan(n);
+          }
+        });
+      }
+    }).observe(document.body, { childList: true, subtree: true });
   }
 }

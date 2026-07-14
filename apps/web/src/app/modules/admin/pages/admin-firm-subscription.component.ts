@@ -263,7 +263,7 @@ const MODULE_LIST: Array<{ key: string; label: string; icon: string; description
               <table class="u-tbl">
                 <thead>
                   <tr>
-                    <th>User ID</th><th>Email</th><th>Name</th><th>Status</th><th>Roles</th><th style="text-align:right">Actions</th>
+                    <th>User ID</th><th>Email</th><th>Name</th><th>Status</th><th>📱 Phone</th><th>Roles</th><th style="text-align:right">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -279,7 +279,8 @@ const MODULE_LIST: Array<{ key: string; label: string; icon: string; description
                             <input type="checkbox" [(ngModel)]="editActive"> Active
                           </label>
                         </td>
-                        <td><input [(ngModel)]="editPhone" class="ip-sm" placeholder="Phone"></td>
+                        <td><input [(ngModel)]="editPhone" class="ip-sm" placeholder="📱 Phone (multi-firm link isi se)"></td>
+                        <td class="text-xs text-gray-500">{{ u.roles.length ? u.roles.join(', ') : '—' }}</td>
                         <td style="text-align:right; white-space:nowrap">
                           <button (click)="saveEdit(u)" [disabled]="userBusy()" class="lnk save">Save</button>
                           <button (click)="cancelEdit()" class="lnk">Cancel</button>
@@ -295,6 +296,7 @@ const MODULE_LIST: Array<{ key: string; label: string; icon: string; description
                             {{ u.isActive ? 'Active' : 'Inactive' }}
                           </span>
                         </td>
+                        <td class="text-xs font-mono">{{ u.phone || '—' }}</td>
                         <td class="text-xs text-gray-600">{{ u.roles.length ? u.roles.join(', ') : '—' }}</td>
                         <td style="text-align:right; white-space:nowrap">
                           <button (click)="resetPwd(u)" [disabled]="userBusy()" class="lnk">🔁 Reset Password</button>

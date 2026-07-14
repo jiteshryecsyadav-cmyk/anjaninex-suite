@@ -201,11 +201,13 @@ export class PartyChatComponent {
   }
 
   // Party ko WhatsApp se chat link bhejo — wo mobile+OTP se verify hoke reply karegi
+  // Link hamesha vyaparsetu.anjaninex.com se jaye (public/branded domain)
+  private static readonly PUBLIC_BASE = 'https://vyaparsetu.anjaninex.com';
   shareLink() {
     const t = this.active();
     if (!t) return;
     const firmId = this.auth.user()?.firmId;
-    const link = `${location.origin}/pchat/${firmId}`;
+    const link = `${PartyChatComponent.PUBLIC_BASE}/pchat/${firmId}`;
     const text = `Namaste ${t.partyName} ji,\nHumse seedha baat karne ke liye ye link kholein aur apna mobile number verify karein:\n${link}`;
     window.open(`https://wa.me/91${t.phone.slice(-10)}?text=${encodeURIComponent(text)}`, '_blank');
     navigator.clipboard?.writeText(link).then(() => this.toast.success('Link copy bhi ho gaya'));

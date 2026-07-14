@@ -31,12 +31,19 @@ interface PMsg {
         <div class="pc-avatar">{{ (firmName() || 'V').charAt(0) }}</div>
         <div class="flex-1 min-w-0">
           <div class="pc-title">{{ firmName() || 'Vyapaar Setu' }}</div>
-          <div class="pc-sub">{{ step() === 'chat' ? ('Aap: ' + partyName()) : 'Party Chat — Vyapaar Setu' }}</div>
+          <div class="pc-sub">{{ step() === 'chat' ? ('Aap: ' + partyName()) : 'Party Chat — Vyapaar Setu' }} · {{ BUILD }}</div>
         </div>
         @if (step() === 'chat') {
           <button (click)="logout()" class="pc-logout" title="Logout — dobara OTP lagega">⏻</button>
         }
       </div>
+
+      <!-- 🐞 JS error trap — koi bhi error aaye to yahan LAL patti me dikhega (screenshot se debug) -->
+      @if (jsError()) {
+        <div style="background:#DC2626;color:#fff;padding:8px 12px;font-size:13px;word-break:break-all">
+          🐞 {{ jsError() }}
+        </div>
+      }
 
       <!-- 📲 App install banner — link khulte hi sabse pehle (Android Chrome) -->
       @if (installReady()) {
@@ -210,6 +217,8 @@ export class PartyChatPublicComponent {
   private base = `${environment.apiUrl}/api/party-chat/public`;
 
   firmId = '';
+  readonly BUILD = 'b5';                     // har fix par badhta hai — phone par yahi dikhna chahiye
+  jsError = signal('');                      // koi JS error → header ke neeche lal patti
   step = signal<'phone' | 'otp' | 'chat'>('phone');
   phone = '';
   otp = '';
@@ -274,6 +283,12 @@ export class PartyChatPublicComponent {
 
   ngOnInit() {
     this.firmId = this.route.snapshot.paramMap.get('firmId') || '';
+
+    // JS error trap — production me console nahi dikhta, isliye error page par hi dikhao
+    window.addEventListener('error', (e: any) =>
+      this.jsError.set((e?.message || 'JS error') + (e?.filename ? ' @ ' + e.filename.split('/').pop() : '')));
+    window.addEventListener('unhandledrejection', (e: any) =>
+      this.jsError.set('Promise: ' + (e?.reason?.message || e?.reason || 'error')));
 
     // MOBILE FIT: kuch browsers (WhatsApp webview / desktop-mode) page ko chhota
     // desktop-size me dikhate hain → sab zoom-out lagta hai. Viewport zabardasti set karo

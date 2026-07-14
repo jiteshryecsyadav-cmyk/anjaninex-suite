@@ -190,6 +190,11 @@ import { environment } from '../../../environments/environment';
                class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-semibold text-white/75 hover:text-white hover:bg-white/10">
               <span class="w-5 text-center">📢</span> Complaint Box
             </a>
+            <!-- Plans — subscription plans dekho, upgrade ke liye sampark -->
+            <a routerLink="/plans" routerLinkActive="!bg-anjaninex-red !text-white"
+               class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-semibold text-white/75 hover:text-white hover:bg-white/10">
+              <span class="w-5 text-center">💎</span> Plans
+            </a>
             }
             <!-- Theme Color picker removed — theme is now fixed per-firm (set by Anjaninex super-admin). -->
           </nav>

@@ -103,6 +103,11 @@ export const routes: Routes = [
         loadComponent: () => import('./modules/complaints/complaint-box.component').then(m => m.ComplaintBoxComponent)
       },
       {
+        // Plans — subscription plans + usage meter; wallet se plan kharido/change karo
+        path: 'plans',
+        loadComponent: () => import('./modules/plans/plans-page.component').then(m => m.PlansPageComponent)
+      },
+      {
         // Core Master list — saare contacts ek jagah (Trading + AD + HR).
         path: 'core-master',
         loadComponent: () => import('./modules/core-master/core-master-list.component').then(m => m.CoreMasterListComponent)

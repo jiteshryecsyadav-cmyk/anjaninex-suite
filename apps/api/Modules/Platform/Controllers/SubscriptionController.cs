@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Namokara.Api.Common.Auth;
+using Namokara.Api.Infrastructure.Persistence;
 using Namokara.Api.Modules.Platform.Services;
 
 namespace Namokara.Api.Modules.Platform.Controllers;
@@ -11,13 +13,33 @@ namespace Namokara.Api.Modules.Platform.Controllers;
 public class SubscriptionController : ControllerBase
 {
     private readonly ISubscriptionService _svc;
+    private readonly AppDbContext _db;
     private Guid CurrentFirmId =>
         Guid.Parse(User.FindFirst("firm_id")?.Value
             ?? throw new InvalidOperationException("firm_id claim missing"));
     private Guid CurrentUserId =>
         Guid.Parse(User.FindFirst("user_id")?.Value!);
 
-    public SubscriptionController(ISubscriptionService svc) { _svc = svc; }
+    public SubscriptionController(ISubscriptionService svc, AppDbContext db) { _svc = svc; _db = db; }
+
+    /// <summary>
+    /// Saare active plans — firm users ko sidebar "Plans" page par dikhte hain
+    /// (upgrade sochne ke liye; kharidne ke liye Anjaninex se sampark).
+    /// </summary>
+    [HttpGet("plans")]
+    public async Task<IActionResult> Plans()
+    {
+        var plans = await _db.SubscriptionPlans.IgnoreQueryFilters()
+            .Where(p => p.IsActive)
+            .OrderBy(p => p.SortOrder ?? 999).ThenBy(p => p.MonthlyInr)
+            .Select(p => new
+            {
+                p.Code, p.Name, p.MonthlyInr, p.AnnualInr,
+                p.MaxBranches, p.MaxUsers, p.MaxAiCalls, p.MaxWaMessages
+            })
+            .ToListAsync();
+        return Ok(plans);
+    }
 
     /// <summary>Returns current trial/subscription state for the logged-in firm.</summary>
     [HttpGet("status")]
@@ -38,6 +60,86 @@ public class SubscriptionController : ControllerBase
         var newEnd = DateTimeOffset.UtcNow.AddDays(req.DurationDays);
         await _svc.ReactivateAsync(CurrentFirmId, newEnd, CurrentUserId);
         return Ok(new { success = true, subscriptionEndsAt = newEnd });
+    }
+
+    public record PurchasePlanDto(string Code, string Period);   // Period: "monthly" | "yearly"
+
+    /// <summary>
+    /// PLAN KHARIDO / CHANGE KARO — wallet se paisa kat ke plan turant switch,
+    /// limits update, subscription aage badhti hai. Balance kam ho to saaf error.
+    /// </summary>
+    [HttpPost("purchase")]
+    [HasPermission("settings.wallet.recharge.firm")]
+    public async Task<IActionResult> Purchase([FromBody] PurchasePlanDto dto)
+    {
+        var firmId = CurrentFirmId;
+        var yearly = string.Equals(dto.Period, "yearly", StringComparison.OrdinalIgnoreCase);
+
+        var plan = await _db.SubscriptionPlans.IgnoreQueryFilters()
+            .FirstOrDefaultAsync(p => p.IsActive && p.Code.ToLower() == dto.Code.ToLower());
+        if (plan is null) return BadRequest(new { error = "Plan nahi mila" });
+
+        var price = yearly ? plan.AnnualInr : plan.MonthlyInr;
+        if (price is null || price <= 0)
+            return BadRequest(new { error = "Is plan ki keemat set nahi hai — Anjaninex se sampark karein" });
+
+        var firm = await _db.Firms.IgnoreQueryFilters().SingleAsync(f => f.Id == firmId);
+        if (firm.WalletBalance < price.Value)
+            return BadRequest(new { error = $"Wallet me ₹{firm.WalletBalance:0} hai, plan ke liye ₹{price.Value:0} chahiye — pehle Wallet recharge karo" });
+
+        using var tx = await _db.Database.BeginTransactionAsync();
+
+        // 1) Wallet se katao + ledger entry
+        firm.WalletBalance -= price.Value;
+        _db.WalletLedger.Add(new Entities.WalletLedgerEntry
+        {
+            FirmId = firmId,
+            TxnType = "subscription",
+            Amount = -price.Value,
+            BalanceAfter = firm.WalletBalance,
+            ReferenceId = plan.Code,
+            Description = $"Plan '{plan.Name}' ({(yearly ? "yearly" : "monthly")}) — self-service purchase",
+            CreatedBy = CurrentUserId,
+            CreatedAt = DateTimeOffset.UtcNow
+        });
+        _db.PlatformRevenue.Add(new Entities.PlatformRevenueEntry
+        {
+            SourceFirmId = firmId,
+            SourceType = "subscription",
+            GrossInr = price.Value,
+            CostInr = 0,
+            MarginInr = price.Value,
+            Description = $"Plan '{plan.Name}' ({(yearly ? "yearly" : "monthly")}) self-purchase",
+            CreatedAt = DateTimeOffset.UtcNow
+        });
+
+        // 2) Plan switch + limits turant update
+        firm.PlanId = plan.Id;
+        firm.UserLimit = plan.MaxUsers;
+        firm.BranchLimit = plan.MaxBranches;
+        firm.AiQuotaMonthly = plan.MaxAiCalls;
+
+        // 3) Subscription aage badhao — pehle se time bacha ho to uske UPAR jode
+        var baseDate = firm.SubscriptionEndsAt > DateTimeOffset.UtcNow
+            ? firm.SubscriptionEndsAt.Value
+            : DateTimeOffset.UtcNow;
+        firm.SubscriptionEndsAt = baseDate.AddDays(yearly ? 365 : 30);
+        firm.SubscriptionStartedAt ??= DateTimeOffset.UtcNow;
+        firm.Status = "active";
+        firm.ActivatedAt ??= DateTimeOffset.UtcNow;
+        firm.UpdatedAt = DateTimeOffset.UtcNow;
+
+        await _db.SaveChangesAsync();
+        await tx.CommitAsync();
+
+        return Ok(new
+        {
+            success = true,
+            plan = plan.Code,
+            paid = price.Value,
+            walletBalance = firm.WalletBalance,
+            subscriptionEndsAt = firm.SubscriptionEndsAt
+        });
     }
 }
 

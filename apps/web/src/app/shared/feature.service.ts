@@ -37,6 +37,8 @@ export interface MeModulesResponse {
   usage: {
     aiUsedThisMonth: number;
     walletBalance: number;
+    usersCount?: number;
+    branchesCount?: number;
   };
   subscription: {
     status: string;
@@ -80,6 +82,9 @@ export class FeatureService {
   branchLimit = signal<number>(1);
   aiQuotaMonthly = signal<number>(0);
   aiUsedThisMonth = signal<number>(0);
+  usersCount = signal<number>(0);      // abhi kitne active logins bane hain
+  branchesCount = signal<number>(0);   // abhi kitni branches bani hain
+  walletBalance = signal<number>(0);
   loaded = signal<boolean>(false);
 
   /** Computed convenience — % AI quota used. */
@@ -134,6 +139,9 @@ export class FeatureService {
         this.branchLimit.set(r.limits.branchLimit);
         this.aiQuotaMonthly.set(r.limits.aiQuotaMonthly);
         this.aiUsedThisMonth.set(r.usage.aiUsedThisMonth);
+        this.usersCount.set(r.usage.usersCount ?? 0);
+        this.branchesCount.set(r.usage.branchesCount ?? 0);
+        this.walletBalance.set(r.usage.walletBalance ?? 0);
         this.loaded.set(true);
       },
       error: (e) => {

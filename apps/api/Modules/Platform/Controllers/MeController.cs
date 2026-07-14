@@ -330,6 +330,10 @@ public class MeController : ControllerBase
             catch (JsonException) { }
         }
 
+        // Usage meter (Plans page ke progress bars ke liye) — abhi kitna use ho raha hai
+        var usersCount = await _db.Users.IgnoreQueryFilters().CountAsync(u => u.FirmId == firmId && u.IsActive);
+        var branchesCount = await _db.Branches.IgnoreQueryFilters().CountAsync(b => b.FirmId == firmId);
+
         return Ok(new
         {
             firmName = firm.Name,
@@ -351,7 +355,9 @@ public class MeController : ControllerBase
             usage = new
             {
                 aiUsedThisMonth = firm.AiUsedThisMonth,
-                walletBalance = firm.WalletBalance
+                walletBalance = firm.WalletBalance,
+                usersCount,
+                branchesCount
             },
             subscription = new
             {

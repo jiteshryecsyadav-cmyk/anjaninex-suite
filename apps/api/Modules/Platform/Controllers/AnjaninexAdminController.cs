@@ -1,8 +1,10 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Namokara.Api.Common.Auth;
 using Namokara.Api.Common.Errors;
 using Namokara.Api.Infrastructure.Persistence;
+using Namokara.Api.Modules.Core.Entities;
 using Namokara.Api.Modules.Platform.Entities;
 using Namokara.Api.Modules.Platform.Services;
 
@@ -87,6 +89,94 @@ public class AnjaninexAdminController : ControllerBase
     {
         await _svc.ActivateFirm(id);
         return Ok();
+    }
+
+    /// <summary>
+    /// SOFT DELETE — firm list se hat jati hai, uske users login nahi kar paate,
+    /// par data DB me safe rahta hai (galti par wapas laya ja sakta hai).
+    /// </summary>
+    [HttpDelete("firms/{id}")]
+    [HasPermission("platform.firm.edit.platform")]
+    public async Task<IActionResult> DeleteFirm(Guid id)
+    {
+        var firm = await _db.Firms.IgnoreQueryFilters().FirstOrDefaultAsync(f => f.Id == id);
+        if (firm is null) return NotFound();
+
+        firm.Status = "deleted";
+        firm.UpdatedAt = DateTimeOffset.UtcNow;
+
+        // Saare users deactivate — login band
+        var users = await _db.Users.IgnoreQueryFilters().Where(u => u.FirmId == id).ToListAsync();
+        foreach (var u in users) { u.IsActive = false; u.UpdatedAt = DateTimeOffset.UtcNow; }
+
+        await _db.SaveChangesAsync();
+        return Ok(new { ok = true, deactivatedUsers = users.Count });
+    }
+
+    /// <summary>
+    /// SUPPORT LOGIN — Anjaninex team ke liye is firm me ek default login banata hai
+    /// (ya password reset karta hai) aur credentials wapas deta hai.
+    /// Username pattern: anjaninex.XXXXXX (firm-id se, har firm me alag).
+    /// </summary>
+    [HttpPost("firms/{id}/support-login")]
+    [HasPermission("platform.firm.edit.platform")]
+    public async Task<IActionResult> SupportLogin(Guid id)
+    {
+        var firm = await _db.Firms.IgnoreQueryFilters().FirstOrDefaultAsync(f => f.Id == id);
+        if (firm is null) return NotFound();
+        if (firm.Status == "deleted") return BadRequest(new { error = "Firm deleted hai" });
+
+        var uname = "anjaninex." + id.ToString("N")[..6];
+        var password = "Anjx@" + Guid.NewGuid().ToString("N")[..6];
+
+        var existing = await _db.Users.IgnoreQueryFilters()
+            .FirstOrDefaultAsync(u => u.FirmId == id && u.Username == uname);
+
+        if (existing != null)
+        {
+            // Password reset + active karo — bas
+            existing.PasswordHash = BCrypt.Net.BCrypt.HashPassword(password);
+            existing.IsActive = true;
+            existing.IsLocked = false;
+            existing.UpdatedAt = DateTimeOffset.UtcNow;
+            await _db.SaveChangesAsync();
+            return Ok(new { username = uname, password, created = false });
+        }
+
+        // Firm ka owner role (fallback: firm ka koi bhi admin-jaisa role)
+        var role = await _db.Roles.IgnoreQueryFilters().FirstOrDefaultAsync(r =>
+                       (r.FirmId == id || r.FirmId == null) && r.Code == "firm_owner")
+                   ?? await _db.Roles.IgnoreQueryFilters().FirstOrDefaultAsync(r =>
+                       (r.FirmId == id || r.FirmId == null) && r.Code == "firm_admin");
+        if (role is null) return BadRequest(new { error = "Firm me owner/admin role nahi mila" });
+
+        var branch = await _db.Branches.IgnoreQueryFilters()
+            .Where(b => b.FirmId == id).OrderBy(b => b.CreatedAt).FirstOrDefaultAsync();
+
+        using var tx = await _db.Database.BeginTransactionAsync();
+        var user = new User
+        {
+            Id = Guid.NewGuid(),
+            FirmId = id,
+            Username = uname,
+            FullName = "Anjaninex Support",
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(password),
+            CanViewAllBranches = true,
+            DefaultBranchId = branch?.Id,
+            IsActive = true,
+            CreatedAt = DateTimeOffset.UtcNow,
+            UpdatedAt = DateTimeOffset.UtcNow
+        };
+        _db.Users.Add(user);
+        await _db.SaveChangesAsync();
+
+        _db.UserRoles.Add(new UserRole { UserId = user.Id, RoleId = role.Id, AssignedAt = DateTimeOffset.UtcNow });
+        if (branch != null)
+            _db.UserBranchAccess.Add(new UserBranchAccess { UserId = user.Id, BranchId = branch.Id, IsDefault = true });
+        await _db.SaveChangesAsync();
+        await tx.CommitAsync();
+
+        return Ok(new { username = uname, password, created = true });
     }
 
     [HttpPost("firms/{id}/change-plan")]

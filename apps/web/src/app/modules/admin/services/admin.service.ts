@@ -180,6 +180,10 @@ export class AdminService {
   }
   suspend(id: string) { return this.http.post(`${this.base}/firms/${id}/suspend`, {}); }
   activate(id: string) { return this.http.post(`${this.base}/firms/${id}/activate`, {}); }
+  // Soft delete — list se hat jati hai, users login nahi kar paate, data DB me safe
+  deleteFirm(id: string) { return this.http.delete<{ ok: boolean }>(`${this.base}/firms/${id}`); }
+  // Anjaninex support login — is firm ka default id/password bana ke (ya reset karke) deta hai
+  supportLogin(id: string) { return this.http.post<{ username: string; password: string; created: boolean }>(`${this.base}/firms/${id}/support-login`, {}); }
   changePlan(id: string, planId: string) { return this.http.post(`${this.base}/firms/${id}/change-plan`, { planId }); }
   setFirmTheme(firmId: string, theme: string) {
     return this.http.post<{ success: boolean; theme: string }>(`${this.base}/firms/${firmId}/theme`, { theme });

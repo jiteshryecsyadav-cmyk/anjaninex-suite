@@ -60,6 +60,7 @@ const subNav = `
           <option value="trial">Trial</option>
           <option value="suspended">Suspended</option>
           <option value="churned">Churned</option>
+          <option value="deleted">🗑 Deleted (recover ke liye)</option>
         </select>
       </div>
 
@@ -125,7 +126,7 @@ const subNav = `
                          class="inline-flex items-center px-2 py-1 border border-[#5c1a8b] text-[#5c1a8b] rounded text-xs font-semibold hover:bg-purple-50 no-underline">
                         👁
                       </a>
-                      @if (f.status === 'suspended') {
+                      @if (f.status === 'suspended' || f.status === 'deleted') {
                         <button (click)="toggleFirm(f)" [disabled]="busyId() === f.id"
                                 title="Activate — firm phir se use kar payega"
                                 class="inline-flex items-center px-2 py-1 bg-green-600 text-white rounded text-xs font-semibold hover:bg-green-700 whitespace-nowrap">
@@ -138,6 +139,16 @@ const subNav = `
                           ⛔ Deactivate
                         </button>
                       }
+                      <button (click)="supportLogin(f)" [disabled]="busyId() === f.id"
+                              title="Anjaninex support login — is firm ka default id/password do"
+                              class="inline-flex items-center px-2 py-1 border border-blue-600 text-blue-700 rounded text-xs font-semibold hover:bg-blue-50 whitespace-nowrap">
+                        🔑
+                      </button>
+                      <button (click)="deleteFirm(f)" [disabled]="busyId() === f.id"
+                              title="Delete — firm list se hat jayegi (data DB me safe rahega)"
+                              class="inline-flex items-center px-2 py-1 border border-red-600 text-red-700 rounded text-xs font-semibold hover:bg-red-50 whitespace-nowrap">
+                        🗑
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -267,7 +278,7 @@ export class AdminFirmsComponent {
 
   // Active ⇄ Deactivate toggle. Deactivate → status 'suspended' → firm sab kuch use karna band.
   toggleFirm(f: FirmListItem) {
-    const deactivating = f.status !== 'suspended';
+    const deactivating = f.status !== 'suspended' && f.status !== 'deleted';
     const msg = deactivating
       ? `"${f.name}" ko DEACTIVATE karein?\nFirm ke saare users login/feature use nahi kar payenge.`
       : `"${f.name}" ko ACTIVATE karein?\nFirm phir se normal use kar payegi.`;
@@ -277,6 +288,37 @@ export class AdminFirmsComponent {
     req.subscribe({
       next: () => { this.busyId.set(null); this.load(); },
       error: (e: any) => { this.busyId.set(null); alert(e?.error?.error ?? 'Status change nahi hua'); }
+    });
+  }
+
+  // SOFT DELETE — confirm ke liye firm ka naam type karwao (galti se click na ho jaye)
+  deleteFirm(f: FirmListItem) {
+    const typed = prompt(
+      `⚠️ "${f.name}" ko DELETE karna hai?\n\nFirm list se hat jayegi aur uske saare users login nahi kar payenge.\n(Data DB me safe rahega — zaroorat par wapas laya ja sakta hai.)\n\nConfirm karne ke liye firm ka naam type karo:`);
+    if (typed === null) return;
+    if (typed.trim().toLowerCase() !== f.name.trim().toLowerCase()) {
+      alert('Naam match nahi hua — delete cancel.');
+      return;
+    }
+    this.busyId.set(f.id);
+    this.svc.deleteFirm(f.id).subscribe({
+      next: () => { this.busyId.set(null); this.load(); },
+      error: (e: any) => { this.busyId.set(null); alert(e?.error?.error ?? 'Delete nahi hua'); }
+    });
+  }
+
+  // SUPPORT LOGIN — is firm ke liye Anjaninex ka default id/password bana ke dikhao
+  supportLogin(f: FirmListItem) {
+    if (!confirm(`"${f.name}" ka support login chahiye?\n(Pehle se bana hai to password RESET ho jayega.)`)) return;
+    this.busyId.set(f.id);
+    this.svc.supportLogin(f.id).subscribe({
+      next: (r) => {
+        this.busyId.set(null);
+        prompt(
+          `✅ "${f.name}" ka support login ${r.created ? 'ban gaya' : '(password reset)'} —\n\nUsername: ${r.username}\nPassword: ${r.password}\n\nABHI COPY KAR LO (password dobara nahi dikhega, par 🔑 se naya reset ho sakta hai):`,
+          `${r.username} / ${r.password}`);
+      },
+      error: (e: any) => { this.busyId.set(null); alert(e?.error?.error ?? 'Support login nahi bana'); }
     });
   }
 

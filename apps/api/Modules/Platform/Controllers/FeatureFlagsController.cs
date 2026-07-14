@@ -67,7 +67,7 @@ public class AdminFeatureFlagsController : ControllerBase
 
         var firms = new List<object>();
         await using (var cmd = await CmdAsync(@"
-            SELECT id, name FROM platform.firms ORDER BY name"))
+            SELECT id, name FROM platform.firms WHERE status <> 'deleted' ORDER BY name"))
         await using (var r = await cmd.ExecuteReaderAsync())
         {
             while (await r.ReadAsync())

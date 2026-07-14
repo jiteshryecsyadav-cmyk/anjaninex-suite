@@ -248,6 +248,7 @@ public class PlatformAdminService : IPlatformAdminService
     {
         var query = _db.Firms.IgnoreQueryFilters().AsQueryable();
         if (!string.IsNullOrEmpty(status)) query = query.Where(f => f.Status == status);
+        else query = query.Where(f => f.Status != "deleted");   // soft-deleted firms list se gayab
         if (!string.IsNullOrEmpty(search))
             query = query.Where(f => EF.Functions.ILike(f.Name, $"%{search}%")
                                   || f.GstNumber!.Contains(search)

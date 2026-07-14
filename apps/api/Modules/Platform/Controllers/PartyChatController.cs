@@ -198,6 +198,15 @@ public class PartyChatPublicController : ControllerBase
     private static string Digits(string? s) => new string((s ?? "").Where(char.IsDigit).ToArray());
     private static string Hash(string s) => Convert.ToHexString(SHA256.HashData(Encoding.ASCII.GetBytes(s))).ToLowerInvariant();
 
+    // Public endpoint par login nahi hota → RLS ke liye firm context khud set karo,
+    // warna trading.party_profiles / core.contacts ki rows dikhti hi nahi ("party nahi mili").
+    private async Task SetFirmContext(Guid firmId)
+    {
+        await using var cmd = await CmdAsync("SELECT set_config('app.current_firm_id', @f, false)");
+        cmd.Parameters.Add(new NpgsqlParameter("f", firmId.ToString()));
+        await cmd.ExecuteNonQueryAsync();
+    }
+
     // Firm ke liye party_chat flag on hai? (enabled_all ya pilot list)
     private async Task<bool> FlagOn(Guid firmId)
     {
@@ -233,6 +242,7 @@ public class PartyChatPublicController : ControllerBase
         if (phone.Length < 10) return BadRequest(new { error = "Sahi mobile number daalo" });
         if (!await FlagOn(dto.FirmId)) return BadRequest(new { error = "Is firm ke liye chat abhi chalu nahi hai" });
 
+        await SetFirmContext(dto.FirmId);   // RLS: party master padhne ke liye
         var party = await FindParty(dto.FirmId, phone);
         if (party is null)
             return BadRequest(new { error = "Ye number is firm ke kisi party master me nahi mila — firm se apna number update karwayein" });
@@ -337,6 +347,7 @@ public class PartyChatPublicController : ControllerBase
             return BadRequest(new { error = "OTP galat hai" });
         }
 
+        await SetFirmContext(dto.FirmId);   // RLS: party master padhne ke liye
         var party = await FindParty(dto.FirmId, phone);
         if (party is null) return BadRequest(new { error = "Party nahi mili" });
 

@@ -4,9 +4,11 @@ using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using Namokara.Api.Infrastructure.Persistence;
+using Namokara.Api.Modules.Platform.Hubs;
 
 namespace Namokara.Api.Modules.Platform.Controllers;
 
@@ -32,7 +34,9 @@ public class PartyChatController : ControllerBase
 {
     private readonly AppDbContext _db;
     private readonly IWebHostEnvironment _env;
-    public PartyChatController(AppDbContext db, IWebHostEnvironment env) { _db = db; _env = env; }
+    private readonly IHubContext<PartyChatHub> _hub;
+    public PartyChatController(AppDbContext db, IWebHostEnvironment env, IHubContext<PartyChatHub> hub)
+    { _db = db; _env = env; _hub = hub; }
 
     // ---- Attachment helpers (Complaint Box photo pattern) ----
     internal static string UploadDir(IWebHostEnvironment env)
@@ -195,29 +199,33 @@ public class PartyChatController : ControllerBase
     [HttpPost("messages/{messageId}/delete")]
     public async Task<IActionResult> DeleteMessage(Guid messageId, [FromBody] DelModeDto dto)
     {
-        int n;
+        object? tid;
         if (string.Equals(dto.Mode, "everyone", StringComparison.OrdinalIgnoreCase))
         {
             // Everyone = sirf APNE bheje message (WhatsApp rule)
             await using var cmd = await CmdAsync(@"
                 DELETE FROM platform.party_chat_messages m
                 USING platform.party_chat_threads t
-                WHERE m.id = @m AND m.thread_id = t.id AND t.firm_id = @f AND m.sender = 'firm'");
+                WHERE m.id = @m AND m.thread_id = t.id AND t.firm_id = @f AND m.sender = 'firm'
+                RETURNING m.thread_id");
             cmd.Parameters.Add(new NpgsqlParameter("m", messageId));
             cmd.Parameters.Add(new NpgsqlParameter("f", CurrentFirmId));
-            n = await cmd.ExecuteNonQueryAsync();
+            tid = await cmd.ExecuteScalarAsync();
         }
         else
         {
             await using var cmd = await CmdAsync(@"
                 UPDATE platform.party_chat_messages m SET deleted_for_firm = true
                 FROM platform.party_chat_threads t
-                WHERE m.id = @m AND m.thread_id = t.id AND t.firm_id = @f");
+                WHERE m.id = @m AND m.thread_id = t.id AND t.firm_id = @f
+                RETURNING m.thread_id");
             cmd.Parameters.Add(new NpgsqlParameter("m", messageId));
             cmd.Parameters.Add(new NpgsqlParameter("f", CurrentFirmId));
-            n = await cmd.ExecuteNonQueryAsync();
+            tid = await cmd.ExecuteScalarAsync();
         }
-        return n == 0 ? NotFound(new { error = "Everyone-delete sirf apne bheje message ka ho sakta hai" }) : Ok(new { ok = true });
+        if (tid is null) return NotFound(new { error = "Everyone-delete sirf apne bheje message ka ho sakta hai" });
+        if (tid is Guid threadGuid) await PartyChatEvents.Notify(_hub, threadGuid, CurrentFirmId);
+        return Ok(new { ok = true });
     }
 
     // ---- Firm: puri chat DELETE (messages + party sessions bhi CASCADE se ud jaate hain) ----
@@ -256,6 +264,7 @@ public class PartyChatController : ControllerBase
         await using var touch = await CmdAsync("UPDATE platform.party_chat_threads SET last_msg_at = now() WHERE id = @t");
         touch.Parameters.Add(new NpgsqlParameter("t", id));
         await touch.ExecuteNonQueryAsync();
+        await PartyChatEvents.Notify(_hub, id, CurrentFirmId);   // live push — party ko turant dikhe
         return Ok(new { ok = true });
     }
 
@@ -278,6 +287,7 @@ public class PartyChatController : ControllerBase
         await using var touch = await CmdAsync("UPDATE platform.party_chat_threads SET last_msg_at = now() WHERE id = @t");
         touch.Parameters.Add(new NpgsqlParameter("t", id));
         await touch.ExecuteNonQueryAsync();
+        await PartyChatEvents.Notify(_hub, id, CurrentFirmId);   // live push — party ko turant dikhe
         return Ok(new { ok = true });
     }
 }
@@ -292,8 +302,23 @@ public class PartyChatPublicController : ControllerBase
 {
     private readonly AppDbContext _db;
     private readonly IWebHostEnvironment _env;
+    private readonly IHubContext<PartyChatHub> _hub;
     private static readonly HttpClient Http = new HttpClient();
-    public PartyChatPublicController(AppDbContext db, IWebHostEnvironment env) { _db = db; _env = env; }
+    public PartyChatPublicController(AppDbContext db, IWebHostEnvironment env, IHubContext<PartyChatHub> hub)
+    { _db = db; _env = env; _hub = hub; }
+
+    // Message ke baad thread touch + firm_id nikal ke live push
+    private async Task TouchAndNotify(Guid threadId)
+    {
+        object? firmId;
+        await using (var touch = await CmdAsync(
+            "UPDATE platform.party_chat_threads SET last_msg_at = now() WHERE id = @t RETURNING firm_id"))
+        {
+            touch.Parameters.Add(new NpgsqlParameter("t", threadId));
+            firmId = await touch.ExecuteScalarAsync();
+        }
+        if (firmId is Guid f) await PartyChatEvents.Notify(_hub, threadId, f);
+    }
 
     private async Task<NpgsqlCommand> CmdAsync(string sql)
     {
@@ -615,11 +640,7 @@ public class PartyChatPublicController : ControllerBase
             cmd.Parameters.Add(new NpgsqlParameter("t", threadId.Value));
             await cmd.ExecuteNonQueryAsync();
         }
-        await using (var touch = await CmdAsync("UPDATE platform.party_chat_threads SET last_msg_at = now() WHERE id = @t"))
-        {
-            touch.Parameters.Add(new NpgsqlParameter("t", threadId.Value));
-            await touch.ExecuteNonQueryAsync();
-        }
+        await TouchAndNotify(threadId.Value);
         return Ok(new { ok = true });
     }
 
@@ -651,7 +672,9 @@ public class PartyChatPublicController : ControllerBase
             cmd.Parameters.Add(new NpgsqlParameter("t", threadId.Value));
             n = await cmd.ExecuteNonQueryAsync();
         }
-        return n == 0 ? NotFound(new { error = "Everyone-delete sirf apne bheje message ka ho sakta hai" }) : Ok(new { ok = true });
+        if (n == 0) return NotFound(new { error = "Everyone-delete sirf apne bheje message ka ho sakta hai" });
+        await TouchAndNotify(threadId.Value);
+        return Ok(new { ok = true });
     }
 
     // ---- File serve (dono taraf yahi URL use hota hai; GUID filename = guess nahi hota) ----
@@ -693,11 +716,7 @@ public class PartyChatPublicController : ControllerBase
             cmd.Parameters.Add(new NpgsqlParameter("t", threadId.Value));
             await cmd.ExecuteNonQueryAsync();
         }
-        await using (var touch = await CmdAsync("UPDATE platform.party_chat_threads SET last_msg_at = now() WHERE id = @t"))
-        {
-            touch.Parameters.Add(new NpgsqlParameter("t", threadId.Value));
-            await touch.ExecuteNonQueryAsync();
-        }
+        await TouchAndNotify(threadId.Value);
         return Ok(new { ok = true });
     }
 }

@@ -3,6 +3,7 @@ import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { CommonModule, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
+import * as signalR from '@microsoft/signalr';
 import { environment } from '../../../environments/environment';
 import { AuthService } from '../../core/auth/auth.service';
 import { TradingService } from '../trading/services/trading.service';
@@ -327,16 +328,42 @@ export class PartyChatComponent {
   partySearch = '';
 
   private pollTimer: any;
+  private hub?: signalR.HubConnection;
 
   ngOnInit() {
     this.loadThreads();
     this.trading.listParties().subscribe({ next: (p: any) => { this.parties = p; this.filteredParties.set(p); }, error: () => {} });
+    // Polling ab sirf BACKUP hai (live connection toot jaye to) — main rasta SignalR
     this.pollTimer = setInterval(() => {
       this.loadThreads();
       if (this.active()) this.loadMsgs(this.active()!.id);
-    }, 10_000);
+    }, 30_000);
+    this.startLive();
   }
-  ngOnDestroy() { clearInterval(this.pollTimer); }
+  ngOnDestroy() {
+    clearInterval(this.pollTimer);
+    this.hub?.stop().catch(() => {});
+  }
+
+  // WhatsApp jaisa turant message — server push (SignalR)
+  private startLive() {
+    try {
+      this.hub = new signalR.HubConnectionBuilder()
+        .withUrl(`${environment.apiUrl}/api/hubs/party-chat`, {
+          accessTokenFactory: () => this.auth.accessToken() ?? ''
+        })
+        .withAutomaticReconnect()
+        .build();
+      this.hub.on('newMessage', (threadId: string) => {
+        this.loadThreads();
+        if (this.active()?.id === threadId) this.loadMsgs(threadId);
+      });
+      this.hub.onreconnected(() => this.hub?.invoke('JoinFirm').catch(() => {}));
+      this.hub.start()
+        .then(() => this.hub?.invoke('JoinFirm'))
+        .catch(() => { /* live nahi juda — 30s polling backup chalega */ });
+    } catch { /* polling backup */ }
+  }
 
   loadThreads() {
     this.http.get<PchatThread[]>(`${this.base}/threads`).subscribe({ next: t => this.threads.set(t), error: () => {} });

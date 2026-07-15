@@ -2,6 +2,7 @@ import { Component, ElementRef, ViewChild, inject, signal } from '@angular/core'
 import { CommonModule, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
+import * as signalR from '@microsoft/signalr';
 import { ActivatedRoute } from '@angular/router';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { environment } from '../../../environments/environment';
@@ -250,7 +251,7 @@ export class PartyChatPublicComponent {
   private base = `${environment.apiUrl}/api/party-chat/public`;
 
   firmId = '';
-  readonly BUILD = 'b7';                     // har fix par badhta hai — phone par yahi dikhna chahiye
+  readonly BUILD = 'b8-live';                // har fix par badhta hai — phone par yahi dikhna chahiye
   jsError = signal('');                      // koi JS error → header ke neeche lal patti
   step = signal<'phone' | 'otp' | 'chat'>('phone');
   phone = '';
@@ -405,11 +406,32 @@ export class PartyChatPublicComponent {
     // Pehle se session ho to seedha chat kholo
     try {
       const saved = localStorage.getItem('pchat_token_' + this.firmId);
-      if (saved) { this.token = saved; this.step.set('chat'); this.loadMsgs(); }
+      if (saved) { this.token = saved; this.step.set('chat'); this.loadMsgs(); this.startLive(); }
     } catch {}
-    this.pollTimer = setInterval(() => { if (this.step() === 'chat') this.loadMsgs(); }, 10_000);
+    // Polling ab sirf BACKUP hai — main rasta SignalR live push
+    this.pollTimer = setInterval(() => { if (this.step() === 'chat') this.loadMsgs(); }, 30_000);
   }
-  ngOnDestroy() { clearInterval(this.pollTimer); }
+  ngOnDestroy() {
+    clearInterval(this.pollTimer);
+    this.hub?.stop().catch(() => {});
+  }
+
+  // WhatsApp jaisa turant message — server push (SignalR)
+  private hub?: signalR.HubConnection;
+  private startLive() {
+    if (this.hub) return;
+    try {
+      this.hub = new signalR.HubConnectionBuilder()
+        .withUrl(`${environment.apiUrl}/api/hubs/party-chat`)
+        .withAutomaticReconnect()
+        .build();
+      this.hub.on('newMessage', () => { if (this.step() === 'chat') this.loadMsgs(); });
+      this.hub.onreconnected(() => this.hub?.invoke('JoinParty', this.token).catch(() => {}));
+      this.hub.start()
+        .then(() => this.hub?.invoke('JoinParty', this.token))
+        .catch(() => { /* live nahi juda — 30s polling backup chalega */ });
+    } catch { /* polling backup */ }
+  }
 
   requestOtp() {
     this.busy.set(true); this.err.set('');
@@ -435,6 +457,7 @@ export class PartyChatPublicComponent {
         this.partyName.set(r.partyName || '');
         this.step.set('chat');
         this.loadMsgs();
+        this.startLive();   // OTP verify hote hi live connection
       },
       error: (e) => { this.busy.set(false); this.err.set(e?.error?.error ?? 'OTP verify nahi hua'); }
     });
@@ -481,6 +504,8 @@ export class PartyChatPublicComponent {
   logout() {
     if (!confirm('Logout karein? Dobara chat kholne ke liye OTP lagega.')) return;
     try { localStorage.removeItem('pchat_token_' + this.firmId); } catch {}
+    this.hub?.stop().catch(() => {});
+    this.hub = undefined;
     this.token = '';
     this.otp = '';
     this.msgs.set([]);

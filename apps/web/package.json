@@ -27,7 +27,7 @@
     "@capacitor/android": "^8.4.1",
     "@capacitor/cli": "^8.4.1",
     "@capacitor/core": "^8.4.1",
-    "@microsoft/signalr": "^8.0.7",
+    "@microsoft/signalr": "^8.0.17",
     "browser-image-compression": "^2.0.2",
     "jspdf": "^2.5.2",
     "jspdf-autotable": "^3.8.4",

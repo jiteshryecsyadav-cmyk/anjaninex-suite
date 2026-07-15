@@ -119,6 +119,16 @@ try
             // Reject tokens for suspended firms or revoked sessions at every request
             opts.Events = new JwtBearerEvents
             {
+                // SignalR (websocket/SSE) me Authorization header nahi ja sakta —
+                // token query-string me aata hai, sirf /api/hubs path par accept karo
+                OnMessageReceived = ctx =>
+                {
+                    var accessToken = ctx.Request.Query["access_token"];
+                    if (!string.IsNullOrEmpty(accessToken)
+                        && ctx.HttpContext.Request.Path.StartsWithSegments("/api/hubs"))
+                        ctx.Token = accessToken;
+                    return Task.CompletedTask;
+                },
                 OnTokenValidated = async ctx =>
                 {
                     var firmId = ctx.Principal?.FindFirst("firm_id")?.Value;
@@ -180,6 +190,9 @@ try
     builder.Services.AddAuthorization();
     builder.Services.AddPermissionAuthorization();
     builder.Services.AddModuleAccessAuthorization();   // composite provider — handles BOTH perm: + mod: policies
+
+    // Party Chat live messages (WhatsApp jaisa turant)
+    builder.Services.AddSignalR();
 
     // ---------------- P0-11: Rate limiting ----------------
     builder.Services.AddRateLimiter(opts =>
@@ -547,6 +560,9 @@ try
     });
 
     app.MapControllers();
+
+    // Party Chat live hub — /api/ path par isliye ki nginx ka existing proxy hi use ho
+    app.MapHub<Namokara.Api.Modules.Platform.Hubs.PartyChatHub>("/api/hubs/party-chat");
 
     // Health endpoints
     app.MapHealthChecks("/healthz");

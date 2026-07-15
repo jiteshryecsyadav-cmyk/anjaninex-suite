@@ -403,8 +403,8 @@ import { LedgerStatementComponent } from '../../accounting/components/ledger-sta
                   <input formControlName="returnRate" type="number" step="0.1" placeholder="2.5" class="ip">
                 </div>
                 <div>
-                  <label class="lbl">COMMISSION % *</label>
-                  <input formControlName="commission" type="number" step="0.1" placeholder="0" class="ip ip-req">
+                  <label class="lbl">COMMISSION % <small style="color:#9CA3AF">(optional)</small></label>
+                  <input formControlName="commission" type="number" step="0.1" placeholder="0" class="ip">
                 </div>
                 <div class="col-span-5">
                   <label class="lbl">FLAG / SPECIAL NOTE</label>

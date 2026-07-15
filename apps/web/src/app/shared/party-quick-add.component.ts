@@ -150,7 +150,7 @@ import { INDIA_STATES, STATES_ALPHA, findStateByName, findStateByGstCode, sugges
             </div>
             <div class="qa-field">
               <label class="flex items-center justify-between">
-                <span>COMMISSION % @if (commissionEnabled) { <span class="req">*</span> }</span>
+                <span>COMMISSION %</span>
                 <!-- Buyer mostly commission nahi deta; toggle OFF = optional. Sirf supplier deta hai. -->
                 <label class="qa-comm-toggle" title="Commission applicable? (buyer ke liye aksar OFF)">
                   <input type="checkbox" [(ngModel)]="commissionEnabled" (ngModelChange)="onCommissionToggle()">
@@ -159,7 +159,7 @@ import { INDIA_STATES, STATES_ALPHA, findStateByName, findStateByGstCode, sugges
               </label>
               <input type="number" [(ngModel)]="commissionRate" placeholder="2" step="0.1"
                      [disabled]="!commissionEnabled"
-                     class="qa-ip" [class.qa-ip-err]="submitted() && commissionEnabled && !(commissionRate > 0)">
+                     class="qa-ip">
               @if (!commissionEnabled) {
                 <div class="qa-hint" style="color:#16a34a">No commission for this party</div>
               }
@@ -530,9 +530,7 @@ export class PartyQuickAddComponent {
     if (!this.city.trim())                 missing.push('City');
     if (!(+this.creditLimit > 0))          missing.push('Credit Limit (> 0)');
     if (!(+this.creditDays > 0))           missing.push('Credit Days (> 0)');
-    // Commission only required when the toggle is ON (suppliers). Buyers/OFF → optional.
-    if (this.commissionEnabled && !(+this.commissionRate > 0))
-      missing.push('Commission % (> 0) — ya commission toggle OFF karein');
+    // Commission ab OPTIONAL hai (supplier ho ya buyer) — 0 ya khali bhi chalega.
 
     if (missing.length > 0) {
       this.error.set(

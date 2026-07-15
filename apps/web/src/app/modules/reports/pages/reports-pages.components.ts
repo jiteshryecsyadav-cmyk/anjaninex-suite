@@ -5117,7 +5117,65 @@ export class PartyWiseReportComponent {
       error: () => this.loading.set(false)
     });
   }
-  printPage() { window.print(); }
+  // PRINT: jo party EXPAND ki hai sirf USKI detail chhapti hai (clean white page —
+  // window.print() dark layout par blank aata tha). Kuch expand na ho to summary table.
+  printPage() {
+    const groups = this.filteredGroups(this.currentTabRows());
+    if (!groups.length) { alert('Print ke liye koi data nahi'); return; }
+    const expanded = groups.filter(g => g.expanded);
+    const list = expanded.length ? expanded : groups;
+    const detail = expanded.length > 0;
+    const tabName = this.tab() === 'supplier' ? 'Supplier Wise' : this.tab() === 'buyer' ? 'Buyer Wise' : 'City Wise';
+    const firm = this.features.firmName() || 'Anjaninex';
+    const range = (this.fromDate ? this.fmt(this.fromDate) + ' se ' : '') + (this.fmt(this.toDate || new Date().toISOString().split('T')[0])) + ' tak';
+    const money = (n: number) => '₹' + (n || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 });
+    const esc = (s: any) => String(s ?? '—').replace(/</g, '&lt;');
+
+    let html = `<html><head><title>${tabName} — ${firm}</title><style>
+      body{font-family:Arial,Helvetica,sans-serif;color:#111;padding:18px}
+      h2{margin:0 0 2px;color:#1B2E5C} .sub{color:#666;font-size:12px;margin-bottom:14px}
+      table{width:100%;border-collapse:collapse;margin:6px 0 14px}
+      th,td{border:1px solid #bbb;padding:5px 8px;font-size:12px;text-align:left}
+      th{background:#f0e6ff;color:#5c1a8b} .r{text-align:right}
+      .banner{background:#f7f2ff;border:1px solid #ddc8f5;padding:7px 10px;font-weight:700;margin-top:14px;font-size:13px}
+      .tot td{font-weight:700;background:#faf7f0}
+    </style></head><body>
+    <h2>Party Wise Report — ${tabName}</h2>
+    <div class="sub">${esc(firm)} · ${range}</div>`;
+
+    if (detail) {
+      for (const g of list) {
+        html += `<div class="banner">📄 ${esc(g.name)} — ${g.billCount} bills · Paid ${this.paidPctText(g)} · Pending ${money(g.totalPending)}</div>`;
+        html += `<table><tr><th>Bill No</th><th>Date</th><th>${this.tab() === 'buyer' ? 'Supplier' : 'Buyer'}</th><th class="r">Bill Amt</th><th class="r">Paid</th><th class="r">Pending</th><th>Status</th></tr>`;
+        for (const b of g.bills) {
+          const other = this.tab() === 'buyer' ? b.partyName : (b.buyerName || '—');
+          html += `<tr><td>${esc(b.billNo)}</td><td>${this.fmt(String(b.billDate))}</td><td>${esc(other)}</td>
+                   <td class="r">${money(b.total)}</td><td class="r">${money(b.paidAmount)}</td>
+                   <td class="r">${money((b.total || 0) - (b.paidAmount || 0))}</td><td>${esc(b.status)}</td></tr>`;
+        }
+        html += `<tr class="tot"><td colspan="3">Subtotal</td><td class="r">${money(g.totalBill)}</td>
+                 <td class="r">${money(g.totalPaid)}</td><td class="r">${money(g.totalPending)}</td><td></td></tr></table>`;
+      }
+    } else {
+      html += `<table><tr><th>#</th><th>Name</th><th class="r">Bills</th><th class="r">Total</th><th class="r">Paid</th><th class="r">Pending</th><th>Status</th></tr>`;
+      list.forEach((g, i) => {
+        html += `<tr><td>${i + 1}</td><td>${esc(g.name)}</td><td class="r">${g.billCount}</td>
+                 <td class="r">${money(g.totalBill)}</td><td class="r">${money(g.totalPaid)}</td>
+                 <td class="r">${money(g.totalPending)}</td><td>${esc(g.status)}</td></tr>`;
+      });
+      html += `<tr class="tot"><td colspan="2">Total</td><td class="r">${this.sumBills(list)}</td>
+               <td class="r">${money(this.sumField(list, 'totalBill'))}</td><td class="r">${money(this.sumField(list, 'totalPaid'))}</td>
+               <td class="r">${money(this.sumField(list, 'totalPending'))}</td><td></td></tr></table>`;
+    }
+    html += `</body></html>`;
+
+    const w = window.open('', '_blank', 'width=920,height=680');
+    if (!w) { alert('Popup blocked hai — is site ke liye popups allow karo, fir Print dabao'); return; }
+    w.document.write(html);
+    w.document.close();
+    w.focus();
+    setTimeout(() => w.print(), 400);
+  }
 
   // ── WhatsApp share ──
   private fmt(d: string): string {
@@ -5130,6 +5188,26 @@ export class PartyWiseReportComponent {
     if (!groups.length) return '';
     const upto = this.fmt(this.toDate || new Date().toISOString().split('T')[0]);
     const tabName = this.tab() === 'supplier' ? 'Supplier Wise' : this.tab() === 'buyer' ? 'Buyer Wise' : 'City Wise';
+
+    // Party EXPAND ki hai? → sirf USKI bill-wise detail bhejo (WhatsApp me wahi chahiye)
+    const expanded = groups.filter(g => g.expanded);
+    if (expanded.length) {
+      const lines: string[] = [];
+      for (const g of expanded.slice(0, 3)) {
+        lines.push(`*${g.name}* — ${g.billCount} bills (${upto} tak)`);
+        const maxBills = 20;
+        g.bills.slice(0, maxBills).forEach((b, i) => {
+          const pend = Math.round((b.total || 0) - (b.paidAmount || 0));
+          lines.push(`${i + 1}. ${b.billNo} · ${this.fmt(String(b.billDate))} · ₹${Math.round(b.total || 0).toLocaleString('en-IN')} · Pending ₹${pend.toLocaleString('en-IN')}`);
+        });
+        if (g.bills.length > maxBills) lines.push(`+${g.bills.length - maxBills} aur bills...`);
+        lines.push(`Paid: ${this.paidPctText(g)} | *Pending: ₹${Math.round(g.totalPending || 0).toLocaleString('en-IN')}*`);
+        lines.push('------------------');
+      }
+      lines.push('- ' + (this.features.firmName() || 'Anjaninex'));
+      return lines.join('\n');
+    }
+
     const partyLine = groups.length === 1 ? groups[0].name : 'Sabhi parties';
     const lines: string[] = [`*Party Wise Report — ${tabName}* (${upto} tak)`, partyLine];
     const max = 15;
@@ -5144,11 +5222,13 @@ export class PartyWiseReportComponent {
     return lines.join('\n');
   }
   waPhone(): string | null {
-    // Filter ke baad ek hi party group bache (supplier/buyer tab) to uska phone suggest karo
+    // Ek party expand ho (ya filter ke baad ek hi bache) to uska phone suggest karo
     if (this.tab() === 'city') return null;
     const groups = this.filteredGroups(this.currentTabRows());
-    if (groups.length !== 1) return null;
-    const p = this.parties().find(x => x.displayName === groups[0].name);
+    const expanded = groups.filter(g => g.expanded);
+    const target = expanded.length === 1 ? expanded[0] : (groups.length === 1 ? groups[0] : null);
+    if (!target) return null;
+    const p = this.parties().find(x => x.displayName === target.name);
     return p?.phone || null;
   }
 }

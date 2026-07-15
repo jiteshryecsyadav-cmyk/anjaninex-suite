@@ -227,6 +227,10 @@ public class ReportsAggregateService : IReportsAggregateService
         return allDates;
     }
 
+    // Reports me SUPPLIER ka bill no dikhta hai (2885/GST) — internal no sirf fallback
+    private static string DispBillNo(Namokara.Api.Modules.Trading.Entities.Bill b)
+        => string.IsNullOrWhiteSpace(b.SupplierBillNo) ? b.BillNo : b.SupplierBillNo!;
+
     public async Task<List<SalesRegisterRowDto>> SalesRegister(DateOnly from, DateOnly to, string? status)
     {
         var query = _db.Bills
@@ -248,7 +252,7 @@ public class ReportsAggregateService : IReportsAggregateService
                             .ToDictionaryAsync(x => x.Id, x => new { x.DisplayName, x.GstNumber });
 
         return bills.Select(b => new SalesRegisterRowDto(
-            b.BillNo, b.BillDate,
+            DispBillNo(b), b.BillDate,
             parties.GetValueOrDefault(b.PartyId)?.DisplayName ?? "—",          // SUPPLIER
             parties.GetValueOrDefault(b.PartyId)?.GstNumber,
             b.BuyerPartyId != null
@@ -287,7 +291,7 @@ public class ReportsAggregateService : IReportsAggregateService
             return new OutstandingRowDto(
                 b.PartyId,
                 parties.GetValueOrDefault(b.PartyId)?.DisplayName ?? "—",
-                b.BillNo, b.BillDate, b.Total, b.PaidAmount,
+                DispBillNo(b), b.BillDate, b.Total, b.PaidAmount,
                 pending, Math.Max(0, daysOverdue), bucket);
         }).OrderByDescending(r => r.DaysOverdue).ToList();
     }

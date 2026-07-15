@@ -128,9 +128,12 @@ public class GoodsReturnService : IGoodsReturnService
                   (pp, c) => new { pp.Id, c.DisplayName })
             .ToDictionaryAsync(x => x.Id, x => x.DisplayName);
 
-        var bills = await _db.Bills.AsNoTracking()
+        // Display SUPPLIER ka bill no — internal no fallback
+        var bills = (await _db.Bills.AsNoTracking()
             .Where(b => billIds.Contains(b.Id))
-            .ToDictionaryAsync(b => b.Id, b => b.BillNo);
+            .Select(b => new { b.Id, b.BillNo, b.SupplierBillNo })
+            .ToListAsync())
+            .ToDictionary(b => b.Id, b => string.IsNullOrWhiteSpace(b.SupplierBillNo) ? b.BillNo : b.SupplierBillNo!);
 
         var items = grs.Select(g => new GoodsReturnListItemDto(
             g.Id, g.GrNo, g.GrDate,
@@ -161,7 +164,8 @@ public class GoodsReturnService : IGoodsReturnService
             .ToDictionaryAsync(x => x.Id, x => x.DisplayName);
 
         var billNo = g.OriginalBillId.HasValue
-            ? await _db.Bills.AsNoTracking().Where(b => b.Id == g.OriginalBillId.Value).Select(b => b.BillNo).FirstOrDefaultAsync()
+            ? await _db.Bills.AsNoTracking().Where(b => b.Id == g.OriginalBillId.Value)
+                .Select(b => string.IsNullOrEmpty(b.SupplierBillNo) ? b.BillNo : b.SupplierBillNo).FirstOrDefaultAsync()
             : null;
 
         return new GoodsReturnDetailDto(

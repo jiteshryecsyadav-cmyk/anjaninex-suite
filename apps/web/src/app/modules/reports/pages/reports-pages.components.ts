@@ -3775,7 +3775,7 @@ export class OrderVsBillReportComponent {
           !b.poNumber && b.partyId === o.partyId &&
           (b.buyerName || '') === (o.buyerName || ''));
       }
-      const billNos = matchingBills.map(b => b.billNo);
+      const billNos = matchingBills.map(b => b.supplierBillNo || b.billNo);   // SUPP bill no display
       const billValue = matchingBills.reduce((s, b) => s + (b.total || 0), 0);
       const ratio = o.total > 0 ? Math.min(1, billValue / o.total) : 0;
       let status: 'pura-billed' | 'partial' | 'pending';
@@ -3878,7 +3878,7 @@ export class OrderVsBillReportComponent {
     const orderRq = this.trading.getOrder(r.id);
     // Get all bills for this buyer to find matching items
     const billRqs = r.billNos.map(no => {
-      const b = this.allBills().find(x => x.billNo === no);
+      const b = this.allBills().find(x => (x.supplierBillNo || x.billNo) === no);
       return b ? this.trading.getBill(b.id) : null;
     }).filter(Boolean) as any[];
 

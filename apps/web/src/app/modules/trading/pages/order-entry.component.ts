@@ -278,20 +278,6 @@ interface LineRow {
           <button type="button" (click)="addLine()" class="btn-add-item">+ Add Item</button>
         </div>
 
-        <!-- 💸 Supplier ke saved discounts — 1 click me sab items ke RD me apply -->
-        @if (discountChips().length > 0) {
-          <div class="disc-row">
-            <span class="disc-lbl">💸 Discount:</span>
-            @for (d of discountChips(); track d.key) {
-              <button type="button" class="disc-chip" [class.disc-on]="discountApplied() === d.key"
-                      (click)="applyDiscount(d.key, d.value)">{{ d.label }} {{ d.value }}%</button>
-            }
-            <button type="button" class="disc-chip" [class.disc-on]="discountApplied() === 'zero'"
-                    (click)="applyDiscount('zero', 0)">✕ 0%</button>
-            <span class="disc-hint">sab items ke RD me lagta hai</span>
-          </div>
-        }
-
         @if (reconcileNote()) {
           <div class="reconcile-note">⚠️ {{ reconcileNote() }}</div>
         }
@@ -485,6 +471,38 @@ interface LineRow {
             }
           </div>
 
+          <!-- 💸 SUPPLIER DISCOUNT — % master se auto, amount auto-calculate (editable).
+               Before/After GST wahi lagta hai jo upar CD me set hai. -->
+          <div class="cd-block mt-3">
+            <div class="cd-head">
+              <span>💸 Supplier Discount
+                <small style="font-weight:400;color:#9CA3AF">(master se auto · Before/After GST — CD wala hi)</small>
+              </span>
+            </div>
+            <div class="grid grid-cols-2 gap-3 mt-2">
+              <div>
+                <label class="lbl">NORMAL DISC %</label>
+                <input [ngModel]="discNormalPct()" (ngModelChange)="onDiscNormalPct($event)"
+                       type="number" step="0.01" min="0" class="ip">
+              </div>
+              <div>
+                <label class="lbl">NORMAL DISC AMT (₹) — editable</label>
+                <input [ngModel]="discNormalAmt()" (ngModelChange)="onDiscNormalAmt($event)"
+                       type="number" step="0.01" min="0" class="ip">
+              </div>
+              <div>
+                <label class="lbl">EXHIBITION DISC %</label>
+                <input [ngModel]="discExhPct()" (ngModelChange)="onDiscExhPct($event)"
+                       type="number" step="0.01" min="0" class="ip">
+              </div>
+              <div>
+                <label class="lbl">EXHIBITION DISC AMT (₹) — editable</label>
+                <input [ngModel]="discExhAmt()" (ngModelChange)="onDiscExhAmt($event)"
+                       type="number" step="0.01" min="0" class="ip">
+              </div>
+            </div>
+          </div>
+
           <div class="grid grid-cols-2 gap-4 mt-4">
             <div>
               <label class="lbl">SUPPLIER ORDER NO.</label>
@@ -592,6 +610,18 @@ interface LineRow {
               <span>💵 CD Discount ({{ cdType() === 'before' ? 'Before GST' : 'After GST' }})</span>
               <span class="font-mono text-red-600">- ₹ {{ cdAmount() | number:'1.2-2' }}</span>
             </div>
+            @if (discNormalAmt() > 0) {
+              <div class="sum-row">
+                <span>Normal Disc</span>
+                <span class="font-mono text-red-600">- ₹ {{ discNormalAmt() | number:'1.2-2' }}</span>
+              </div>
+            }
+            @if (discExhAmt() > 0) {
+              <div class="sum-row">
+                <span>Exhibition Disc</span>
+                <span class="font-mono text-red-600">- ₹ {{ discExhAmt() | number:'1.2-2' }}</span>
+              </div>
+            }
             @if (insuranceAmt() > 0) {
               <div class="sum-row">
                 <span>Insurance</span>
@@ -1718,12 +1748,50 @@ export class OrderEntryComponent {
     return +(base * (this.cdPct() / 100)).toFixed(2);
   });
 
-  /** Before-GST me tax discounted base par lagta hai — proportional factor. */
+  // 💸 SUPPLIER DISCOUNT (Normal + Exhibition) — % supplier master se auto-fill,
+  // amount auto-calculate (CD jaisa: % badlo to amount, amount override editable).
+  discNormalPct = signal(0);
+  discNormalOverride = signal<number | null>(null);
+  discExhPct = signal(0);
+  discExhOverride = signal<number | null>(null);
+  suppressAutoDisc = false;   // edit-load me master se auto-fill NAHI
+
+  private discBase() {
+    return this.cdType() === 'after' ? this.totalAmount() : this.totalTaxable();
+  }
+  discNormalAmt = computed(() => {
+    const o = this.discNormalOverride();
+    if (o !== null) return o;
+    return +(this.discBase() * (this.discNormalPct() / 100)).toFixed(2);
+  });
+  discExhAmt = computed(() => {
+    const o = this.discExhOverride();
+    if (o !== null) return o;
+    return +(this.discBase() * (this.discExhPct() / 100)).toFixed(2);
+  });
+  supplierDiscTotal = computed(() => this.discNormalAmt() + this.discExhAmt());
+  /** CD + supplier discounts — net/tax me yahi total minus hota hai */
+  allDiscAmt = computed(() => this.cdAmount() + this.supplierDiscTotal());
+  onDiscNormalPct(v: number) { this.discNormalPct.set(+v || 0); this.discNormalOverride.set(null); }
+  onDiscNormalAmt(v: number) { this.discNormalOverride.set(+v || 0); }
+  onDiscExhPct(v: number) { this.discExhPct.set(+v || 0); this.discExhOverride.set(null); }
+  onDiscExhAmt(v: number) { this.discExhOverride.set(+v || 0); }
+  /** Supplier select hone par master ke % bhar do (edit-load me nahi) */
+  fillDiscFromMaster(partyId: string) {
+    if (this.suppressAutoDisc) return;
+    const p = this.parties().find(x => x.id === partyId);
+    this.discNormalPct.set(+(p?.discountNormal ?? 0));
+    this.discExhPct.set(+(p?.discountExhibition ?? 0));
+    this.discNormalOverride.set(null);
+    this.discExhOverride.set(null);
+  }
+
+  /** Before-GST me tax discounted base par lagta hai — proportional factor (CD + supplier disc). */
   private cdTaxFactor = computed(() => {
-    if (!this.cdEnabled() || this.cdType() !== 'before') return 1;
+    if (this.cdType() !== 'before') return 1;
     const taxable = this.totalTaxable();
     if (taxable <= 0) return 1;
-    return Math.max(0, (taxable - this.cdAmount()) / taxable);
+    return Math.max(0, (taxable - this.allDiscAmt()) / taxable);
   });
   effSgst = computed(() => +(this.sgstTotal() * this.cdTaxFactor()).toFixed(2));
   effCgst = computed(() => +(this.cgstTotal() * this.cdTaxFactor()).toFixed(2));
@@ -1733,11 +1801,11 @@ export class OrderEntryComponent {
   netTotal = computed(() => {
     const ins = (+this.insuranceAmt() || 0);
     if (this.cdType() === 'before') {
-      // (taxable − CD) + tax-on-discounted + insurance
-      return (this.totalTaxable() - this.cdAmount()) + this.effTax() + ins;
+      // (taxable − sab discounts) + tax-on-discounted + insurance
+      return (this.totalTaxable() - this.allDiscAmt()) + this.effTax() + ins;
     }
     // After GST: poora tax, discount total par + insurance
-    return this.totalAmount() - this.cdAmount() + ins;
+    return this.totalAmount() - this.allDiscAmt() + ins;
   });
 
   /** Net amount = Net Total rounded to nearest whole rupee. */
@@ -1822,7 +1890,19 @@ export class OrderEntryComponent {
           const n = o.notes || '';
           const insM = n.match(/Insurance:\s*₹?([\d.]+)/);
           if (insM) this.insuranceAmt.set(+insM[1] || 0);
-          this.remark = n.replace(/\s*\|?\s*Insurance:\s*₹?[\d.]+/, '').trim();
+          // 💸 Supplier discounts — saved % wapas (master se auto-fill edit me band)
+          this.suppressAutoDisc = true;
+          const ndM = n.match(/Normal Disc\s+([\d.]+)%/);
+          this.discNormalPct.set(ndM ? +ndM[1] || 0 : 0);
+          const exM = n.match(/Exhibition Disc\s+([\d.]+)%/);
+          this.discExhPct.set(exM ? +exM[1] || 0 : 0);
+          this.discNormalOverride.set(null);
+          this.discExhOverride.set(null);
+          this.remark = n
+            .replace(/\s*\|?\s*Insurance:\s*₹?[\d.]+/, '')
+            .replace(/\s*\|?\s*Normal Disc\s+[\d.]+%\s*=\s*₹?[\d.]+/, '')
+            .replace(/\s*\|?\s*Exhibition Disc\s+[\d.]+%\s*=\s*₹?[\d.]+/, '')
+            .trim();
         }
         // Lines
         if (o.lines && o.lines.length > 0) {
@@ -1856,6 +1936,8 @@ export class OrderEntryComponent {
             this.cdAmountOverride.set(saved);
           }
         }
+        // Load complete — ab user supplier BADLE to master se discounts fir aayen
+        this.suppressAutoDisc = false;
       },
       error: () => alert('❌ Failed to load order for editing')
     });
@@ -1865,25 +1947,7 @@ export class OrderEntryComponent {
   updateLine(idx: number, field: keyof LineRow, value: any) {
     this.lines.update(arr => arr.map((l, i) => i === idx ? { ...l, [field]: value } : l));
   }
-  addLine() { this.lines.update(arr => [...arr, { ...this.newLine(), rd: this.appliedDiscountVal }]); }
-
-  // 💸 Supplier ke master me saved discounts — chips se sab items ke RD me apply
-  discountApplied = signal<string | null>(null);
-  private appliedDiscountVal = 0;
-  discountChips(): { key: string; label: string; value: number }[] {
-    const p = this.parties().find(x => x.id === this.supplierId);
-    if (!p) return [];
-    const chips: { key: string; label: string; value: number }[] = [];
-    if (+(p.discountNormal ?? 0) > 0) chips.push({ key: 'normal', label: 'Normal', value: +p.discountNormal! });
-    if (+(p.discountExhibition ?? 0) > 0) chips.push({ key: 'exhibition', label: 'Exhibition', value: +p.discountExhibition! });
-    if (+(p.discountSpecial ?? 0) > 0) chips.push({ key: 'special', label: 'Special', value: +p.discountSpecial! });
-    return chips;
-  }
-  applyDiscount(key: string, value: number) {
-    this.discountApplied.set(key);
-    this.appliedDiscountVal = value;
-    this.lines.update(arr => arr.map(l => ({ ...l, rd: value })));
-  }
+  addLine() { this.lines.update(arr => [...arr, this.newLine()]); }
   removeLine(idx: number) { this.lines.update(arr => arr.filter((_, i) => i !== idx)); }
   autoFillFromItem(idx: number, event: any) {
     const name = event.target.value;
@@ -1929,6 +1993,7 @@ export class OrderEntryComponent {
       this.supplierAddress = p.city ?? '';
       this.supplierMobile = p.phone ?? '';
       this.supplierWhatsapp = p.phone ?? '';
+      this.fillDiscFromMaster(id);   // 💸 master ke discounts % auto-fill
     } else {
       this.supplierGstin = ''; this.supplierPan = ''; this.supplierAddress = '';
       this.supplierMobile = ''; this.supplierWhatsapp = '';
@@ -2075,7 +2140,12 @@ export class OrderEntryComponent {
       transporterId: this.transporterId || null,
       paymentTerms: this.paymentTerms || undefined,
       status: this.orderStatus,
-      notes: [this.remark, this.insuranceAmt() ? `Insurance: ₹${this.insuranceAmt()}` : ''].filter(Boolean).join(' | ') || undefined,
+      notes: [
+        this.remark,
+        this.insuranceAmt() ? `Insurance: ₹${this.insuranceAmt()}` : '',
+        this.discNormalAmt() > 0 ? `Normal Disc ${this.discNormalPct()}% = ₹${this.discNormalAmt().toFixed(2)}` : '',
+        this.discExhAmt() > 0 ? `Exhibition Disc ${this.discExhPct()}% = ₹${this.discExhAmt().toFixed(2)}` : ''
+      ].filter(Boolean).join(' | ') || undefined,
       lines: validLines
     };
 

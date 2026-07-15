@@ -334,20 +334,6 @@ interface LineRow {
           <button type="button" (click)="addLine()" class="btn-add-item">+ Add Item</button>
         </div>
 
-        <!-- 💸 Supplier ke saved discounts — 1 click me sab items ke RD me apply -->
-        @if (discountChips().length > 0) {
-          <div class="disc-row">
-            <span class="disc-lbl">💸 Discount:</span>
-            @for (d of discountChips(); track d.key) {
-              <button type="button" class="disc-chip" [class.disc-on]="discountApplied() === d.key"
-                      (click)="applyDiscount(d.key, d.value)">{{ d.label }} {{ d.value }}%</button>
-            }
-            <button type="button" class="disc-chip" [class.disc-on]="discountApplied() === 'zero'"
-                    (click)="applyDiscount('zero', 0)">✕ 0%</button>
-            <span class="disc-hint">sab items ke RD me lagta hai</span>
-          </div>
-        }
-
         @if (reconcileNote()) {
           <div class="reconcile-note">
             ⚠️ {{ reconcileNote() }}
@@ -548,6 +534,38 @@ interface LineRow {
               }
             </div>
 
+            <!-- 💸 SUPPLIER DISCOUNT — % master se auto aata hai, amount auto-calculate (editable).
+                 Before/After GST wahi lagta hai jo upar CD me set hai. -->
+            <div class="col-span-2 cd-block">
+              <div class="cd-head">
+                <span>💸 Supplier Discount
+                  <small style="font-weight:400;color:#9CA3AF">(master se auto · Before/After GST — CD wala hi)</small>
+                </span>
+              </div>
+              <div class="grid grid-cols-2 gap-3 mt-2">
+                <div>
+                  <label class="lbl">NORMAL DISC %</label>
+                  <input [ngModel]="discNormalPct()" (ngModelChange)="onDiscNormalPct($event)"
+                         type="number" step="0.01" min="0" class="ip">
+                </div>
+                <div>
+                  <label class="lbl">NORMAL DISC AMT (₹) — editable</label>
+                  <input [ngModel]="discNormalAmt()" (ngModelChange)="onDiscNormalAmt($event)"
+                         type="number" step="0.01" min="0" class="ip">
+                </div>
+                <div>
+                  <label class="lbl">EXHIBITION DISC %</label>
+                  <input [ngModel]="discExhPct()" (ngModelChange)="onDiscExhPct($event)"
+                         type="number" step="0.01" min="0" class="ip">
+                </div>
+                <div>
+                  <label class="lbl">EXHIBITION DISC AMT (₹) — editable</label>
+                  <input [ngModel]="discExhAmt()" (ngModelChange)="onDiscExhAmt($event)"
+                         type="number" step="0.01" min="0" class="ip">
+                </div>
+              </div>
+            </div>
+
             <div>
               <label class="lbl">SWEET / L.S</label>
               <input [ngModel]="sweetLs()" (ngModelChange)="sweetLs.set(+$event || 0)" type="number" step="0.01" class="ip">
@@ -708,9 +726,21 @@ interface LineRow {
               <span class="font-mono">₹ {{ grossAmt() | number:'1.2-2' }}</span>
             </div>
             <div class="sum-row">
-              <span>Disc. Amount</span>
+              <span>CD Amount</span>
               <span class="font-mono text-red-600">- ₹ {{ cdAmount() | number:'1.2-2' }}</span>
             </div>
+            @if (discNormalAmt() > 0) {
+              <div class="sum-row">
+                <span>Normal Disc</span>
+                <span class="font-mono text-red-600">- ₹ {{ discNormalAmt() | number:'1.2-2' }}</span>
+              </div>
+            }
+            @if (discExhAmt() > 0) {
+              <div class="sum-row">
+                <span>Exhibition Disc</span>
+                <span class="font-mono text-red-600">- ₹ {{ discExhAmt() | number:'1.2-2' }}</span>
+              </div>
+            }
             <div class="sum-row">
               <span>Sweet / L.s</span>
               <span class="font-mono">₹ {{ sweetLs() | number:'1.2-2' }}</span>
@@ -1684,6 +1714,13 @@ export class BillEntryComponent {
           this.cdAmountOverride.set(null);
         }
 
+        // 💸 Supplier discounts — order me % badle the to wahi bill me aayen (warna master wale)
+        const on = (od as any).notes || '';
+        const ndM = on.match(/Normal Disc\s+([\d.]+)%/);
+        if (ndM) { this.discNormalPct.set(+ndM[1] || 0); this.discNormalOverride.set(null); }
+        const exM = on.match(/Exhibition Disc\s+([\d.]+)%/);
+        if (exM) { this.discExhPct.set(+exM[1] || 0); this.discExhOverride.set(null); }
+
         // Transporter bhi order se
         if (od.transporterId) { this.transporterId = od.transporterId; this.syncTransporterName(); }
 
@@ -1904,6 +1941,48 @@ export class BillEntryComponent {
   setCdType(t: 'before' | 'after') {
     this.cdType.set(t);
     this.cdAmountOverride.set(null);
+    this.discNormalOverride.set(null);
+    this.discExhOverride.set(null);
+  }
+
+  // 💸 SUPPLIER DISCOUNT (Normal + Exhibition) — % supplier master se auto-fill,
+  // amount auto-calculate (CD jaisa hi: % badlo to amount, amount override bhi editable).
+  discNormalPct = signal(0);
+  discNormalOverride = signal<number | null>(null);
+  discExhPct = signal(0);
+  discExhOverride = signal<number | null>(null);
+  suppressAutoDisc = false;   // edit-load me master se auto-fill NAHI (saved % hi rahe)
+
+  private discBase() {
+    return this.cdType() === 'after'
+      ? this.grossAmt() + this.sgstTotal() + this.cgstTotal() + this.igstTotal()
+      : this.grossAmt();
+  }
+  discNormalAmt = computed(() => {
+    const o = this.discNormalOverride();
+    if (o !== null) return o;
+    return +(this.discBase() * (this.discNormalPct() / 100)).toFixed(2);
+  });
+  discExhAmt = computed(() => {
+    const o = this.discExhOverride();
+    if (o !== null) return o;
+    return +(this.discBase() * (this.discExhPct() / 100)).toFixed(2);
+  });
+  supplierDiscTotal = computed(() => this.discNormalAmt() + this.discExhAmt());
+  /** CD + supplier discounts — sab jagah net/tax me yahi total minus hota hai */
+  allDiscAmt = computed(() => this.cdAmount() + this.supplierDiscTotal());
+  onDiscNormalPct(v: number) { this.discNormalPct.set(+v || 0); this.discNormalOverride.set(null); }
+  onDiscNormalAmt(v: number) { this.discNormalOverride.set(+v || 0); }
+  onDiscExhPct(v: number) { this.discExhPct.set(+v || 0); this.discExhOverride.set(null); }
+  onDiscExhAmt(v: number) { this.discExhOverride.set(+v || 0); }
+  /** Supplier select hone par master ke % yahan bhar do (edit-load me nahi) */
+  fillDiscFromMaster(partyId: string) {
+    if (this.suppressAutoDisc) return;
+    const p = this.parties().find(x => x.id === partyId);
+    this.discNormalPct.set(+(p?.discountNormal ?? 0));
+    this.discExhPct.set(+(p?.discountExhibition ?? 0));
+    this.discNormalOverride.set(null);
+    this.discExhOverride.set(null);
   }
   // Additive charges — SIGNALS (computed eInvoiceAmt/taxableAfterCd inhe track kare,
   // warna value badalne par net amount recompute nahi hota tha — wahi bug tha).
@@ -2077,12 +2156,12 @@ export class BillEntryComponent {
     return +(base * (this.cdPct() / 100)).toFixed(2);
   });
 
-  /** Before-GST: tax discounted base par — proportional factor. */
+  /** Before-GST: tax discounted base par — proportional factor (CD + supplier disc dono). */
   cdTaxFactor = computed(() => {
-    if (!this.cdEnabled() || this.cdType() !== 'before') return 1;
+    if (this.cdType() !== 'before') return 1;
     const gross = this.grossAmt();
     if (gross <= 0) return 1;
-    return Math.max(0, (gross - this.cdAmount()) / gross);
+    return Math.max(0, (gross - this.allDiscAmt()) / gross);
   });
   effSgst = computed(() => +(this.sgstTotal() * this.cdTaxFactor()).toFixed(2));
   effCgst = computed(() => +(this.cgstTotal() * this.cdTaxFactor()).toFixed(2));
@@ -2099,7 +2178,7 @@ export class BillEntryComponent {
     this.cdAmountOverride.set(+val || 0);
   }
   taxableAfterCd = computed(() => {
-    return this.grossAmt() - this.cdAmount() + this.sweetLs() + this.interestAmt() + (+this.insuranceAmt() || 0);
+    return this.grossAmt() - this.allDiscAmt() + this.sweetLs() + this.interestAmt() + (+this.insuranceAmt() || 0);
   });
   sgstTotal = computed(() => {
     return this.lines().reduce((s, _, i) => {
@@ -2132,7 +2211,7 @@ export class BillEntryComponent {
       // GST poore par, discount total par
       return this.grossAmt() + this.sweetLs() + this.interestAmt() + (+this.insuranceAmt() || 0)
            + this.sgstTotal() + this.cgstTotal() + this.igstTotal() + (+this.tcsAmt() || 0)
-           - this.cdAmount();
+           - this.allDiscAmt();
     }
     // Before GST: discounted base + scaled tax
     return this.taxableAfterCd() + this.effSgst() + this.effCgst() + this.effIgst() + (+this.tcsAmt() || 0);
@@ -2231,6 +2310,8 @@ export class BillEntryComponent {
           this.buyerGstin = b.buyerGst || '';
 
           // Phir auto-fill (party master se address/phone bhar de, agar party mil jaye)
+          // EDIT me discounts master se AUTO-FILL nahi hote — saved % (notes se) hi rehte hain
+          this.suppressAutoDisc = true;
           if (this.supplierId) this.onSupplierChange(this.supplierId);
           if (this.buyerId) this.onBuyerChange(this.buyerId);
 
@@ -2238,7 +2319,7 @@ export class BillEntryComponent {
           // Pieces ab '\n' se jude hain (purane bills me ' | ' se) — dono ke liye [^\n|]+ se rok do.
           const notes = b.notes || '';
           // REMARK = sirf user ka text — known structured prefixes wali lines/pieces hata do
-          const knownPrefix = /^(Supplier Bill|Transporter|LR|CD\s|Sweet\/L\.S|Interest|TCS|Payment Terms|Credit Days)\b/i;
+          const knownPrefix = /^(Supplier Bill|Transporter|LR|CD\s|Normal Disc|Exhibition Disc|Sweet\/L\.S|Interest|TCS|Payment Terms|Credit Days)\b/i;
           this.remark = notes
             .split(/\n| \| /)
             .map(s => s.trim())
@@ -2262,6 +2343,13 @@ export class BillEntryComponent {
             this.cdPct.set(pct);
             this.cdEnabled.set(pct > 0);
           }
+          // 💸 Supplier discounts: "Normal Disc 5% = ₹100.00" / "Exhibition Disc 8% = ₹160.00"
+          const ndMatch = notes.match(/Normal Disc\s+([\d.]+)%/);
+          this.discNormalPct.set(ndMatch ? +ndMatch[1] || 0 : 0);
+          const exMatch = notes.match(/Exhibition Disc\s+([\d.]+)%/);
+          this.discExhPct.set(exMatch ? +exMatch[1] || 0 : 0);
+          this.discNormalOverride.set(null);
+          this.discExhOverride.set(null);
           // Sweet/L.S, Interest, TCS
           const sweetMatch = notes.match(/Sweet\/L\.S:\s*₹?([\d.]+)/);
           if (sweetMatch) this.sweetLs.set(+sweetMatch[1] || 0);
@@ -2288,6 +2376,8 @@ export class BillEntryComponent {
             })));
             this.redistributeGst();
           }
+          // Load complete — ab user supplier BADLE to master se discounts fir aayen
+          this.suppressAutoDisc = false;
         },
         error: () => alert('❌ Failed to load bill for editing')
       });
@@ -2298,25 +2388,7 @@ export class BillEntryComponent {
     this.lines.update(arr => arr.map((l, i) => i === idx ? { ...l, [field]: value } : l));
   }
   addLine() {
-    this.lines.update(arr => [...arr, { ...this.newLine(), rd: this.appliedDiscountVal }]);
-  }
-
-  // 💸 Supplier ke master me saved discounts — chips se sab items ke RD me apply
-  discountApplied = signal<string | null>(null);
-  private appliedDiscountVal = 0;
-  discountChips(): { key: string; label: string; value: number }[] {
-    const p = this.parties().find(x => x.id === this.supplierId);
-    if (!p) return [];
-    const chips: { key: string; label: string; value: number }[] = [];
-    if (+(p.discountNormal ?? 0) > 0) chips.push({ key: 'normal', label: 'Normal', value: +p.discountNormal! });
-    if (+(p.discountExhibition ?? 0) > 0) chips.push({ key: 'exhibition', label: 'Exhibition', value: +p.discountExhibition! });
-    if (+(p.discountSpecial ?? 0) > 0) chips.push({ key: 'special', label: 'Special', value: +p.discountSpecial! });
-    return chips;
-  }
-  applyDiscount(key: string, value: number) {
-    this.discountApplied.set(key);
-    this.appliedDiscountVal = value;
-    this.lines.update(arr => arr.map(l => ({ ...l, rd: value })));
+    this.lines.update(arr => [...arr, this.newLine()]);
   }
   removeLine(idx: number) {
     this.lines.update(arr => arr.filter((_, i) => i !== idx));
@@ -2367,6 +2439,7 @@ export class BillEntryComponent {
     } else {
       this.supplierGstin = ''; this.supplierPan = ''; this.supplierAddress = ''; this.supplierPhone = '';
     }
+    this.fillDiscFromMaster(id);   // 💸 master ke discounts % auto-fill
     this.redistributeGst();
   }
   onBuyerChange(id: string) {
@@ -2781,6 +2854,9 @@ export class BillEntryComponent {
     this.orderNo = ''; this.supplierBillNo = '';
     this.paymentTerms = ''; this.days = 45;
     this.cdPct.set(0); this.cdAmountOverride.set(null); this.cdEnabled.set(true);
+    this.discNormalPct.set(0); this.discNormalOverride.set(null);
+    this.discExhPct.set(0); this.discExhOverride.set(null);
+    this.suppressAutoDisc = false;
     this.sweetLs.set(0); this.interestAmt.set(0); this.insuranceAmt.set(0); this.tcsAmt.set(0);
     this.lrNo = ''; this.lrDate = ''; this.transporter = ''; this.transporterId = ''; this.transporterFilter.set('');
     this.ewayBillNo = ''; this.ewayBillDate = ''; this.transporterMatchLevel.set(null);
@@ -2855,6 +2931,8 @@ export class BillEntryComponent {
       this.transporter ? `Transporter: ${this.transporter}` : '',
       this.lrNo ? `LR: ${this.lrNo}${this.lrDate ? ' (' + this.lrDate + ')' : ''}` : '',
       this.cdEnabled() && this.cdPct() > 0 ? `CD ${this.cdPct()}% = ₹${this.cdAmount().toFixed(2)}` : '',
+      this.discNormalAmt() > 0 ? `Normal Disc ${this.discNormalPct()}% = ₹${this.discNormalAmt().toFixed(2)}` : '',
+      this.discExhAmt() > 0 ? `Exhibition Disc ${this.discExhPct()}% = ₹${this.discExhAmt().toFixed(2)}` : '',
       this.sweetLs() ? `Sweet/L.S: ₹${this.sweetLs()}` : '',
       this.interestAmt() ? `Interest: ₹${this.interestAmt()}` : '',
       this.insuranceAmt() ? `Insurance: ₹${this.insuranceAmt()}` : '',
@@ -2878,7 +2956,7 @@ export class BillEntryComponent {
       transporterId: this.transporterId || undefined,
       lrNo: this.lrNo?.trim() || undefined,
       lrDate: this.lrDate || undefined,
-      discount: this.cdAmount(),
+      discount: this.allDiscAmt(),   // CD + Normal + Exhibition — total discount
       cdType: this.cdType(),
       roundOff: this.roundOff(),
       notes: notes || undefined,

@@ -331,7 +331,11 @@ interface LineRow {
           <div class="section-head no-border">
             <span class="sec-ico">📦</span> ITEM DETAILS
           </div>
-          <button type="button" (click)="addLine()" class="btn-add-item">+ Add Item</button>
+          <div class="flex items-center gap-2">
+            <label class="lbl" style="margin:0;white-space:nowrap">📦 CASE/PARCEL</label>
+            <input [(ngModel)]="caseParcel" type="number" min="0" placeholder="0" class="ip" style="width:90px">
+            <button type="button" (click)="addLine()" class="btn-add-item">+ Add Item</button>
+          </div>
         </div>
 
         @if (reconcileNote()) {
@@ -571,6 +575,10 @@ interface LineRow {
               <input [ngModel]="sweetLs()" (ngModelChange)="sweetLs.set(+$event || 0)" type="number" step="0.01" class="ip">
             </div>
             <div>
+              <label class="lbl">BANK CHARGE <small style="color:#9CA3AF">(minus hota hai)</small></label>
+              <input [ngModel]="bankCharge()" (ngModelChange)="bankCharge.set(+$event || 0)" type="number" step="0.01" min="0" class="ip">
+            </div>
+            <div>
               <label class="lbl">INTEREST AMT</label>
               <input [ngModel]="interestAmt()" (ngModelChange)="interestAmt.set(+$event || 0)" type="number" step="0.01" class="ip">
             </div>
@@ -749,10 +757,22 @@ interface LineRow {
               <span>Interest</span>
               <span class="font-mono">₹ {{ interestAmt() | number:'1.2-2' }}</span>
             </div>
+            @if (bankCharge() > 0) {
+              <div class="sum-row">
+                <span>Bank Charge</span>
+                <span class="font-mono text-red-600">- ₹ {{ bankCharge() | number:'1.2-2' }}</span>
+              </div>
+            }
             <div class="sum-row">
               <span>Insurance</span>
               <span class="font-mono">₹ {{ insuranceAmt() | number:'1.2-2' }}</span>
             </div>
+            @if (caseParcel) {
+              <div class="sum-row">
+                <span>📦 Case/Parcel</span>
+                <span class="font-mono">{{ caseParcel }}</span>
+              </div>
+            }
             <div class="sum-row">
               <span>Taxable Amt</span>
               <span class="font-mono">₹ {{ taxableAfterCd() | number:'1.2-2' }}</span>
@@ -1989,6 +2009,8 @@ export class BillEntryComponent {
   sweetLs = signal(0);
   interestAmt = signal(0);
   insuranceAmt = signal(0);   // INSURANCE — additive charge (taxable me jud kar net me)
+  bankCharge = signal(0);     // BANK CHARGE — net me MINUS hota hai (GST par asar nahi)
+  caseParcel: number | null = null;   // 📦 pure bill ka total case/parcel count
   paymentTerms = '';   // order jaisa hi dropdown (net15/net30/.../advance/cod/loa)
   days = 45;           // internal — terms se derive hota hai (due/remark ke liye)
   tcsAmt = signal(0);
@@ -2178,7 +2200,8 @@ export class BillEntryComponent {
     this.cdAmountOverride.set(+val || 0);
   }
   taxableAfterCd = computed(() => {
-    return this.grossAmt() - this.allDiscAmt() + this.sweetLs() + this.interestAmt() + (+this.insuranceAmt() || 0);
+    return this.grossAmt() - this.allDiscAmt() + this.sweetLs() + this.interestAmt()
+         + (+this.insuranceAmt() || 0) - (+this.bankCharge() || 0);
   });
   sgstTotal = computed(() => {
     return this.lines().reduce((s, _, i) => {
@@ -2211,7 +2234,7 @@ export class BillEntryComponent {
       // GST poore par, discount total par
       return this.grossAmt() + this.sweetLs() + this.interestAmt() + (+this.insuranceAmt() || 0)
            + this.sgstTotal() + this.cgstTotal() + this.igstTotal() + (+this.tcsAmt() || 0)
-           - this.allDiscAmt();
+           - this.allDiscAmt() - (+this.bankCharge() || 0);
     }
     // Before GST: discounted base + scaled tax
     return this.taxableAfterCd() + this.effSgst() + this.effCgst() + this.effIgst() + (+this.tcsAmt() || 0);
@@ -2319,7 +2342,7 @@ export class BillEntryComponent {
           // Pieces ab '\n' se jude hain (purane bills me ' | ' se) — dono ke liye [^\n|]+ se rok do.
           const notes = b.notes || '';
           // REMARK = sirf user ka text — known structured prefixes wali lines/pieces hata do
-          const knownPrefix = /^(Supplier Bill|Transporter|LR|CD\s|Normal Disc|Exhibition Disc|Sweet\/L\.S|Interest|TCS|Payment Terms|Credit Days)\b/i;
+          const knownPrefix = /^(Supplier Bill|Transporter|LR|CD\s|Normal Disc|Exhibition Disc|Bank Charge|Case\/Parcel|Sweet\/L\.S|Interest|TCS|Payment Terms|Credit Days)\b/i;
           this.remark = notes
             .split(/\n| \| /)
             .map(s => s.trim())
@@ -2353,6 +2376,10 @@ export class BillEntryComponent {
           // Sweet/L.S, Interest, TCS
           const sweetMatch = notes.match(/Sweet\/L\.S:\s*₹?([\d.]+)/);
           if (sweetMatch) this.sweetLs.set(+sweetMatch[1] || 0);
+          const bankMatch = notes.match(/Bank Charge:\s*₹?([\d.]+)/);
+          if (bankMatch) this.bankCharge.set(+bankMatch[1] || 0);
+          const caseMatch = notes.match(/Case\/Parcel:\s*([\d.]+)/);
+          if (caseMatch) this.caseParcel = +caseMatch[1] || null;
           const intMatch = notes.match(/Interest:\s*₹?([\d.]+)/);
           if (intMatch) this.interestAmt.set(+intMatch[1] || 0);
           const insMatch = notes.match(/Insurance:\s*₹?([\d.]+)/);
@@ -2857,6 +2884,7 @@ export class BillEntryComponent {
     this.discNormalPct.set(0); this.discNormalOverride.set(null);
     this.discExhPct.set(0); this.discExhOverride.set(null);
     this.suppressAutoDisc = false;
+    this.bankCharge.set(0); this.caseParcel = null;
     this.sweetLs.set(0); this.interestAmt.set(0); this.insuranceAmt.set(0); this.tcsAmt.set(0);
     this.lrNo = ''; this.lrDate = ''; this.transporter = ''; this.transporterId = ''; this.transporterFilter.set('');
     this.ewayBillNo = ''; this.ewayBillDate = ''; this.transporterMatchLevel.set(null);
@@ -2934,6 +2962,8 @@ export class BillEntryComponent {
       this.discNormalAmt() > 0 ? `Normal Disc ${this.discNormalPct()}% = ₹${this.discNormalAmt().toFixed(2)}` : '',
       this.discExhAmt() > 0 ? `Exhibition Disc ${this.discExhPct()}% = ₹${this.discExhAmt().toFixed(2)}` : '',
       this.sweetLs() ? `Sweet/L.S: ₹${this.sweetLs()}` : '',
+      this.bankCharge() ? `Bank Charge: ₹${this.bankCharge()}` : '',
+      this.caseParcel ? `Case/Parcel: ${this.caseParcel}` : '',
       this.interestAmt() ? `Interest: ₹${this.interestAmt()}` : '',
       this.insuranceAmt() ? `Insurance: ₹${this.insuranceAmt()}` : '',
       this.tcsAmt() ? `TCS: ₹${this.tcsAmt()}` : '',

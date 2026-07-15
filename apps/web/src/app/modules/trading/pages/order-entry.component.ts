@@ -123,22 +123,23 @@ interface LineRow {
             <label class="lbl">SUPPLIER *</label>
             <div class="combo-wrap">
               <div class="flex gap-1">
-                <input type="text" [ngModel]="supplierFilter()" (ngModelChange)="supplierFilter.set($event); supplierDropdownOpen.set(true)"
+                <input type="text" [ngModel]="supplierFilter()" (ngModelChange)="supplierFilter.set($event); supplierDropdownOpen.set(true); supplierKbIdx.set(0)"
                        (focus)="supplierDropdownOpen.set(true)"
                        (blur)="closeSupplierDropdownSoon()"
+                       (keydown)="supplierKey($event)"
                        placeholder="🔍 Name ya GST No se search..." class="ip flex-1">
                 <button type="button" (click)="showAddSupplier.set(true)" class="qa-add-btn" title="Add new supplier to Party Master">+ New</button>
               </div>
               @if (supplierDropdownOpen() && (filteredGroups().length > 0 || filteredSuppliers().length > 0)) {
                 <div class="combo-dropdown">
-                  @for (g of filteredGroups(); track g.name) {
-                    <div class="combo-option" (mousedown)="selectGroupFromCombo(g)" style="background:#f3e8ff">
+                  @for (g of filteredGroups(); track g.name; let gi = $index) {
+                    <div class="combo-option" [class.kb-active]="gi === supplierKbIdx()" (mousedown)="selectGroupFromCombo(g)" style="background:#f3e8ff">
                       <div class="combo-name" style="color:#7c3aed;font-weight:700">{{ g.name }} <span style="font-size:11px">(GROUP - {{ g.count }} firms)</span></div>
                       <div class="combo-sub">Order group par book - bill par firm chuno (firm pending)</div>
                     </div>
                   }
-                  @for (p of filteredSuppliers(); track p.id) {
-                    <div class="combo-option" (mousedown)="selectSupplierFromCombo(p)">
+                  @for (p of filteredSuppliers(); track p.id; let i = $index) {
+                    <div class="combo-option" [class.kb-active]="filteredGroups().length + i === supplierKbIdx()" (mousedown)="selectSupplierFromCombo(p)">
                       <div class="combo-name">{{ p.displayName }}</div>
                       <div class="combo-sub">GST: {{ p.gst || '—' }} {{ p.partyCode ? '· ' + p.partyCode : '' }}</div>
                     </div>
@@ -203,16 +204,17 @@ interface LineRow {
             <label class="lbl">BUYER *</label>
             <div class="combo-wrap">
               <div class="flex gap-1">
-                <input type="text" [ngModel]="buyerFilter()" (ngModelChange)="buyerFilter.set($event); buyerDropdownOpen.set(true)"
+                <input type="text" [ngModel]="buyerFilter()" (ngModelChange)="buyerFilter.set($event); buyerDropdownOpen.set(true); buyerKbIdx.set(0)"
                        (focus)="buyerDropdownOpen.set(true)"
                        (blur)="closeBuyerDropdownSoon()"
+                       (keydown)="buyerKey($event)"
                        placeholder="🔍 Name ya GST No se search..." class="ip flex-1">
                 <button type="button" (click)="showAddBuyer.set(true)" class="qa-add-btn" title="Add new buyer to Party Master">+ New</button>
               </div>
               @if (buyerDropdownOpen() && filteredBuyers().length > 0) {
                 <div class="combo-dropdown">
-                  @for (p of filteredBuyers(); track p.id) {
-                    <div class="combo-option" (mousedown)="selectBuyerFromCombo(p)">
+                  @for (p of filteredBuyers(); track p.id; let i = $index) {
+                    <div class="combo-option" [class.kb-active]="i === buyerKbIdx()" (mousedown)="selectBuyerFromCombo(p)">
                       <div class="combo-name">{{ p.displayName }}</div>
                       <div class="combo-sub">GST: {{ p.gst || '—' }} {{ p.partyCode ? '· ' + p.partyCode : '' }}</div>
                     </div>
@@ -1558,10 +1560,43 @@ export class OrderEntryComponent {
   transporterKey(e: KeyboardEvent) {
     const list = this.filteredTransporters();
     if (!this.transporterDropdownOpen() || list.length === 0) return;
-    if (e.key === 'ArrowDown') { e.preventDefault(); this.transporterKbIdx.set(Math.min(this.transporterKbIdx() + 1, list.length - 1)); }
-    else if (e.key === 'ArrowUp') { e.preventDefault(); this.transporterKbIdx.set(Math.max(this.transporterKbIdx() - 1, 0)); }
+    if (e.key === 'ArrowDown') { e.preventDefault(); this.transporterKbIdx.set(Math.min(this.transporterKbIdx() + 1, list.length - 1)); this.kbScrollSoon(); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); this.transporterKbIdx.set(Math.max(this.transporterKbIdx() - 1, 0)); this.kbScrollSoon(); }
     else if (e.key === 'Enter') { e.preventDefault(); const t = list[this.transporterKbIdx()]; if (t) this.selectTransporterFromCombo(t); }
     else if (e.key === 'Escape') { this.transporterDropdownOpen.set(false); }
+  }
+
+  // Supplier/Buyer combo — keyboard se upar-niche + Enter se select
+  supplierKbIdx = signal(0);
+  supplierKey(e: KeyboardEvent) {
+    const groups = this.filteredGroups();
+    const total = groups.length + this.filteredSuppliers().length;
+    if (!this.supplierDropdownOpen() || total === 0) return;
+    if (e.key === 'ArrowDown') { e.preventDefault(); this.supplierKbIdx.set(Math.min(this.supplierKbIdx() + 1, total - 1)); this.kbScrollSoon(); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); this.supplierKbIdx.set(Math.max(this.supplierKbIdx() - 1, 0)); this.kbScrollSoon(); }
+    else if (e.key === 'Enter') {
+      e.preventDefault();
+      const idx = this.supplierKbIdx();
+      if (idx < groups.length) { const g = groups[idx]; if (g) this.selectGroupFromCombo(g); }
+      else { const p = this.filteredSuppliers()[idx - groups.length]; if (p) this.selectSupplierFromCombo(p); }
+    }
+    else if (e.key === 'Escape') { this.supplierDropdownOpen.set(false); }
+  }
+
+  buyerKbIdx = signal(0);
+  buyerKey(e: KeyboardEvent) {
+    const list = this.filteredBuyers();
+    if (!this.buyerDropdownOpen() || list.length === 0) return;
+    if (e.key === 'ArrowDown') { e.preventDefault(); this.buyerKbIdx.set(Math.min(this.buyerKbIdx() + 1, list.length - 1)); this.kbScrollSoon(); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); this.buyerKbIdx.set(Math.max(this.buyerKbIdx() - 1, 0)); this.kbScrollSoon(); }
+    else if (e.key === 'Enter') { e.preventDefault(); const p = list[this.buyerKbIdx()]; if (p) this.selectBuyerFromCombo(p); }
+    else if (e.key === 'Escape') { this.buyerDropdownOpen.set(false); }
+  }
+
+  // Highlighted option list me scroll karke visible rakho
+  private kbScrollSoon() {
+    setTimeout(() => document.querySelector('.combo-dropdown .kb-active')
+      ?.scrollIntoView({ block: 'nearest' }), 0);
   }
   filteredTransporters = computed(() => {
     const q = this.transporterFilter().trim().toLowerCase();

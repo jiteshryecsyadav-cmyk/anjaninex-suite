@@ -16,7 +16,7 @@ const config: CapacitorConfig = {
   appName: 'Vyapaar Setu',
   webDir: 'dist/browser',
   server: {
-    url: 'https://trade.anjaninex.com',
+    url: 'https://vyaparsetu.anjaninex.com',
     cleartext: false
   }
 };

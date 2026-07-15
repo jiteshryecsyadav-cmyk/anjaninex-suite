@@ -26,6 +26,7 @@ interface BillRow {
   selected: boolean;
   billId: string;
   billNo: string;
+  dispNo?: string;   // display ke liye SUPPLIER ka bill no (internal fallback)
   date: string;
   type: string;
   netAmt: number;

@@ -1,8 +1,10 @@
+using System.Data;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using Microsoft.IdentityModel.Tokens;
 using Namokara.Api.Infrastructure.Persistence;
 using Namokara.Api.Modules.Core.Entities;
@@ -166,18 +168,40 @@ public class AuthService : IAuthService
 
     // Ek hi bande ke (same phone/email/username) alag-alag firms ke ACTIVE logins.
     // Phone DIGITS se milta hai (last 10) — "+91 93270 20834" aur "9327020834" ek hi maane jayenge.
+    // RLS NOTE: logged-in firm ka context core.users ki DUSRI firms wali rows chhupa deta hai —
+    // isliye query se pehle firm-context khali karo (login jaisa no-context mode), baad me wapas lagao.
     private async Task<List<User>> LinkedUsersAsync(User me)
     {
         var digits = new string((me.Phone ?? "").Where(char.IsDigit).ToArray());
         var phone10 = digits.Length > 10 ? digits[^10..] : digits;
         var email = (me.Email ?? "").Trim().ToLowerInvariant();
-        return await _db.Users.FromSqlInterpolated($@"
-            SELECT * FROM core.users u
-            WHERE u.is_active AND u.firm_id IS NOT NULL AND (
-                  ({phone10} <> '' AND right(regexp_replace(coalesce(u.phone,''), '\D', '', 'g'), 10) = {phone10})
-               OR ({email} <> '' AND lower(coalesce(u.email,'')) = {email})
-               OR u.username = {me.Username}
-            )").ToListAsync();
+
+        var conn = (NpgsqlConnection)_db.Database.GetDbConnection();
+        if (conn.State != ConnectionState.Open) await conn.OpenAsync();
+        await SetFirmContextAsync(conn, "");
+        try
+        {
+            return await _db.Users.FromSqlInterpolated($@"
+                SELECT * FROM core.users u
+                WHERE u.is_active AND u.firm_id IS NOT NULL AND (
+                      ({phone10} <> '' AND right(regexp_replace(coalesce(u.phone,''), '\D', '', 'g'), 10) = {phone10})
+                   OR ({email} <> '' AND lower(coalesce(u.email,'')) = {email})
+                   OR u.username = {me.Username}
+                )").ToListAsync();
+        }
+        finally
+        {
+            // Apna context wapas — warna baaki request me RLS sab kuch khol dega
+            await SetFirmContextAsync(conn, me.FirmId?.ToString() ?? "");
+        }
+    }
+
+    private static async Task SetFirmContextAsync(NpgsqlConnection conn, string firmId)
+    {
+        await using var cmd = new NpgsqlCommand(
+            "SELECT set_config('app.current_firm_id', @f, false)", conn);
+        cmd.Parameters.AddWithValue("f", firmId);
+        await cmd.ExecuteNonQueryAsync();
     }
 
     public async Task<List<FirmChoiceDto>> MyFirms(Guid userId)
@@ -198,6 +222,13 @@ public class AuthService : IAuthService
             ?? throw new AuthFailedException("Is firm me aapka login nahi mila");
         if (target.IsLocked && target.LockedUntil > DateTimeOffset.UtcNow)
             throw new AuthFailedException("Us firm ka account locked hai");
+
+        // Token NAYI firm ke liye ban raha hai — RLS context bhi usi firm par karo,
+        // warna roles/permissions purani firm ke filter me atak jate hain (khali token).
+        var conn = (NpgsqlConnection)_db.Database.GetDbConnection();
+        if (conn.State != ConnectionState.Open) await conn.OpenAsync();
+        await SetFirmContextAsync(conn, target.FirmId?.ToString() ?? "");
+
         return await IssueFor(target, ip, userAgent);
     }
 

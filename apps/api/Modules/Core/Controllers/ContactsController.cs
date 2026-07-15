@@ -1,6 +1,8 @@
+using System.Data;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using Namokara.Api.Common.Auth;
 using Namokara.Api.Infrastructure.Persistence;
 
@@ -98,19 +100,46 @@ public class ContactsController : ControllerBase
         return Ok(dto);
     }
 
-    // Distinct group names (sister-concern) - supplier form ke datalist ke liye.
+    // Group names — MASTER TABLE (khali groups bhi) + contacts par likhe groups (legacy) ka union.
+    // Isliye "pehle naam save karo, firms baad me tick karo" flow kaam karta hai.
     [HttpGet("groups")]
     public async Task<IActionResult> Groups()
     {
         var firmId = CurrentFirmId;
-        var groups = await _db.Contacts
-            .Where(c => c.FirmId == firmId && c.DeletedAt == null
-                        && c.GroupName != null && c.GroupName != "")
-            .Select(c => c.GroupName!)
-            .Distinct()
-            .OrderBy(g => g)
-            .ToListAsync();
+        var groups = new List<string>();
+        var conn = (NpgsqlConnection)_db.Database.GetDbConnection();
+        if (conn.State != ConnectionState.Open) await conn.OpenAsync();
+        await using (var cmd = new NpgsqlCommand(@"
+            SELECT name FROM core.party_groups WHERE firm_id = @f
+            UNION
+            SELECT DISTINCT group_name FROM core.contacts
+            WHERE firm_id = @f AND deleted_at IS NULL AND coalesce(group_name,'') <> ''
+            ORDER BY 1", conn))
+        {
+            cmd.Parameters.AddWithValue("f", firmId);
+            await using var r = await cmd.ExecuteReaderAsync();
+            while (await r.ReadAsync()) groups.Add(r.GetString(0));
+        }
         return Ok(groups);
+    }
+
+    // Sirf group ka NAAM banao (0 members) — left list me turant dikhega, firms baad me
+    public record CreateGroupDto(string Name);
+
+    [HttpPost("groups")]
+    public async Task<IActionResult> CreateGroup([FromBody] CreateGroupDto dto)
+    {
+        var firmId = CurrentFirmId;
+        var name = (dto.Name ?? "").Trim();
+        if (string.IsNullOrEmpty(name)) return BadRequest(new { error = "Group naam zaroori hai." });
+        var conn = (NpgsqlConnection)_db.Database.GetDbConnection();
+        if (conn.State != ConnectionState.Open) await conn.OpenAsync();
+        await using var cmd = new NpgsqlCommand(
+            "INSERT INTO core.party_groups (firm_id, name) VALUES (@f, @n) ON CONFLICT DO NOTHING", conn);
+        cmd.Parameters.AddWithValue("f", firmId);
+        cmd.Parameters.AddWithValue("n", name);
+        await cmd.ExecuteNonQueryAsync();
+        return Ok(new { group = name });
     }
 
     // Ek group ke members set karo (ticked = is group me, unticked jo pehle the = hata do).
@@ -129,6 +158,18 @@ public class ContactsController : ControllerBase
         foreach (var c in removed) { c.GroupName = null; c.UpdatedAt = DateTimeOffset.UtcNow; }
 
         await _db.SaveChangesAsync();
+
+        // Group naam master me bhi pakka save (0 members par bhi group zinda rahe)
+        var conn = (NpgsqlConnection)_db.Database.GetDbConnection();
+        if (conn.State != ConnectionState.Open) await conn.OpenAsync();
+        await using (var up = new NpgsqlCommand(
+            "INSERT INTO core.party_groups (firm_id, name) VALUES (@f, @n) ON CONFLICT DO NOTHING", conn))
+        {
+            up.Parameters.AddWithValue("f", firmId);
+            up.Parameters.AddWithValue("n", name);
+            await up.ExecuteNonQueryAsync();
+        }
+
         return Ok(new { group = name, members = members.Count, removed = removed.Count });
     }
 

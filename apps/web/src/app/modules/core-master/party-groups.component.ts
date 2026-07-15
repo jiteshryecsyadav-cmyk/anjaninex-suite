@@ -26,7 +26,16 @@ interface C { id: string; displayName: string; gst?: string | null; groupName?: 
       <!-- Existing groups -->
       <div class="card">
         <h3 class="font-bold text-[#5c1a8b] mb-2">Groups</h3>
-        @if (groups().length === 0) { <p class="text-sm text-gray-400">Abhi koi group nahi. Naya banao &rarr;</p> }
+        <!-- Pehle sirf NAAM banao — list me turant aa jayega, firms baad me tick karo -->
+        <div class="flex gap-1 mb-3">
+          <input [(ngModel)]="newGroupName" (keydown.enter)="createGroup()"
+                 placeholder="Naya group naam..." class="input flex-1 text-sm">
+          <button (click)="createGroup()" [disabled]="creating()"
+                  class="px-3 py-1.5 bg-[#5c1a8b] text-white rounded font-bold text-sm whitespace-nowrap disabled:opacity-50">
+            ➕ Banao
+          </button>
+        </div>
+        @if (groups().length === 0) { <p class="text-sm text-gray-400">Abhi koi group nahi. Naya banao &uarr;</p> }
         <div class="flex flex-col gap-1">
           @for (g of groups(); track g) {
             <button (click)="openGroup(g)"
@@ -51,7 +60,7 @@ interface C { id: string; displayName: string; gst?: string | null; groupName?: 
             {{ saving() ? 'Saving...' : 'Save Group' }}
           </button>
         </div>
-        @if (msg()) { <p class="text-sm mb-2" [class]="msg()==='Saved!' ? 'text-green-600' : 'text-red-600'">{{ msg() }}</p> }
+        @if (msg()) { <p class="text-sm mb-2" [class]="msg().includes('Error') || msg().includes('daalein') ? 'text-red-600' : 'text-green-600'">{{ msg() }}</p> }
 
         <input [(ngModel)]="search" placeholder="Firm dhoondo (naam / GST)..." class="input mb-2">
         <p class="text-xs text-gray-500 mb-1">Ticked = is group me. Selected: <b>{{ picked().size }}</b></p>
@@ -98,6 +107,30 @@ export class PartyGroupsComponent {
   load() {
     this.http.get<C[]>(this.base).subscribe({ next: r => this.all.set(r || []), error: () => {} });
     this.http.get<string[]>(`${this.base}/groups`).subscribe({ next: g => this.groups.set(g || []), error: () => {} });
+  }
+
+  // Pehle sirf group ka NAAM save — left list me turant, firms baad me tick karke Save Group
+  newGroupName = '';
+  creating = signal(false);
+  createGroup() {
+    const name = this.newGroupName.trim();
+    if (!name) return;
+    if (this.groups().some(g => g.toLowerCase() === name.toLowerCase())) {
+      this.openGroup(this.groups().find(g => g.toLowerCase() === name.toLowerCase())!);
+      this.newGroupName = '';
+      return;
+    }
+    this.creating.set(true);
+    this.http.post(`${this.base}/groups`, { name }).subscribe({
+      next: () => {
+        this.creating.set(false);
+        this.newGroupName = '';
+        this.groups.update(g => [...g, name].sort((a, b) => a.localeCompare(b)));
+        this.openGroup(name);   // turant select — ab firms tick karke Save Group dabao
+        this.msg.set(`"${name}" ban gaya — ab firms tick karke Save Group dabao`);
+      },
+      error: () => { this.creating.set(false); this.msg.set('Error - dobara try karein.'); }
+    });
   }
 
   countIn(g: string) { return this.all().filter(c => (c.groupName || '') === g).length; }

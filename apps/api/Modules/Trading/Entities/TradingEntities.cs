@@ -23,6 +23,16 @@ public class PartyProfile
     [Column(TypeName = "numeric(5,2)")]
     public decimal CommissionRate { get; set; }
 
+    // Supplier ke multiple discounts — Order/Bill me chip se items par apply hote hain
+    [Column("discount_normal", TypeName = "numeric(5,2)")]
+    public decimal DiscountNormal { get; set; }
+
+    [Column("discount_exhibition", TypeName = "numeric(5,2)")]
+    public decimal DiscountExhibition { get; set; }
+
+    [Column("discount_special", TypeName = "numeric(5,2)")]
+    public decimal DiscountSpecial { get; set; }
+
     public Guid? DefaultTransporterId { get; set; }
 
     [Column(TypeName = "numeric(14,2)")]

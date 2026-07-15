@@ -25,6 +25,9 @@ export interface Party {
   waSupplier?: string | null;
   waBuyer?: string | null;
   pan?: string | null;
+  discountNormal?: number;
+  discountExhibition?: number;
+  discountSpecial?: number;
 }
 
 export interface CreateParty {
@@ -46,6 +49,9 @@ export interface CreateParty {
   openingType: string;
   waSupplier?: string | null;
   waBuyer?: string | null;
+  discountNormal?: number;
+  discountExhibition?: number;
+  discountSpecial?: number;
 }
 
 export interface Item {

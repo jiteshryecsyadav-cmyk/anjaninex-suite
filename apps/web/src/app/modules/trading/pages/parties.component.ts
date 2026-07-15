@@ -410,6 +410,23 @@ import { LedgerStatementComponent } from '../../accounting/components/ledger-sta
                   <label class="lbl">FLAG / SPECIAL NOTE</label>
                   <input formControlName="note" placeholder="e.g. ⚠️ Late payer — extra follow up needed" class="ip">
                 </div>
+                <div class="col-span-5">
+                  <label class="lbl">💸 DISCOUNTS % <small style="color:#9CA3AF">(supplier deta hai — Order/Bill me 1-click apply)</small></label>
+                  <div class="grid grid-cols-3 gap-3">
+                    <div>
+                      <input formControlName="discountNormal" type="number" step="0.1" min="0" placeholder="0" class="ip">
+                      <small style="color:#6B7280;font-size:11px">Normal</small>
+                    </div>
+                    <div>
+                      <input formControlName="discountExhibition" type="number" step="0.1" min="0" placeholder="0" class="ip">
+                      <small style="color:#6B7280;font-size:11px">Exhibition</small>
+                    </div>
+                    <div>
+                      <input formControlName="discountSpecial" type="number" step="0.1" min="0" placeholder="0" class="ip">
+                      <small style="color:#6B7280;font-size:11px">Special</small>
+                    </div>
+                  </div>
+                </div>
               </form>
 
               <!-- STEP 5: OPENING (conditional) -->
@@ -805,6 +822,9 @@ export class PartiesComponent {
     avgPayDays: [45],
     returnRate: [2.5],
     commission: [0],
+    discountNormal: [0],
+    discountExhibition: [0],
+    discountSpecial: [0],
     note: [''],
     creditLimit: [50000],
     creditDays: [30],
@@ -1013,6 +1033,9 @@ export class PartiesComponent {
       email: p.email ?? '',
       city: p.city ?? '', creditLimit: p.creditLimit, creditDays: p.creditDays,
       commission: p.commissionRate || 0,
+      discountNormal: p.discountNormal || 0,
+      discountExhibition: p.discountExhibition || 0,
+      discountSpecial: p.discountSpecial || 0,
       waSupplier: p.waSupplier ?? '', waBuyer: p.waBuyer ?? '',
       groupName: (p as any).groupName ?? '',
       buyerAgentId: (p as any).buyerAgentId ?? '',
@@ -1045,6 +1068,9 @@ export class PartiesComponent {
       address: v.address, city: v.city, state: v.state, pincode: v.pincode,
       partyType, creditLimit: v.creditLimit || 0, creditDays: v.creditDays || 30,
       commissionRate: v.commission || 0,
+      discountNormal: v.discountNormal || 0,
+      discountExhibition: v.discountExhibition || 0,
+      discountSpecial: v.discountSpecial || 0,
       openingBalance: v.openingBalance || 0, openingType: 'Dr',
       waSupplier: v.waSupplier || null, waBuyer: v.waBuyer || null,
       groupName: v.groupName || null,

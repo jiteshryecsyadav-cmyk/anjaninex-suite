@@ -30,7 +30,10 @@ public record PartyDto(
     string? Pan = null,
     string? GroupName = null,
     Guid? BuyerAgentId = null,
-    decimal? BuyerAgentSharePct = null);
+    decimal? BuyerAgentSharePct = null,
+    decimal DiscountNormal = 0,
+    decimal DiscountExhibition = 0,
+    decimal DiscountSpecial = 0);
 
 public record CreatePartyDto(
     string DisplayName,
@@ -53,7 +56,10 @@ public record CreatePartyDto(
     string? WaBuyer = null,
     string? GroupName = null,
     Guid? BuyerAgentId = null,
-    decimal? BuyerAgentSharePct = null);
+    decimal? BuyerAgentSharePct = null,
+    decimal DiscountNormal = 0,
+    decimal DiscountExhibition = 0,
+    decimal DiscountSpecial = 0);
 
 // =============================================================================
 // Service
@@ -152,7 +158,8 @@ public class PartyService : IPartyService
                 x.c.DisplayName, x.c.PhonePrimary, x.c.EmailPrimary, x.c.GstNumber, city,
                 x.p.PartyType, x.p.CreditLimit, x.p.CreditDays, x.p.CommissionRate,
                 outstanding, x.p.LedgerId, x.p.IsActive, x.c.WaSupplier, x.c.WaBuyer,
-                x.c.PanNumber, x.c.GroupName, x.c.BuyerAgentId, x.c.BuyerAgentSharePct);
+                x.c.PanNumber, x.c.GroupName, x.c.BuyerAgentId, x.c.BuyerAgentSharePct,
+                x.p.DiscountNormal, x.p.DiscountExhibition, x.p.DiscountSpecial);
         }).ToList();
     }
 
@@ -335,6 +342,9 @@ public class PartyService : IPartyService
                     CreditLimit = dto.CreditLimit,
                     CreditDays = dto.CreditDays,
                     CommissionRate = dto.CommissionRate,
+                    DiscountNormal = dto.DiscountNormal,
+                    DiscountExhibition = dto.DiscountExhibition,
+                    DiscountSpecial = dto.DiscountSpecial,
                     OpeningBalance = dto.OpeningBalance,
                     OpeningType = normalizedOpeningType,
                     LedgerId = ledgerId,
@@ -420,6 +430,9 @@ public class PartyService : IPartyService
         party.CreditLimit = dto.CreditLimit;
         party.CreditDays = dto.CreditDays;
         party.CommissionRate = dto.CommissionRate;
+        party.DiscountNormal = dto.DiscountNormal;
+        party.DiscountExhibition = dto.DiscountExhibition;
+        party.DiscountSpecial = dto.DiscountSpecial;
         party.UpdatedAt = DateTimeOffset.UtcNow;
 
         // Update linked ledger name

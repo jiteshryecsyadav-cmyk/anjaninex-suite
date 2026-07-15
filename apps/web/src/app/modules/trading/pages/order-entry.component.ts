@@ -278,6 +278,20 @@ interface LineRow {
           <button type="button" (click)="addLine()" class="btn-add-item">+ Add Item</button>
         </div>
 
+        <!-- 💸 Supplier ke saved discounts — 1 click me sab items ke RD me apply -->
+        @if (discountChips().length > 0) {
+          <div class="disc-row">
+            <span class="disc-lbl">💸 Discount:</span>
+            @for (d of discountChips(); track d.key) {
+              <button type="button" class="disc-chip" [class.disc-on]="discountApplied() === d.key"
+                      (click)="applyDiscount(d.key, d.value)">{{ d.label }} {{ d.value }}%</button>
+            }
+            <button type="button" class="disc-chip" [class.disc-on]="discountApplied() === 'zero'"
+                    (click)="applyDiscount('zero', 0)">✕ 0%</button>
+            <span class="disc-hint">sab items ke RD me lagta hai</span>
+          </div>
+        }
+
         @if (reconcileNote()) {
           <div class="reconcile-note">⚠️ {{ reconcileNote() }}</div>
         }
@@ -1078,6 +1092,13 @@ interface LineRow {
     .combo-option:last-child { border-bottom: 0; }
     .combo-option:hover { background: #f5efe3; }
     .combo-option.kb-active { background: #e0e7ff; border-left: 3px solid #1B2E5C; }
+    .disc-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+    .disc-lbl { font-size: 12px; font-weight: 700; color: #6B7280; }
+    .disc-hint { font-size: 11px; color: #9CA3AF; }
+    .disc-chip { padding: 4px 12px; border-radius: 999px; border: 1.5px solid #E5E7EB; background: #fff;
+                 font-size: 12px; font-weight: 700; color: #374151; cursor: pointer; }
+    .disc-chip:hover { border-color: #1B2E5C; }
+    .disc-chip.disc-on { background: #1B2E5C; color: #fff; border-color: #1B2E5C; }
     .combo-name { font-size: 13.5px; font-weight: 700; color: #1B2E5C; }
     .combo-sub  { font-size: 11px; color: #6b7280; margin-top: 2px; font-family: 'JetBrains Mono', monospace; }
     .combo-empty {
@@ -1844,7 +1865,25 @@ export class OrderEntryComponent {
   updateLine(idx: number, field: keyof LineRow, value: any) {
     this.lines.update(arr => arr.map((l, i) => i === idx ? { ...l, [field]: value } : l));
   }
-  addLine() { this.lines.update(arr => [...arr, this.newLine()]); }
+  addLine() { this.lines.update(arr => [...arr, { ...this.newLine(), rd: this.appliedDiscountVal }]); }
+
+  // 💸 Supplier ke master me saved discounts — chips se sab items ke RD me apply
+  discountApplied = signal<string | null>(null);
+  private appliedDiscountVal = 0;
+  discountChips(): { key: string; label: string; value: number }[] {
+    const p = this.parties().find(x => x.id === this.supplierId);
+    if (!p) return [];
+    const chips: { key: string; label: string; value: number }[] = [];
+    if (+(p.discountNormal ?? 0) > 0) chips.push({ key: 'normal', label: 'Normal', value: +p.discountNormal! });
+    if (+(p.discountExhibition ?? 0) > 0) chips.push({ key: 'exhibition', label: 'Exhibition', value: +p.discountExhibition! });
+    if (+(p.discountSpecial ?? 0) > 0) chips.push({ key: 'special', label: 'Special', value: +p.discountSpecial! });
+    return chips;
+  }
+  applyDiscount(key: string, value: number) {
+    this.discountApplied.set(key);
+    this.appliedDiscountVal = value;
+    this.lines.update(arr => arr.map(l => ({ ...l, rd: value })));
+  }
   removeLine(idx: number) { this.lines.update(arr => arr.filter((_, i) => i !== idx)); }
   autoFillFromItem(idx: number, event: any) {
     const name = event.target.value;

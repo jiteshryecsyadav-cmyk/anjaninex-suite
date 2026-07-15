@@ -270,7 +270,7 @@ interface PartyBehavior {
                    class="ip">
             <datalist id="prBillList">
               @for (b of bills(); track b.billId) {
-                <option [value]="b.billNo">₹{{ b.pending | number:'1.0-0' }} pending</option>
+                <option [value]="b.dispNo">₹{{ b.pending | number:'1.0-0' }} pending</option>
               }
             </datalist>
           </div>
@@ -417,7 +417,7 @@ interface PartyBehavior {
                             <input type="checkbox" class="bp-check" [checked]="b.selected"
                                    (click)="$event.stopPropagation(); toggleBill(i, !b.selected)">
                           </td>
-                          <td class="font-mono font-bold">{{ b.billNo }}</td>
+                          <td class="font-mono font-bold">{{ b.dispNo }}</td>
                           <td>{{ b.date | inDate }}</td>
                           <td class="text-right font-mono">{{ b.pending | number:'1.2-2' }}</td>
                         </tr>
@@ -479,7 +479,7 @@ interface PartyBehavior {
                       <input type="checkbox" [ngModel]="b.selected"
                              (ngModelChange)="toggleBill(i, $event)">
                     </td>
-                    <td class="font-mono text-xs">{{ b.billNo }}</td>
+                    <td class="font-mono text-xs">{{ b.dispNo }}</td>
                     <td class="text-xs">{{ b.date | inDate }}</td>
                     <td>
                       <span class="type-tag" [class]="b.type">{{ b.type }}</span>
@@ -1267,10 +1267,11 @@ export class PaymentReceiptComponent {
     if (!q) { this.billNoPicked.set(''); return; }
 
     // 1) Pehle current loaded bills me dhoondo (supplier/buyer already select hain to)
-    const idx = this.bills().findIndex(b => (b.billNo || '').toLowerCase() === q);
+    const idx = this.bills().findIndex(b =>
+      (b.billNo || '').toLowerCase() === q || ((b as any).dispNo || '').toLowerCase() === q);
     if (idx >= 0) {
       this.toggleBill(idx, true);              // bill select → detail niche table me
-      this.billNoPicked.set(this.bills()[idx].billNo);
+      this.billNoPicked.set((this.bills()[idx] as any).dispNo || this.bills()[idx].billNo);
       return;
     }
 
@@ -1297,14 +1298,15 @@ export class PaymentReceiptComponent {
       await this.loadBills();
       const i2 = this.bills().findIndex(b =>
         b.billId === bill.id || (b.billNo || '').toLowerCase() === norm(bill.billNo));
+      const dispFound = bill.supplierBillNo || bill.billNo;
       if (i2 >= 0) {
         this.toggleBill(i2, true);
-        this.billNoPicked.set(this.bills()[i2].billNo);
+        this.billNoPicked.set((this.bills()[i2] as any).dispNo || this.bills()[i2].billNo);
       } else {
         // Bill mila par outstanding nahi (shayad already paid) — supplier/buyer to bhar gaye
-        this.billNoPicked.set(bill.billNo);
+        this.billNoPicked.set(dispFound);
       }
-      this.toast.success(`Bill ${bill.billNo} mil gaya — supplier/buyer auto-fill ho gaye ✓`);
+      this.toast.success(`Bill ${dispFound} mil gaya — supplier/buyer auto-fill ho gaye ✓`);
     } catch {
       this.toast.error('Bill search nahi ho paya. Dobara try karein.');
     }
@@ -1335,6 +1337,7 @@ export class PaymentReceiptComponent {
         selected: false,
         billId: b.id,
         billNo: b.billNo,
+        dispNo: b.supplierBillNo || b.billNo,   // display SUPPLIER ka bill no — internal fallback
         date: b.billDate,
         type: b.billType,
         netAmt: b.taxableAmount || b.total,   // Taxable Amt (bill jaisa)
@@ -1529,7 +1532,7 @@ export class PaymentReceiptComponent {
         return rows.length ? rows : undefined;
       })(),
       notes: selBills.length
-        ? 'Bills: ' + selBills.map(b => b.billNo).join(', ')
+        ? 'Bills: ' + selBills.map(b => (b as any).dispNo || b.billNo).join(', ')
         : (this.remark || null)
     } as PreviewData);
   }

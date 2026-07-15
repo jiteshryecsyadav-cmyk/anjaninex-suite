@@ -102,11 +102,13 @@ public class PaymentService : IPaymentService
         var allocs = await (from a in _db.PaymentAllocations
                             join b in _db.Bills on a.BillId equals b.Id
                             where paymentIds.Contains(a.PaymentId)
-                            select new { a.PaymentId, a.BillId, b.BillNo, b.Total, b.PaidAmount })
+                            select new { a.PaymentId, a.BillId, b.BillNo, b.SupplierBillNo, b.Total, b.PaidAmount })
                            .ToListAsync();
+        // Display SUPPLIER ka bill no (2885/GST) — internal no (Surat Ho-61) sirf fallback
         var billNosMap = allocs
             .GroupBy(x => x.PaymentId)
-            .ToDictionary(g => g.Key, g => string.Join(", ", g.Select(x => x.BillNo)));
+            .ToDictionary(g => g.Key, g => string.Join(", ",
+                g.Select(x => string.IsNullOrWhiteSpace(x.SupplierBillNo) ? x.BillNo : x.SupplierBillNo)));
 
         // Har bill par PENDING GR (return) total — pending me se ye bhi minus hoga.
         // NOTE: APPROVED GR ab bill.PaidAmount me fold ho jaata hai (GoodsReturnService.Approve),
@@ -170,8 +172,11 @@ public class PaymentService : IPaymentService
 
         var allocations = new List<PaymentAllocationDto>();
         var billIds = p.Allocations.Select(a => a.BillId).ToList();
-        var billNos = await _db.Bills.Where(b => billIds.Contains(b.Id))
-            .ToDictionaryAsync(b => b.Id, b => b.BillNo);
+        // Display SUPPLIER ka bill no — internal no fallback
+        var billNos = (await _db.Bills.Where(b => billIds.Contains(b.Id))
+            .Select(b => new { b.Id, b.BillNo, b.SupplierBillNo })
+            .ToListAsync())
+            .ToDictionary(b => b.Id, b => string.IsNullOrWhiteSpace(b.SupplierBillNo) ? b.BillNo : b.SupplierBillNo!);
         foreach (var a in p.Allocations)
             allocations.Add(new PaymentAllocationDto(a.BillId, billNos.GetValueOrDefault(a.BillId, "—"), a.Allocated));
 
@@ -517,7 +522,9 @@ public class PaymentService : IPaymentService
             null, false, b.CreatedAt,
             b.TaxableAmount,
             b.Cgst + b.Sgst + b.Igst,
-            grByBill.GetValueOrDefault(b.Id, 0m))).ToList();
+            grByBill.GetValueOrDefault(b.Id, 0m),
+            0m,
+            b.SupplierBillNo)).ToList();
     }
 
     public async Task Delete(Guid id)

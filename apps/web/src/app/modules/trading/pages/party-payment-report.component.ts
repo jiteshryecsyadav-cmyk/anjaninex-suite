@@ -71,7 +71,7 @@ import { TradingService, BillListItem } from '../services/trading.service';
               <tr class="border-t hover:bg-[#faf5ff]">
                 <td class="px-3 py-2 font-semibold text-purple-800">{{ r._supplier || '-' }}</td>
                 <td class="px-3 py-2 font-semibold text-blue-800">{{ r._buyer || '-' }}</td>
-                <td class="px-3 py-2 font-mono text-xs">{{ r.billNo }}</td>
+                <td class="px-3 py-2 font-mono text-xs">{{ r.supplierBillNo || r.billNo }}</td>
                 <td class="px-3 py-2 text-xs">{{ r.billDate }}</td>
                 <td class="px-3 py-2 text-right font-mono">Rs {{ money(r.total) }}</td>
                 <td class="px-3 py-2 text-right font-mono text-green-700">Rs {{ money(r.paidAmount) }}</td>

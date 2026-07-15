@@ -84,6 +84,7 @@ import { amountInWords } from '../../../shared/amount-in-words.util';
           <table class="w-full text-sm">
             <thead class="bg-anjaninex-navy text-white text-xs uppercase">
               <tr>
+                <th class="w-8"></th>
                 <th class="px-3 py-3 text-center w-12">NO.</th>
                 <th class="px-3 py-3 text-left">ORDER NO</th>
                 <th class="px-3 py-3 text-center">STATUS</th>
@@ -99,6 +100,11 @@ import { amountInWords } from '../../../shared/amount-in-words.util';
             <tbody>
               @for (o of pagedOrders(); track o.id; let i = $index) {
                 <tr class="border-t hover:bg-[#FAF7F0]" [class.opacity-50]="o.isDeleted">
+                  <td class="text-center">
+                    <button (click)="toggleExpand(o)" class="exp-btn" title="Order ki poori detail">
+                      {{ expandedId() === o.id ? '▾' : '▸' }}
+                    </button>
+                  </td>
                   <td class="px-3 py-3 text-center text-gray-500">{{ (pageClamped()-1)*pageSize() + i + 1 }}</td>
                   <td class="px-3 py-3 font-mono text-xs font-bold text-[#1B2E5C]">
                     <span [class.line-through]="o.isDeleted">{{ o.orderNo }}</span>
@@ -157,6 +163,57 @@ import { amountInWords } from '../../../shared/amount-in-words.util';
                     }
                   </td>
                 </tr>
+                @if (expandedId() === o.id) {
+                  <tr class="exp-row">
+                    <td colspan="11" class="px-4 py-3">
+                      @if (!detail(o.id)) {
+                        <div class="text-center text-gray-500 py-3">⏳ Detail load ho rahi hai…</div>
+                      } @else {
+                        <div class="exp-chips">
+                          <span class="exp-chip">🏭 {{ o.partyName }}</span>
+                          <span class="exp-chip">🛒 {{ o.buyerName || '—' }}</span>
+                          @if (detail(o.id).supplierOrderNo) { <span class="exp-chip">📄 Supp Order: {{ detail(o.id).supplierOrderNo }}</span> }
+                          @if (detail(o.id).paymentTerms) { <span class="exp-chip">💳 {{ detail(o.id).paymentTerms }}</span> }
+                          @if (detail(o.id).cdPercent) { <span class="exp-chip">💵 CD {{ detail(o.id).cdPercent }}%</span> }
+                        </div>
+                        <table class="exp-table">
+                          <thead>
+                            <tr>
+                              <th>#</th><th>Item</th><th>HSN</th><th class="text-right">Qty</th><th>Unit</th>
+                              <th class="text-right">Rate</th><th class="text-right">RD</th><th class="text-right">Tax%</th>
+                              <th class="text-right">Taxable</th><th class="text-right">Total</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            @for (l of detail(o.id).lines; track $index; let li = $index) {
+                              <tr>
+                                <td>{{ li + 1 }}</td>
+                                <td class="font-semibold">{{ l.itemName }}@if (l.description) { <small class="text-gray-500"> · {{ l.description }}</small> }</td>
+                                <td class="font-mono text-xs">{{ l.hsnSac || '—' }}</td>
+                                <td class="text-right font-mono">{{ l.qty | number:'1.0-2' }}</td>
+                                <td>{{ l.unit }}</td>
+                                <td class="text-right font-mono">{{ l.rate | number:'1.2-2' }}</td>
+                                <td class="text-right font-mono">{{ l.rd | number:'1.0-2' }}</td>
+                                <td class="text-right font-mono">{{ (l.sgstPct + l.cgstPct + l.igstPct) | number:'1.0-2' }}</td>
+                                <td class="text-right font-mono">{{ oLineTaxable(l) | number:'1.2-2' }}</td>
+                                <td class="text-right font-mono font-bold">{{ oLineTotal(l) | number:'1.2-2' }}</td>
+                              </tr>
+                            }
+                          </tbody>
+                        </table>
+                        <div class="exp-sums">
+                          <span>Items: <b>{{ detail(o.id).lines?.length || 0 }}</b></span>
+                          <span>Taxable: <b>₹{{ sumOrd(o.id, 'taxable') | number:'1.2-2' }}</b></span>
+                          <span>Tax: <b>₹{{ (sumOrd(o.id, 'total') - sumOrd(o.id, 'taxable')) | number:'1.2-2' }}</b></span>
+                          <span>Order Total: <b>₹{{ o.total | number:'1.2-2' }}</b></span>
+                        </div>
+                        @if (detail(o.id).notes) {
+                          <div class="exp-notes">📝 {{ detail(o.id).notes }}</div>
+                        }
+                      }
+                    </td>
+                  </tr>
+                }
               }
             </tbody>
           </table>
@@ -181,6 +238,20 @@ import { amountInWords } from '../../../shared/amount-in-words.util';
     .ai-btn { display:inline-block; width:28px; height:28px; border:0; background:transparent;
       border-radius:6px; cursor:pointer; font-size:13px; transition:background 0.15s; margin:0 1px; }
     .ai-btn:hover { background:#FAF7F0; }
+
+    .exp-btn { width:24px; height:24px; border:1px solid #ddc8f5; background:#fff; border-radius:6px;
+      cursor:pointer; font-size:11px; color:#5c1a8b; font-weight:800; }
+    .exp-btn:hover { background:#f0e6ff; }
+    .exp-row { background:#faf5ff; }
+    .exp-chips { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:8px; }
+    .exp-chip { background:#fff; border:1px solid #ddc8f5; border-radius:999px; padding:3px 10px;
+      font-size:11px; font-weight:700; color:#5c1a8b; }
+    .exp-table { width:100%; border-collapse:collapse; background:#fff; border:1px solid #eee; }
+    .exp-table th { background:#f0e6ff; color:#5c1a8b; font-size:10px; text-transform:uppercase;
+      padding:5px 8px; text-align:left; }
+    .exp-table td { padding:5px 8px; font-size:12px; border-top:1px solid #f3f4f6; }
+    .exp-sums { display:flex; gap:16px; flex-wrap:wrap; margin-top:8px; font-size:12px; color:#374151; }
+    .exp-notes { margin-top:6px; font-size:11px; color:#6b7280; white-space:pre-line; }
     .ai-bill { width:auto !important; padding:0 10px; height:28px; line-height:28px;
       background:#16a34a !important; color:#fff !important; font-weight:700; font-size:12px;
       text-decoration:none; white-space:nowrap; }
@@ -257,6 +328,35 @@ export class OrdersComponent {
       },
       error: () => this.loading.set(false)
     });
+  }
+
+  // ── Row expand: order ki poori andar ki detail (items + amounts + notes) ──
+  expandedId = signal<string | null>(null);
+  private detailCache = new Map<string, any>();
+  toggleExpand(o: OrderListItem) {
+    if (this.expandedId() === o.id) { this.expandedId.set(null); return; }
+    this.expandedId.set(o.id);
+    if (!this.detailCache.has(o.id)) {
+      this.svc.getOrder(o.id).subscribe({
+        next: d => { this.detailCache.set(o.id, d); this.orders.update(x => [...x]); },
+        error: () => {}
+      });
+    }
+  }
+  detail(id: string) { return this.detailCache.get(id); }
+  oLineTaxable(l: any): number {
+    const gross = (+l.qty || 0) * (+l.rate || 0);
+    return Math.max(0, gross - (+l.qty || 0) * (+l.rd || 0));
+  }
+  oLineTotal(l: any): number {
+    const t = this.oLineTaxable(l);
+    return t + t * ((+l.sgstPct || 0) + (+l.cgstPct || 0) + (+l.igstPct || 0)) / 100;
+  }
+  sumOrd(id: string, kind: 'taxable' | 'total'): number {
+    const d = this.detailCache.get(id);
+    if (!d?.lines) return 0;
+    return d.lines.reduce((s: number, l: any) =>
+      s + (kind === 'taxable' ? this.oLineTaxable(l) : this.oLineTotal(l)), 0);
   }
 
   preview(id: string) {

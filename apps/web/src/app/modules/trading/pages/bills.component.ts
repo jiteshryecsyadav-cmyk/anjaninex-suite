@@ -88,6 +88,7 @@ import { amountInWords } from '../../../shared/amount-in-words.util';
           <table class="w-full text-sm">
             <thead class="bg-anjaninex-navy text-white uppercase text-xs">
               <tr>
+                <th class="w-8"></th>
                 <th class="px-3 py-3 text-center w-12">NO.</th>
                 <th class="px-3 py-3 text-left">BILL ENTRY NO.</th>
                 <th class="px-3 py-3 text-left">ORDER NO.</th>
@@ -104,6 +105,11 @@ import { amountInWords } from '../../../shared/amount-in-words.util';
             <tbody>
               @for (b of pagedBills(); track b.id; let i = $index) {
                 <tr class="border-t hover:bg-[#FAF7F0]" [class.opacity-50]="b.isDeleted">
+                  <td class="text-center">
+                    <button (click)="toggleExpand(b)" class="exp-btn" title="Bill ki poori detail">
+                      {{ expandedId() === b.id ? '▾' : '▸' }}
+                    </button>
+                  </td>
                   <td class="px-3 py-3 text-center text-gray-500">{{ (pageClamped()-1)*pageSize() + i + 1 }}</td>
                   <td class="px-3 py-3 font-mono text-xs font-bold text-[#1B2E5C]">
                     <span [class.line-through]="b.isDeleted">{{ b.billNo }}</span>
@@ -155,10 +161,63 @@ import { amountInWords } from '../../../shared/amount-in-words.util';
                     }
                   </td>
                 </tr>
+                @if (expandedId() === b.id) {
+                  <tr class="exp-row">
+                    <td colspan="12" class="px-4 py-3">
+                      @if (!detail(b.id)) {
+                        <div class="text-center text-gray-500 py-3">⏳ Detail load ho rahi hai…</div>
+                      } @else {
+                        <div class="exp-chips">
+                          <span class="exp-chip">🏭 {{ detail(b.id).partyName || b.partyName }}</span>
+                          <span class="exp-chip">🛒 {{ detail(b.id).buyerName || b.buyerName || '—' }}</span>
+                          @if (detail(b.id).supplierBillNo) { <span class="exp-chip">📄 Supp Bill: {{ detail(b.id).supplierBillNo }}</span> }
+                          @if (detail(b.id).ewayBillNo) { <span class="exp-chip">🛣 e-Way: {{ detail(b.id).ewayBillNo }}</span> }
+                          @if (detail(b.id).lrNo) { <span class="exp-chip">🚚 LR: {{ detail(b.id).lrNo }}</span> }
+                        </div>
+                        <table class="exp-table">
+                          <thead>
+                            <tr>
+                              <th>#</th><th>Item</th><th>HSN</th><th class="text-right">Qty</th><th>Unit</th>
+                              <th class="text-right">Rate</th><th class="text-right">RD%</th><th class="text-right">Tax%</th>
+                              <th class="text-right">Taxable</th><th class="text-right">Total</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            @for (l of detail(b.id).lines; track $index; let li = $index) {
+                              <tr>
+                                <td>{{ li + 1 }}</td>
+                                <td class="font-semibold">{{ l.itemName }}@if (l.description) { <small class="text-gray-500"> · {{ l.description }}</small> }</td>
+                                <td class="font-mono text-xs">{{ l.hsnSac || '—' }}</td>
+                                <td class="text-right font-mono">{{ l.qty | number:'1.0-2' }}</td>
+                                <td>{{ l.unit }}</td>
+                                <td class="text-right font-mono">{{ l.rate | number:'1.2-2' }}</td>
+                                <td class="text-right font-mono">{{ l.discountPct | number:'1.0-2' }}</td>
+                                <td class="text-right font-mono">{{ l.taxRate | number:'1.0-2' }}</td>
+                                <td class="text-right font-mono">{{ l.taxableAmount | number:'1.2-2' }}</td>
+                                <td class="text-right font-mono font-bold">{{ l.totalAmount | number:'1.2-2' }}</td>
+                              </tr>
+                            }
+                          </tbody>
+                        </table>
+                        <div class="exp-sums">
+                          <span>Taxable: <b>₹{{ sumLine(b.id, 'taxableAmount') | number:'1.2-2' }}</b></span>
+                          <span>Tax: <b>₹{{ (sumLine(b.id, 'totalAmount') - sumLine(b.id, 'taxableAmount')) | number:'1.2-2' }}</b></span>
+                          @if (detail(b.id).discount) { <span class="text-red-600">Discount: <b>- ₹{{ detail(b.id).discount | number:'1.2-2' }}</b></span> }
+                          <span>Bill Total: <b>₹{{ detail(b.id).total | number:'1.2-2' }}</b></span>
+                          <span class="text-green-700">Paid: <b>₹{{ detail(b.id).paidAmount | number:'1.2-2' }}</b></span>
+                          <span class="text-red-600">Pending: <b>₹{{ (detail(b.id).total - detail(b.id).paidAmount) | number:'1.2-2' }}</b></span>
+                        </div>
+                        @if (detail(b.id).notes) {
+                          <div class="exp-notes">📝 {{ detail(b.id).notes }}</div>
+                        }
+                      }
+                    </td>
+                  </tr>
+                }
               }
             </tbody>
             <tfoot class="bg-gray-50 font-bold">
-              <tr><td colspan="7" class="px-3 py-3 text-right">TOTALS →</td><td class="px-3 py-3 text-right font-mono">₹ {{ filteredTotal() | number:'1.2-2' }}</td><td colspan="2"></td></tr>
+              <tr><td colspan="8" class="px-3 py-3 text-right">TOTALS →</td><td class="px-3 py-3 text-right font-mono">₹ {{ filteredTotal() | number:'1.2-2' }}</td><td colspan="2"></td></tr>
             </tfoot>
           </table>
           <app-paginator [total]="filteredBills().length" [page]="pageClamped()" [pageSize]="pageSize()"
@@ -182,6 +241,20 @@ import { amountInWords } from '../../../shared/amount-in-words.util';
     .ai-btn { display:inline-block; width:28px; height:28px; border:0; background:transparent;
       border-radius:6px; cursor:pointer; font-size:13px; transition:background 0.15s; margin:0 1px; }
     .ai-btn:hover { background:#FAF7F0; }
+
+    .exp-btn { width:24px; height:24px; border:1px solid #ddc8f5; background:#fff; border-radius:6px;
+      cursor:pointer; font-size:11px; color:#5c1a8b; font-weight:800; }
+    .exp-btn:hover { background:#f0e6ff; }
+    .exp-row { background:#faf5ff; }
+    .exp-chips { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:8px; }
+    .exp-chip { background:#fff; border:1px solid #ddc8f5; border-radius:999px; padding:3px 10px;
+      font-size:11px; font-weight:700; color:#5c1a8b; }
+    .exp-table { width:100%; border-collapse:collapse; background:#fff; border:1px solid #eee; }
+    .exp-table th { background:#f0e6ff; color:#5c1a8b; font-size:10px; text-transform:uppercase;
+      padding:5px 8px; text-align:left; }
+    .exp-table td { padding:5px 8px; font-size:12px; border-top:1px solid #f3f4f6; }
+    .exp-sums { display:flex; gap:16px; flex-wrap:wrap; margin-top:8px; font-size:12px; color:#374151; }
+    .exp-notes { margin-top:6px; font-size:11px; color:#6b7280; white-space:pre-line; }
 
     @media (max-width: 640px) {
       .grid-cols-2 { grid-template-columns: 1fr !important; }
@@ -252,6 +325,25 @@ export class BillsComponent {
       },
       error: () => this.loading.set(false)
     });
+  }
+
+  // ── Row expand: bill ki poori andar ki detail (items + amounts + notes) ──
+  expandedId = signal<string | null>(null);
+  private detailCache = new Map<string, any>();
+  toggleExpand(b: BillListItem) {
+    if (this.expandedId() === b.id) { this.expandedId.set(null); return; }
+    this.expandedId.set(b.id);
+    if (!this.detailCache.has(b.id)) {
+      this.svc.getBill(b.id).subscribe({
+        next: d => { this.detailCache.set(b.id, d); this.expandedId.set(this.expandedId()); this.bills.update(x => [...x]); },
+        error: () => {}
+      });
+    }
+  }
+  detail(id: string) { return this.detailCache.get(id); }
+  sumLine(id: string, field: 'taxableAmount' | 'totalAmount'): number {
+    const d = this.detailCache.get(id);
+    return d?.lines?.reduce((s: number, l: any) => s + (+l[field] || 0), 0) ?? 0;
   }
 
   preview(id: string) {

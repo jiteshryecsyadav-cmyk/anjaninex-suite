@@ -1,6 +1,6 @@
 import { Component, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterLink } from '@angular/router';
+import { RouterLink, RouterLinkActive } from '@angular/router';
 import { TradingService, BillListItem } from '../services/trading.service';
 
 interface Member { id: string; name: string; city: string; group: string; outstanding: number; }
@@ -19,9 +19,23 @@ interface GRow {
 @Component({
   selector: 'app-party-group-report',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, RouterLink, RouterLinkActive],
   template: `
   <div class="p-6 max-w-7xl mx-auto">
+    <!-- Reports sub-nav (Reports section jaisa hi) -->
+    <div class="flex gap-1 mb-6 border-b border-[#ddc8f5] flex-wrap">
+      <a routerLink="/reports/dashboard" class="pgtab">📊 Dashboard</a>
+      <a routerLink="/reports/sales-register" class="pgtab">Sales Register</a>
+      <a routerLink="/reports/outstanding" class="pgtab">Outstanding</a>
+      <a routerLink="/reports/supplier-buyer" class="pgtab">Supplier vs Buyer</a>
+      <a routerLink="/reports/party-outstanding" class="pgtab">Aging</a>
+      <a routerLink="/reports/gst" class="pgtab">GST</a>
+      <a routerLink="/reports/gr" class="pgtab">↩️ GR Report</a>
+      <a routerLink="/reports/party-wise" class="pgtab">👥 Party Wise</a>
+      <a routerLink="/reports/groups" routerLinkActive="pgtab-on" class="pgtab">👨‍👩‍👦 Groups</a>
+      <a routerLink="/reports/activity" class="pgtab">🕵️ Activity Log</a>
+    </div>
+
     <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
       <div>
         <h2 class="font-display font-black text-2xl text-[#5c1a8b]">Group Report (Sister Firms)</h2>
@@ -184,6 +198,12 @@ interface GRow {
     }
   </div>
   `,
+  styles: [`
+    .pgtab { padding: 8px 16px; font-size: 13px; font-weight: 600; color: #6b7280;
+      border-bottom: 2px solid transparent; text-decoration: none; }
+    .pgtab:hover { color: #5c1a8b; }
+    .pgtab-on { border-color: #5c1a8b; color: #5c1a8b; }
+  `],
 })
 export class PartyGroupReportComponent {
   private svc = inject(TradingService);

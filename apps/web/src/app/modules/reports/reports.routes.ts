@@ -63,6 +63,10 @@ export const reportsRoutes: Routes = [
     loadComponent: () => import('./pages/reports-pages.components').then(m => m.PartyWiseReportComponent)
   },
   {
+    path: 'groups',
+    loadComponent: () => import('../trading/pages/party-group-report.component').then(m => m.PartyGroupReportComponent)
+  },
+  {
     path: 'scan',
     loadComponent: () => import('./pages/reports-pages.components').then(m => m.ScanReportComponent)
   },

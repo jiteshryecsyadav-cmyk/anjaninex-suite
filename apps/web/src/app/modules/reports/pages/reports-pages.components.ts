@@ -56,6 +56,8 @@ const subNav = `
        class="px-4 py-2 text-sm font-semibold text-gray-500 border-b-2 border-transparent hover:text-[#5c1a8b]">📦 Pending Orders</a>
     <a routerLink="/reports/party-wise" routerLinkActive="!border-[#5c1a8b] !text-[#5c1a8b]"
        class="px-4 py-2 text-sm font-semibold text-gray-500 border-b-2 border-transparent hover:text-[#5c1a8b]">👥 Party Wise</a>
+    <a routerLink="/reports/groups" routerLinkActive="!border-[#5c1a8b] !text-[#5c1a8b]"
+       class="px-4 py-2 text-sm font-semibold text-gray-500 border-b-2 border-transparent hover:text-[#5c1a8b]">👨‍👩‍👦 Groups</a>
     <a routerLink="/reports/scan" routerLinkActive="!border-[#5c1a8b] !text-[#5c1a8b]"
        class="px-4 py-2 text-sm font-semibold text-gray-500 border-b-2 border-transparent hover:text-[#5c1a8b]">🤖 Scan Report</a>
     <a routerLink="/reports/activity" routerLinkActive="!border-[#5c1a8b] !text-[#5c1a8b]"

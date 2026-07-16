@@ -223,7 +223,7 @@ public class ContactsController : ControllerBase
                     'line1',   COALESCE(g.address, ''),
                     'city',    COALESCE(g.city, ''),
                     'state',   COALESCE(g.state, ''),
-                    'pincode', COALESCE(g.pincode, '')))::text,
+                    'pincode', COALESCE(g.pincode, ''))),
                 updated_at = now()
             FROM core.party_groups g
             WHERE g.firm_id = @f AND g.name = @n

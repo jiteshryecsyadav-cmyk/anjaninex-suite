@@ -37,6 +37,11 @@
                 { "type": "initial", "maximumWarning": "1mb", "maximumError": "2mb" },
                 { "type": "anyComponentStyle", "maximumWarning": "32kb", "maximumError": "64kb" }
               ],
+              "optimization": {
+                "scripts": true,
+                "styles": true,
+                "fonts": false
+              },
               "outputHashing": "all",
               "fileReplacements": [
                 {

@@ -467,15 +467,21 @@ export class BillScanModalComponent implements OnDestroy {
         this.state.set('error');
         return;
       }
-      if (f.size > 5 * 1024 * 1024) {
-        this.errorMsg.set(`"${f.name}" too large. Max 5 MB per page.`);
-        this.state.set('error');
-        return;
-      }
-
       // 📄 PDF (multi-page bhi) → har page ek image ban ke add hota hai.
       // Pehle poora PDF seedha model ko jata tha → multi-page/PDF par scan fail hota tha.
       const isPdf = f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf');
+      if (!isPdf && f.size > 25 * 1024 * 1024) {
+        // Photo pehle COMPRESS hoti hai (1600px JPEG) — isliye limit sirf pagalpan rokne ko.
+        // Pehle 5MB check compress se PEHLE tha → phone ki har photo fail ho jati thi.
+        this.errorMsg.set(`"${f.name}" bahut badi hai (25 MB+).`);
+        this.state.set('error');
+        return;
+      }
+      if (isPdf && f.size > 15 * 1024 * 1024) {
+        this.errorMsg.set(`"${f.name}" PDF 15 MB se badi hai — chhota PDF ya photos use karein.`);
+        this.state.set('error');
+        return;
+      }
       if (isPdf) {
         this.state.set('analyzing');   // PDF pages render ho rahe hain — spinner dikhe
         try {
@@ -493,7 +499,13 @@ export class BillScanModalComponent implements OnDestroy {
         continue;
       }
 
+      // IMAGE: pehle compress (mobile photos 5-15 MB hoti hain → ~500 KB ban jati hain), fir check
       const compressed = await this.compress(f);
+      if (compressed.size > 5 * 1024 * 1024) {
+        this.errorMsg.set(`"${f.name}" compress ke baad bhi badi hai — dobara photo lein.`);
+        this.state.set('error');
+        return;
+      }
       this.addPage(compressed);
     }
     this.state.set('idle');

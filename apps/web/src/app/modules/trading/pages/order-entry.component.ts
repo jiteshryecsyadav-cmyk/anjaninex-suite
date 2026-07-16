@@ -1458,6 +1458,14 @@ export class OrderEntryComponent {
       this.aiGstTypeOverride.set(inter === null ? null : (inter ? 'inter' : 'intra'));
     }
 
+    // 💸 DISCOUNT (Disc/Disc Less/Less/CD/Vatav...) — AI se CD me auto-fill
+    {
+      const dP = +((data.totals as any)?.discountPercent ?? 0);
+      const dA = +((data.totals as any)?.discountAmount ?? 0);
+      if (dP > 0) { this.cdEnabled.set(true); this.cdPct.set(dP); this.cdAmountOverride.set(null); }
+      else if (dA > 0) { this.cdEnabled.set(true); this.cdPct.set(0); this.cdAmountOverride.set(dA); }
+    }
+
     // Match supplier in master
     if (data.supplier?.name) {
       // SAFE match: GST exact (15-char) YA naam exact. Loose/khali-GST match nahi

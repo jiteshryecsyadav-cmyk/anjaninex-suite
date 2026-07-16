@@ -80,6 +80,9 @@ public class TotalsInfo
     // 🧵 Fold Less — bill par chhapa ho to AI padh ke bhejta hai (bill-entry auto-fill)
     public decimal FoldLessPercent { get; set; }
     public decimal FoldLessAmount { get; set; }
+    // 💸 Discount (Disc/Disc Less/Less/CD/Vatav...) — bill-entry me CD auto-fill
+    public decimal DiscountPercent { get; set; }
+    public decimal DiscountAmount { get; set; }
 }
 
 public class TransportInfo
@@ -726,7 +729,7 @@ public class BillExtractorService : IBillExtractorService
     // Shared by ALL providers (Gemini / Claude / OpenAI).
     // AI prompt badalne par ye version bump karo (v2 → v3 ...) — purana cache auto-bust ho jata hai,
     // taaki naya prompt turant chale aur manual cache-clear ki zaroorat na pade.
-    private const string PromptVersion = "v6";   // v6: Fold Less % / amount extraction
+    private const string PromptVersion = "v7";   // v6: Fold Less · v7: Discount (Disc/Less/CD/Vatav) extraction
 
     private static readonly string BillPrompt = @"You are an expert Indian GST invoice parser. Extract ONLY the fields in the schema below and return ONLY valid JSON. No prose, no markdown, no extra keys.
 
@@ -751,6 +754,7 @@ IMPORTANT — read these fields very carefully, they matter most:
 - transport.ewayBillDate = the E-Way Bill generation DATE printed near the e-way bill number (labels 'E-Way Bill Date', 'EWB Date', 'Date'). Output as YYYY-MM-DD (Indian day-first DD/MM/YYYY). If not printed, leave "".
 - transport.lrNo = the LR / GR / Builty / Docket number printed near 'LR No', 'GR No', 'Docket', 'CN No'. If not printed, leave "".
 - totals.foldLessPercent / totals.foldLessAmount = a FOLD / FOLD LESS deduction some textile bills print (labels like 'Fold', 'Fold Less', 'Fold Cut', 'Fold @2%', 'Less Fold'). It is deducted from the gross/subtotal BEFORE discount. If a % is printed set foldLessPercent (e.g. 'Fold 2%' → 2); if only an amount is printed set foldLessAmount. If not printed, leave both 0.
+- totals.discountPercent / totals.discountAmount = the bill-level DISCOUNT deduction. Indian textile bills print it with MANY labels: 'Discount', 'Disc', 'Disc.', 'Disc Less', 'Less', 'Less Discount', 'Cash Discount', 'C.D.', 'CD', 'Trade Discount', 'T.D.', 'Special Discount', 'Scheme', or Gujarati 'Vatav'. It appears in the totals section as a MINUS line between subtotal and grand total. If a % is printed (e.g. 'Disc 5%' or 'CD @5%') set discountPercent = 5; also set discountAmount if the deducted amount is printed. Do NOT confuse with Fold (separate line) or round-off/Kasar. If not printed, leave both 0.
 
 Rules:
 - Missing field: empty string """" or 0
@@ -766,7 +770,7 @@ Schema (extract ONLY these keys):
   ""buyer"": {""name"":"""", ""gst"":"""", ""pan"":"""", ""phone"":"""", ""address"":"""", ""city"":"""", ""state"":""""},
   ""invoice"": {""number"":"""", ""date"":"""", ""poNumber"":""""},
   ""items"": [{""name"":"""", ""hsnSac"":"""", ""qty"":0, ""unit"":""PCS"", ""rate"":0, ""taxRate"":5, ""taxableAmount"":0, ""totalAmount"":0}],
-  ""totals"": {""taxableTotal"":0, ""cgst"":0, ""sgst"":0, ""igst"":0, ""grandTotal"":0, ""foldLessPercent"":0, ""foldLessAmount"":0},
+  ""totals"": {""taxableTotal"":0, ""cgst"":0, ""sgst"":0, ""igst"":0, ""grandTotal"":0, ""foldLessPercent"":0, ""foldLessAmount"":0, ""discountPercent"":0, ""discountAmount"":0},
   ""transport"": {""name"":"""", ""gst"":"""", ""lrNo"":"""", ""ewayBillNo"":"""", ""ewayBillDate"":""""}
 }
 ";

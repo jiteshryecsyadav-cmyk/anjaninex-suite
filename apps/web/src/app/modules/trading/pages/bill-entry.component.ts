@@ -2672,6 +2672,12 @@ export class BillEntryComponent {
     if (foldP > 0) { this.foldPct.set(foldP); this.foldOverride.set(null); }
     else if (foldA > 0) { this.foldPct.set(0); this.foldOverride.set(foldA); }
 
+    // 💸 DISCOUNT (Disc/Disc Less/Less/CD/Vatav...) — AI se CD me auto-fill
+    const dP = +((data.totals as any)?.discountPercent ?? 0);
+    const dA = +((data.totals as any)?.discountAmount ?? 0);
+    if (dP > 0) { this.cdEnabled.set(true); this.cdPct.set(dP); this.cdAmountOverride.set(null); }
+    else if (dA > 0) { this.cdEnabled.set(true); this.cdPct.set(0); this.cdAmountOverride.set(dA); }
+
     // ============ SUPPLIER smart match (5 levels — same as transporter) ============
     if (data.supplier?.name || data.supplier?.gst) {
       const sName = data.supplier?.name ?? '';

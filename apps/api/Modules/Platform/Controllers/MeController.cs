@@ -272,6 +272,8 @@ public class MeController : ControllerBase
         if (conn.State != ConnectionState.Open) await conn.OpenAsync();
         await using (var cmd = conn.CreateCommand())
         {
+            // Complaints: sirf APNI complaints ke admin-replies gino — list me user ko
+            // wahi dikhti hain (dusre user ki complaint ka unread badge me na aaye)
             cmd.CommandText = @"
                 SELECT
                   (SELECT count(*) FROM platform.party_chat_messages m
@@ -280,8 +282,10 @@ public class MeController : ControllerBase
                       AND m.read_at IS NULL AND NOT m.deleted_for_firm),
                   (SELECT count(*) FROM platform.complaint_messages m
                      JOIN platform.complaints c ON c.id = m.complaint_id
-                    WHERE c.firm_id = @f AND m.sender = 'admin' AND m.read_at IS NULL)";
+                    WHERE c.firm_id = @f AND c.created_by = @u
+                      AND m.sender = 'admin' AND m.read_at IS NULL)";
             cmd.Parameters.Add(new NpgsqlParameter("f", f));
+            cmd.Parameters.Add(new NpgsqlParameter("u", CurrentUserId));
             await using var r = await cmd.ExecuteReaderAsync();
             if (await r.ReadAsync()) { partyChat = r.GetInt64(0); complaints = r.GetInt64(1); }
         }

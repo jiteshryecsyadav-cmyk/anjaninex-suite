@@ -181,6 +181,9 @@ import { environment } from '../../../environments/environment';
               <a routerLink="/complaints" routerLinkActive="!bg-anjaninex-red !text-white"
                  class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-semibold text-white/75 hover:text-white hover:bg-white/10">
                 <span class="w-5 text-center">📢</span> Complaint Box
+                @if (cbUnread() > 0) {
+                  <span class="unread-badge">{{ cbUnread() > 99 ? '99+' : cbUnread() }}</span>
+                }
               </a>
             }
             <!-- Party Chat — apni parties se chat (feature flag: pilot pehle Riddhi) -->
@@ -188,6 +191,9 @@ import { environment } from '../../../environments/environment';
               <a routerLink="/party-chat" routerLinkActive="!bg-anjaninex-red !text-white"
                  class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-semibold text-white/75 hover:text-white hover:bg-white/10">
                 <span class="w-5 text-center">💬</span> Party Chat
+                @if (pcUnread() > 0) {
+                  <span class="unread-badge">{{ pcUnread() > 99 ? '99+' : pcUnread() }}</span>
+                }
               </a>
             }
             @if (features.credilEnabled()) {
@@ -490,6 +496,14 @@ import { environment } from '../../../environments/environment';
     }
   `,
   styles: [`
+    /* Sidebar unread badge — WhatsApp jaisa green pill */
+    .unread-badge {
+      margin-left: auto; background: #22c55e; color: #fff; font-size: 10px; font-weight: 800;
+      min-width: 18px; height: 18px; line-height: 18px; text-align: center;
+      border-radius: 999px; padding: 0 5px; box-shadow: 0 1px 3px rgba(0,0,0,.3);
+      animation: badgePop .3s ease-out;
+    }
+    @keyframes badgePop { 0%{transform:scale(.5)} 80%{transform:scale(1.15)} 100%{transform:scale(1)} }
     @keyframes bellWiggle { 0%,100%{transform:rotate(0)} 20%{transform:rotate(-12deg)} 40%{transform:rotate(10deg)} 60%{transform:rotate(-7deg)} 80%{transform:rotate(4deg)} }
     .bell-wiggle { display:inline-block; animation: bellWiggle 1s ease-in-out infinite; transform-origin: 50% 0; }
     @keyframes notifBlink { 0%,100%{opacity:1; transform:scale(1)} 50%{opacity:.3; transform:scale(1.4)} }
@@ -847,6 +861,67 @@ export class ShellComponent {
     // location har 5 min me server ko jati hai → HR Live Map par dikhti hai.
     // Limitation: app/browser khula hona chahiye — band app background me GPS nahi de sakti.
     this.startLocationPings();
+
+    // 🔴 SIDEBAR UNREAD BADGES — Party Chat + Complaint Box (60s poll + live push)
+    this.loadUnread();
+    setInterval(() => this.loadUnread(), 60_000);
+    this.startUnreadLive();
+  }
+
+  // ── Unread badges (Party Chat / Complaint Box) ──
+  pcUnread = signal(0);
+  cbUnread = signal(0);
+  private loadUnread() {
+    this.http.get<any>(`${environment.apiUrl}/api/me/unread-counts`).subscribe({
+      next: r => {
+        const prev = this.pcUnread();
+        this.pcUnread.set(+r?.partyChat || 0);
+        this.cbUnread.set(+r?.complaints || 0);
+        // Naya message aaya (count badha) → browser notification (agar allow hai)
+        if (this.pcUnread() > prev && prev >= 0) this.browserNotify();
+      },
+      error: () => {}
+    });
+  }
+  private browserNotify() {
+    try {
+      if (!('Notification' in window) || Notification.permission !== 'granted') return;
+      new Notification('💬 Vyapaar Setu — naya message', {
+        body: `Party Chat me ${this.pcUnread()} unread message hain`,
+        icon: '/icon-192.png', tag: 'pchat-unread'
+      });
+    } catch {}
+  }
+  // SignalR — message aate hi badge turant update (polling ka intezaar nahi)
+  private async startUnreadLive() {
+    if (!this.features.flag('party_chat')) {
+      // flag load hone me waqt lag sakta hai — 5s baad ek retry
+      setTimeout(() => { if (this.features.flag('party_chat')) this.connectUnreadHub(); }, 5_000);
+      return;
+    }
+    this.connectUnreadHub();
+  }
+  private unreadHubStarted = false;
+  private async connectUnreadHub() {
+    if (this.unreadHubStarted) return;
+    this.unreadHubStarted = true;
+    try {
+      // Notification permission ek baar poochho (badge feature ke saath hi)
+      if ('Notification' in window && Notification.permission === 'default') {
+        try { Notification.requestPermission(); } catch {}
+      }
+      const signalR = await import('@microsoft/signalr');
+      const hub = new signalR.HubConnectionBuilder()
+        .withUrl(`${environment.apiUrl}/api/hubs/party-chat`, {
+          accessTokenFactory: () => this.auth.accessToken() ?? ''
+        })
+        .withAutomaticReconnect()
+        .build();
+      hub.on('newMessage', () => this.loadUnread());
+      hub.onreconnected(() => hub.invoke('JoinFirm').catch(() => {}));
+      await hub.start();
+      await hub.invoke('JoinFirm');
+    } catch { /* polling backup chalta rahega */ }
   }
 
   private startLocationPings() {

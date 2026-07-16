@@ -259,6 +259,35 @@ public class MeController : ControllerBase
     /// Returns the firm's enabled modules + limits — frontend uses this to gate menu items.
     /// Shape: { modules: ["trading","accounting",...], planCode, limits: {...}, usage: {...} }
     /// </summary>
+    // Sidebar badges — Party Chat + Complaint Box ke unread counts (60s poll + SignalR refresh)
+    [HttpGet("unread-counts")]
+    public async Task<IActionResult> UnreadCounts()
+    {
+        var firmId = User.FindFirst("firm_id")?.Value;
+        if (string.IsNullOrEmpty(firmId)) return Ok(new { partyChat = 0, complaints = 0 });
+        var f = Guid.Parse(firmId);
+
+        long partyChat = 0, complaints = 0;
+        var conn = (NpgsqlConnection)_db.Database.GetDbConnection();
+        if (conn.State != ConnectionState.Open) await conn.OpenAsync();
+        await using (var cmd = conn.CreateCommand())
+        {
+            cmd.CommandText = @"
+                SELECT
+                  (SELECT count(*) FROM platform.party_chat_messages m
+                     JOIN platform.party_chat_threads t ON t.id = m.thread_id
+                    WHERE t.firm_id = @f AND m.sender = 'party'
+                      AND m.read_at IS NULL AND NOT m.deleted_for_firm),
+                  (SELECT count(*) FROM platform.complaint_messages m
+                     JOIN platform.complaints c ON c.id = m.complaint_id
+                    WHERE c.firm_id = @f AND m.sender = 'admin' AND m.read_at IS NULL)";
+            cmd.Parameters.Add(new NpgsqlParameter("f", f));
+            await using var r = await cmd.ExecuteReaderAsync();
+            if (await r.ReadAsync()) { partyChat = r.GetInt64(0); complaints = r.GetInt64(1); }
+        }
+        return Ok(new { partyChat, complaints });
+    }
+
     [HttpGet("modules")]
     public async Task<IActionResult> GetModules()
     {

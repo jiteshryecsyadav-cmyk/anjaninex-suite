@@ -494,6 +494,20 @@ interface LineRow {
             <div>
               <label class="lbl">GROSS AMT *</label>
               <input type="text" disabled [value]="'₹ ' + (grossAmt() | number:'1.2-2')" class="ip ip-auto">
+              <!-- 🧵 FOLD LESS — GROSS me se PEHLE katta hai, fir bache balance par discount -->
+              <div class="grid grid-cols-2 gap-2 mt-2">
+                <div>
+                  <label class="lbl">FOLD LESS %</label>
+                  <input [ngModel]="foldPct()" (ngModelChange)="onFoldPct($event)"
+                         type="number" step="0.01" min="0" class="ip">
+                </div>
+                <div>
+                  <label class="lbl">FOLD AMT (₹) — editable</label>
+                  <input [ngModel]="foldAmt()" (ngModelChange)="onFoldAmt($event)"
+                         type="number" step="0.01" min="0" class="ip">
+                </div>
+              </div>
+              <small style="color:#9CA3AF;font-size:10px">Gross − Fold = balance, usi par discount</small>
             </div>
 
             <!-- CD Toggle -->
@@ -733,6 +747,16 @@ interface LineRow {
               <span>Gross Amount</span>
               <span class="font-mono">₹ {{ grossAmt() | number:'1.2-2' }}</span>
             </div>
+            @if (foldAmt() > 0) {
+              <div class="sum-row">
+                <span>🧵 Fold Less</span>
+                <span class="font-mono text-red-600">- ₹ {{ foldAmt() | number:'1.2-2' }}</span>
+              </div>
+              <div class="sum-row">
+                <span>Balance (Fold ke baad)</span>
+                <span class="font-mono">₹ {{ baseAfterFold() | number:'1.2-2' }}</span>
+              </div>
+            }
             <div class="sum-row">
               <span>CD Amount</span>
               <span class="font-mono text-red-600">- ₹ {{ cdAmount() | number:'1.2-2' }}</span>
@@ -1968,6 +1992,19 @@ export class BillEntryComponent {
     this.discExhOverride.set(null);
   }
 
+  // 🧵 FOLD LESS — GROSS me se PEHLE less hota hai; discounts bache balance par lagti hain
+  foldPct = signal(0);
+  foldOverride = signal<number | null>(null);
+  foldAmt = computed(() => {
+    const o = this.foldOverride();
+    if (o !== null) return o;
+    return +(this.grossAmt() * (this.foldPct() / 100)).toFixed(2);
+  });
+  /** Gross − Fold = wo balance jis par CD/discounts % lagta hai */
+  baseAfterFold = computed(() => Math.max(0, this.grossAmt() - this.foldAmt()));
+  onFoldPct(v: number) { this.foldPct.set(+v || 0); this.foldOverride.set(null); }
+  onFoldAmt(v: number) { this.foldOverride.set(+v || 0); }
+
   // 💸 SUPPLIER DISCOUNT (Normal + Exhibition) — % supplier master se auto-fill,
   // amount auto-calculate (CD jaisa hi: % badlo to amount, amount override bhi editable).
   discNormalPct = signal(0);
@@ -1977,9 +2014,10 @@ export class BillEntryComponent {
   suppressAutoDisc = false;   // edit-load me master se auto-fill NAHI (saved % hi rahe)
 
   private discBase() {
+    // Fold Less ke BAAD wala balance — usi par discount % lagta hai
     return this.cdType() === 'after'
-      ? this.grossAmt() + this.sgstTotal() + this.cgstTotal() + this.igstTotal()
-      : this.grossAmt();
+      ? this.baseAfterFold() + this.sgstTotal() + this.cgstTotal() + this.igstTotal()
+      : this.baseAfterFold();
   }
   discNormalAmt = computed(() => {
     const o = this.discNormalOverride();
@@ -2175,18 +2213,22 @@ export class BillEntryComponent {
     if (!this.cdEnabled()) return 0;
     const override = this.cdAmountOverride();
     if (override !== null) return override;
+    // Fold Less ke baad wale balance par CD lagta hai
     const base = this.cdType() === 'after'
-      ? this.grossAmt() + this.sgstTotal() + this.cgstTotal() + this.igstTotal()   // GST samet total par
-      : this.grossAmt();                                        // sirf taxable par
+      ? this.baseAfterFold() + this.sgstTotal() + this.cgstTotal() + this.igstTotal()
+      : this.baseAfterFold();
     return +(base * (this.cdPct() / 100)).toFixed(2);
   });
 
-  /** Before-GST: tax discounted base par — proportional factor (CD + supplier disc dono). */
+  /** Before-GST: tax (gross − fold − discounts) base par — proportional factor. */
   cdTaxFactor = computed(() => {
-    if (this.cdType() !== 'before') return 1;
     const gross = this.grossAmt();
     if (gross <= 0) return 1;
-    return Math.max(0, (gross - this.allDiscAmt()) / gross);
+    if (this.cdType() !== 'before') {
+      // After-GST me bhi FOLD to base me se pehle hi katta hai
+      return Math.max(0, (gross - this.foldAmt()) / gross);
+    }
+    return Math.max(0, (gross - this.foldAmt() - this.allDiscAmt()) / gross);
   });
   effSgst = computed(() => +(this.sgstTotal() * this.cdTaxFactor()).toFixed(2));
   effCgst = computed(() => +(this.cgstTotal() * this.cdTaxFactor()).toFixed(2));
@@ -2203,7 +2245,7 @@ export class BillEntryComponent {
     this.cdAmountOverride.set(+val || 0);
   }
   taxableAfterCd = computed(() => {
-    return this.grossAmt() - this.allDiscAmt() + this.sweetLs() + this.interestAmt()
+    return this.grossAmt() - this.foldAmt() - this.allDiscAmt() + this.sweetLs() + this.interestAmt()
          + (+this.insuranceAmt() || 0) - (+this.bankCharge() || 0);
   });
   sgstTotal = computed(() => {
@@ -2234,9 +2276,9 @@ export class BillEntryComponent {
 
   eInvoiceAmt = computed(() => {
     if (this.cdType() === 'after') {
-      // GST poore par, discount total par
-      return this.grossAmt() + this.sweetLs() + this.interestAmt() + (+this.insuranceAmt() || 0)
-           + this.sgstTotal() + this.cgstTotal() + this.igstTotal() + (+this.tcsAmt() || 0)
+      // GST (fold ke baad) poore par, discount total par
+      return this.baseAfterFold() + this.sweetLs() + this.interestAmt() + (+this.insuranceAmt() || 0)
+           + this.effSgst() + this.effCgst() + this.effIgst() + (+this.tcsAmt() || 0)
            - this.allDiscAmt() - (+this.bankCharge() || 0);
     }
     // Before GST: discounted base + scaled tax
@@ -2345,7 +2387,7 @@ export class BillEntryComponent {
           // Pieces ab '\n' se jude hain (purane bills me ' | ' se) — dono ke liye [^\n|]+ se rok do.
           const notes = b.notes || '';
           // REMARK = sirf user ka text — known structured prefixes wali lines/pieces hata do
-          const knownPrefix = /^(Supplier Bill|Transporter|LR|CD\s|Normal Disc|Exhibition Disc|Bank Charge|Case\/Parcel|Sweet\/L\.S|Interest|Insurance|TCS|Payment Terms|Credit Days)\b/i;
+          const knownPrefix = /^(Supplier Bill|Transporter|LR|CD\s|Fold Less|Normal Disc|Exhibition Disc|Bank Charge|Case\/Parcel|Sweet\/L\.S|Interest|Insurance|TCS|Payment Terms|Credit Days)\b/i;
           this.remark = notes
             .split(/\n| \| /)
             .map(s => s.trim())
@@ -2369,6 +2411,10 @@ export class BillEntryComponent {
             this.cdPct.set(pct);
             this.cdEnabled.set(pct > 0);
           }
+          // 🧵 Fold Less: "Fold Less 2% = ₹800.00"
+          const foldMatch = notes.match(/Fold Less\s+([\d.]+)%/);
+          this.foldPct.set(foldMatch ? +foldMatch[1] || 0 : 0);
+          this.foldOverride.set(null);
           // 💸 Supplier discounts: "Normal Disc 5% = ₹100.00" / "Exhibition Disc 8% = ₹160.00"
           const ndMatch = notes.match(/Normal Disc\s+([\d.]+)%/);
           this.discNormalPct.set(ndMatch ? +ndMatch[1] || 0 : 0);
@@ -2888,6 +2934,7 @@ export class BillEntryComponent {
     this.discExhPct.set(0); this.discExhOverride.set(null);
     this.suppressAutoDisc = false;
     this.bankCharge.set(0); this.caseParcel = null;
+    this.foldPct.set(0); this.foldOverride.set(null);
     this.sweetLs.set(0); this.interestAmt.set(0); this.insuranceAmt.set(0); this.tcsAmt.set(0);
     this.lrNo = ''; this.lrDate = ''; this.transporter = ''; this.transporterId = ''; this.transporterFilter.set('');
     this.ewayBillNo = ''; this.ewayBillDate = ''; this.transporterMatchLevel.set(null);
@@ -2961,6 +3008,7 @@ export class BillEntryComponent {
       this.supplierBillNo ? `Supplier Bill: ${this.supplierBillNo}` : '',
       this.transporter ? `Transporter: ${this.transporter}` : '',
       this.lrNo ? `LR: ${this.lrNo}${this.lrDate ? ' (' + this.lrDate + ')' : ''}` : '',
+      this.foldAmt() > 0 ? `Fold Less ${this.foldPct()}% = ₹${this.foldAmt().toFixed(2)}` : '',
       this.cdEnabled() && this.cdPct() > 0 ? `CD ${this.cdPct()}% = ₹${this.cdAmount().toFixed(2)}` : '',
       this.discNormalAmt() > 0 ? `Normal Disc ${this.discNormalPct()}% = ₹${this.discNormalAmt().toFixed(2)}` : '',
       this.discExhAmt() > 0 ? `Exhibition Disc ${this.discExhPct()}% = ₹${this.discExhAmt().toFixed(2)}` : '',
@@ -2989,7 +3037,8 @@ export class BillEntryComponent {
       transporterId: this.transporterId || undefined,
       lrNo: this.lrNo?.trim() || undefined,
       lrDate: this.lrDate || undefined,
-      discount: this.allDiscAmt(),   // CD + Normal + Exhibition — total discount
+      // Fold Less + CD + Normal + Exhibition — backend isi total se tax-factor aur net nikalta hai
+      discount: this.foldAmt() + this.allDiscAmt(),
       // Sweet/L.S + Interest + Insurance + TCS − Bank Charge — backend total me bhi jude
       // (pehle sirf notes me jate the → list ka total entry screen se alag dikhta tha)
       otherCharges: this.sweetLs() + this.interestAmt() + (+this.insuranceAmt() || 0)

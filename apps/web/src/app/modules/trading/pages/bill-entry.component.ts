@@ -2666,6 +2666,12 @@ export class BillEntryComponent {
       this.aiGstTypeOverride.set(inter === null ? null : (inter ? 'inter' : 'intra'));
     }
 
+    // 🧵 FOLD LESS — bill par chhapa ho to AI se auto-fill (% pehle, warna sirf amount)
+    const foldP = +((data.totals as any)?.foldLessPercent ?? 0);
+    const foldA = +((data.totals as any)?.foldLessAmount ?? 0);
+    if (foldP > 0) { this.foldPct.set(foldP); this.foldOverride.set(null); }
+    else if (foldA > 0) { this.foldPct.set(0); this.foldOverride.set(foldA); }
+
     // ============ SUPPLIER smart match (5 levels — same as transporter) ============
     if (data.supplier?.name || data.supplier?.gst) {
       const sName = data.supplier?.name ?? '';

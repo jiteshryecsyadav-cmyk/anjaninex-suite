@@ -117,10 +117,13 @@ interface LineRow {
             } @else {
               <select [(ngModel)]="selectedOrderId" (ngModelChange)="onOrderSelect($event)" class="ip">
                 <option value="">Select Order</option>
-                @for (o of orders(); track o.id) {
+                @for (o of ordersForPair(); track o.id) {
                   <option [value]="o.id">{{ o.orderNo }} — {{ o.partyName }} (₹{{ o.total | number:'1.0-0' }})</option>
                 }
               </select>
+              @if ((supplierId || buyerId) && ordersForPair().length === 0) {
+                <small style="color:#9CA3AF;font-size:10px">Is supplier/buyer ka koi unbilled order nahi</small>
+              }
             }
           </div>
           <div>
@@ -1708,6 +1711,15 @@ export class BillEntryComponent {
   orderNo = '';
   selectedOrderId = '';
   orders = signal<OrderListItem[]>([]);
+
+  /** Order dropdown: supplier/buyer chune ho to SIRF unke relation ke orders dikhen.
+      Kuch na chuna ho to saare unbilled orders (pehle jaisa). */
+  ordersForPair(): OrderListItem[] {
+    return this.orders().filter(o =>
+      (!this.supplierId || o.partyId === this.supplierId)
+      && (!this.buyerId || !o.buyerPartyId || o.buyerPartyId === this.buyerId)
+    );
+  }
 
   /** Order select → puri order detail auto-fill (supplier, buyer, items, CD).
       AI scan ki zaroorat nahi — order se hi bill ban jata hai. */

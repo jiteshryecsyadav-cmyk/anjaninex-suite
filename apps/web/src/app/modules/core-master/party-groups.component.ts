@@ -47,7 +47,7 @@ interface C { id: string; displayName: string; gst?: string | null; groupName?: 
         </div>
       </div>
 
-      <!-- Member picker -->
+      <!-- Member picker + GROUP MASTER detail -->
       <div class="card md:col-span-2">
         <div class="flex flex-wrap gap-2 items-end mb-3">
           <div class="flex-1 min-w-[200px]">
@@ -59,6 +59,49 @@ interface C { id: string; displayName: string; gst?: string | null; groupName?: 
             class="px-4 py-2 bg-[#5c1a8b] text-white rounded font-semibold disabled:opacity-50">
             {{ saving() ? 'Saving...' : 'Save Group' }}
           </button>
+        </div>
+
+        <!-- GROUP MASTER — ye detail SAB sister firms me auto-sync hoti hai (jo bhari ho wahi) -->
+        <div class="border border-[#ddc8f5] rounded-lg p-3 mb-3 bg-[#faf7ff]">
+          <div class="text-xs font-bold text-[#6b3fa0] uppercase mb-2">
+            👤 Group Master detail <small class="normal-case font-normal text-gray-400">(save par sab sister firms me auto-sync)</small>
+          </div>
+          <div class="grid grid-cols-2 md:grid-cols-3 gap-2">
+            <div><label class="text-[10px] text-gray-500 block">OWNER NAME</label>
+              <input [(ngModel)]="gOwner" class="input" placeholder="Malik ka naam"></div>
+            <div><label class="text-[10px] text-gray-500 block">MOBILE NO</label>
+              <input [(ngModel)]="gMobile" class="input" placeholder="9876543210"></div>
+            <div><label class="text-[10px] text-gray-500 block">WHATSAPP NO</label>
+              <input [(ngModel)]="gWhatsapp" class="input" placeholder="9876543210"></div>
+            <div class="col-span-2 md:col-span-3"><label class="text-[10px] text-gray-500 block">ADDRESS</label>
+              <input [(ngModel)]="gAddress" class="input" placeholder="Shop / office address"></div>
+            <div><label class="text-[10px] text-gray-500 block">CITY</label>
+              <input [(ngModel)]="gCity" class="input" placeholder="Surat"></div>
+            <div><label class="text-[10px] text-gray-500 block">PINCODE</label>
+              <input [(ngModel)]="gPincode" class="input" placeholder="395002" maxlength="6"></div>
+            <div><label class="text-[10px] text-gray-500 block">STATE</label>
+              <input [(ngModel)]="gState" class="input" placeholder="Gujarat"></div>
+            <div><label class="text-[10px] text-gray-500 block">COMMISSION %</label>
+              <input [(ngModel)]="gCommission" type="number" step="0.1" min="0" class="input" placeholder="0"></div>
+            <div><label class="text-[10px] text-gray-500 block">PAYMENT TERMS</label>
+              <select [(ngModel)]="gTerms" class="input">
+                <option value="">Select...</option>
+                <option value="advance">Advance Payment</option>
+                <option value="net15">Net 15 Days</option>
+                <option value="net30">Net 30 Days</option>
+                <option value="net45">Net 45 Days</option>
+                <option value="net60">Net 60 Days</option>
+                <option value="net90">Net 90 Days</option>
+                <option value="cod">COD (Cash on Delivery)</option>
+                <option value="loa">LOA (Letter of Authorization)</option>
+              </select></div>
+            <div><label class="text-[10px] text-gray-500 block">NORMAL DISC %</label>
+              <input [(ngModel)]="gDiscN" type="number" step="0.1" min="0" class="input" placeholder="0"></div>
+            <div><label class="text-[10px] text-gray-500 block">EXHIBITION DISC %</label>
+              <input [(ngModel)]="gDiscE" type="number" step="0.1" min="0" class="input" placeholder="0"></div>
+            <div><label class="text-[10px] text-gray-500 block">SPECIAL DISC %</label>
+              <input [(ngModel)]="gDiscS" type="number" step="0.1" min="0" class="input" placeholder="0"></div>
+          </div>
         </div>
         @if (msg()) { <p class="text-sm mb-2" [class]="msg().includes('Error') || msg().includes('daalein') ? 'text-red-600' : 'text-green-600'">{{ msg() }}</p> }
 
@@ -107,6 +150,36 @@ export class PartyGroupsComponent {
   load() {
     this.http.get<C[]>(this.base).subscribe({ next: r => this.all.set(r || []), error: () => {} });
     this.http.get<string[]>(`${this.base}/groups`).subscribe({ next: g => this.groups.set(g || []), error: () => {} });
+    this.http.get<any[]>(`${this.base}/groups/detail`).subscribe({ next: d => this.details.set(d || []), error: () => {} });
+  }
+
+  // GROUP MASTER detail fields (sab sister firms me auto-sync hote hain)
+  details = signal<any[]>([]);
+  gOwner = ''; gMobile = ''; gWhatsapp = ''; gAddress = '';
+  gCity = ''; gPincode = ''; gState = '';
+  gCommission = 0; gDiscN = 0; gDiscE = 0; gDiscS = 0; gTerms = '';
+
+  private fillDetail(name: string) {
+    const d = this.details().find(x => (x.name || '').toLowerCase() === name.toLowerCase());
+    this.gOwner = d?.ownerName || ''; this.gMobile = d?.mobile || '';
+    this.gWhatsapp = d?.whatsapp || ''; this.gAddress = d?.address || '';
+    this.gCity = d?.city || ''; this.gPincode = d?.pincode || ''; this.gState = d?.state || '';
+    this.gCommission = +(d?.commission ?? 0); this.gTerms = d?.paymentTerms || '';
+    this.gDiscN = +(d?.discountNormal ?? 0); this.gDiscE = +(d?.discountExhibition ?? 0);
+    this.gDiscS = +(d?.discountSpecial ?? 0);
+  }
+
+  private detailPayload(name: string) {
+    return {
+      name,
+      ownerName: this.gOwner || null, address: this.gAddress || null,
+      mobile: this.gMobile || null, whatsapp: this.gWhatsapp || null,
+      city: this.gCity || null, pincode: this.gPincode || null, state: this.gState || null,
+      commission: +this.gCommission || 0,
+      discountNormal: +this.gDiscN || 0, discountExhibition: +this.gDiscE || 0,
+      discountSpecial: +this.gDiscS || 0,
+      paymentTerms: this.gTerms || null
+    };
   }
 
   // Pehle sirf group ka NAAM save — left list me turant, firms baad me tick karke Save Group
@@ -138,6 +211,7 @@ export class PartyGroupsComponent {
   openGroup(name: string) {
     this.groupName = name;
     this.picked.set(new Set<string>(this.all().filter(c => (c.groupName || '') === name).map(c => c.id)));
+    this.fillDetail(name);   // Group Master detail form bharo
     this.msg.set('');
   }
 
@@ -152,8 +226,14 @@ export class PartyGroupsComponent {
     const name = this.groupName.trim();
     if (!name) { this.msg.set('Group naam daalein.'); return; }
     this.saving.set(true); this.msg.set('');
-    this.http.post(`${this.base}/groups/save-members`, { groupName: name, memberIds: [...this.picked()] }).subscribe({
-      next: () => { this.saving.set(false); this.msg.set('Saved!'); this.load(); },
+    // 1) Group Master detail save (+ members me auto-sync) → 2) members set (+ sync)
+    this.http.post(`${this.base}/groups`, this.detailPayload(name)).subscribe({
+      next: () => {
+        this.http.post(`${this.base}/groups/save-members`, { groupName: name, memberIds: [...this.picked()] }).subscribe({
+          next: () => { this.saving.set(false); this.msg.set('Saved! Detail sab sister firms me sync ho gayi ✓'); this.load(); },
+          error: () => { this.saving.set(false); this.msg.set('Error - dobara try karein.'); }
+        });
+      },
       error: () => { this.saving.set(false); this.msg.set('Error - dobara try karein.'); }
     });
   }

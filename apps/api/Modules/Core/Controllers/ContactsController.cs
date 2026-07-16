@@ -123,23 +123,138 @@ public class ContactsController : ControllerBase
         return Ok(groups);
     }
 
-    // Sirf group ka NAAM banao (0 members) — left list me turant dikhega, firms baad me
-    public record CreateGroupDto(string Name);
+    // GROUP MASTER — poori detail. Save par sab member (sister) firms me auto-sync.
+    public record GroupDetailDto(
+        string Name, string? OwnerName = null, string? Address = null, string? Mobile = null,
+        string? Whatsapp = null, string? City = null, string? Pincode = null, string? State = null,
+        decimal Commission = 0, decimal DiscountNormal = 0, decimal DiscountExhibition = 0,
+        decimal DiscountSpecial = 0, string? PaymentTerms = null);
+
+    [HttpGet("groups/detail")]
+    public async Task<IActionResult> GroupDetails()
+    {
+        var firmId = CurrentFirmId;
+        var list = new List<GroupDetailDto>();
+        var conn = (NpgsqlConnection)_db.Database.GetDbConnection();
+        if (conn.State != ConnectionState.Open) await conn.OpenAsync();
+        await using var cmd = new NpgsqlCommand(@"
+            SELECT name, owner_name, address, mobile, whatsapp, city, pincode, state,
+                   commission, discount_normal, discount_exhibition, discount_special, payment_terms
+            FROM core.party_groups WHERE firm_id = @f ORDER BY name", conn);
+        cmd.Parameters.AddWithValue("f", firmId);
+        await using var r = await cmd.ExecuteReaderAsync();
+        while (await r.ReadAsync())
+            list.Add(new GroupDetailDto(
+                r.GetString(0),
+                r.IsDBNull(1) ? null : r.GetString(1), r.IsDBNull(2) ? null : r.GetString(2),
+                r.IsDBNull(3) ? null : r.GetString(3), r.IsDBNull(4) ? null : r.GetString(4),
+                r.IsDBNull(5) ? null : r.GetString(5), r.IsDBNull(6) ? null : r.GetString(6),
+                r.IsDBNull(7) ? null : r.GetString(7),
+                r.GetDecimal(8), r.GetDecimal(9), r.GetDecimal(10), r.GetDecimal(11),
+                r.IsDBNull(12) ? null : r.GetString(12)));
+        return Ok(list);
+    }
 
     [HttpPost("groups")]
-    public async Task<IActionResult> CreateGroup([FromBody] CreateGroupDto dto)
+    public async Task<IActionResult> CreateGroup([FromBody] GroupDetailDto dto)
     {
         var firmId = CurrentFirmId;
         var name = (dto.Name ?? "").Trim();
         if (string.IsNullOrEmpty(name)) return BadRequest(new { error = "Group naam zaroori hai." });
         var conn = (NpgsqlConnection)_db.Database.GetDbConnection();
         if (conn.State != ConnectionState.Open) await conn.OpenAsync();
-        await using var cmd = new NpgsqlCommand(
-            "INSERT INTO core.party_groups (firm_id, name) VALUES (@f, @n) ON CONFLICT DO NOTHING", conn);
-        cmd.Parameters.AddWithValue("f", firmId);
-        cmd.Parameters.AddWithValue("n", name);
-        await cmd.ExecuteNonQueryAsync();
+        await using (var cmd = new NpgsqlCommand(@"
+            INSERT INTO core.party_groups
+                (firm_id, name, owner_name, address, mobile, whatsapp, city, pincode, state,
+                 commission, discount_normal, discount_exhibition, discount_special, payment_terms)
+            VALUES (@f, @n, @own, @adr, @mob, @wa, @city, @pin, @st, @com, @dn, @de, @ds, @pt)
+            ON CONFLICT (firm_id, name) DO UPDATE SET
+                owner_name = EXCLUDED.owner_name, address = EXCLUDED.address,
+                mobile = EXCLUDED.mobile, whatsapp = EXCLUDED.whatsapp,
+                city = EXCLUDED.city, pincode = EXCLUDED.pincode, state = EXCLUDED.state,
+                commission = EXCLUDED.commission,
+                discount_normal = EXCLUDED.discount_normal,
+                discount_exhibition = EXCLUDED.discount_exhibition,
+                discount_special = EXCLUDED.discount_special,
+                payment_terms = EXCLUDED.payment_terms", conn))
+        {
+            cmd.Parameters.AddWithValue("f", firmId);
+            cmd.Parameters.AddWithValue("n", name);
+            cmd.Parameters.AddWithValue("own", (object?)dto.OwnerName ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("adr", (object?)dto.Address ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("mob", (object?)dto.Mobile ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("wa", (object?)dto.Whatsapp ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("city", (object?)dto.City ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("pin", (object?)dto.Pincode ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("st", (object?)dto.State ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("com", dto.Commission);
+            cmd.Parameters.AddWithValue("dn", dto.DiscountNormal);
+            cmd.Parameters.AddWithValue("de", dto.DiscountExhibition);
+            cmd.Parameters.AddWithValue("ds", dto.DiscountSpecial);
+            cmd.Parameters.AddWithValue("pt", (object?)dto.PaymentTerms ?? DBNull.Value);
+            await cmd.ExecuteNonQueryAsync();
+        }
+        await SyncGroupToMembersAsync(conn, firmId, name);
         return Ok(new { group = name });
+    }
+
+    // Group ka data uski SAB member firms me utaro — jo field group me bhari hai wahi sync hoti hai
+    private static async Task SyncGroupToMembersAsync(NpgsqlConnection conn, Guid firmId, string name)
+    {
+        // Contacts: mobile + whatsapp (khali ho to member ka apna hi rahe)
+        await using (var c1 = new NpgsqlCommand(@"
+            UPDATE core.contacts c SET
+                phone_primary = COALESCE(NULLIF(g.mobile, ''), c.phone_primary),
+                wa_supplier   = COALESCE(NULLIF(g.whatsapp, ''), c.wa_supplier),
+                updated_at = now()
+            FROM core.party_groups g
+            WHERE g.firm_id = @f AND g.name = @n
+              AND c.firm_id = @f AND c.group_name = @n AND c.deleted_at IS NULL", conn))
+        {
+            c1.Parameters.AddWithValue("f", firmId);
+            c1.Parameters.AddWithValue("n", name);
+            await c1.ExecuteNonQueryAsync();
+        }
+        // Address (group me address/city/pin/state me se kuch bhi bhara ho tabhi)
+        await using (var c2 = new NpgsqlCommand(@"
+            UPDATE core.contacts c SET
+                addresses = jsonb_build_array(jsonb_build_object(
+                    'type','billing',
+                    'line1',   COALESCE(g.address, ''),
+                    'city',    COALESCE(g.city, ''),
+                    'state',   COALESCE(g.state, ''),
+                    'pincode', COALESCE(g.pincode, '')))::text,
+                updated_at = now()
+            FROM core.party_groups g
+            WHERE g.firm_id = @f AND g.name = @n
+              AND c.firm_id = @f AND c.group_name = @n AND c.deleted_at IS NULL
+              AND (COALESCE(g.address,'') <> '' OR COALESCE(g.city,'') <> ''
+                OR COALESCE(g.pincode,'') <> '' OR COALESCE(g.state,'') <> '')", conn))
+        {
+            c2.Parameters.AddWithValue("f", firmId);
+            c2.Parameters.AddWithValue("n", name);
+            await c2.ExecuteNonQueryAsync();
+        }
+        // Party profile: commission + discounts + payment terms (netXX → credit days)
+        await using (var c3 = new NpgsqlCommand(@"
+            UPDATE trading.party_profiles p SET
+                commission_rate     = CASE WHEN g.commission          > 0 THEN g.commission          ELSE p.commission_rate     END,
+                discount_normal     = CASE WHEN g.discount_normal     > 0 THEN g.discount_normal     ELSE p.discount_normal     END,
+                discount_exhibition = CASE WHEN g.discount_exhibition > 0 THEN g.discount_exhibition ELSE p.discount_exhibition END,
+                discount_special    = CASE WHEN g.discount_special    > 0 THEN g.discount_special    ELSE p.discount_special    END,
+                credit_days         = CASE WHEN COALESCE(g.payment_terms,'') ~ '^net[0-9]+$'
+                                           THEN substring(g.payment_terms from 4)::int
+                                           ELSE p.credit_days END,
+                updated_at = now()
+            FROM core.party_groups g, core.contacts c
+            WHERE g.firm_id = @f AND g.name = @n
+              AND c.firm_id = @f AND c.group_name = @n AND c.deleted_at IS NULL
+              AND p.contact_id = c.id AND p.firm_id = @f", conn))
+        {
+            c3.Parameters.AddWithValue("f", firmId);
+            c3.Parameters.AddWithValue("n", name);
+            await c3.ExecuteNonQueryAsync();
+        }
     }
 
     // Ek group ke members set karo (ticked = is group me, unticked jo pehle the = hata do).
@@ -169,6 +284,9 @@ public class ContactsController : ControllerBase
             up.Parameters.AddWithValue("n", name);
             await up.ExecuteNonQueryAsync();
         }
+
+        // Naye members me group ka data auto-sync (mobile/address/commission/discounts/terms)
+        await SyncGroupToMembersAsync(conn, firmId, name);
 
         return Ok(new { group = name, members = members.Count, removed = removed.Count });
     }

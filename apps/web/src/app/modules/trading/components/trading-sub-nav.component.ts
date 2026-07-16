@@ -15,6 +15,7 @@ import { RouterLink, RouterLinkActive, Router } from '@angular/router';
         <button type="button" class="tn-btn" (click)="toggle('master', $event)">📁 Master <span class="tn-caret">▼</span></button>
         <div class="tn-menu">
           <a routerLink="/trading/parties" (click)="close()">👥 Parties</a>
+          <a routerLink="/core-master/groups" (click)="close()">👨‍👩‍👦 Group Master (Sister Firms)</a>
           <a routerLink="/trading/buyer-agents" (click)="close()">🤝 Buyer Agents</a>
           <a routerLink="/masters/branches" (click)="close()">🏢 Branches</a>
           <a routerLink="/masters/transporters" (click)="close()">🚚 Transporters</a>

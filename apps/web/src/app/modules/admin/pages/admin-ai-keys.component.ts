@@ -55,6 +55,12 @@ import { AdminService, AiKeysInfo } from '../services/admin.service';
             @if (info().geminiSet) {
               <button (click)="clear('gemini')" class="text-xs text-red-600 mt-2 hover:underline">🗑 Clear / Delete key</button>
             }
+            <div class="mt-2 flex gap-4">
+              <a href="https://aistudio.google.com/usage" target="_blank"
+                 class="text-xs text-[#5c1a8b] font-semibold hover:underline">💰 Usage dekho ↗</a>
+              <a href="https://console.cloud.google.com/billing" target="_blank"
+                 class="text-xs text-green-700 font-semibold hover:underline">⚡ Recharge / Billing ↗</a>
+            </div>
           </div>
 
           <!-- CLAUDE -->
@@ -72,6 +78,12 @@ import { AdminService, AiKeysInfo } from '../services/admin.service';
             @if (info().claudeSet) {
               <button (click)="clear('claude')" class="text-xs text-red-600 mt-2 hover:underline">🗑 Clear / Delete key</button>
             }
+            <div class="mt-2 flex gap-4">
+              <a href="https://console.anthropic.com/settings/billing" target="_blank"
+                 class="text-xs text-[#5c1a8b] font-semibold hover:underline">💰 Balance dekho ↗</a>
+              <a href="https://console.anthropic.com/settings/billing" target="_blank"
+                 class="text-xs text-green-700 font-semibold hover:underline">⚡ Recharge / Buy credits ↗</a>
+            </div>
           </div>
 
           <!-- OPENAI -->
@@ -89,6 +101,12 @@ import { AdminService, AiKeysInfo } from '../services/admin.service';
             @if (info().openaiSet) {
               <button (click)="clear('openai')" class="text-xs text-red-600 mt-2 hover:underline">🗑 Clear / Delete key</button>
             }
+            <div class="mt-2 flex gap-4">
+              <a href="https://platform.openai.com/settings/organization/billing/overview" target="_blank"
+                 class="text-xs text-[#5c1a8b] font-semibold hover:underline">💰 Balance dekho ↗</a>
+              <a href="https://platform.openai.com/settings/organization/billing/overview" target="_blank"
+                 class="text-xs text-green-700 font-semibold hover:underline">⚡ Recharge / Buy credits ↗</a>
+            </div>
           </div>
 
           <!-- SARVAM (Anji ki Voice) -->
@@ -106,6 +124,12 @@ import { AdminService, AiKeysInfo } from '../services/admin.service';
             @if (info().sarvamSet) {
               <button (click)="clear('sarvam')" class="text-xs text-red-600 mt-2 hover:underline">🗑 Clear / Delete key</button>
             }
+            <div class="mt-2 flex gap-4">
+              <a href="https://dashboard.sarvam.ai" target="_blank"
+                 class="text-xs text-[#5c1a8b] font-semibold hover:underline">💰 Balance dekho ↗</a>
+              <a href="https://dashboard.sarvam.ai" target="_blank"
+                 class="text-xs text-green-700 font-semibold hover:underline">⚡ Recharge ↗</a>
+            </div>
           </div>
 
           <!-- LIVE MAP PROVIDER (HR -> Live Map) -->

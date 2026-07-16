@@ -2987,9 +2987,10 @@ export class BillEntryComponent {
       lrNo: this.lrNo?.trim() || undefined,
       lrDate: this.lrDate || undefined,
       discount: this.allDiscAmt(),   // CD + Normal + Exhibition — total discount
-      // Sweet/L.S + Interest + Insurance − Bank Charge — backend total me bhi jude
+      // Sweet/L.S + Interest + Insurance + TCS − Bank Charge — backend total me bhi jude
       // (pehle sirf notes me jate the → list ka total entry screen se alag dikhta tha)
-      otherCharges: this.sweetLs() + this.interestAmt() + (+this.insuranceAmt() || 0) - (+this.bankCharge() || 0),
+      otherCharges: this.sweetLs() + this.interestAmt() + (+this.insuranceAmt() || 0)
+                  + (+this.tcsAmt() || 0) - (+this.bankCharge() || 0),
       cdType: this.cdType(),
       roundOff: this.roundOff(),
       notes: notes || undefined,

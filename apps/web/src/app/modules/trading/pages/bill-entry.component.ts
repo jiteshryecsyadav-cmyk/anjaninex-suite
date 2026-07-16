@@ -592,12 +592,12 @@ interface LineRow {
             </div>
 
             <div>
-              <label class="lbl">SGST AMT</label>
-              <input type="text" disabled [value]="'₹ ' + (sgstTotal() | number:'1.2-2')" class="ip ip-auto">
+              <label class="lbl">SGST AMT <small style="color:#9CA3AF">(discount ke baad)</small></label>
+              <input type="text" disabled [value]="'₹ ' + (effSgst() | number:'1.2-2')" class="ip ip-auto">
             </div>
             <div>
-              <label class="lbl">CGST AMT</label>
-              <input type="text" disabled [value]="'₹ ' + (cgstTotal() | number:'1.2-2')" class="ip ip-auto">
+              <label class="lbl">CGST AMT <small style="color:#9CA3AF">(discount ke baad)</small></label>
+              <input type="text" disabled [value]="'₹ ' + (effCgst() | number:'1.2-2')" class="ip ip-auto">
             </div>
             <div>
               <label class="lbl">PAYMENT TERMS</label>
@@ -780,17 +780,17 @@ interface LineRow {
             <div class="sum-divider"></div>
             @if (isInterState()) {
               <div class="sum-row">
-                <span>IGST</span>
-                <span class="font-mono">₹ {{ totalTax() | number:'1.2-2' }}</span>
+                <span>IGST {{ cdType() === 'before' && allDiscAmt() > 0 ? '(discount ke baad)' : '' }}</span>
+                <span class="font-mono">₹ {{ effIgst() | number:'1.2-2' }}</span>
               </div>
             } @else {
               <div class="sum-row">
-                <span>SGST</span>
-                <span class="font-mono">₹ {{ sgstTotal() | number:'1.2-2' }}</span>
+                <span>SGST {{ cdType() === 'before' && allDiscAmt() > 0 ? '(disc. baad)' : '' }}</span>
+                <span class="font-mono">₹ {{ effSgst() | number:'1.2-2' }}</span>
               </div>
               <div class="sum-row">
-                <span>CGST</span>
-                <span class="font-mono">₹ {{ cgstTotal() | number:'1.2-2' }}</span>
+                <span>CGST {{ cdType() === 'before' && allDiscAmt() > 0 ? '(disc. baad)' : '' }}</span>
+                <span class="font-mono">₹ {{ effCgst() | number:'1.2-2' }}</span>
               </div>
             }
             <div class="sum-row">
@@ -826,8 +826,8 @@ interface LineRow {
               <span class="font-mono">{{ totalQty() | number:'1.2-2' }}</span>
             </div>
             <div class="sum-row sm">
-              <span>Total Tax</span>
-              <span class="font-mono">₹ {{ totalTax() | number:'1.2-2' }}</span>
+              <span>Total Tax {{ cdType() === 'before' && allDiscAmt() > 0 ? '(discount ke baad)' : '' }}</span>
+              <span class="font-mono">₹ {{ (effSgst() + effCgst() + effIgst()) | number:'1.2-2' }}</span>
             </div>
           </div>
         </div>
@@ -2987,6 +2987,9 @@ export class BillEntryComponent {
       lrNo: this.lrNo?.trim() || undefined,
       lrDate: this.lrDate || undefined,
       discount: this.allDiscAmt(),   // CD + Normal + Exhibition — total discount
+      // Sweet/L.S + Interest + Insurance − Bank Charge — backend total me bhi jude
+      // (pehle sirf notes me jate the → list ka total entry screen se alag dikhta tha)
+      otherCharges: this.sweetLs() + this.interestAmt() + (+this.insuranceAmt() || 0) - (+this.bankCharge() || 0),
       cdType: this.cdType(),
       roundOff: this.roundOff(),
       notes: notes || undefined,

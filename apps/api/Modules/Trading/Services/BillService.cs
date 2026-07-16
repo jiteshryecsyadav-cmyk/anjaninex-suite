@@ -110,7 +110,8 @@ public record CreateBillDto(
     DateOnly? LrDate,
     List<BillLineDto> Lines,
     string? CdType = "before",     // before = GST se pehle discount | after = GST ke baad
-    Guid? OrderId = null);         // jis order se bill bana — wo auto-BILLED hoga
+    Guid? OrderId = null,          // jis order se bill bana — wo auto-BILLED hoga
+    decimal OtherCharges = 0);     // Sweet/L.S + Interest + Insurance − Bank Charge (net me judte hain)
 
 public class BillDuplicateException : Exception
 {
@@ -347,7 +348,8 @@ public class BillService : IBillService
                 var factor = Math.Max(0, (subtotal - dto.Discount) / subtotal);
                 totalTax = Math.Round(totalTax * factor, 2);
             }
-            var total = subtotal + totalTax - dto.Discount + dto.RoundOff;
+            // OtherCharges = Sweet/L.S + Interest + Insurance − Bank Charge (frontend jaisa hi)
+            var total = subtotal + totalTax - dto.Discount + dto.OtherCharges + dto.RoundOff;
 
             // Correct Indian GST split: intra-state → CGST + SGST (50/50), inter-state → IGST (full)
             decimal cgst = 0, sgst = 0, igst = 0;
@@ -550,7 +552,7 @@ public class BillService : IBillService
             var cdBefore = dto.CdType != "after";
             if (cdBefore && dto.Discount > 0 && subtotal > 0)
                 totalTax = Math.Round(totalTax * Math.Max(0, (subtotal - dto.Discount) / subtotal), 2);
-            var total = subtotal + totalTax - dto.Discount + dto.RoundOff;
+            var total = subtotal + totalTax - dto.Discount + dto.OtherCharges + dto.RoundOff;
             decimal cgst = 0, sgst = 0, igst = 0;
             if (isInterState) igst = totalTax; else { cgst = totalTax / 2m; sgst = totalTax / 2m; }
 

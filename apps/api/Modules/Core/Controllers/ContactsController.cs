@@ -267,6 +267,13 @@ public class ContactsController : ControllerBase
         var ids = dto.MemberIds ?? new List<Guid>();
 
         var members = await _db.Contacts.Where(c => c.FirmId == firmId && ids.Contains(c.Id)).ToListAsync();
+
+        // EK PARTY = EK GROUP: dusre group wali party yahan add nahi hogi — pehle wahan se hatao
+        var clash = members.Where(c => !string.IsNullOrEmpty(c.GroupName) && c.GroupName != name)
+                           .Select(c => $"{c.DisplayName} ({c.GroupName})").ToList();
+        if (clash.Count > 0)
+            return BadRequest(new { error = $"Ye parties pehle se dusre group me hain: {string.Join(", ", clash)}. Pehle wahan se hatao." });
+
         foreach (var c in members) { c.GroupName = name; c.UpdatedAt = DateTimeOffset.UtcNow; }
 
         var removed = await _db.Contacts.Where(c => c.FirmId == firmId && c.GroupName == name && !ids.Contains(c.Id)).ToListAsync();

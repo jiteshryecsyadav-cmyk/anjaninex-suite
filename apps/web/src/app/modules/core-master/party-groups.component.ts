@@ -109,14 +109,18 @@ interface C { id: string; displayName: string; gst?: string | null; groupName?: 
         <p class="text-xs text-gray-500 mb-1">Ticked = is group me. Selected: <b>{{ picked().size }}</b></p>
         <div class="border border-[#eee] rounded max-h-[52vh] overflow-y-auto divide-y">
           @for (c of filtered(); track c.id) {
-            <label class="flex items-center gap-3 px-3 py-2 hover:bg-[#faf5ff] cursor-pointer">
-              <input type="checkbox" [checked]="isPicked(c.id)" (change)="toggle(c.id)" class="w-4 h-4">
+            <label class="flex items-center gap-3 px-3 py-2 hover:bg-[#faf5ff]"
+                   [class.cursor-pointer]="!isLocked(c)"
+                   [class.opacity-60]="isLocked(c)"
+                   [title]="isLocked(c) ? c.displayName + ' pehle se ' + c.groupName + ' me hai — pehle wahan se hatao' : ''">
+              <input type="checkbox" [checked]="isPicked(c.id)" [disabled]="isLocked(c)"
+                     (change)="toggle(c.id)" class="w-4 h-4">
               <span class="flex-1">
                 <span class="font-semibold text-sm">{{ c.displayName }}</span>
                 @if (c.gst) { <span class="text-xs text-gray-400 font-mono ml-2">{{ c.gst }}</span> }
               </span>
               @if (c.groupName && c.groupName !== groupName) {
-                <span class="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">{{ c.groupName }}</span>
+                <span class="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">🔒 {{ c.groupName }}</span>
               }
             </label>
           }
@@ -217,10 +221,22 @@ export class PartyGroupsComponent {
 
   toggle(id: string) {
     const set = new Set(this.picked());
-    if (set.has(id)) set.delete(id); else set.add(id);
+    if (set.has(id)) { set.delete(id); this.picked.set(set); return; }
+    // EK PARTY = EK GROUP: dusre group wali party yahan add nahi ho sakti —
+    // pehle us group se hatao (wahan untick karke save), fir yahan add karo.
+    const c = this.all().find(x => x.id === id);
+    if (c?.groupName && c.groupName.toLowerCase() !== this.groupName.trim().toLowerCase()) {
+      this.msg.set(`"${c.displayName}" pehle se "${c.groupName}" group me hai — pehle wahan se hatao, fir yahan add karo.`);
+      return;
+    }
+    set.add(id);
     this.picked.set(set);
   }
   isPicked(id: string) { return this.picked().has(id); }
+  // Dusre group wali party — checkbox band
+  isLocked(c: C): boolean {
+    return !!c.groupName && c.groupName.toLowerCase() !== this.groupName.trim().toLowerCase();
+  }
 
   save() {
     const name = this.groupName.trim();
@@ -231,7 +247,7 @@ export class PartyGroupsComponent {
       next: () => {
         this.http.post(`${this.base}/groups/save-members`, { groupName: name, memberIds: [...this.picked()] }).subscribe({
           next: () => { this.saving.set(false); this.msg.set('Saved! Detail sab sister firms me sync ho gayi ✓'); this.load(); },
-          error: () => { this.saving.set(false); this.msg.set('Error - dobara try karein.'); }
+          error: (e) => { this.saving.set(false); this.msg.set(e?.error?.error || 'Error - dobara try karein.'); }
         });
       },
       error: () => { this.saving.set(false); this.msg.set('Error - dobara try karein.'); }

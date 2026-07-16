@@ -494,20 +494,6 @@ interface LineRow {
             <div>
               <label class="lbl">GROSS AMT *</label>
               <input type="text" disabled [value]="'₹ ' + (grossAmt() | number:'1.2-2')" class="ip ip-auto">
-              <!-- 🧵 FOLD LESS — GROSS me se PEHLE katta hai, fir bache balance par discount -->
-              <div class="grid grid-cols-2 gap-2 mt-2">
-                <div>
-                  <label class="lbl">FOLD LESS %</label>
-                  <input [ngModel]="foldPct()" (ngModelChange)="onFoldPct($event)"
-                         type="number" step="0.01" min="0" class="ip">
-                </div>
-                <div>
-                  <label class="lbl">FOLD AMT (₹) — editable</label>
-                  <input [ngModel]="foldAmt()" (ngModelChange)="onFoldAmt($event)"
-                         type="number" step="0.01" min="0" class="ip">
-                </div>
-              </div>
-              <small style="color:#9CA3AF;font-size:10px">Gross − Fold = balance, usi par discount</small>
             </div>
 
             <!-- CD Toggle -->
@@ -587,6 +573,17 @@ interface LineRow {
             <div>
               <label class="lbl">SWEET / L.S</label>
               <input [ngModel]="sweetLs()" (ngModelChange)="sweetLs.set(+$event || 0)" type="number" step="0.01" class="ip">
+            </div>
+            <!-- 🧵 FOLD LESS — GROSS me se PEHLE katta hai, bache balance par discount -->
+            <div>
+              <label class="lbl">🧵 FOLD LESS %</label>
+              <input [ngModel]="foldPct()" (ngModelChange)="onFoldPct($event)"
+                     type="number" step="0.01" min="0" class="ip">
+            </div>
+            <div>
+              <label class="lbl">FOLD AMT (₹) — editable <small style="color:#9CA3AF">(gross se less)</small></label>
+              <input [ngModel]="foldAmt()" (ngModelChange)="onFoldAmt($event)"
+                     type="number" step="0.01" min="0" class="ip">
             </div>
             <div>
               <label class="lbl">BANK CHARGE <small style="color:#9CA3AF">(minus hota hai)</small></label>

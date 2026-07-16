@@ -2342,7 +2342,7 @@ export class BillEntryComponent {
           // Pieces ab '\n' se jude hain (purane bills me ' | ' se) — dono ke liye [^\n|]+ se rok do.
           const notes = b.notes || '';
           // REMARK = sirf user ka text — known structured prefixes wali lines/pieces hata do
-          const knownPrefix = /^(Supplier Bill|Transporter|LR|CD\s|Normal Disc|Exhibition Disc|Bank Charge|Case\/Parcel|Sweet\/L\.S|Interest|TCS|Payment Terms|Credit Days)\b/i;
+          const knownPrefix = /^(Supplier Bill|Transporter|LR|CD\s|Normal Disc|Exhibition Disc|Bank Charge|Case\/Parcel|Sweet\/L\.S|Interest|Insurance|TCS|Payment Terms|Credit Days)\b/i;
           this.remark = notes
             .split(/\n| \| /)
             .map(s => s.trim())

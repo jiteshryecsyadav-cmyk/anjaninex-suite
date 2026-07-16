@@ -472,10 +472,54 @@ export class BillScanModalComponent implements OnDestroy {
         this.state.set('error');
         return;
       }
+
+      // 📄 PDF (multi-page bhi) → har page ek image ban ke add hota hai.
+      // Pehle poora PDF seedha model ko jata tha → multi-page/PDF par scan fail hota tha.
+      const isPdf = f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf');
+      if (isPdf) {
+        this.state.set('analyzing');   // PDF pages render ho rahe hain — spinner dikhe
+        try {
+          const pageImgs = await this.pdfToImages(f);
+          for (const img of pageImgs) {
+            if (this.pages().length >= this.MAX_PAGES) break;
+            this.addPage(await this.compress(img));
+          }
+        } catch (e) {
+          console.warn('PDF read failed', e);
+          this.errorMsg.set(`"${f.name}" PDF padha nahi ja saka — photo (JPG/PNG) try karein.`);
+          this.state.set('error');
+          return;
+        }
+        continue;
+      }
+
       const compressed = await this.compress(f);
       this.addPage(compressed);
     }
     this.state.set('idle');
+  }
+
+  // PDF → page-wise JPEG images (pdfjs se render karke). Max 10 pages.
+  private async pdfToImages(file: File): Promise<File[]> {
+    const pdfjs: any = await import('pdfjs-dist');
+    pdfjs.GlobalWorkerOptions.workerSrc =
+      `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+    const buf = await file.arrayBuffer();
+    const doc = await pdfjs.getDocument({ data: buf }).promise;
+    const out: File[] = [];
+    const pages = Math.min(doc.numPages, 10);
+    const baseName = file.name.replace(/\.pdf$/i, '');
+    for (let i = 1; i <= pages; i++) {
+      const page = await doc.getPage(i);
+      const vp = page.getViewport({ scale: 2 });   // sharp text ke liye ~2x render
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.ceil(vp.width);
+      canvas.height = Math.ceil(vp.height);
+      await page.render({ canvasContext: canvas.getContext('2d')!, viewport: vp }).promise;
+      const blob: Blob = await new Promise(res => canvas.toBlob(b => res(b!), 'image/jpeg', 0.85));
+      out.push(new File([blob], `${baseName}-page${i}.jpg`, { type: 'image/jpeg' }));
+    }
+    return out;
   }
 
   // Append a file as a new page (camera snap or uploaded file).

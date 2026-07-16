@@ -866,6 +866,8 @@ export class ShellComponent {
     this.loadUnread();
     setInterval(() => this.loadUnread(), 60_000);
     this.startUnreadLive();
+    // Chat/complaint padhte hi page ye event bhejta hai → badge turant hat jaye (WhatsApp jaisa)
+    window.addEventListener('unread-refresh', () => this.loadUnread());
   }
 
   // ── Unread badges (Party Chat / Complaint Box) ──

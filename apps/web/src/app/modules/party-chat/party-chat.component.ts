@@ -392,7 +392,12 @@ export class PartyChatComponent {
 
   loadMsgs(threadId: string) {
     this.http.get<PchatMsg[]>(`${this.base}/threads/${threadId}/messages`).subscribe({
-      next: m => { this.msgs.set(m); this.loadThreads(); },
+      next: m => {
+        this.msgs.set(m);
+        this.loadThreads();
+        // Padh liya → sidebar badge turant update (WhatsApp jaisa)
+        window.dispatchEvent(new Event('unread-refresh'));
+      },
       error: () => {}
     });
   }

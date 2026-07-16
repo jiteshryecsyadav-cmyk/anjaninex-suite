@@ -251,6 +251,8 @@ export class ComplaintBoxComponent implements OnDestroy {
         const prev = this.messages().length;
         this.messages.set(t.messages);
         if (scroll || t.messages.length !== prev) this.scrollToBottom();
+        // Padh liya → sidebar badge turant update (WhatsApp jaisa)
+        window.dispatchEvent(new Event('unread-refresh'));
       },
       error: () => {}
     });

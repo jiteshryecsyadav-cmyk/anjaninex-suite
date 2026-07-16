@@ -1048,13 +1048,15 @@ export class GrEntryComponent {
     this.supIdx = 0;
     this.supplierId = '';   // dobara type → selection hatao, dropdown wapas khule
     if (!q) { this.supplierResults.set([]); return; }
+    // Supplier me sirf SELLER/BOTH
     this.supplierResults.set(
       this.parties().filter(p =>
+        (p.partyType === 'seller' || p.partyType === 'both') && (
         (p.displayName || '').toLowerCase().includes(q)
         || (p.gst || '').toLowerCase().includes(q)
         || (p.partyCode || '').toLowerCase().includes(q)
         || (p.city || '').toLowerCase().includes(q)
-        || (p.phone || '').toLowerCase().includes(q)
+        || (p.phone || '').toLowerCase().includes(q))
       ).slice(0, 8)
     );
   }
@@ -1063,13 +1065,15 @@ export class GrEntryComponent {
     this.buyIdx = 0;
     this.buyerId = '';   // dobara type → selection hatao, dropdown wapas khule
     if (!q) { this.buyerResults.set([]); return; }
+    // Buyer me sirf BUYER/BOTH
     this.buyerResults.set(
       this.parties().filter(p =>
+        (p.partyType === 'buyer' || p.partyType === 'both') && (
         (p.displayName || '').toLowerCase().includes(q)
         || (p.gst || '').toLowerCase().includes(q)
         || (p.partyCode || '').toLowerCase().includes(q)
         || (p.city || '').toLowerCase().includes(q)
-        || (p.phone || '').toLowerCase().includes(q)
+        || (p.phone || '').toLowerCase().includes(q))
       ).slice(0, 8)
     );
   }

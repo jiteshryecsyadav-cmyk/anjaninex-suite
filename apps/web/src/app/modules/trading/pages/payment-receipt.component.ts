@@ -1204,14 +1204,18 @@ export class PaymentReceiptComponent {
     // User dobara type kar raha hai → purani selection hatao taaki dropdown wapas khule
     this.supplierId = ''; this.supplier.set(null);
     if (!q) { this.supplierResults.set([]); return; }
-    this.supplierResults.set(this.matchParty(q).slice(0, 8));
+    // Supplier me sirf SELLER/BOTH
+    this.supplierResults.set(this.matchParty(q)
+      .filter(p => p.partyType === 'seller' || p.partyType === 'both').slice(0, 8));
   }
   filterBuyers() {
     const q = this.buyerSearch.toLowerCase().trim();
     this.buyIdx = 0;
     this.buyerId = ''; this.buyer.set(null);
     if (!q) { this.buyerResults.set([]); return; }
-    this.buyerResults.set(this.matchParty(q).slice(0, 8));
+    // Buyer me sirf BUYER/BOTH
+    this.buyerResults.set(this.matchParty(q)
+      .filter(p => p.partyType === 'buyer' || p.partyType === 'both').slice(0, 8));
   }
   private matchParty(q: string): Party[] {
     return this.parties().filter(p =>

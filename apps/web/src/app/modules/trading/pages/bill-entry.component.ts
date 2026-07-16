@@ -1772,8 +1772,11 @@ export class BillEntryComponent {
   // GST/Name/Code filter signals
   supplierFilter = signal('');
   buyerFilter = signal('');
-  filteredSuppliers = computed(() => this.matchParties(this.supplierFilter()).slice(0, 8));
-  filteredBuyers = computed(() => this.matchParties(this.buyerFilter()).slice(0, 8));
+  // Supplier dropdown me sirf SELLER/BOTH, buyer me sirf BUYER/BOTH — mix na ho
+  filteredSuppliers = computed(() => this.matchParties(this.supplierFilter())
+    .filter(p => p.partyType === 'seller' || p.partyType === 'both').slice(0, 8));
+  filteredBuyers = computed(() => this.matchParties(this.buyerFilter())
+    .filter(p => p.partyType === 'buyer' || p.partyType === 'both').slice(0, 8));
 
   // Keyboard navigation (arrow up/down + enter + escape) for comboboxes
   supKbIdx = signal(0);

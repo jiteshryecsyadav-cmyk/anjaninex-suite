@@ -1284,7 +1284,9 @@ export class OrderEntryComponent {
   // GST/Name/Code filter signals (live-filter the supplier/buyer selects)
   supplierFilter = signal('');
   buyerFilter = signal('');
-  filteredSuppliers = computed(() => this.matchParties(this.supplierFilter()).slice(0, 8));
+  // Supplier me sirf SELLER/BOTH, buyer me sirf BUYER/BOTH
+  filteredSuppliers = computed(() => this.matchParties(this.supplierFilter())
+    .filter(p => p.partyType === 'seller' || p.partyType === 'both').slice(0, 8));
   filteredGroups = computed(() => {
     const t = this.supplierFilter().toLowerCase().trim();
     if (!t) return [] as { name: string; count: number; firstId: string }[];
@@ -1298,7 +1300,8 @@ export class OrderEntryComponent {
     }
     return [...map.values()].slice(0, 5);
   });
-  filteredBuyers = computed(() => this.matchParties(this.buyerFilter()).slice(0, 8));
+  filteredBuyers = computed(() => this.matchParties(this.buyerFilter())
+    .filter(p => p.partyType === 'buyer' || p.partyType === 'both').slice(0, 8));
 
   // Combobox state (single-field autocomplete UX — like legacy)
   supplierDropdownOpen = signal(false);

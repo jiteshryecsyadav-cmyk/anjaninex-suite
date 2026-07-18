@@ -15,6 +15,8 @@ public record SaveVoiceAgentDto(
     bool Enabled, string? AgentName, string? FirstMessage, string? SystemPrompt,
     string? Language, string? VoiceSpeaker, string? ExotelNumber);
 
+public record SaveVoiceConfigDto(string? SarvamKey, string? GeminiKey, string? BridgeDomain);
+
 [ApiController]
 [Route("api/admin/voice-agents")]
 [Authorize]
@@ -67,6 +69,51 @@ public class AdminVoiceAgentsController : ControllerBase
             });
         }
         return Ok(list);
+    }
+
+    // ---- Central bridge config (Sarvam + Gemini keys + domain) ----
+    // Keys kabhi return nahi hoti (sirf set true/false), taaki leak na ho.
+    [HttpGet("config")]
+    [HasPermission("platform.firm.view.platform")]
+    public async Task<IActionResult> GetConfig()
+    {
+        await using var cmd = await CmdAsync(
+            @"SELECT (sarvam_key IS NOT NULL AND sarvam_key <> '') AS sk,
+                     (gemini_key IS NOT NULL AND gemini_key <> '') AS gk,
+                     COALESCE(bridge_domain,'voice.anjaninex.com') AS dom
+              FROM platform.voice_config WHERE id = 1");
+        await using var r = await cmd.ExecuteReaderAsync();
+        if (!await r.ReadAsync())
+            return Ok(new { sarvamKeySet = false, geminiKeySet = false, bridgeDomain = "voice.anjaninex.com" });
+        return Ok(new
+        {
+            sarvamKeySet = r["sk"] is bool a && a,
+            geminiKeySet = r["gk"] is bool b && b,
+            bridgeDomain = r["dom"] as string
+        });
+    }
+
+    [HttpPut("config")]
+    [HasPermission("platform.firm.edit.platform")]
+    public async Task<IActionResult> SaveConfig([FromBody] SaveVoiceConfigDto dto)
+    {
+        await using (var ins = await CmdAsync(
+            "INSERT INTO platform.voice_config (id) VALUES (1) ON CONFLICT (id) DO NOTHING"))
+            await ins.ExecuteNonQueryAsync();
+
+        // Khali key bheji to purani rakho (COALESCE-style), warna nayi save karo.
+        await using var cmd = await CmdAsync(
+            @"UPDATE platform.voice_config SET
+                sarvam_key    = CASE WHEN @sk::text IS NULL OR @sk::text = '' THEN sarvam_key ELSE @sk::text END,
+                gemini_key    = CASE WHEN @gk::text IS NULL OR @gk::text = '' THEN gemini_key ELSE @gk::text END,
+                bridge_domain = COALESCE(@dom, bridge_domain),
+                updated_at    = now()
+              WHERE id = 1");
+        cmd.Parameters.Add(new NpgsqlParameter("sk", (object?)dto.SarvamKey ?? DBNull.Value));
+        cmd.Parameters.Add(new NpgsqlParameter("gk", (object?)dto.GeminiKey ?? DBNull.Value));
+        cmd.Parameters.Add(new NpgsqlParameter("dom", (object?)dto.BridgeDomain ?? DBNull.Value));
+        await cmd.ExecuteNonQueryAsync();
+        return await GetConfig();
     }
 
     // Per-firm config save (upsert).

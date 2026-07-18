@@ -355,6 +355,26 @@ async def health(request):
     })
 
 
+async def load_central_keys(pool):
+    """Sarvam + Gemini keys DB (platform.voice_config) se — admin panel se set hoti.
+    DB me ho to env ko override karti hain (taaki admin UI se manage ho sake)."""
+    global SARVAM_API_KEY, GEMINI_API_KEY
+    if pool is None:
+        return
+    try:
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow("SELECT sarvam_key, gemini_key FROM platform.voice_config WHERE id = 1")
+        if row:
+            if row["sarvam_key"]:
+                SARVAM_API_KEY = row["sarvam_key"].strip()
+            if row["gemini_key"]:
+                GEMINI_API_KEY = row["gemini_key"].strip()
+            print(f"[boot] Central keys DB se load: sarvam={'yes' if SARVAM_API_KEY else 'no'} "
+                  f"gemini={'yes' if GEMINI_API_KEY else 'no'}", flush=True)
+    except Exception as e:
+        print(f"[boot] voice_config read fail (env keys use hongi): {e}", flush=True)
+
+
 async def on_startup(app):
     app["http"] = aiohttp.ClientSession()
     app["pool"] = None
@@ -362,6 +382,7 @@ async def on_startup(app):
         try:
             app["pool"] = await asyncpg.create_pool(DATABASE_URL, min_size=1, max_size=4)
             print("[boot] DB pool connected", flush=True)
+            await load_central_keys(app["pool"])
         except Exception as e:
             print(f"[boot] DB connect fail (default config use hogi): {e}", flush=True)
 

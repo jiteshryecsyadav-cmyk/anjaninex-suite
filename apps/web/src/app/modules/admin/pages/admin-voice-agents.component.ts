@@ -23,9 +23,28 @@ interface VoiceAgent {
        Sarvam self-host bridge inhi values se chalta hai.</p>
 
     <div class="cfg">
+      <div class="cfg-title">🔑 Bridge Setup (central — sab firms ke liye ek baar)</div>
+
       <label>Voice bridge domain</label>
-      <input class="inp" [(ngModel)]="baseDomain" (change)="saveBase()" placeholder="voice.anjaninex.com">
-      <small>Ye tumhare bridge server ka subdomain hai. Har firm ki Voicebot URL isi se banti hai.</small>
+      <input class="inp" [(ngModel)]="baseDomain" placeholder="voice.anjaninex.com">
+
+      <div class="grid2">
+        <div>
+          <label>Sarvam API key {{ cfg.sarvamKeySet ? '✓ saved' : '' }}</label>
+          <input class="inp" type="password" [(ngModel)]="sarvamKey"
+                 [placeholder]="cfg.sarvamKeySet ? '•••••• (saved — khali = koi change nahi)' : 'Sarvam key paste karo'">
+        </div>
+        <div>
+          <label>Gemini API key {{ cfg.geminiKeySet ? '✓ saved' : '' }}</label>
+          <input class="inp" type="password" [(ngModel)]="geminiKey"
+                 [placeholder]="cfg.geminiKeySet ? '•••••• (saved — khali = koi change nahi)' : 'Gemini key paste karo'">
+        </div>
+      </div>
+
+      <button class="btn primary" [disabled]="savingCfg()" (click)="saveConfig()">
+        {{ savingCfg() ? 'Saving…' : 'Save bridge keys' }}
+      </button>
+      <small>Sarvam (dashboard.sarvam.ai) + Gemini (aistudio.google.com/apikey) keys yahan daalo — bridge inhe DB se padhta hai. Key badalne ke baad bridge restart karna (systemctl restart voice-bridge).</small>
     </div>
 
     @if (msg()) { <div class="ok">{{ msg() }}</div> }
@@ -119,9 +138,11 @@ interface VoiceAgent {
     .wrap{max-width:820px;margin:0 auto;padding:18px}
     h1{font-size:24px;color:#0f766e;margin:0}
     .sub{color:#64748b;font-size:13px;margin:4px 0 16px}
-    .cfg{background:#f0fdfa;border:1px solid #99f6e4;border-radius:12px;padding:12px 14px;margin-bottom:14px}
-    .cfg label{font-size:12px;font-weight:700;color:#0f766e;display:block;margin-bottom:5px}
-    .cfg small{color:#64748b;font-size:11px;display:block;margin-top:5px}
+    .cfg{background:#f0fdfa;border:1px solid #99f6e4;border-radius:12px;padding:14px 16px;margin-bottom:14px}
+    .cfg label{font-size:12px;font-weight:700;color:#0f766e;display:block;margin:10px 0 5px}
+    .cfg small{color:#64748b;font-size:11px;display:block;margin-top:8px}
+    .cfg-title{font-size:14px;font-weight:800;color:#0f766e;margin-bottom:4px}
+    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
     .inp{width:100%;padding:9px 12px;border:1px solid #cbd5e1;border-radius:9px;font-size:14px;box-sizing:border-box;font-family:inherit}
     .inp.search{max-width:300px;margin-bottom:12px}
     .ta{resize:vertical}
@@ -159,12 +180,37 @@ export class AdminVoiceAgentsComponent implements OnInit {
   filter = '';
   baseDomain = 'voice.anjaninex.com';
 
+  cfg: { sarvamKeySet: boolean; geminiKeySet: boolean; bridgeDomain: string } =
+    { sarvamKeySet: false, geminiKeySet: false, bridgeDomain: 'voice.anjaninex.com' };
+  sarvamKey = '';
+  geminiKey = '';
+  savingCfg = signal(false);
+
   ngOnInit() {
-    try { this.baseDomain = localStorage.getItem('voice_base') || 'voice.anjaninex.com'; } catch {}
+    this.loadConfig();
     this.load();
   }
 
-  saveBase() { try { localStorage.setItem('voice_base', this.baseDomain.trim()); } catch {} }
+  async loadConfig() {
+    try {
+      this.cfg = await firstValueFrom(this.http.get<any>(`${this.base}/config`));
+      if (this.cfg.bridgeDomain) this.baseDomain = this.cfg.bridgeDomain;
+    } catch {}
+  }
+
+  async saveConfig() {
+    this.savingCfg.set(true); this.err.set('');
+    try {
+      this.cfg = await firstValueFrom(this.http.put<any>(`${this.base}/config`, {
+        sarvamKey: this.sarvamKey || null,
+        geminiKey: this.geminiKey || null,
+        bridgeDomain: (this.baseDomain || '').trim() || null
+      }));
+      this.sarvamKey = ''; this.geminiKey = '';
+      this.flash('Bridge keys saved. (Bridge restart karna: systemctl restart voice-bridge)');
+    } catch (e: any) { this.err.set(e?.error?.error || 'Save fail.'); }
+    finally { this.savingCfg.set(false); }
+  }
 
   private flash(m: string) { this.msg.set(m); setTimeout(() => this.msg.set(''), 3000); }
 

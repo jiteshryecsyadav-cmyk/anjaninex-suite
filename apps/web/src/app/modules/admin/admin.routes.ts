@@ -63,6 +63,10 @@ export const adminRoutes: Routes = [
     loadComponent: () => import('./pages/admin-credil.component').then(m => m.AdminCredilComponent)
   },
   {
+    path: 'voice-agents',
+    loadComponent: () => import('./pages/admin-voice-agents.component').then(m => m.AdminVoiceAgentsComponent)
+  },
+  {
     path: 'complaints',
     loadComponent: () => import('./pages/admin-complaints.component').then(m => m.AdminComplaintsComponent)
   },

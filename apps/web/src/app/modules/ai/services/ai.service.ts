@@ -20,6 +20,7 @@ export interface ExtractedInvoice {
   date: string;
   dueDate: string;
   poNumber: string;
+  cases?: number;   // 📦 CASE/PARCEL/BALE packing count
 }
 
 export interface ExtractedItem {

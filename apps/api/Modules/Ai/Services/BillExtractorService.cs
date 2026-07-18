@@ -53,6 +53,8 @@ public class InvoiceInfo
     public string Date { get; set; } = "";
     public string DueDate { get; set; } = "";
     public string PoNumber { get; set; } = "";
+    // 📦 CASE/PARCEL/BALE — packing count printed on textile bills (bill-entry caseParcel auto-fill)
+    public decimal Cases { get; set; }
 }
 
 public class BillItem
@@ -729,7 +731,7 @@ public class BillExtractorService : IBillExtractorService
     // Shared by ALL providers (Gemini / Claude / OpenAI).
     // AI prompt badalne par ye version bump karo (v2 → v3 ...) — purana cache auto-bust ho jata hai,
     // taaki naya prompt turant chale aur manual cache-clear ki zaroorat na pade.
-    private const string PromptVersion = "v7";   // v6: Fold Less · v7: Discount (Disc/Less/CD/Vatav) extraction
+    private const string PromptVersion = "v8";   // v6: Fold Less · v7: Discount · v8: Case/Parcel/Bale packing count
 
     private static readonly string BillPrompt = @"You are an expert Indian GST invoice parser. Extract ONLY the fields in the schema below and return ONLY valid JSON. No prose, no markdown, no extra keys.
 
@@ -746,6 +748,7 @@ IMPORTANT — read these fields very carefully, they matter most:
   * SELF-CHECK every row: qty × rate MUST ≈ the row Amount/taxableAmount. If not, fix qty so the product matches the printed amount.
   * ONLY if there is genuinely NO Rate/Price column anywhere on the bill (just quantity + amount): set rate=0 — do NOT invent or compute a rate (the app will ask the user).
 - invoice number + invoice date (top right of bill).
+- invoice.cases = the PACKING COUNT — total number of CASE / PARCEL / BALE / CARTON / THAAN / GAANTH the goods are packed in. Indian textile bills print it near labels like 'Case', 'Cases', 'No. of Case', 'Parcel', 'No. of Parcel', 'Bale', 'Bales', 'Carton', 'Pkg', 'Packages', 'Thaan', 'Gaanth', or a 'Packing' box (sometimes just a number like '5 Bales' or 'Case: 3'). Return ONLY the numeric count (e.g. '3 Parcel' → 3, '5 Bales' → 5). If several packing types are printed, take the main total count. If not printed, set 0. Do NOT confuse with total item quantity/meters/pieces.
 - phone = ONLY a 10-digit Indian MOBILE number (starting 6-9), digits only. NO labels like 'Ph:'/'Accounts'/'Payment', NO landline/STD numbers like (0261)2331456, NO email. If no mobile is printed, leave it """".
 - GSTIN STRICT RULE: take a GSTIN ONLY from that party's OWN section. The Transport/Transporter/LR section often prints the TRANSPORTER's GSTIN — NEVER put it in supplier.gst or buyer.gst. If the buyer's (or supplier's) own GSTIN is NOT printed, leave gst = """" — do NOT borrow a GSTIN from anywhere else on the bill.
 - pan: if a party has NO GSTIN but a 10-char PAN (e.g. AQIPD4287E) is printed near their name, put it in pan. Otherwise """".
@@ -768,7 +771,7 @@ Schema (extract ONLY these keys):
   ""confidence"": 0.95,
   ""supplier"": {""name"":"""", ""gst"":"""", ""pan"":"""", ""phone"":"""", ""address"":"""", ""city"":"""", ""state"":""""},
   ""buyer"": {""name"":"""", ""gst"":"""", ""pan"":"""", ""phone"":"""", ""address"":"""", ""city"":"""", ""state"":""""},
-  ""invoice"": {""number"":"""", ""date"":"""", ""poNumber"":""""},
+  ""invoice"": {""number"":"""", ""date"":"""", ""poNumber"":"""", ""cases"":0},
   ""items"": [{""name"":"""", ""hsnSac"":"""", ""qty"":0, ""unit"":""PCS"", ""rate"":0, ""taxRate"":5, ""taxableAmount"":0, ""totalAmount"":0}],
   ""totals"": {""taxableTotal"":0, ""cgst"":0, ""sgst"":0, ""igst"":0, ""grandTotal"":0, ""foldLessPercent"":0, ""foldLessAmount"":0, ""discountPercent"":0, ""discountAmount"":0},
   ""transport"": {""name"":"""", ""gst"":"""", ""lrNo"":"""", ""ewayBillNo"":"""", ""ewayBillDate"":""""}
@@ -1086,6 +1089,12 @@ Schema (extract ONLY these keys):
 
         var dtM = Regex.Match(text, @"\b(\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4})\b");
         if (dtM.Success) dto.Invoice.Date = dtM.Groups[1].Value;
+
+        // 📦 CASE/PARCEL/BALE packing count — "3 Bales", "Case: 5", "No. of Parcel 4"
+        var caseM = Regex.Match(text, @"(?:no\.?\s*of\s*)?(?:case|parcel|bale|carton|thaan|gaanth|package|pkg)s?\s*[:\-]?\s*(\d{1,4})", RegexOptions.IgnoreCase);
+        if (!caseM.Success) caseM = Regex.Match(text, @"(\d{1,4})\s*(?:case|parcel|bale|carton|thaan|gaanth)s?\b", RegexOptions.IgnoreCase);
+        if (caseM.Success && decimal.TryParse(caseM.Groups[1].Value, out var caseCnt) && caseCnt > 0 && caseCnt < 10000)
+            dto.Invoice.Cases = caseCnt;
 
         decimal Amt(params string[] keys)
         {

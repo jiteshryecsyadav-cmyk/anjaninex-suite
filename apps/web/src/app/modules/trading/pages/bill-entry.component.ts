@@ -2654,6 +2654,8 @@ export class BillEntryComponent {
     if (data.invoice?.date) this.billDate = this.toIsoDate(data.invoice.date) || this.billDate;
     if (data.invoice?.poNumber) this.orderNo = data.invoice.poNumber;
     if (data.invoice?.number) this.supplierBillNo = data.invoice.number;
+    // 📦 CASE/PARCEL/BALE — scan se packing count auto-fill
+    { const c = +((data.invoice as any)?.cases ?? 0); if (c > 0) this.caseParcel = c; }
 
     // ============ TAX TYPE — bill se padho (IGST vs CGST/SGST), state-code se UPAR ============
     // Bill par IGST amount hai aur CGST/SGST nahi → inter-state (IGST). Warna intra (CGST+SGST).

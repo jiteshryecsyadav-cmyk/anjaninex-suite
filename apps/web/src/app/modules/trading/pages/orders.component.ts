@@ -124,11 +124,18 @@ import { amountInWords } from '../../../shared/amount-in-words.util';
                     </span>
                   </td>
                   <td class="px-3 py-3 font-semibold">{{ o.partyName }}
+                    @if ($any(o).partyGroup) {
+                      <span class="ml-1.5 px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-700 text-[10px] font-bold">👥 {{ $any(o).partyGroup }}</span>
+                    }
                     @if ($any(o).supplierGroupName) {
                       <div class="mt-0.5"><span class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 text-xs font-normal">Firm pending: {{ $any(o).supplierGroupName }}</span></div>
                     }
                   </td>
-                  <td class="px-3 py-3 text-gray-700">{{ o.buyerName || '—' }}</td>
+                  <td class="px-3 py-3 text-gray-700">{{ o.buyerName || '—' }}
+                    @if ($any(o).buyerGroup) {
+                      <span class="ml-1.5 px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-700 text-[10px] font-bold">👥 {{ $any(o).buyerGroup }}</span>
+                    }
+                  </td>
                   <td class="px-3 py-3 text-xs">{{ o.orderDate | inDate }}</td>
                   <td class="px-3 py-3 text-xs">{{ o.billedDate ? (o.billedDate | inDate) : '— bill nahi bana' }}</td>
                   <td class="px-3 py-3 text-center text-xs">

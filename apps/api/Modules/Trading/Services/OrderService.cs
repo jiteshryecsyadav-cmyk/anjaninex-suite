@@ -39,7 +39,9 @@ public record OrderListItemDto(
     bool IsDeleted = false,             // list me DELETED tag ke liye
     DateTimeOffset? CreatedAt = null,   // entry kab punch hui (time ke saath)
     DateOnly? BilledDate = null,        // is order ka bill kab bana (linked bill ki date)
-    string? SupplierGroupName = null);
+    string? SupplierGroupName = null,
+    string? PartyGroup = null,          // supplier/party ka group (sister firms)
+    string? BuyerGroup = null);         // buyer ka group
 
 public record OrderDetailDto(
     Guid Id,
@@ -126,6 +128,14 @@ public class OrderService : IOrderService
                   (pp, c) => new { pp.Id, c.DisplayName })
             .ToDictionaryAsync(x => x.Id, x => x.DisplayName);
 
+        // Party ka group name (sister firms) — alag dict (safe, upar wali dict na tooti)
+        var partyGroups = await _db.PartyProfiles.AsNoTracking()
+            .Where(p => partyIds.Contains(p.Id))
+            .Join(_db.Contacts.AsNoTracking(), pp => pp.ContactId, c => c.Id,
+                  (pp, c) => new { pp.Id, c.GroupName })
+            .Where(x => x.GroupName != null)
+            .ToDictionaryAsync(x => x.Id, x => x.GroupName);
+
         // Prepared by — login user (created_by) ka naam
         var creatorIds = orders.Select(o => o.CreatedBy).Distinct().ToList();
         var creators = await _db.Users.AsNoTracking()
@@ -155,7 +165,9 @@ public class OrderService : IOrderService
             creators.GetValueOrDefault(o.CreatedBy),
             o.DeletedAt != null,
             o.CreatedAt,
-            BilledOf(o), SupplierGroupName: o.SupplierGroupName)).ToList();
+            BilledOf(o), SupplierGroupName: o.SupplierGroupName,
+            PartyGroup: partyGroups.GetValueOrDefault(o.PartyId),
+            BuyerGroup: o.BuyerPartyId.HasValue ? partyGroups.GetValueOrDefault(o.BuyerPartyId.Value) : null)).ToList();
 
         return (items, total);
     }

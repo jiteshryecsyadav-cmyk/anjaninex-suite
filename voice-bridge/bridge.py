@@ -132,6 +132,11 @@ async def sarvam_stt(session, pcm, language):
 
 async def gemini_reply(session, history, system_prompt):
     contents = [{"role": t["role"], "parts": [{"text": t["text"]}]} for t in history]
+    # Gemini ko conversation USER turn se shuru chahiye — greeting (model) leading turns drop karo.
+    while contents and contents[0]["role"] == "model":
+        contents.pop(0)
+    if not contents:
+        return ""
     body = {
         "system_instruction": {"parts": [{"text": system_prompt}]},
         "contents": contents,
@@ -143,10 +148,13 @@ async def gemini_reply(session, history, system_prompt):
             data = await r.json()
             cand = (data.get("candidates") or [{}])[0]
             parts = cand.get("content", {}).get("parts", [{}])
-            return (parts[0].get("text") or "").strip()
+            txt = (parts[0].get("text") or "").strip()
+            if not txt:
+                print(f"[LLM empty] {json.dumps(data)[:400]}", flush=True)
+            return txt
     except Exception as e:
         print(f"[LLM error] {e}", flush=True)
-        return "Maaf kijiye, thodi dikkat aa gayi. Kripya dobara boliye."
+        return "Maaf kijiye, dobara boliye."
 
 
 async def sarvam_tts(session, text, language, speaker):
@@ -263,11 +271,20 @@ class CallSession:
         chunk_ms = len(pcm) / BYTES_PER_MS
         if self.playing and energy > VAD_THRESHOLD:
             asyncio.create_task(self.stop_playback())
+        # Agent bol raha ho to user audio ignore karo (echo/feedback loop se bachao).
+        if self.playing:
+            return
         if energy > VAD_THRESHOLD:
             self.speaking = True
             self.speech_ms += chunk_ms
             self.silence_ms = 0
             self.buffer += pcm
+            # Max ~10 sec ka ek turn — warna giant/repeat transcript banta hai. Force process.
+            if len(self.buffer) > SAMPLE_RATE * 2 * 10 and not self.processing:
+                audio = bytes(self.buffer)
+                self.buffer = bytearray()
+                self.speaking = False; self.speech_ms = 0; self.silence_ms = 0
+                asyncio.create_task(self.handle_turn(audio))
         elif self.speaking:
             self.silence_ms += chunk_ms
             self.buffer += pcm

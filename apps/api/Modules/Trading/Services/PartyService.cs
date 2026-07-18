@@ -9,6 +9,8 @@ namespace Namokara.Api.Modules.Trading.Services;
 // =============================================================================
 // DTOs
 // =============================================================================
+public record PartyAddressDto(string? Line = null, string? City = null, string? State = null, string? Pincode = null);
+
 public record PartyDto(
     Guid Id,
     Guid ContactId,
@@ -39,7 +41,8 @@ public record PartyDto(
     string? UdyamNo = null,
     string? MsmeType = null,
     string? WaExtra = null,
-    string? WaExtraRole = null);
+    string? WaExtraRole = null,
+    string? Addresses = null);
 
 public record CreatePartyDto(
     string DisplayName,
@@ -71,7 +74,8 @@ public record CreatePartyDto(
     string? UdyamNo = null,
     string? MsmeType = null,
     string? WaExtra = null,
-    string? WaExtraRole = null);
+    string? WaExtraRole = null,
+    List<PartyAddressDto>? ExtraAddresses = null);
 
 // =============================================================================
 // Service
@@ -172,7 +176,8 @@ public class PartyService : IPartyService
                 outstanding, x.p.LedgerId, x.p.IsActive, x.c.WaSupplier, x.c.WaBuyer,
                 x.c.PanNumber, x.c.GroupName, x.c.BuyerAgentId, x.c.BuyerAgentSharePct,
                 x.p.DiscountNormal, x.p.DiscountExhibition, x.p.DiscountSpecial,
-                x.c.SupplierType, x.c.BuyerType, x.c.UdyamNo, x.c.MsmeType, x.c.WaExtra, x.c.WaExtraRole);
+                x.c.SupplierType, x.c.BuyerType, x.c.UdyamNo, x.c.MsmeType, x.c.WaExtra, x.c.WaExtraRole,
+                x.c.Addresses);
         }).ToList();
     }
 
@@ -424,7 +429,7 @@ public class PartyService : IPartyService
             }
             catch { /* purana JSON kharab ho to fresh likh do */ }
 
-            var addrList = new[]
+            var addrList = new List<object>
             {
                 new
                 {
@@ -436,6 +441,12 @@ public class PartyService : IPartyService
                     pincode = string.IsNullOrWhiteSpace(dto.Pincode) ? oldPin : dto.Pincode
                 }
             };
+            if (dto.ExtraAddresses != null)
+                foreach (var ea in dto.ExtraAddresses)
+                    if (!(string.IsNullOrWhiteSpace(ea.Line) && string.IsNullOrWhiteSpace(ea.City)
+                          && string.IsNullOrWhiteSpace(ea.Pincode) && string.IsNullOrWhiteSpace(ea.State)))
+                        addrList.Add(new { type = "other", line1 = ea.Line ?? "", city = ea.City ?? "",
+                                           state = ea.State ?? "", pincode = ea.Pincode ?? "" });
             contact.Addresses = System.Text.Json.JsonSerializer.Serialize(addrList);
         }
         contact.UpdatedAt = DateTimeOffset.UtcNow;
@@ -487,21 +498,18 @@ public class PartyService : IPartyService
         // SAFE JSON — use JsonSerializer for the whole array so apostrophes / quotes
         // / backslashes / newlines in address / display name don't break valid JSON.
         var addresses = "[]";
+        var addrList = new List<object>();
         if (!string.IsNullOrEmpty(dto.Address))
-        {
-            var addrList = new[]
-            {
-                new
-                {
-                    type    = "billing",
-                    line1   = dto.Address,
-                    city    = dto.City ?? "",
-                    state   = dto.State ?? "",
-                    pincode = dto.Pincode ?? ""
-                }
-            };
+            addrList.Add(new { type = "billing", line1 = dto.Address, city = dto.City ?? "",
+                               state = dto.State ?? "", pincode = dto.Pincode ?? "" });
+        if (dto.ExtraAddresses != null)
+            foreach (var ea in dto.ExtraAddresses)
+                if (!(string.IsNullOrWhiteSpace(ea.Line) && string.IsNullOrWhiteSpace(ea.City)
+                      && string.IsNullOrWhiteSpace(ea.Pincode) && string.IsNullOrWhiteSpace(ea.State)))
+                    addrList.Add(new { type = "other", line1 = ea.Line ?? "", city = ea.City ?? "",
+                                       state = ea.State ?? "", pincode = ea.Pincode ?? "" });
+        if (addrList.Count > 0)
             addresses = System.Text.Json.JsonSerializer.Serialize(addrList);
-        }
 
         return new Contact
         {

@@ -2,7 +2,7 @@ import { Component, inject, signal, computed } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../environments/environment';
 import { CommonModule, DecimalPipe } from '@angular/common';
-import { FormsModule, ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
+import { FormsModule, ReactiveFormsModule, FormBuilder, FormArray, FormGroup, Validators } from '@angular/forms';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { TradingSubNavComponent } from '../components/trading-sub-nav.component';
 import { TradingService, Party } from '../services/trading.service';
@@ -324,10 +324,6 @@ import { LedgerStatementComponent } from '../../accounting/components/ledger-sta
                 </div>
                 }
                 <div>
-                  <label class="lbl">WHATSAPP – EXTRA</label>
-                  <input formControlName="waExtra" placeholder="Accountant/Manager no." class="ip">
-                </div>
-                <div>
                   <label class="lbl">EXTRA WA – ROLE</label>
                   <select formControlName="waExtraRole" class="ip">
                     <option value="">Select...</option>
@@ -337,11 +333,13 @@ import { LedgerStatementComponent } from '../../accounting/components/ledger-sta
                   </select>
                 </div>
                 <div>
-                  <label class="lbl">UDYAM AADHAAR NO</label>
-                  <input formControlName="udyamNo" placeholder="UDYAM-XX-00-0000000" class="ip">
+                  <label class="lbl">WHATSAPP – EXTRA</label>
+                  <input formControlName="waExtra" placeholder="Accountant/Manager no." class="ip">
                 </div>
                 <div>
-                  <label class="lbl">MSME TYPE</label>
+                  <label class="lbl">UDYAM AADHAAR NO</label>
+                  <input formControlName="udyamNo" placeholder="UDYAM-XX-00-0000000" class="ip">
+                  <label class="lbl" style="margin-top:8px">MSME TYPE</label>
                   <select formControlName="msmeType" class="ip">
                     <option value="">Select...</option>
                     <option value="micro">Micro</option>
@@ -393,6 +391,27 @@ import { LedgerStatementComponent } from '../../accounting/components/ledger-sta
                   <datalist id="ptCityList">
                     @for (c of cityOptions(); track c) { <option [value]="c"></option> }
                   </datalist>
+                </div>
+                <div class="col-span-3" formArrayName="extraAddresses">
+                  @for (ea of extraAddresses.controls; track $index; let i = $index) {
+                    <div [formGroupName]="i" class="border border-[#ddc8f5] rounded-lg p-2 mb-2 grid grid-cols-4 gap-2">
+                      <div class="col-span-4 flex justify-between items-center">
+                        <b class="text-xs text-[#5c1a8b]">Address {{ i + 2 }}</b>
+                        <button type="button" (click)="removeAddress(i)" class="text-red-600 text-xs font-semibold">✕ Remove</button>
+                      </div>
+                      <input formControlName="line" placeholder="Address line" class="ip col-span-4">
+                      <input formControlName="pincode" placeholder="Pincode" class="ip" maxlength="6" (input)="onExtraPincode(i)">
+                      <select formControlName="state" class="ip">
+                        <option value="">State</option>
+                        @for (s of indiaStates; track s.name) { <option [value]="s.name">{{ s.name }}</option> }
+                      </select>
+                      <input formControlName="city" placeholder="City" class="ip col-span-2">
+                    </div>
+                  }
+                  <button type="button" (click)="addAddress()"
+                          class="px-3 py-1.5 text-sm rounded border border-[#5c1a8b] text-[#5c1a8b] font-semibold hover:bg-purple-50">
+                    ➕ Add Address
+                  </button>
                 </div>
                 <div class="col-span-2">
                   <label class="lbl">EMAIL</label>
@@ -810,6 +829,27 @@ export class PartiesComponent {
     });
   }
 
+  // ===== Extra addresses (Add Address button) =====
+  get extraAddresses(): FormArray { return this.form.get('extraAddresses') as FormArray; }
+  private newAddressGroup(a?: any): FormGroup {
+    return this.fb.group({
+      line: [a?.line ?? a?.line1 ?? ''], pincode: [a?.pincode ?? ''],
+      city: [a?.city ?? ''], state: [a?.state ?? '']
+    });
+  }
+  addAddress() { this.extraAddresses.push(this.newAddressGroup()); }
+  removeAddress(i: number) { this.extraAddresses.removeAt(i); }
+  onExtraPincode(i: number) {
+    const g = this.extraAddresses.at(i);
+    const pin = (g.value.pincode || '').replace(/\D/g, '');
+    g.patchValue({ pincode: pin });
+    if (pin.length !== 6) return;
+    fetch(`https://api.postalpincode.in/pincode/${pin}`).then(r => r.json()).then(d => {
+      const po = d?.[0]?.PostOffice?.[0];
+      if (po) g.patchValue({ city: po.District || g.value.city, state: matchIndiaState(po.State) || g.value.state });
+    }).catch(() => {});
+  }
+
   // ===== India location helpers (Add Party form) =====
   indiaStates = INDIAN_STATES;
   cityOptions(): string[] { return citiesForState(this.form.value.state || ''); }
@@ -873,6 +913,7 @@ export class PartiesComponent {
     buyerType: [''],
     udyamNo: [''],
     msmeType: [''],
+    extraAddresses: this.fb.array([]),
     buyerAgentId: [''],
     buyerAgentSharePct: [''],
     address: [''],
@@ -1082,6 +1123,7 @@ export class PartiesComponent {
   openAdd() {
     this.editingId.set(null);
     this.newType.set(null);
+    this.extraAddresses.clear();
     this.form.reset({ rating: 'A', stars: '5', avgPayDays: 45, returnRate: 2.5, commission: 0, creditLimit: 50000, creditDays: 30, openingBalance: 0 });
     this.showForm.set(true);
   }
@@ -1116,6 +1158,16 @@ export class PartiesComponent {
       buyerAgentId: (p as any).buyerAgentId ?? '',
       buyerAgentSharePct: (p as any).buyerAgentSharePct ?? ''
     });
+    // Extra addresses (2nd, 3rd...) — addresses[1..] se load karo
+    this.extraAddresses.clear();
+    try {
+      const arr = JSON.parse((p as any).addresses || '[]');
+      if (Array.isArray(arr)) {
+        arr.slice(1).forEach((a: any) => this.extraAddresses.push(this.newAddressGroup({
+          line: a.line1 ?? a.line ?? '', city: a.city ?? '', state: a.state ?? '', pincode: a.pincode ?? ''
+        })));
+      }
+    } catch {}
     this.showForm.set(true);
     // City bhari ho aur pincode khali — auto le aao
     setTimeout(() => this.onCityInput());
@@ -1152,6 +1204,7 @@ export class PartiesComponent {
       groupName: v.groupName || null,
       supplierType: v.supplierType || null, buyerType: v.buyerType || null,
       udyamNo: v.udyamNo || null, msmeType: v.msmeType || null,
+      extraAddresses: (v.extraAddresses || []).filter((a: any) => (a.line || a.city || a.pincode || a.state)),
       buyerAgentId: v.buyerAgentId || null,
       buyerAgentSharePct: (v.buyerAgentSharePct === '' || v.buyerAgentSharePct == null) ? null : Number(v.buyerAgentSharePct)
     };

@@ -39,6 +39,7 @@ interface BillRow {
   adjAmt: number;
   packing: number;     // packing charge deduction
   other: number;       // other deduction
+  gstMode: 'before' | 'after';  // deductions GST se pehle (taxable par) ya baad me (total par)
   toPay: number;       // computed
   pending: number;
   commAmt: number;
@@ -454,6 +455,7 @@ interface PartyBehavior {
                 <th class="text-right">ADJ AMT</th>
                 <th class="text-right">PACKING</th>
                 <th class="text-right">OTHER</th>
+                <th class="text-center">GST</th>
                 <th class="text-right">NET AMT</th>
                 <th class="text-right">PENDING</th>
                 <th class="text-right">COMM AMT</th>
@@ -467,7 +469,7 @@ interface PartyBehavior {
             <tbody>
               @if (bills().length === 0) {
                 <tr>
-                  <td colspan="20" class="empty-row">
+                  <td colspan="21" class="empty-row">
                     @if (billsError()) {
                       ⚠️ {{ billsError() }}
                     } @else if (supplierId || buyerId) {
@@ -516,6 +518,13 @@ interface PartyBehavior {
                     <td>
                       <input [ngModel]="b.other" (ngModelChange)="updateBill(i, 'other', +$event)"
                              type="number" step="0.01" class="tip text-right">
+                    </td>
+                    <td class="text-center">
+                      <button type="button" class="gst-toggle" [class.before]="b.gstMode === 'before'"
+                              (click)="updateBill(i, 'gstMode', b.gstMode === 'before' ? 'after' : 'before')"
+                              title="Deductions GST se pehle (taxable par) ya baad me (total par)">
+                        {{ b.gstMode === 'before' ? 'Before GST' : 'After GST' }}
+                      </button>
                     </td>
                     <td class="text-right font-mono total-cell">{{ b.toPay | number:'1.2-2' }}</td>
                     <td class="text-right font-mono">{{ b.pending | number:'1.2-2' }}</td>
@@ -858,6 +867,12 @@ interface PartyBehavior {
     .item-table tfoot { background: #F5EFE3; font-weight: 800; color: #1B2E5C; }
     .item-table tfoot td { padding: 8px 6px; border-top: 2px solid #1B2E5C; }
     .total-cell { color: #DC2626; font-weight: 800; }
+    .gst-toggle {
+      font-size: 10px; font-weight: 700; white-space: nowrap;
+      padding: 3px 7px; border-radius: 6px; cursor: pointer;
+      border: 1px solid #7C3AED; background: #EDE9FE; color: #6D28D9;
+    }
+    .gst-toggle.before { background: #7C3AED; color: #fff; }
     .tip {
       width: 100%; padding: 5px 6px; border: 1px solid #E5E9F2; border-radius: 4px;
       font-size: 11.5px; color: #1B2E5C; background: #fff; font-family: inherit;
@@ -1361,12 +1376,13 @@ export class PaymentReceiptComponent {
         taxAmt: b.taxAmount || 0,             // CGST+SGST+IGST
         grAmt: b.grAmount || 0,               // ASLI GR — return na hua ho to 0
         rateDiff: 0, packing: 0, other: 0,
+        gstMode: 'after',
         disPct: 0,
         disAmt: 0,
         interest: 0,
         adjAmt: 0,
-        // NET AMT = Gross + Tax − GR (abhi koi manual kat-kut nahi hui)
-        toPay: (b.taxableAmount || b.total) + (b.taxAmount || 0) - (b.grAmount || 0),
+        // NET AMT = Gross + Tax − GR (abhi koi manual kat-kut nahi hui) — round off
+        toPay: Math.round((b.taxableAmount || b.total) + (b.taxAmount || 0) - (b.grAmount || 0)),
         pending: b.total - b.paidAmount,
         commAmt: 0,
         payTermsDays: this.buyer()?.creditDays || 30,
@@ -1418,11 +1434,24 @@ export class PaymentReceiptComponent {
       const updated: any = { ...b, [field]: value };
       // Recompute discount amount (taxable par)
       updated.disAmt = updated.netAmt * (updated.disPct / 100);
-      // NET AMT = Gross + Tax − GR − Discount + Interest + Adj − Rate Diff
-      // (sab kat-kut ke baad — ISI se payment liya jata hai)
-      updated.toPay = updated.netAmt + updated.taxAmt - updated.grAmt
-                    - updated.disAmt + updated.interest + updated.adjAmt - updated.rateDiff
-                    - (updated.packing || 0) - (updated.other || 0);
+
+      // Kul deductions (discount + rate diff + packing + other)
+      const deduct = (updated.disAmt || 0) + (updated.rateDiff || 0)
+                   + (updated.packing || 0) + (updated.other || 0);
+      const addOn  = (updated.interest || 0) + (updated.adjAmt || 0);
+
+      if (updated.gstMode === 'before') {
+        // BEFORE GST: deductions taxable par lagti hain, phir GST kam-hue-taxable par dubara.
+        const taxRate = updated.netAmt > 0 ? (updated.taxAmt / updated.netAmt) : 0;
+        const newTaxable = updated.netAmt - deduct;
+        const newTax     = newTaxable * taxRate;
+        updated.toPay = newTaxable + newTax - updated.grAmt + addOn;
+      } else {
+        // AFTER GST (default): deductions final tax-inclusive total par.
+        updated.toPay = updated.netAmt + updated.taxAmt - updated.grAmt - deduct + addOn;
+      }
+      // NET AMT round off (paisa nahi — nearest rupee)
+      updated.toPay = Math.round(updated.toPay);
       // Recompute commission
       updated.commAmt = updated.netAmt * (this.commissionPct / 100);
       // Recompute due date + actual + early/late

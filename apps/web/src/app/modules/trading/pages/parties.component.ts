@@ -295,6 +295,64 @@ import { LedgerStatementComponent } from '../../accounting/components/ledger-sta
                     @for (g of partyGroups(); track g) { <option [value]="g"></option> }
                   </datalist>
                 </div>
+                @if (newType() === 'supplier' || newType() === 'both') {
+                <div>
+                  <label class="lbl">SUPPLIER TYPE</label>
+                  <select formControlName="supplierType" class="ip">
+                    <option value="">Select...</option>
+                    <option value="manufacturer">Manufacturer</option>
+                    <option value="wholesaler">Wholesaler</option>
+                    <option value="trader">Trader</option>
+                    <option value="weaver_mill">Weaver / Mill</option>
+                    <option value="processor">Processor / Dyeing</option>
+                    <option value="job_worker">Job Worker</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+                }
+                @if (newType() === 'buyer' || newType() === 'both') {
+                <div>
+                  <label class="lbl">BUYER TYPE</label>
+                  <select formControlName="buyerType" class="ip">
+                    <option value="">Select...</option>
+                    <option value="wholesale">Wholesale</option>
+                    <option value="retailer">Retailer</option>
+                    <option value="distributor">Distributor</option>
+                    <option value="semi_wholesale">Semi-Wholesale</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+                }
+                <div>
+                  <label class="lbl">WHATSAPP – EXTRA</label>
+                  <input formControlName="waExtra" placeholder="Accountant/Manager no." class="ip">
+                </div>
+                <div>
+                  <label class="lbl">EXTRA WA – ROLE</label>
+                  <select formControlName="waExtraRole" class="ip">
+                    <option value="">Select...</option>
+                    <option value="accountant">Accountant</option>
+                    <option value="manager">Manager</option>
+                    <option value="staff">Staff</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="lbl">UDYAM AADHAAR NO</label>
+                  <input formControlName="udyamNo" placeholder="UDYAM-XX-00-0000000" class="ip">
+                </div>
+                <div>
+                  <label class="lbl">MSME TYPE</label>
+                  <select formControlName="msmeType" class="ip">
+                    <option value="">Select...</option>
+                    <option value="micro">Micro</option>
+                    <option value="small">Small</option>
+                    <option value="medium">Medium</option>
+                    <option value="small_trader">Small (Trader)</option>
+                    <option value="micro_trader">Micro (Trader)</option>
+                    <option value="not_registered">Not Registered</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
                 @if (newType() === 'buyer' || newType() === 'both') {
                 <div>
                   <label class="lbl">🤝 BUYER AGENT (payment guarantee)</label>
@@ -808,7 +866,13 @@ export class PartiesComponent {
     whatsapp: [''],
     waSupplier: [''],
     waBuyer: [''],
+    waExtra: [''],
+    waExtraRole: [''],
     groupName: [''],
+    supplierType: [''],
+    buyerType: [''],
+    udyamNo: [''],
+    msmeType: [''],
     buyerAgentId: [''],
     buyerAgentSharePct: [''],
     address: [''],
@@ -1045,7 +1109,10 @@ export class PartiesComponent {
       discountExhibition: p.discountExhibition || 0,
       discountSpecial: p.discountSpecial || 0,
       waSupplier: p.waSupplier ?? '', waBuyer: p.waBuyer ?? '',
+      waExtra: (p as any).waExtra ?? '', waExtraRole: (p as any).waExtraRole ?? '',
       groupName: (p as any).groupName ?? '',
+      supplierType: (p as any).supplierType ?? '', buyerType: (p as any).buyerType ?? '',
+      udyamNo: (p as any).udyamNo ?? '', msmeType: (p as any).msmeType ?? '',
       buyerAgentId: (p as any).buyerAgentId ?? '',
       buyerAgentSharePct: (p as any).buyerAgentSharePct ?? ''
     });
@@ -1081,7 +1148,10 @@ export class PartiesComponent {
       discountSpecial: v.discountSpecial || 0,
       openingBalance: v.openingBalance || 0, openingType: 'Dr',
       waSupplier: v.waSupplier || null, waBuyer: v.waBuyer || null,
+      waExtra: v.waExtra || null, waExtraRole: v.waExtraRole || null,
       groupName: v.groupName || null,
+      supplierType: v.supplierType || null, buyerType: v.buyerType || null,
+      udyamNo: v.udyamNo || null, msmeType: v.msmeType || null,
       buyerAgentId: v.buyerAgentId || null,
       buyerAgentSharePct: (v.buyerAgentSharePct === '' || v.buyerAgentSharePct == null) ? null : Number(v.buyerAgentSharePct)
     };

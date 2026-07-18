@@ -210,6 +210,14 @@ public class Contact
     // Sister-concern grouping: "Gupta Group" (member firms ka same group_name).
     [MaxLength(200)] public string? GroupName { get; set; }
 
+    // Party classification + MSME (party master ke naye fields).
+    [MaxLength(30)] public string? SupplierType { get; set; }   // manufacturer/wholesaler/trader/...
+    [MaxLength(30)] public string? BuyerType { get; set; }      // wholesale/retailer/distributor/...
+    [MaxLength(25)] public string? UdyamNo { get; set; }        // Udyam Aadhaar number
+    [MaxLength(30)] public string? MsmeType { get; set; }       // micro/small/medium/trader/...
+    [MaxLength(20)] public string? WaExtra { get; set; }        // 3rd WhatsApp number
+    [MaxLength(20)] public string? WaExtraRole { get; set; }    // accountant/manager/staff
+
     // Buyer ka default agent (del-credere / payment guarantee) + uska commission share%.
     public Guid? BuyerAgentId { get; set; }
     [Column(TypeName = "numeric(5,2)")] public decimal? BuyerAgentSharePct { get; set; }

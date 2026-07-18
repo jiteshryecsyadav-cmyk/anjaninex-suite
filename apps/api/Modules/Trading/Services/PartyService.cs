@@ -33,7 +33,13 @@ public record PartyDto(
     decimal? BuyerAgentSharePct = null,
     decimal DiscountNormal = 0,
     decimal DiscountExhibition = 0,
-    decimal DiscountSpecial = 0);
+    decimal DiscountSpecial = 0,
+    string? SupplierType = null,
+    string? BuyerType = null,
+    string? UdyamNo = null,
+    string? MsmeType = null,
+    string? WaExtra = null,
+    string? WaExtraRole = null);
 
 public record CreatePartyDto(
     string DisplayName,
@@ -59,7 +65,13 @@ public record CreatePartyDto(
     decimal? BuyerAgentSharePct = null,
     decimal DiscountNormal = 0,
     decimal DiscountExhibition = 0,
-    decimal DiscountSpecial = 0);
+    decimal DiscountSpecial = 0,
+    string? SupplierType = null,
+    string? BuyerType = null,
+    string? UdyamNo = null,
+    string? MsmeType = null,
+    string? WaExtra = null,
+    string? WaExtraRole = null);
 
 // =============================================================================
 // Service
@@ -159,7 +171,8 @@ public class PartyService : IPartyService
                 x.p.PartyType, x.p.CreditLimit, x.p.CreditDays, x.p.CommissionRate,
                 outstanding, x.p.LedgerId, x.p.IsActive, x.c.WaSupplier, x.c.WaBuyer,
                 x.c.PanNumber, x.c.GroupName, x.c.BuyerAgentId, x.c.BuyerAgentSharePct,
-                x.p.DiscountNormal, x.p.DiscountExhibition, x.p.DiscountSpecial);
+                x.p.DiscountNormal, x.p.DiscountExhibition, x.p.DiscountSpecial,
+                x.c.SupplierType, x.c.BuyerType, x.c.UdyamNo, x.c.MsmeType, x.c.WaExtra, x.c.WaExtraRole);
         }).ToList();
     }
 
@@ -379,6 +392,12 @@ public class PartyService : IPartyService
         if (dto.WaSupplier != null) contact.WaSupplier = string.IsNullOrWhiteSpace(dto.WaSupplier) ? null : dto.WaSupplier.Trim();
         if (dto.WaBuyer != null) contact.WaBuyer = string.IsNullOrWhiteSpace(dto.WaBuyer) ? null : dto.WaBuyer.Trim();
         if (dto.GroupName != null) contact.GroupName = string.IsNullOrWhiteSpace(dto.GroupName) ? null : dto.GroupName.Trim();
+        if (dto.SupplierType != null) contact.SupplierType = string.IsNullOrWhiteSpace(dto.SupplierType) ? null : dto.SupplierType.Trim();
+        if (dto.BuyerType != null) contact.BuyerType = string.IsNullOrWhiteSpace(dto.BuyerType) ? null : dto.BuyerType.Trim();
+        if (dto.UdyamNo != null) contact.UdyamNo = string.IsNullOrWhiteSpace(dto.UdyamNo) ? null : dto.UdyamNo.Trim();
+        if (dto.MsmeType != null) contact.MsmeType = string.IsNullOrWhiteSpace(dto.MsmeType) ? null : dto.MsmeType.Trim();
+        if (dto.WaExtra != null) contact.WaExtra = string.IsNullOrWhiteSpace(dto.WaExtra) ? null : dto.WaExtra.Trim();
+        if (dto.WaExtraRole != null) contact.WaExtraRole = string.IsNullOrWhiteSpace(dto.WaExtraRole) ? null : dto.WaExtraRole.Trim();
         contact.BuyerAgentId = dto.BuyerAgentId;
         contact.BuyerAgentSharePct = dto.BuyerAgentSharePct;
         contact.EmailPrimary = dto.Email?.Trim();
@@ -497,6 +516,12 @@ public class PartyService : IPartyService
             WaSupplier = string.IsNullOrWhiteSpace(dto.WaSupplier) ? null : dto.WaSupplier.Trim(),
             WaBuyer = string.IsNullOrWhiteSpace(dto.WaBuyer) ? null : dto.WaBuyer.Trim(),
             GroupName = string.IsNullOrWhiteSpace(dto.GroupName) ? null : dto.GroupName.Trim(),
+            SupplierType = string.IsNullOrWhiteSpace(dto.SupplierType) ? null : dto.SupplierType.Trim(),
+            BuyerType = string.IsNullOrWhiteSpace(dto.BuyerType) ? null : dto.BuyerType.Trim(),
+            UdyamNo = string.IsNullOrWhiteSpace(dto.UdyamNo) ? null : dto.UdyamNo.Trim(),
+            MsmeType = string.IsNullOrWhiteSpace(dto.MsmeType) ? null : dto.MsmeType.Trim(),
+            WaExtra = string.IsNullOrWhiteSpace(dto.WaExtra) ? null : dto.WaExtra.Trim(),
+            WaExtraRole = string.IsNullOrWhiteSpace(dto.WaExtraRole) ? null : dto.WaExtraRole.Trim(),
             BuyerAgentId = dto.BuyerAgentId,
             BuyerAgentSharePct = dto.BuyerAgentSharePct,
             EmailPrimary = dto.Email?.Trim(),

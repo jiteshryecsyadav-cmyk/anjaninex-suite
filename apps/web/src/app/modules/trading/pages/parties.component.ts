@@ -290,7 +290,10 @@ import { LedgerStatementComponent } from '../../accounting/components/ledger-sta
                 </div>
                 <div>
                   <label class="lbl">GROUP (SISTER FIRMS)</label>
-                  <input formControlName="groupName" placeholder="e.g. Gupta Group" class="ip">
+                  <input formControlName="groupName" list="partyGroupsList" placeholder="Group choose ya naya" class="ip">
+                  <datalist id="partyGroupsList">
+                    @for (g of partyGroups(); track g) { <option [value]="g"></option> }
+                  </datalist>
                 </div>
                 @if (newType() === 'buyer' || newType() === 'both') {
                 <div>
@@ -991,7 +994,12 @@ export class PartiesComponent {
       }, error: () => {} });
     this.http.get<any[]>(`${environment.apiUrl}/api/trading/buyer-agents`)
       .subscribe({ next: a => this.agents.set(a || []), error: () => {} });
+    // Group Master me save groups — dropdown me choose karne ke liye.
+    this.http.get<string[]>(`${environment.apiUrl}/api/core/contacts/groups`)
+      .subscribe({ next: g => this.partyGroups.set(g || []), error: () => {} });
   }
+
+  partyGroups = signal<string[]>([]);
 
   load() {
     this.loading.set(true);

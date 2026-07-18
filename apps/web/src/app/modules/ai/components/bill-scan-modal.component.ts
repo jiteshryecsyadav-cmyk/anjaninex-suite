@@ -133,13 +133,15 @@ interface ScanPage {
           </div>
         }
 
-        <!-- CAMERA: Live video -->
+        <!-- CAMERA: Live video — FULLSCREEN for easiest bill capture -->
         @if (state() === 'camera') {
-          <div class="p-4">
-            <video #videoEl autoplay playsinline class="w-full rounded-lg bg-black aspect-video"></video>
-            <div class="flex justify-center gap-3 mt-4">
-              <button (click)="state.set('idle'); stopCamera()" class="px-4 py-2 border border-gray-300 rounded text-sm">Cancel</button>
-              <button (click)="capturePhoto()" class="btn-primary">📸 Capture</button>
+          <div class="fixed inset-0 z-[60] bg-black flex flex-col">
+            <video #videoEl autoplay playsinline class="w-full flex-1"
+                   style="object-fit: cover; min-height: 0;"></video>
+            <div class="flex justify-center gap-4 py-4 bg-black shrink-0">
+              <button (click)="state.set('idle'); stopCamera()"
+                      class="px-6 py-3 border border-white/70 text-white rounded-lg text-sm">Cancel</button>
+              <button (click)="capturePhoto()" class="btn-primary text-base px-6 py-3">📸 Capture</button>
             </div>
           </div>
         }

@@ -73,12 +73,31 @@ interface C { id: string; displayName: string; gst?: string | null; groupName?: 
               <input [(ngModel)]="gMobile" class="input" placeholder="9876543210"></div>
             <div><label class="text-[10px] text-gray-500 block">WHATSAPP NO</label>
               <input [(ngModel)]="gWhatsapp" class="input" placeholder="9876543210"></div>
-            <div class="col-span-2 md:col-span-3"><label class="text-[10px] text-gray-500 block">ADDRESS</label>
+            <div><label class="text-[10px] text-gray-500 block">PARTY TYPE</label>
+              <select [(ngModel)]="gPartyType" class="input">
+                <option value="supplier">Supplier</option>
+                <option value="buyer">Buyer</option>
+                <option value="both">Both (Supplier + Buyer)</option>
+              </select></div>
+            @if (gPartyType === 'buyer' || gPartyType === 'both') {
+              <div><label class="text-[10px] text-gray-500 block">BUYER TYPE</label>
+                <select [(ngModel)]="gBuyerType" class="input">
+                  <option value="">Select...</option>
+                  <option value="wholesale">Wholesale</option>
+                  <option value="retailer">Retailer</option>
+                  <option value="distributor">Distributor</option>
+                  <option value="semi_wholesale">Semi-Wholesale</option>
+                  <option value="other">Other</option>
+                </select></div>
+            }
+            <div class="col-span-2 md:col-span-3"><label class="text-[10px] text-gray-500 block">ADDRESS 1</label>
               <input [(ngModel)]="gAddress" class="input" placeholder="Shop / office address"></div>
-            <div><label class="text-[10px] text-gray-500 block">CITY</label>
+            <div class="col-span-2 md:col-span-3"><label class="text-[10px] text-gray-500 block">ADDRESS 2</label>
+              <input [(ngModel)]="gAddress2" class="input" placeholder="Godown / branch address (optional)"></div>
+            <div><label class="text-[10px] text-gray-500 block">PINCODE <span class="text-[#9333ea]">(→ auto city/state)</span></label>
+              <input [(ngModel)]="gPincode" (ngModelChange)="onPincode($event)" class="input" placeholder="395002" maxlength="6" inputmode="numeric"></div>
+            <div><label class="text-[10px] text-gray-500 block">CITY {{ pinLoading() ? '⏳' : '' }}</label>
               <input [(ngModel)]="gCity" class="input" placeholder="Surat"></div>
-            <div><label class="text-[10px] text-gray-500 block">PINCODE</label>
-              <input [(ngModel)]="gPincode" class="input" placeholder="395002" maxlength="6"></div>
             <div><label class="text-[10px] text-gray-500 block">STATE</label>
               <input [(ngModel)]="gState" class="input" placeholder="Gujarat"></div>
             <div><label class="text-[10px] text-gray-500 block">COMMISSION %</label>
@@ -159,15 +178,36 @@ export class PartyGroupsComponent {
 
   // GROUP MASTER detail fields (sab sister firms me auto-sync hote hain)
   details = signal<any[]>([]);
-  gOwner = ''; gMobile = ''; gWhatsapp = ''; gAddress = '';
-  gCity = ''; gPincode = ''; gState = '';
+  gOwner = ''; gMobile = ''; gWhatsapp = ''; gAddress = ''; gAddress2 = '';
+  gCity = ''; gPincode = ''; gState = ''; gPartyType = 'supplier'; gBuyerType = '';
   gCommission = 0; gDiscN = 0; gDiscE = 0; gDiscS = 0; gTerms = '';
+  pinLoading = signal(false);
+
+  // Pincode 6 digit hote hi city + state auto-fill (India Post free API).
+  onPincode(v: string) {
+    const pin = (v || '').replace(/\D/g, '');
+    this.gPincode = pin;
+    if (pin.length !== 6) return;
+    this.pinLoading.set(true);
+    fetch(`https://api.postalpincode.in/pincode/${pin}`)
+      .then(r => r.json())
+      .then(d => {
+        const po = d?.[0]?.PostOffice?.[0];
+        if (po) {
+          this.gCity = po.District || this.gCity;
+          this.gState = po.State || this.gState;
+        }
+      })
+      .catch(() => {})
+      .finally(() => this.pinLoading.set(false));
+  }
 
   private fillDetail(name: string) {
     const d = this.details().find(x => (x.name || '').toLowerCase() === name.toLowerCase());
     this.gOwner = d?.ownerName || ''; this.gMobile = d?.mobile || '';
-    this.gWhatsapp = d?.whatsapp || ''; this.gAddress = d?.address || '';
+    this.gWhatsapp = d?.whatsapp || ''; this.gAddress = d?.address || ''; this.gAddress2 = d?.address2 || '';
     this.gCity = d?.city || ''; this.gPincode = d?.pincode || ''; this.gState = d?.state || '';
+    this.gPartyType = d?.partyType || 'supplier'; this.gBuyerType = d?.buyerType || '';
     this.gCommission = +(d?.commission ?? 0); this.gTerms = d?.paymentTerms || '';
     this.gDiscN = +(d?.discountNormal ?? 0); this.gDiscE = +(d?.discountExhibition ?? 0);
     this.gDiscS = +(d?.discountSpecial ?? 0);
@@ -176,7 +216,8 @@ export class PartyGroupsComponent {
   private detailPayload(name: string) {
     return {
       name,
-      ownerName: this.gOwner || null, address: this.gAddress || null,
+      ownerName: this.gOwner || null, address: this.gAddress || null, address2: this.gAddress2 || null,
+      partyType: this.gPartyType || 'supplier', buyerType: this.gBuyerType || null,
       mobile: this.gMobile || null, whatsapp: this.gWhatsapp || null,
       city: this.gCity || null, pincode: this.gPincode || null, state: this.gState || null,
       commission: +this.gCommission || 0,

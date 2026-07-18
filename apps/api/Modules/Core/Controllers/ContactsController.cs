@@ -128,7 +128,8 @@ public class ContactsController : ControllerBase
         string Name, string? OwnerName = null, string? Address = null, string? Mobile = null,
         string? Whatsapp = null, string? City = null, string? Pincode = null, string? State = null,
         decimal Commission = 0, decimal DiscountNormal = 0, decimal DiscountExhibition = 0,
-        decimal DiscountSpecial = 0, string? PaymentTerms = null);
+        decimal DiscountSpecial = 0, string? PaymentTerms = null,
+        string? Address2 = null, string? PartyType = null, string? BuyerType = null);
 
     [HttpGet("groups/detail")]
     public async Task<IActionResult> GroupDetails()
@@ -139,7 +140,8 @@ public class ContactsController : ControllerBase
         if (conn.State != ConnectionState.Open) await conn.OpenAsync();
         await using var cmd = new NpgsqlCommand(@"
             SELECT name, owner_name, address, mobile, whatsapp, city, pincode, state,
-                   commission, discount_normal, discount_exhibition, discount_special, payment_terms
+                   commission, discount_normal, discount_exhibition, discount_special, payment_terms,
+                   address2, party_type, buyer_type
             FROM core.party_groups WHERE firm_id = @f ORDER BY name", conn);
         cmd.Parameters.AddWithValue("f", firmId);
         await using var r = await cmd.ExecuteReaderAsync();
@@ -151,7 +153,9 @@ public class ContactsController : ControllerBase
                 r.IsDBNull(5) ? null : r.GetString(5), r.IsDBNull(6) ? null : r.GetString(6),
                 r.IsDBNull(7) ? null : r.GetString(7),
                 r.GetDecimal(8), r.GetDecimal(9), r.GetDecimal(10), r.GetDecimal(11),
-                r.IsDBNull(12) ? null : r.GetString(12)));
+                r.IsDBNull(12) ? null : r.GetString(12),
+                r.IsDBNull(13) ? null : r.GetString(13), r.IsDBNull(14) ? null : r.GetString(14),
+                r.IsDBNull(15) ? null : r.GetString(15)));
         return Ok(list);
     }
 
@@ -166,8 +170,10 @@ public class ContactsController : ControllerBase
         await using (var cmd = new NpgsqlCommand(@"
             INSERT INTO core.party_groups
                 (firm_id, name, owner_name, address, mobile, whatsapp, city, pincode, state,
-                 commission, discount_normal, discount_exhibition, discount_special, payment_terms)
-            VALUES (@f, @n, @own, @adr, @mob, @wa, @city, @pin, @st, @com, @dn, @de, @ds, @pt)
+                 commission, discount_normal, discount_exhibition, discount_special, payment_terms,
+                 address2, party_type, buyer_type)
+            VALUES (@f, @n, @own, @adr, @mob, @wa, @city, @pin, @st, @com, @dn, @de, @ds, @pt,
+                 @adr2, @ptype, @btype)
             ON CONFLICT (firm_id, name) DO UPDATE SET
                 owner_name = EXCLUDED.owner_name, address = EXCLUDED.address,
                 mobile = EXCLUDED.mobile, whatsapp = EXCLUDED.whatsapp,
@@ -176,7 +182,9 @@ public class ContactsController : ControllerBase
                 discount_normal = EXCLUDED.discount_normal,
                 discount_exhibition = EXCLUDED.discount_exhibition,
                 discount_special = EXCLUDED.discount_special,
-                payment_terms = EXCLUDED.payment_terms", conn))
+                payment_terms = EXCLUDED.payment_terms,
+                address2 = EXCLUDED.address2, party_type = EXCLUDED.party_type,
+                buyer_type = EXCLUDED.buyer_type", conn))
         {
             cmd.Parameters.AddWithValue("f", firmId);
             cmd.Parameters.AddWithValue("n", name);
@@ -192,6 +200,9 @@ public class ContactsController : ControllerBase
             cmd.Parameters.AddWithValue("de", dto.DiscountExhibition);
             cmd.Parameters.AddWithValue("ds", dto.DiscountSpecial);
             cmd.Parameters.AddWithValue("pt", (object?)dto.PaymentTerms ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("adr2", (object?)dto.Address2 ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("ptype", (object?)(dto.PartyType ?? "supplier"));
+            cmd.Parameters.AddWithValue("btype", (object?)dto.BuyerType ?? DBNull.Value);
             await cmd.ExecuteNonQueryAsync();
         }
         await SyncGroupToMembersAsync(conn, firmId, name);
@@ -221,6 +232,7 @@ public class ContactsController : ControllerBase
                 addresses = jsonb_build_array(jsonb_build_object(
                     'type','billing',
                     'line1',   COALESCE(g.address, ''),
+                    'line2',   COALESCE(g.address2, ''),
                     'city',    COALESCE(g.city, ''),
                     'state',   COALESCE(g.state, ''),
                     'pincode', COALESCE(g.pincode, ''))),

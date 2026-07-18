@@ -36,12 +36,14 @@ except ImportError:
 # ---------------------------------------------------------------------------
 SARVAM_API_KEY = os.environ.get("SARVAM_API_KEY", "")
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")   # agar set ho to LLM OpenAI use hoga (Gemini fallback)
 DATABASE_URL   = os.environ.get("DATABASE_URL", "")     # postgresql://user:pass@localhost:5432/namokara
 PORT           = int(os.environ.get("PORT", "10002"))
 
 STT_MODEL      = os.environ.get("STT_MODEL", "saarika:v2.5")
 TTS_MODEL      = os.environ.get("TTS_MODEL", "bulbul:v2")
 GEMINI_MODEL   = os.environ.get("GEMINI_MODEL", "gemini-2.0-flash")
+OPENAI_MODEL   = os.environ.get("OPENAI_MODEL", "gpt-4o-mini")
 
 # Fallback (agar DB me firm config na mile — single-tenant test ke liye)
 DEF_NAME       = os.environ.get("AGENT_NAME", "Riddhi")
@@ -65,6 +67,7 @@ FRAME_MS       = 100
 SARVAM_STT_URL = "https://api.sarvam.ai/speech-to-text"
 SARVAM_TTS_URL = "https://api.sarvam.ai/text-to-speech"
 GEMINI_URL     = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent"
+OPENAI_URL     = "https://api.openai.com/v1/chat/completions"
 
 
 # ---------------------------------------------------------------------------
@@ -155,6 +158,32 @@ async def gemini_reply(session, history, system_prompt):
     except Exception as e:
         print(f"[LLM error] {e}", flush=True)
         return "Maaf kijiye, dobara boliye."
+
+
+async def openai_reply(session, history, system_prompt):
+    msgs = [{"role": "system", "content": system_prompt}]
+    for t in history:
+        msgs.append({"role": "assistant" if t["role"] == "model" else "user", "content": t["text"]})
+    body = {"model": OPENAI_MODEL, "messages": msgs, "temperature": 0.6, "max_tokens": 200}
+    try:
+        async with session.post(OPENAI_URL, json=body,
+                                headers={"Authorization": f"Bearer {OPENAI_API_KEY}"}, timeout=20) as r:
+            data = await r.json()
+            ch = (data.get("choices") or [{}])[0]
+            txt = ((ch.get("message") or {}).get("content") or "").strip()
+            if not txt:
+                print(f"[LLM openai empty] {json.dumps(data)[:400]}", flush=True)
+            return txt
+    except Exception as e:
+        print(f"[LLM openai error] {e}", flush=True)
+        return "Maaf kijiye, dobara boliye."
+
+
+async def llm_reply(session, history, system_prompt):
+    # OpenAI key set ho to wahi (reliable), warna Gemini.
+    if OPENAI_API_KEY:
+        return await openai_reply(session, history, system_prompt)
+    return await gemini_reply(session, history, system_prompt)
 
 
 async def sarvam_tts(session, text, language, speaker):
@@ -306,7 +335,7 @@ class CallSession:
                 return
             print(f"[user] {text}", flush=True)
             self.history.append({"role": "user", "text": text})
-            reply = await gemini_reply(self.http, self.history, self.cfg["prompt"])
+            reply = await llm_reply(self.http, self.history, self.cfg["prompt"])
             print(f"[{self.cfg['name']}] {reply}", flush=True)
             await self.say(reply)
         finally:
@@ -375,19 +404,23 @@ async def health(request):
 async def load_central_keys(pool):
     """Sarvam + Gemini keys DB (platform.voice_config) se — admin panel se set hoti.
     DB me ho to env ko override karti hain (taaki admin UI se manage ho sake)."""
-    global SARVAM_API_KEY, GEMINI_API_KEY
+    global SARVAM_API_KEY, GEMINI_API_KEY, OPENAI_API_KEY
     if pool is None:
         return
     try:
         async with pool.acquire() as conn:
-            row = await conn.fetchrow("SELECT sarvam_key, gemini_key FROM platform.voice_config WHERE id = 1")
+            row = await conn.fetchrow(
+                "SELECT sarvam_key, gemini_key, openai_key FROM platform.voice_config WHERE id = 1")
         if row:
             if row["sarvam_key"]:
                 SARVAM_API_KEY = row["sarvam_key"].strip()
             if row["gemini_key"]:
                 GEMINI_API_KEY = row["gemini_key"].strip()
+            if row["openai_key"]:
+                OPENAI_API_KEY = row["openai_key"].strip()
             print(f"[boot] Central keys DB se load: sarvam={'yes' if SARVAM_API_KEY else 'no'} "
-                  f"gemini={'yes' if GEMINI_API_KEY else 'no'}", flush=True)
+                  f"gemini={'yes' if GEMINI_API_KEY else 'no'} "
+                  f"openai={'yes' if OPENAI_API_KEY else 'no'}", flush=True)
     except Exception as e:
         print(f"[boot] voice_config read fail (env keys use hongi): {e}", flush=True)
 

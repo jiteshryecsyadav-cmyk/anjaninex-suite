@@ -15,7 +15,7 @@ public record SaveVoiceAgentDto(
     bool Enabled, string? AgentName, string? FirstMessage, string? SystemPrompt,
     string? Language, string? VoiceSpeaker, string? ExotelNumber);
 
-public record SaveVoiceConfigDto(string? SarvamKey, string? GeminiKey, string? BridgeDomain);
+public record SaveVoiceConfigDto(string? SarvamKey, string? GeminiKey, string? OpenaiKey, string? BridgeDomain);
 
 [ApiController]
 [Route("api/admin/voice-agents")]
@@ -80,15 +80,17 @@ public class AdminVoiceAgentsController : ControllerBase
         await using var cmd = await CmdAsync(
             @"SELECT (sarvam_key IS NOT NULL AND sarvam_key <> '') AS sk,
                      (gemini_key IS NOT NULL AND gemini_key <> '') AS gk,
+                     (openai_key IS NOT NULL AND openai_key <> '') AS ok,
                      COALESCE(bridge_domain,'voice.anjaninex.com') AS dom
               FROM platform.voice_config WHERE id = 1");
         await using var r = await cmd.ExecuteReaderAsync();
         if (!await r.ReadAsync())
-            return Ok(new { sarvamKeySet = false, geminiKeySet = false, bridgeDomain = "voice.anjaninex.com" });
+            return Ok(new { sarvamKeySet = false, geminiKeySet = false, openaiKeySet = false, bridgeDomain = "voice.anjaninex.com" });
         return Ok(new
         {
             sarvamKeySet = r["sk"] is bool a && a,
             geminiKeySet = r["gk"] is bool b && b,
+            openaiKeySet = r["ok"] is bool o && o,
             bridgeDomain = r["dom"] as string
         });
     }
@@ -106,11 +108,13 @@ public class AdminVoiceAgentsController : ControllerBase
             @"UPDATE platform.voice_config SET
                 sarvam_key    = CASE WHEN @sk::text IS NULL OR @sk::text = '' THEN sarvam_key ELSE @sk::text END,
                 gemini_key    = CASE WHEN @gk::text IS NULL OR @gk::text = '' THEN gemini_key ELSE @gk::text END,
+                openai_key    = CASE WHEN @ok::text IS NULL OR @ok::text = '' THEN openai_key ELSE @ok::text END,
                 bridge_domain = COALESCE(@dom, bridge_domain),
                 updated_at    = now()
               WHERE id = 1");
         cmd.Parameters.Add(new NpgsqlParameter("sk", (object?)dto.SarvamKey ?? DBNull.Value));
         cmd.Parameters.Add(new NpgsqlParameter("gk", (object?)dto.GeminiKey ?? DBNull.Value));
+        cmd.Parameters.Add(new NpgsqlParameter("ok", (object?)dto.OpenaiKey ?? DBNull.Value));
         cmd.Parameters.Add(new NpgsqlParameter("dom", (object?)dto.BridgeDomain ?? DBNull.Value));
         await cmd.ExecuteNonQueryAsync();
         return await GetConfig();

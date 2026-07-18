@@ -39,7 +39,13 @@ interface VoiceAgent {
           <input class="inp" type="password" [(ngModel)]="geminiKey"
                  [placeholder]="cfg.geminiKeySet ? '•••••• (saved — khali = koi change nahi)' : 'Gemini key paste karo'">
         </div>
+        <div>
+          <label>OpenAI API key {{ cfg.openaiKeySet ? '✓ saved (LLM active)' : '' }}</label>
+          <input class="inp" type="password" [(ngModel)]="openaiKey"
+                 [placeholder]="cfg.openaiKeySet ? '•••••• (saved — khali = koi change nahi)' : 'OpenAI key (recommended LLM)'">
+        </div>
       </div>
+      <small style="color:#0f766e">💡 LLM (dimaag): OpenAI key set ho to wahi use hoga (reliable). Gemini ki free quota 0 aa rahi thi. Sarvam = awaaz (STT+TTS).</small>
 
       <button class="btn primary" [disabled]="savingCfg()" (click)="saveConfig()">
         {{ savingCfg() ? 'Saving…' : 'Save bridge keys' }}
@@ -180,10 +186,11 @@ export class AdminVoiceAgentsComponent implements OnInit {
   filter = '';
   baseDomain = 'voice.anjaninex.com';
 
-  cfg: { sarvamKeySet: boolean; geminiKeySet: boolean; bridgeDomain: string } =
-    { sarvamKeySet: false, geminiKeySet: false, bridgeDomain: 'voice.anjaninex.com' };
+  cfg: { sarvamKeySet: boolean; geminiKeySet: boolean; openaiKeySet: boolean; bridgeDomain: string } =
+    { sarvamKeySet: false, geminiKeySet: false, openaiKeySet: false, bridgeDomain: 'voice.anjaninex.com' };
   sarvamKey = '';
   geminiKey = '';
+  openaiKey = '';
   savingCfg = signal(false);
 
   ngOnInit() {
@@ -204,9 +211,10 @@ export class AdminVoiceAgentsComponent implements OnInit {
       this.cfg = await firstValueFrom(this.http.put<any>(`${this.base}/config`, {
         sarvamKey: this.sarvamKey || null,
         geminiKey: this.geminiKey || null,
+        openaiKey: this.openaiKey || null,
         bridgeDomain: (this.baseDomain || '').trim() || null
       }));
-      this.sarvamKey = ''; this.geminiKey = '';
+      this.sarvamKey = ''; this.geminiKey = ''; this.openaiKey = '';
       this.flash('Bridge keys saved. (Bridge restart karna: systemctl restart voice-bridge)');
     } catch (e: any) { this.err.set(e?.error?.error || 'Save fail.'); }
     finally { this.savingCfg.set(false); }

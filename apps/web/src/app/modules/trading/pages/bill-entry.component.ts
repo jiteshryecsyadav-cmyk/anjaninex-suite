@@ -335,7 +335,7 @@ interface LineRow {
             <span class="sec-ico">📦</span> ITEM DETAILS
           </div>
           <div class="flex items-center gap-2">
-            <label class="lbl" style="margin:0;white-space:nowrap">📦 CASE/PARCEL</label>
+            <label class="lbl" style="margin:0;white-space:nowrap">📦 CASE/PARCEL/BALE</label>
             <input [(ngModel)]="caseParcel" type="number" min="0" placeholder="0" class="ip" style="width:90px">
             <button type="button" (click)="addLine()" class="btn-add-item">+ Add Item</button>
           </div>
@@ -793,7 +793,7 @@ interface LineRow {
             </div>
             @if (caseParcel) {
               <div class="sum-row">
-                <span>📦 Case/Parcel</span>
+                <span>📦 Case/Parcel/Bale</span>
                 <span class="font-mono">{{ caseParcel }}</span>
               </div>
             }
@@ -3035,7 +3035,7 @@ export class BillEntryComponent {
       this.discExhAmt() > 0 ? `Exhibition Disc ${this.discExhPct()}% = ₹${this.discExhAmt().toFixed(2)}` : '',
       this.sweetLs() ? `Sweet/L.S: ₹${this.sweetLs()}` : '',
       this.bankCharge() ? `Bank Charge: ₹${this.bankCharge()}` : '',
-      this.caseParcel ? `Case/Parcel: ${this.caseParcel}` : '',
+      this.caseParcel ? `Case/Parcel/Bale: ${this.caseParcel}` : '',
       this.interestAmt() ? `Interest: ₹${this.interestAmt()}` : '',
       this.insuranceAmt() ? `Insurance: ₹${this.insuranceAmt()}` : '',
       this.tcsAmt() ? `TCS: ₹${this.tcsAmt()}` : '',

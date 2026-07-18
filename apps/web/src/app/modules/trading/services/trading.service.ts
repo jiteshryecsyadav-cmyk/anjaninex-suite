@@ -96,6 +96,8 @@ export interface BillListItem {
   ewayBillNo: string | null;   // For search + display
   ewayBillDate?: string | null; // migration 41 — e-Way bill date
   supplierBillNo?: string | null;   // supplier ka original invoice no (list display)
+  partyGroup?: string | null;       // supplier ka group (sister firms)
+  buyerGroup?: string | null;       // buyer ka group
   lrNo: string | null;
   total: number;
   paidAmount: number;

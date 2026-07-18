@@ -125,8 +125,12 @@ import { amountInWords } from '../../../shared/amount-in-words.util';
                   <td class="px-3 py-3 text-xs font-mono whitespace-nowrap">
                     {{ b.createdAt ? (b.createdAt | date:'dd/MM/yy') : (b.billDate | date:'dd/MM/yy') }}
                   </td>
-                  <td class="px-3 py-3 font-semibold">{{ b.partyName }}</td>
-                  <td class="px-3 py-3 text-gray-700">{{ b.buyerName || '—' }}</td>
+                  <td class="px-3 py-3 font-semibold">{{ b.partyName }}
+                    @if (b.partyGroup) { <span class="grp-chip">👥 {{ b.partyGroup }}</span> }
+                  </td>
+                  <td class="px-3 py-3 text-gray-700">{{ b.buyerName || '—' }}
+                    @if (b.buyerGroup) { <span class="grp-chip">👥 {{ b.buyerGroup }}</span> }
+                  </td>
                   <td class="px-3 py-3 text-right font-mono font-bold">₹ {{ b.total | number:'1.2-2' }}</td>
                   <td class="px-3 py-3 text-center">
                     @if (b.status === 'paid' && (b.advanceExtra || 0) > 0) {
@@ -249,6 +253,8 @@ import { amountInWords } from '../../../shared/amount-in-words.util';
     .exp-chips { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:8px; }
     .exp-chip { background:#fff; border:1px solid #ddc8f5; border-radius:999px; padding:3px 10px;
       font-size:11px; font-weight:700; color:#5c1a8b; }
+    .grp-chip { display:inline-block; margin-left:6px; background:#f3e8ff; color:#7c3aed;
+      border-radius:999px; padding:1px 7px; font-size:10px; font-weight:700; }
     .exp-table { width:100%; border-collapse:collapse; background:#fff; border:1px solid #eee; }
     .exp-table th { background:#f0e6ff; color:#5c1a8b; font-size:10px; text-transform:uppercase;
       padding:5px 8px; text-align:left; }

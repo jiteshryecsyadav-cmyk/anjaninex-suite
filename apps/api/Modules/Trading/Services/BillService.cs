@@ -51,7 +51,9 @@ public record BillListItemDto(
     decimal TaxAmount = 0,              // CGST+SGST+IGST
     decimal GrAmount = 0,               // is bill ka ASLI goods-return total (0 = koi GR nahi)
     decimal AdvanceExtra = 0,           // buyer ne bill se ZYADA diya — extra/advance amount
-    string? SupplierBillNo = null);     // supplier ka original invoice no — list me dikhane ke liye
+    string? SupplierBillNo = null,      // supplier ka original invoice no — list me dikhane ke liye
+    string? PartyGroup = null,          // supplier/party ka group name (sister firms)
+    string? BuyerGroup = null);         // buyer ka group name
 
 public record BillDetailDto(
     Guid Id,
@@ -175,8 +177,8 @@ public class BillService : IBillService
         var parties = await (from p in _db.PartyProfiles
                              join c in _db.Contacts on p.ContactId equals c.Id
                              where allPartyIds.Contains(p.Id)
-                             select new { p.Id, c.DisplayName, c.GstNumber })
-                            .ToDictionaryAsync(x => x.Id, x => new { x.DisplayName, x.GstNumber });
+                             select new { p.Id, c.DisplayName, c.GstNumber, c.GroupName })
+                            .ToDictionaryAsync(x => x.Id, x => new { x.DisplayName, x.GstNumber, x.GroupName });
 
         // Prepared by — login user (created_by) ka naam
         var creatorIds = rawItems.Select(b => b.CreatedBy).Distinct().ToList();
@@ -220,7 +222,9 @@ public class BillService : IBillService
                 TaxableAmount: b.TaxableAmount,
                 TaxAmount: b.Cgst + b.Sgst + b.Igst,
                 AdvanceExtra: advanceByBill.GetValueOrDefault(b.Id, 0m),
-                SupplierBillNo: b.SupplierBillNo);
+                SupplierBillNo: b.SupplierBillNo,
+                PartyGroup: supplier?.GroupName,
+                BuyerGroup: buyer?.GroupName);
         }).ToList();
 
         return (items, total);

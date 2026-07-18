@@ -339,7 +339,9 @@ import { LedgerStatementComponent } from '../../accounting/components/ledger-sta
                 <div>
                   <label class="lbl">UDYAM AADHAAR NO</label>
                   <input formControlName="udyamNo" placeholder="UDYAM-XX-00-0000000" class="ip">
-                  <label class="lbl" style="margin-top:8px">MSME TYPE</label>
+                </div>
+                <div>
+                  <label class="lbl">MSME TYPE</label>
                   <select formControlName="msmeType" class="ip">
                     <option value="">Select...</option>
                     <option value="micro">Micro</option>

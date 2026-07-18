@@ -37,6 +37,8 @@ interface BillRow {
   disAmt: number;
   interest: number;
   adjAmt: number;
+  packing: number;     // packing charge deduction
+  other: number;       // other deduction
   toPay: number;       // computed
   pending: number;
   commAmt: number;
@@ -450,6 +452,8 @@ interface PartyBehavior {
                 <th class="text-right">DIS AMT</th>
                 <th class="text-right">INTEREST</th>
                 <th class="text-right">ADJ AMT</th>
+                <th class="text-right">PACKING</th>
+                <th class="text-right">OTHER</th>
                 <th class="text-right">NET AMT</th>
                 <th class="text-right">PENDING</th>
                 <th class="text-right">COMM AMT</th>
@@ -503,6 +507,14 @@ interface PartyBehavior {
                     </td>
                     <td>
                       <input [ngModel]="b.adjAmt" (ngModelChange)="updateBill(i, 'adjAmt', +$event)"
+                             type="number" step="0.01" class="tip text-right">
+                    </td>
+                    <td>
+                      <input [ngModel]="b.packing" (ngModelChange)="updateBill(i, 'packing', +$event)"
+                             type="number" step="0.01" class="tip text-right">
+                    </td>
+                    <td>
+                      <input [ngModel]="b.other" (ngModelChange)="updateBill(i, 'other', +$event)"
                              type="number" step="0.01" class="tip text-right">
                     </td>
                     <td class="text-right font-mono total-cell">{{ b.toPay | number:'1.2-2' }}</td>
@@ -1348,7 +1360,7 @@ export class PaymentReceiptComponent {
         netAmt: b.taxableAmount || b.total,   // Taxable Amt (bill jaisa)
         taxAmt: b.taxAmount || 0,             // CGST+SGST+IGST
         grAmt: b.grAmount || 0,               // ASLI GR — return na hua ho to 0
-        rateDiff: 0,
+        rateDiff: 0, packing: 0, other: 0,
         disPct: 0,
         disAmt: 0,
         interest: 0,
@@ -1409,7 +1421,8 @@ export class PaymentReceiptComponent {
       // NET AMT = Gross + Tax − GR − Discount + Interest + Adj − Rate Diff
       // (sab kat-kut ke baad — ISI se payment liya jata hai)
       updated.toPay = updated.netAmt + updated.taxAmt - updated.grAmt
-                    - updated.disAmt + updated.interest + updated.adjAmt - updated.rateDiff;
+                    - updated.disAmt + updated.interest + updated.adjAmt - updated.rateDiff
+                    - (updated.packing || 0) - (updated.other || 0);
       // Recompute commission
       updated.commAmt = updated.netAmt * (this.commissionPct / 100);
       // Recompute due date + actual + early/late

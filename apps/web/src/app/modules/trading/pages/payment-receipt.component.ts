@@ -40,6 +40,7 @@ interface BillRow {
   packing: number;     // packing charge deduction
   other: number;       // other deduction
   gstMode: 'before' | 'after';  // deductions GST se pehle (taxable par) ya baad me (total par)
+  baseNet: number;     // bill ka apna NET (grand total − GR, round-off bill-time se) — deductions isi par
   toPay: number;       // computed
   pending: number;
   commAmt: number;
@@ -1381,8 +1382,10 @@ export class PaymentReceiptComponent {
         disAmt: 0,
         interest: 0,
         adjAmt: 0,
-        // NET AMT = Gross + Tax − GR (abhi koi manual kat-kut nahi hui) — round off
-        toPay: Math.round((b.taxableAmount || b.total) + (b.taxAmount || 0) - (b.grAmount || 0)),
+        // Bill ka apna NET = grand total − GR (round-off bill-banate-waqt ka) — YAHI base
+        baseNet: Math.round((b.total || ((b.taxableAmount || 0) + (b.taxAmount || 0))) - (b.grAmount || 0)),
+        // NET AMT = bill ka net (abhi koi manual kat-kut nahi hui)
+        toPay: Math.round((b.total || ((b.taxableAmount || 0) + (b.taxAmount || 0))) - (b.grAmount || 0)),
         pending: b.total - b.paidAmount,
         commAmt: 0,
         payTermsDays: this.buyer()?.creditDays || 30,
@@ -1447,8 +1450,8 @@ export class PaymentReceiptComponent {
         const newTax     = newTaxable * taxRate;
         updated.toPay = newTaxable + newTax - updated.grAmt + addOn;
       } else {
-        // AFTER GST (default): deductions final tax-inclusive total par.
-        updated.toPay = updated.netAmt + updated.taxAmt - updated.grAmt - deduct + addOn;
+        // AFTER GST (default): bill ke apne NET (baseNet) par deductions — bill ka round-off intact.
+        updated.toPay = updated.baseNet - deduct + addOn;
       }
       // NET AMT round off (paisa nahi — nearest rupee)
       updated.toPay = Math.round(updated.toPay);

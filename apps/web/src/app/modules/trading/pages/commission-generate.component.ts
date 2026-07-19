@@ -109,6 +109,9 @@ interface CommRow {
               <th class="px-3 py-2 text-right">Bill Amt (₹)</th>
               <th class="px-3 py-2 text-center w-24">Comm %</th>
               <th class="px-3 py-2 text-right">Comm Amt (₹)</th>
+              <th class="px-3 py-2 text-center" title="Supplier se recover karna hai (purchase − sales)">Bal Disc %</th>
+              <th class="px-3 py-2 text-right">Disc Amt (₹)</th>
+              <th class="px-3 py-2 text-right">Row Total (₹)</th>
               <th class="px-3 py-2 text-center">Status</th>
             </tr>
           </thead>
@@ -127,6 +130,9 @@ interface CommRow {
                          class="w-20 px-1 py-0.5 text-right border border-gray-300 rounded text-xs">
                 </td>
                 <td class="px-3 py-2 text-right font-mono font-bold text-[#DC2626]">{{ r.commAmt | number:'1.2-2' }}</td>
+                <td class="px-3 py-2 text-center text-xs font-bold text-[#7C3AED]">{{ balDisc(r) | number:'1.0-2' }}%</td>
+                <td class="px-3 py-2 text-right font-mono text-[#7C3AED]">{{ discAmt(r) | number:'1.2-2' }}</td>
+                <td class="px-3 py-2 text-right font-mono font-bold">{{ (r.commAmt + discAmt(r)) | number:'1.2-2' }}</td>
                 <td class="px-3 py-2 text-center">
                   <span class="text-xs px-2 py-0.5 rounded uppercase font-bold"
                         [class.bg-green-100]="r.bill.status === 'paid'"
@@ -716,6 +722,13 @@ export class CommissionGenerateComponent {
       }
     });
   }
+
+  // ── Supplier disc recovery (purchase − sales = balance, agency claim karti hai) ──
+  balDisc(r: CommRow): number { return +((r.bill as any).entitledDisc || 0); }
+  discAmt(r: CommRow): number { return +(this.baseAmt(r.bill) * this.balDisc(r) / 100).toFixed(2); }
+  // Totals — GST sirf COMMISSION par (disc recovery service nahi hai)
+  totalDiscRecovery = computed(() => this.selectedRows().reduce((s, r) => s + this.discAmt(r), 0));
+  grandWithRecovery = computed(() => this.selectedCommTotal() + this.totalDiscRecovery());
 
   recomputeRow(r: CommRow) {
     r.commAmt = +(this.baseAmt(r.bill) * r.commPct / 100).toFixed(2);

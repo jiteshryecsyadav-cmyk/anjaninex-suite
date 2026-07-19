@@ -45,6 +45,8 @@ interface PchatMsg {
           <div class="p-2 border-b border-[#F0F0F0]">
             <input [(ngModel)]="searchQ" placeholder="🔍 Naam ya number khojo…" class="input w-full">
           </div>
+          <!-- Scrollable thread list (up→down) -->
+          <div class="overflow-y-auto" style="max-height:62vh">
           @if (filteredThreads().length === 0) {
             <div class="p-6 text-center text-gray-500 text-sm">{{ searchQ ? 'Kuch nahi mila' : 'Abhi koi chat nahi — "➕ Nayi chat" se shuru karo' }}</div>
           }
@@ -62,6 +64,7 @@ interface PchatMsg {
               <div class="text-[10px] text-gray-400">{{ t.lastMsgAt | date:'dd/MM/yy h:mm a' }}</div>
             </button>
           }
+          </div>
         </div>
 
         <!-- Chat pane -->

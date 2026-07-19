@@ -120,7 +120,12 @@ interface C { id: string; displayName: string; gst?: string | null; groupName?: 
               <input [(ngModel)]="gDiscE" type="number" step="0.1" min="0" class="input" placeholder="0"></div>
             <div><label class="text-[10px] text-gray-500 block">SPECIAL DISC %</label>
               <input [(ngModel)]="gDiscS" type="number" step="0.1" min="0" class="input" placeholder="0"></div>
+            <div><label class="text-[10px] text-gray-500 block">EXHIBITION FROM</label>
+              <input [(ngModel)]="gExhFrom" type="date" class="input"></div>
+            <div><label class="text-[10px] text-gray-500 block">EXHIBITION TO</label>
+              <input [(ngModel)]="gExhTo" type="date" class="input"></div>
           </div>
+          <p class="text-[10px] text-gray-400 mt-1">Exhibition Disc sirf FROM–TO date ke beech ke bill par lagta hai. Warna Normal/Special disc.</p>
         </div>
         @if (msg()) { <p class="text-sm mb-2" [class]="msg().includes('Error') || msg().includes('daalein') ? 'text-red-600' : 'text-green-600'">{{ msg() }}</p> }
 
@@ -181,6 +186,7 @@ export class PartyGroupsComponent {
   gOwner = ''; gMobile = ''; gWhatsapp = ''; gAddress = ''; gAddress2 = '';
   gCity = ''; gPincode = ''; gState = ''; gPartyType = 'supplier'; gBuyerType = '';
   gCommission = 0; gDiscN = 0; gDiscE = 0; gDiscS = 0; gTerms = '';
+  gExhFrom = ''; gExhTo = '';
   pinLoading = signal(false);
 
   // Pincode 6 digit hote hi city + state auto-fill (India Post free API).
@@ -211,6 +217,7 @@ export class PartyGroupsComponent {
     this.gCommission = +(d?.commission ?? 0); this.gTerms = d?.paymentTerms || '';
     this.gDiscN = +(d?.discountNormal ?? 0); this.gDiscE = +(d?.discountExhibition ?? 0);
     this.gDiscS = +(d?.discountSpecial ?? 0);
+    this.gExhFrom = d?.exhibitionFrom || ''; this.gExhTo = d?.exhibitionTo || '';
   }
 
   private detailPayload(name: string) {
@@ -223,6 +230,7 @@ export class PartyGroupsComponent {
       commission: +this.gCommission || 0,
       discountNormal: +this.gDiscN || 0, discountExhibition: +this.gDiscE || 0,
       discountSpecial: +this.gDiscS || 0,
+      exhibitionFrom: this.gExhFrom || null, exhibitionTo: this.gExhTo || null,
       paymentTerms: this.gTerms || null
     };
   }

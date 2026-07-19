@@ -129,7 +129,8 @@ public class ContactsController : ControllerBase
         string? Whatsapp = null, string? City = null, string? Pincode = null, string? State = null,
         decimal Commission = 0, decimal DiscountNormal = 0, decimal DiscountExhibition = 0,
         decimal DiscountSpecial = 0, string? PaymentTerms = null,
-        string? Address2 = null, string? PartyType = null, string? BuyerType = null);
+        string? Address2 = null, string? PartyType = null, string? BuyerType = null,
+        string? ExhibitionFrom = null, string? ExhibitionTo = null);
 
     [HttpGet("groups/detail")]
     public async Task<IActionResult> GroupDetails()
@@ -141,7 +142,7 @@ public class ContactsController : ControllerBase
         await using var cmd = new NpgsqlCommand(@"
             SELECT name, owner_name, address, mobile, whatsapp, city, pincode, state,
                    commission, discount_normal, discount_exhibition, discount_special, payment_terms,
-                   address2, party_type, buyer_type
+                   address2, party_type, buyer_type, exhibition_from, exhibition_to
             FROM core.party_groups WHERE firm_id = @f ORDER BY name", conn);
         cmd.Parameters.AddWithValue("f", firmId);
         await using var r = await cmd.ExecuteReaderAsync();
@@ -155,7 +156,9 @@ public class ContactsController : ControllerBase
                 r.GetDecimal(8), r.GetDecimal(9), r.GetDecimal(10), r.GetDecimal(11),
                 r.IsDBNull(12) ? null : r.GetString(12),
                 r.IsDBNull(13) ? null : r.GetString(13), r.IsDBNull(14) ? null : r.GetString(14),
-                r.IsDBNull(15) ? null : r.GetString(15)));
+                r.IsDBNull(15) ? null : r.GetString(15),
+                r.IsDBNull(16) ? null : r.GetDateTime(16).ToString("yyyy-MM-dd"),
+                r.IsDBNull(17) ? null : r.GetDateTime(17).ToString("yyyy-MM-dd")));
         return Ok(list);
     }
 
@@ -171,9 +174,9 @@ public class ContactsController : ControllerBase
             INSERT INTO core.party_groups
                 (firm_id, name, owner_name, address, mobile, whatsapp, city, pincode, state,
                  commission, discount_normal, discount_exhibition, discount_special, payment_terms,
-                 address2, party_type, buyer_type)
+                 address2, party_type, buyer_type, exhibition_from, exhibition_to)
             VALUES (@f, @n, @own, @adr, @mob, @wa, @city, @pin, @st, @com, @dn, @de, @ds, @pt,
-                 @adr2, @ptype, @btype)
+                 @adr2, @ptype, @btype, @exf, @ext)
             ON CONFLICT (firm_id, name) DO UPDATE SET
                 owner_name = EXCLUDED.owner_name, address = EXCLUDED.address,
                 mobile = EXCLUDED.mobile, whatsapp = EXCLUDED.whatsapp,
@@ -184,7 +187,9 @@ public class ContactsController : ControllerBase
                 discount_special = EXCLUDED.discount_special,
                 payment_terms = EXCLUDED.payment_terms,
                 address2 = EXCLUDED.address2, party_type = EXCLUDED.party_type,
-                buyer_type = EXCLUDED.buyer_type", conn))
+                buyer_type = EXCLUDED.buyer_type,
+                exhibition_from = EXCLUDED.exhibition_from,
+                exhibition_to = EXCLUDED.exhibition_to", conn))
         {
             cmd.Parameters.AddWithValue("f", firmId);
             cmd.Parameters.AddWithValue("n", name);
@@ -203,6 +208,8 @@ public class ContactsController : ControllerBase
             cmd.Parameters.AddWithValue("adr2", (object?)dto.Address2 ?? DBNull.Value);
             cmd.Parameters.AddWithValue("ptype", (object?)(dto.PartyType ?? "supplier"));
             cmd.Parameters.AddWithValue("btype", (object?)dto.BuyerType ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("exf", string.IsNullOrWhiteSpace(dto.ExhibitionFrom) ? DBNull.Value : (object)DateOnly.Parse(dto.ExhibitionFrom));
+            cmd.Parameters.AddWithValue("ext", string.IsNullOrWhiteSpace(dto.ExhibitionTo) ? DBNull.Value : (object)DateOnly.Parse(dto.ExhibitionTo));
             await cmd.ExecuteNonQueryAsync();
         }
         await SyncGroupToMembersAsync(conn, firmId, name);

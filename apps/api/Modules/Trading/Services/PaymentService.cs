@@ -1,5 +1,6 @@
 using System.Data;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using Namokara.Api.Infrastructure.Persistence;
 using Namokara.Api.Modules.Accounting.Entities;
 using Namokara.Api.Modules.Trading.Entities;
@@ -514,6 +515,37 @@ public class PaymentService : IPaymentService
             .Select(g => new { BillId = g.Key, Amt = g.Sum(x => x.TotalReturnAmount) })
             .ToDictionaryAsync(x => x.BillId, x => x.Amt);
 
+        // ── Entitled discount per bill (buyer group ka banta-hua disc, bill date ke hisaab se) ──
+        // Group me exhibition_from/to window ho aur bill us window me ho → exhibition disc,
+        // warna max(normal, special). Payment/Commission me "kam disc" popup ke liye.
+        var custIds = bills.Select(b => b.BuyerPartyId ?? b.PartyId).Distinct().ToList();
+        var grpDisc = new Dictionary<Guid, (decimal n, decimal e, decimal s, DateOnly? ef, DateOnly? et)>();
+        if (custIds.Count > 0)
+        {
+            var conn2 = (NpgsqlConnection)_db.Database.GetDbConnection();
+            if (conn2.State != ConnectionState.Open) await conn2.OpenAsync();
+            await using var gcmd = new NpgsqlCommand(@"
+                SELECT c.id, g.discount_normal, g.discount_exhibition, g.discount_special,
+                       g.exhibition_from, g.exhibition_to
+                FROM core.contacts c
+                JOIN core.party_groups g ON g.firm_id = c.firm_id AND g.name = c.group_name
+                WHERE c.id = ANY(@ids)", conn2);
+            gcmd.Parameters.AddWithValue("ids", custIds.ToArray());
+            await using var gr = await gcmd.ExecuteReaderAsync();
+            while (await gr.ReadAsync())
+                grpDisc[gr.GetGuid(0)] = (gr.GetDecimal(1), gr.GetDecimal(2), gr.GetDecimal(3),
+                    gr.IsDBNull(4) ? (DateOnly?)null : DateOnly.FromDateTime(gr.GetDateTime(4)),
+                    gr.IsDBNull(5) ? (DateOnly?)null : DateOnly.FromDateTime(gr.GetDateTime(5)));
+        }
+        decimal EntitledFor(Bill b)
+        {
+            var cid = b.BuyerPartyId ?? b.PartyId;
+            if (!grpDisc.TryGetValue(cid, out var d)) return 0m;
+            bool inExh = d.e > 0 && d.ef.HasValue && d.et.HasValue
+                         && b.BillDate >= d.ef.Value && b.BillDate <= d.et.Value;
+            return inExh ? d.e : Math.Max(d.n, d.s);
+        }
+
         return bills.Select(b => new BillListItemDto(
             b.Id, b.BillType, b.BillNo, b.BillDate, b.PartyId, "",
             null, b.BuyerPartyId, null, null, b.PoNumber,
@@ -524,7 +556,9 @@ public class PaymentService : IPaymentService
             b.Cgst + b.Sgst + b.Igst,
             grByBill.GetValueOrDefault(b.Id, 0m),
             0m,
-            b.SupplierBillNo)).ToList();
+            b.SupplierBillNo,
+            null, null,
+            EntitledFor(b))).ToList();
     }
 
     public async Task Delete(Guid id)

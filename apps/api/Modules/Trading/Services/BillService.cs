@@ -53,7 +53,8 @@ public record BillListItemDto(
     decimal AdvanceExtra = 0,           // buyer ne bill se ZYADA diya — extra/advance amount
     string? SupplierBillNo = null,      // supplier ka original invoice no — list me dikhane ke liye
     string? PartyGroup = null,          // supplier/party ka group name (sister firms)
-    string? BuyerGroup = null);         // buyer ka group name
+    string? BuyerGroup = null,          // buyer ka group name
+    decimal EntitledDisc = 0);          // buyer group ka banta-hua disc% (bill date ke hisaab se) — payment/commission popup ke liye
 
 public record BillDetailDto(
     Guid Id,

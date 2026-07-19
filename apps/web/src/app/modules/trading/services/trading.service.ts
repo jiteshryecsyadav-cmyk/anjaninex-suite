@@ -111,6 +111,7 @@ export interface BillListItem {
   taxAmount?: number;           // CGST+SGST+IGST
   grAmount?: number;            // is bill ka asli GR total (0 = koi return nahi)
   advanceExtra?: number;        // buyer ne bill se ZYADA diya — extra/advance
+  entitledDisc?: number;        // buyer group ka banta-hua disc% (bill date ke hisaab se)
 }
 
 export interface BillDetail extends BillListItem {

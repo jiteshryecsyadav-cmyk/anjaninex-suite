@@ -40,6 +40,7 @@ interface BillRow {
   packing: number;     // packing charge deduction
   other: number;       // other deduction
   gstMode: 'before' | 'after';  // deductions GST se pehle (taxable par) ya baad me (total par)
+  entitledDisc: number;// buyer group ka banta-hua disc% (bill date ke hisaab se) — popup ke liye
   baseNet: number;     // bill ka apna NET (grand total − GR, round-off bill-time se) — deductions isi par
   toPay: number;       // computed
   pending: number;
@@ -1378,6 +1379,7 @@ export class PaymentReceiptComponent {
         grAmt: b.grAmount || 0,               // ASLI GR — return na hua ho to 0
         rateDiff: 0, packing: 0, other: 0,
         gstMode: 'after',
+        entitledDisc: +(b.entitledDisc ?? 0),
         disPct: 0,
         disAmt: 0,
         interest: 0,
@@ -1417,6 +1419,16 @@ export class PaymentReceiptComponent {
       }
       return { ...b, selected: sel, dueDate: due, actualDays: actual, earlyLate, status };
     }));
+    // 🎯 Group disc alert — bill select karte hi, agar group me zyada disc banta hai par
+    // bill pe kam laga tha, to alert + sahi disc auto-fill (CD field me).
+    if (val) {
+      const b = this.bills()[idx];
+      if (b && (b.entitledDisc || 0) > (b.disPct || 0)) {
+        const ent = b.entitledDisc;
+        this.updateBill(idx, 'disPct', ent);   // disAmt + NET AMT dobara compute
+        setTimeout(() => alert(`⚠️ ${b.dispNo || b.billNo}\nIs party ke group me ${ent}% discount banta hai — bill pe kam laga tha.\n${ent}% auto-bhar diya gaya hai.`), 40);
+      }
+    }
     // Bill select karte hi pehli payment txn me NET AMT (selected bills ka total) auto bhar do
     this.autoFillReceivedAmount();
   }

@@ -16,11 +16,13 @@ interface Flag {
  * Naya feature pehle pilot firm (jaise Riddhi Agency) me on karo, test karo,
  * fir "Sab firms" master switch on kar do. Code chhedne ki zaroorat nahi.
  */
+import { BackButtonComponent } from '../../../shared/back-button.component';
 @Component({
   selector: 'app-admin-feature-flags',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [BackButtonComponent, CommonModule, FormsModule],
   template: `
+    <div class="page-top-bar"><app-back-button></app-back-button></div>
     <div class="max-w-5xl mx-auto p-4">
       <div class="mb-5">
         <h2 class="font-display font-black text-2xl text-[#1B2E5C]">🧪 Feature Flags</h2>

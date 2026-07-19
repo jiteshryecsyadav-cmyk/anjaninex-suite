@@ -8,11 +8,13 @@ import { environment } from '../../../environments/environment';
 interface C { id: string; displayName: string; gst?: string | null; groupName?: string | null; }
 
 // Party Groups (sister firms) - ek jagah se group bana ke member firms tick karo.
+import { BackButtonComponent } from '../../shared/back-button.component';
 @Component({
   selector: 'app-party-groups',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [BackButtonComponent, CommonModule, FormsModule, RouterLink],
   template: `
+    <div class="page-top-bar"><app-back-button></app-back-button></div>
   <div class="p-6 max-w-6xl mx-auto">
     <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
       <div>

@@ -9,11 +9,13 @@ interface AuditRow { date: string; time: string; user: string; username?: string
 
 /** Accounting-scoped Activity Log - kisne ledger/voucher/group banaya, edit ya delete kiya.
  *  /api/audit/logs?module=accounting ko call karta hai (firm-scoped). */
+import { BackButtonComponent } from '../../../shared/back-button.component';
 @Component({
   selector: 'app-accounting-activity-log',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, RouterLinkActive],
+  imports: [BackButtonComponent, CommonModule, FormsModule, RouterLink, RouterLinkActive],
   template: `
+    <div class="page-top-bar"><app-back-button></app-back-button></div>
   <div class="p-6 max-w-7xl mx-auto">
     <div class="flex gap-1 mb-6 border-b border-[#ddc8f5] flex-wrap">
       <a routerLink="/accounting/heads" routerLinkActive="!border-[#5c1a8b] !text-[#5c1a8b]" class="px-4 py-2 text-sm font-semibold text-gray-500 border-b-2 border-transparent hover:text-[#5c1a8b]">Heads</a>

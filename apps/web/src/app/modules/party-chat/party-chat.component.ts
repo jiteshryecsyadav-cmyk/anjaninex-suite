@@ -24,11 +24,13 @@ interface PchatMsg {
  * Party ke paas login nahi hota: use link bhejo, wo mobile+OTP se verify hoke reply karti hai.
  * Feature flag 'party_chat' — pilot firms me hi sidebar me dikhta hai.
  */
+import { BackButtonComponent } from '../../shared/back-button.component';
 @Component({
   selector: 'app-party-chat',
   standalone: true,
-  imports: [CommonModule, FormsModule, DatePipe],
+  imports: [BackButtonComponent, CommonModule, FormsModule, DatePipe],
   template: `
+    <div class="page-top-bar"><app-back-button></app-back-button></div>
     <div class="max-w-6xl mx-auto p-4">
       <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
         <div>

@@ -13,11 +13,13 @@ import { ToastService } from '../../../shared/toast.service';
 // empty, (b) error handler on add/upload that surfaces the backend message via a
 // toast — so failures are NOT silent.
 // =============================================================================
+import { BackButtonComponent } from '../../../shared/back-button.component';
 @Component({
   selector: 'app-buyer-catalog',
   standalone: true,
-  imports: [CommonModule, FormsModule, DecimalPipe],
+  imports: [BackButtonComponent, CommonModule, FormsModule, DecimalPipe],
   template: `
+    <div class="page-top-bar"><app-back-button></app-back-button></div>
     <div class="border border-[#ddc8f5] rounded-lg p-3">
       <p class="text-xs text-gray-500 mb-3">
         {{ catalogType === 'supply'

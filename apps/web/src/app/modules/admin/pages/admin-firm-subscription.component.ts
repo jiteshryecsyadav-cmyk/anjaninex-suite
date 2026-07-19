@@ -51,11 +51,13 @@ const MODULE_LIST: Array<{ key: string; label: string; icon: string; description
   { key: 'priority_support', label: 'Priority Support', icon: '💬', description: 'Priority WhatsApp/phone support queue' }
 ];
 
+import { BackButtonComponent } from '../../../shared/back-button.component';
 @Component({
   selector: 'app-admin-firm-subscription',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, DecimalPipe],
+  imports: [BackButtonComponent, CommonModule, FormsModule, RouterLink, DecimalPipe],
   template: `
+    <div class="page-top-bar"><app-back-button></app-back-button></div>
     <div class="max-w-5xl mx-auto p-6">
       <!-- Header -->
       <div class="flex items-center justify-between mb-6">

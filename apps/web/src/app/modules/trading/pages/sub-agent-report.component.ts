@@ -10,11 +10,13 @@ interface SubAgentRow {
   billDate: string; taxable: number; subAgent?: string; subAgentPct: number; share: number;
 }
 
+import { BackButtonComponent } from '../../../shared/back-button.component';
 @Component({
   selector: 'app-sub-agent-report',
   standalone: true,
-  imports: [CommonModule, FormsModule, DecimalPipe],
+  imports: [BackButtonComponent, CommonModule, FormsModule, DecimalPipe],
   template: `
+    <div class="page-top-bar"><app-back-button></app-back-button></div>
   <div style="padding:16px">
     <h2 style="font-weight:800;color:#1B2E5C;font-size:20px;margin-bottom:2px">🧾 Sub-Agent Report</h2>
     <p style="color:#6B7280;font-size:13px;margin-bottom:14px">Buyer ke sub-agent ka bill-wise hissa (taxable × sub-agent%). Date range chuno.</p>

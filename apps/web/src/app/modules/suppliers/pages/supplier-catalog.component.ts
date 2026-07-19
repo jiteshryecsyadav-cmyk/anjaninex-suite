@@ -4,11 +4,13 @@ import { FormsModule } from '@angular/forms';
 import { environment } from '../../../../environments/environment';
 import { SuppliersService, SupplierCategory, Variety } from '../services/suppliers.service';
 
+import { BackButtonComponent } from '../../../shared/back-button.component';
 @Component({
   selector: 'app-supplier-catalog',
   standalone: true,
-  imports: [CommonModule, FormsModule, DecimalPipe],
+  imports: [BackButtonComponent, CommonModule, FormsModule, DecimalPipe],
   template: `
+    <div class="page-top-bar"><app-back-button></app-back-button></div>
     <div class="border border-[#ddc8f5] rounded-lg p-3">
       <p class="text-xs text-gray-500 mb-3">Category ke andar variety banao (jaise "Cotton 60-60 plain"). Har variety me photo + rate add karo.</p>
 

@@ -14,11 +14,13 @@ interface MyReq {
   note: string | null; status: string; createdAt: string | null; reviewNote: string | null;
 }
 
+import { BackButtonComponent } from '../../shared/back-button.component';
 @Component({
   selector: 'app-pay-recharge',
   standalone: true,
-  imports: [CommonModule, FormsModule, DatePipe],
+  imports: [BackButtonComponent, CommonModule, FormsModule, DatePipe],
   template: `
+    <div class="page-top-bar"><app-back-button></app-back-button></div>
     <!-- BYOK: AI scan recharge — firm apne provider ke console par khud recharge kare -->
     @if (ai(); as a) {
       <div class="card">

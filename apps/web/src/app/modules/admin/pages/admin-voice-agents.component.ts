@@ -12,11 +12,13 @@ interface VoiceAgent {
   _saving?: boolean; _open?: boolean;
 }
 
+import { BackButtonComponent } from '../../../shared/back-button.component';
 @Component({
   standalone: true,
   selector: 'app-admin-voice-agents',
-  imports: [CommonModule, FormsModule],
+  imports: [BackButtonComponent, CommonModule, FormsModule],
   template: `
+    <div class="page-top-bar"><app-back-button></app-back-button></div>
   <div class="wrap">
     <h1>🎙️ Voice Agents</h1>
     <p class="sub">Har firm ka AI phone agent yahan se set karo — naam, script, awaaz, bhasha, ON/OFF.

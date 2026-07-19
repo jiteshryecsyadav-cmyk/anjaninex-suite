@@ -19,11 +19,13 @@ interface Plan {
  *  2. Saare plans; current highlight
  *  3. Wallet se plan kharido/change karo — turant switch, limits update
  */
+import { BackButtonComponent } from '../../shared/back-button.component';
 @Component({
   selector: 'app-plans-page',
   standalone: true,
-  imports: [CommonModule, DecimalPipe, RouterLink],
+  imports: [BackButtonComponent, CommonModule, DecimalPipe, RouterLink],
   template: `
+    <div class="page-top-bar"><app-back-button></app-back-button></div>
     <div class="max-w-6xl mx-auto p-4">
       <div class="mb-6 text-center">
         <h2 class="font-display font-black text-3xl text-[#1B2E5C]">💎 Plans & Usage</h2>

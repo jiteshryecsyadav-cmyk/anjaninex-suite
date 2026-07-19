@@ -7,11 +7,13 @@ import { ToastService } from '../../../shared/toast.service';
 
 // Buyer Agent (del-credere): buyer ka agent jo payment guarantee leta hai aur
 // hamari commission ka X% leta hai. Ye screen: master + earned/paid/balance + payout + ledger.
+import { BackButtonComponent } from '../../../shared/back-button.component';
 @Component({
   selector: 'app-buyer-agents',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [BackButtonComponent, CommonModule, FormsModule],
   template: `
+    <div class="page-top-bar"><app-back-button></app-back-button></div>
     <div class="wrap">
       <div class="head">
         <div>

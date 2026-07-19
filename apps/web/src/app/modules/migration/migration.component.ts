@@ -11,11 +11,13 @@ interface TabDef {
   columns: string;
 }
 
+import { BackButtonComponent } from '../../shared/back-button.component';
 @Component({
   selector: 'app-migration',
   standalone: true,
-  imports: [CommonModule],
+  imports: [BackButtonComponent, CommonModule],
   template: `
+    <div class="page-top-bar"><app-back-button></app-back-button></div>
     <div class="max-w-5xl mx-auto">
 
       <!-- Header -->

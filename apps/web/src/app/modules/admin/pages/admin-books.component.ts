@@ -14,11 +14,13 @@ interface AllLedger { id: string; name: string; subGroup: string; head: string; 
 interface SubGroupOpt { id: string; name: string; }
 interface VLine { ledgerId: string | null; drCr: 'Dr' | 'Cr'; amount: number | null; }
 
+import { BackButtonComponent } from '../../../shared/back-button.component';
 @Component({
   selector: 'app-admin-books',
   standalone: true,
-  imports: [CommonModule, FormsModule, DecimalPipe],
+  imports: [BackButtonComponent, CommonModule, FormsModule, DecimalPipe],
   template: `
+    <div class="page-top-bar"><app-back-button></app-back-button></div>
     <div class="max-w-6xl mx-auto p-4">
       <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
         <div>

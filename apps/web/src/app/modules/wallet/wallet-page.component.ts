@@ -11,11 +11,13 @@ import { WalletIconComponent } from '../../shared/wallet-icon.component';
 
 type TxFilter = 'all' | 'recharge' | 'debit' | 'subscription' | 'refund';
 
+import { BackButtonComponent } from '../../shared/back-button.component';
 @Component({
   selector: 'app-wallet-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, DatePipe, RechargeModalComponent, PayRechargeComponent, WalletIconComponent],
+  imports: [BackButtonComponent, CommonModule, FormsModule, DatePipe, RechargeModalComponent, PayRechargeComponent, WalletIconComponent],
   template: `
+    <div class="page-top-bar"><app-back-button></app-back-button></div>
     <div class="wrap">
 
       <!-- Header -->

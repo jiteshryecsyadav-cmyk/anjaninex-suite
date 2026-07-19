@@ -4,11 +4,13 @@ import { FormsModule } from '@angular/forms';
 import jsPDF from 'jspdf';
 import { CredilService, CredilStatus, CredilRequestRow, CredilReport, CredilRequestResult } from '../credil.service';
 
+import { BackButtonComponent } from '../../../shared/back-button.component';
 @Component({
   standalone: true,
   selector: 'app-credil-page',
-  imports: [CommonModule, FormsModule],
+  imports: [BackButtonComponent, CommonModule, FormsModule],
   template: `
+    <div class="page-top-bar"><app-back-button></app-back-button></div>
   <div class="credil-wrap">
     <div class="hdr">
       <div>

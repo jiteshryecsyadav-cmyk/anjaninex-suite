@@ -11,11 +11,13 @@ interface Handover {
 }
 
 // Cheque Handover Register: supplier ka staff kaunsa cheque le gaya, kab, commission paid/unpaid.
+import { BackButtonComponent } from '../../../shared/back-button.component';
 @Component({
   selector: 'app-cheque-register',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [BackButtonComponent, CommonModule, FormsModule],
   template: `
+    <div class="page-top-bar"><app-back-button></app-back-button></div>
   <div class="p-6 max-w-7xl mx-auto">
     <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
       <div>

@@ -3,11 +3,13 @@ import { CommonModule, DecimalPipe, DatePipe } from '@angular/common';
 import { AuthService } from '../../core/auth/auth.service';
 import { AgentService, AgentDashboard } from './agent.service';
 
+import { BackButtonComponent } from '../../shared/back-button.component';
 @Component({
   selector: 'app-agent-dashboard',
   standalone: true,
-  imports: [CommonModule, DecimalPipe, DatePipe],
+  imports: [BackButtonComponent, CommonModule, DecimalPipe, DatePipe],
   template: `
+    <div class="page-top-bar"><app-back-button></app-back-button></div>
     <div class="ag-shell">
       <!-- Minimal header (no firm sidebar) -->
       <header class="ag-header">

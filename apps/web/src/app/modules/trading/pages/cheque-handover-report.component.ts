@@ -11,11 +11,13 @@ interface HO {
 }
 
 // Cheque Handover Report (read-only): supplier + buyer + cheque + kis ne liya + commission paid/unpaid.
+import { BackButtonComponent } from '../../../shared/back-button.component';
 @Component({
   selector: 'app-cheque-handover-report',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [BackButtonComponent, CommonModule, FormsModule],
   template: `
+    <div class="page-top-bar"><app-back-button></app-back-button></div>
   <div class="p-6 max-w-7xl mx-auto">
     <div class="mb-4">
       <h2 class="font-display font-black text-2xl text-[#5c1a8b]">Cheque Handover Report</h2>

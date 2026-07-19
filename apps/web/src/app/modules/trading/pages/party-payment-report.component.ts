@@ -5,11 +5,13 @@ import { TradingService, BillListItem } from '../services/trading.service';
 
 // Supplier vs Buyer report: date range me Paid / Unpaid / Partly-paid.
 // Har bill me Supplier + Buyer dono naam. Alag-alag search field (naam / GST).
+import { BackButtonComponent } from '../../../shared/back-button.component';
 @Component({
   selector: 'app-party-payment-report',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [BackButtonComponent, CommonModule, FormsModule],
   template: `
+    <div class="page-top-bar"><app-back-button></app-back-button></div>
   <div class="p-6 max-w-7xl mx-auto">
     <div class="mb-4">
       <h2 class="font-display font-black text-2xl text-[#5c1a8b]">Supplier vs Buyer Report</h2>

@@ -16,11 +16,13 @@ interface GRow {
 // - Group Wise: har group ki firms + outstanding + bills. Expand = firm breakup + bill-wise detail
 //   (Supplier, Buyer, Supp. Bill No, Items, Net, Paid, Unpaid).
 // - City Wise: wahi data city ke hisaab se (sirf group wali firms).
+import { BackButtonComponent } from '../../../shared/back-button.component';
 @Component({
   selector: 'app-party-group-report',
   standalone: true,
-  imports: [CommonModule, RouterLink, RouterLinkActive],
+  imports: [BackButtonComponent, CommonModule, RouterLink, RouterLinkActive],
   template: `
+    <div class="page-top-bar"><app-back-button></app-back-button></div>
   <div class="p-6 max-w-7xl mx-auto">
     <!-- Reports sub-nav (Reports section jaisa hi) -->
     <div class="flex gap-1 mb-6 border-b border-[#ddc8f5] flex-wrap">

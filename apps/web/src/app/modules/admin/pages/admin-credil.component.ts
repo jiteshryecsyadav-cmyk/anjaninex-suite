@@ -3,11 +3,13 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { CredilService } from '../../credil/credil.service';
 
+import { BackButtonComponent } from '../../../shared/back-button.component';
 @Component({
   standalone: true,
   selector: 'app-admin-credil',
-  imports: [CommonModule, FormsModule],
+  imports: [BackButtonComponent, CommonModule, FormsModule],
   template: `
+    <div class="page-top-bar"><app-back-button></app-back-button></div>
   <div class="wrap">
     <h1>CREDIL — Admin</h1>
     <p class="sub">Report requests approve karo, rate card set karo, aur firms ke liye feature ON/OFF karo.</p>

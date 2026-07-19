@@ -11,11 +11,13 @@ import { amountInWords } from '../../../shared/amount-in-words.util';
  * - Har plan ka per-firm variable cost editable; fixed monthly cost editable
  * - "Firms count" daalo → margin, break-even, monthly + annual profit live
  */
+import { BackButtonComponent } from '../../../shared/back-button.component';
 @Component({
   selector: 'app-admin-roi-calculator',
   standalone: true,
-  imports: [CommonModule, FormsModule, DecimalPipe, RouterLink],
+  imports: [BackButtonComponent, CommonModule, FormsModule, DecimalPipe, RouterLink],
   template: `
+    <div class="page-top-bar"><app-back-button></app-back-button></div>
   <div class="max-w-6xl mx-auto p-4">
     <a routerLink="/admin/dashboard" class="text-sm text-[#5c1a8b] hover:underline">← Admin Dashboard</a>
     <h2 class="font-black text-2xl text-[#1B2E5C] mt-2 mb-1">📊 Break-even & Profit Calculator</h2>

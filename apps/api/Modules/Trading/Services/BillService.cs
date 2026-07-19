@@ -192,7 +192,7 @@ public class BillService : IBillService
             await using var gcmd = new NpgsqlCommand(@"
                 SELECT pp.id,
                        COALESCE(c.purchase_disc_pct, g.purchase_disc_pct, 0) AS pdisc
-                FROM core.party_profiles pp
+                FROM trading.party_profiles pp
                 JOIN core.contacts c ON c.id = pp.contact_id
                 LEFT JOIN core.party_groups g
                        ON g.firm_id = c.firm_id AND g.name = c.group_name

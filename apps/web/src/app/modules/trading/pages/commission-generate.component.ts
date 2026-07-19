@@ -152,6 +152,24 @@ interface CommRow {
               <td></td>
               <td class="px-3 py-3 text-right font-mono font-bold text-yellow-300">{{ selectedCommTotal() | number:'1.2-2' }}</td>
               <td></td>
+              <td class="px-3 py-3 text-right font-mono font-bold text-[#C4B5FD]">{{ totalDiscRecovery() | number:'1.2-2' }}</td>
+              <td class="px-3 py-3 text-right font-mono font-black">{{ grandWithRecovery() | number:'1.2-2' }}</td>
+              <td></td>
+            </tr>
+            <tr class="border-t border-white/25 text-xs">
+              <td colspan="6" class="px-3 py-2 text-right font-bold uppercase opacity-80">Supplier se lena hai →</td>
+              <td colspan="2" class="px-3 py-2 text-right">
+                <span class="opacity-75">Total Commission</span><br>
+                <strong class="font-mono text-yellow-300 text-sm">₹{{ selectedCommTotal() | number:'1.2-2' }}</strong>
+              </td>
+              <td colspan="1" class="px-3 py-2 text-right">
+                <span class="opacity-75">Disc Recovery</span><br>
+                <strong class="font-mono text-[#C4B5FD] text-sm">₹{{ totalDiscRecovery() | number:'1.2-2' }}</strong>
+              </td>
+              <td colspan="2" class="px-3 py-2 text-right bg-[#DC2626]">
+                <span class="opacity-90">GRAND TOTAL</span><br>
+                <strong class="font-mono text-sm font-black">₹{{ grandWithRecovery() | number:'1.2-2' }}</strong>
+              </td>
             </tr>
           </tfoot>
         </table>
@@ -195,36 +213,41 @@ interface CommRow {
         </div>
 
         <!-- summary strip -->
-        <div class="mt-4 grid grid-cols-4 gap-3">
+        <div class="mt-4 grid grid-cols-5 gap-3">
           <div class="summary-card">
             <div class="sc-lbl">SELECTED BILLS</div>
             <div class="sc-val">{{ selectedCount() }}</div>
           </div>
           <div class="summary-card">
-            <div class="sc-lbl">COMMISSION (BASE)</div>
+            <div class="sc-lbl">TOTAL COMMISSION</div>
             <div class="sc-val">₹{{ selectedCommTotal() | number:'1.2-2' }}</div>
           </div>
           <div class="summary-card">
             <div class="sc-lbl">GST &#64; {{ gstPct }}%</div>
             <div class="sc-val text-[#1B2E5C]">₹{{ gstAmt() | number:'1.2-2' }}</div>
           </div>
+          <div class="summary-card" style="border-color:#7C3AED;">
+            <div class="sc-lbl" style="color:#7C3AED;">TOTAL DISC RECOVERY</div>
+            <div class="sc-val text-[#7C3AED]">₹{{ totalDiscRecovery() | number:'1.2-2' }}</div>
+            <div style="font-size:10px;font-weight:600;color:#7C3AED;opacity:.75;">purchase − sales disc</div>
+          </div>
           <div class="summary-card bg-[#DC2626] text-white">
             <div class="sc-lbl text-white opacity-90">GRAND TOTAL</div>
-            <div class="sc-val">₹{{ grandTotal() | number:'1.2-2' }}</div>
-            @if (roundOff() !== 0) {
+            <div class="sc-val">₹{{ payableTotal() | number:'1.2-2' }}</div>
+            @if (payRoundOff() !== 0) {
               <div style="font-size:11px;font-weight:600;margin-top:4px;color:#FCD34D;">
-                R/Off: {{ roundOff() >= 0 ? '+' : '-' }} ₹ {{ (roundOff() < 0 ? -roundOff() : roundOff()) | number:'1.2-2' }}
+                R/Off: {{ payRoundOff() >= 0 ? '+' : '-' }} ₹ {{ (payRoundOff() < 0 ? -payRoundOff() : payRoundOff()) | number:'1.2-2' }}
               </div>
             }
-            @if (roundOff() !== 0) {
+            @if (payRoundOff() !== 0) {
               <div style="font-size:14px;font-weight:900;margin-top:4px;padding-top:6px;border-top:1px solid rgba(255,255,255,0.3);">
-                NET: ₹{{ netAmount() | number:'1.0-0' }}
+                NET: ₹{{ netPayable() | number:'1.0-0' }}
               </div>
             }
           </div>
         </div>
-        @if (netAmount() > 0) {
-          <div class="cg-amt-words">📝 {{ words(netAmount()) }}</div>
+        @if (netPayable() > 0) {
+          <div class="cg-amt-words">📝 {{ words(netPayable()) }}</div>
         }
       </div>
     } @else if (fetched()) {
@@ -262,7 +285,7 @@ interface CommRow {
               <div class="chip"><span>BILLS</span><strong>{{ selectedCount() }}</strong></div>
               <div class="chip"><span>BILLS AMOUNT</span><strong>₹ {{ selectedBillTotal() | number:'1.0-0' }}</strong></div>
               <div class="chip"><span>COMM. BASE</span><strong>{{ commBase === 'before' ? 'Before GST' : 'After GST' }}</strong></div>
-              <div class="chip chip-accent"><span>TOTAL PAYABLE</span><strong>₹ {{ netAmount() | number:'1.0-0' }}</strong></div>
+              <div class="chip chip-accent"><span>TOTAL PAYABLE</span><strong>₹ {{ netPayable() | number:'1.0-0' }}</strong></div>
             </div>
 
             <!-- FROM / TO -->
@@ -298,6 +321,9 @@ interface CommRow {
                   <th class="t-right">BILL AMT (₹)</th>
                   <th class="t-right">COMM %</th>
                   <th class="t-right">COMM AMT (₹)</th>
+                  <th class="t-right">BAL DISC %</th>
+                  <th class="t-right">DISC AMT (₹)</th>
+                  <th class="t-right">ROW TOTAL (₹)</th>
                 </tr>
               </thead>
               <tbody>
@@ -310,6 +336,9 @@ interface CommRow {
                     <td class="t-right mono">{{ r.bill.total | number:'1.2-2' }}</td>
                     <td class="t-right">{{ r.commPct }}%</td>
                     <td class="t-right mono">{{ r.commAmt | number:'1.2-2' }}</td>
+                    <td class="t-right">{{ balDisc(r) | number:'1.0-2' }}%</td>
+                    <td class="t-right mono">{{ discAmt(r) | number:'1.2-2' }}</td>
+                    <td class="t-right mono"><strong>{{ (r.commAmt + discAmt(r)) | number:'1.2-2' }}</strong></td>
                   </tr>
                 }
               </tbody>
@@ -319,6 +348,9 @@ interface CommRow {
                   <td class="t-right mono"><strong>{{ selectedBillTotal() | number:'1.2-2' }}</strong></td>
                   <td></td>
                   <td class="t-right mono"><strong>{{ selectedCommTotal() | number:'1.2-2' }}</strong></td>
+                  <td></td>
+                  <td class="t-right mono"><strong>{{ totalDiscRecovery() | number:'1.2-2' }}</strong></td>
+                  <td class="t-right mono"><strong>{{ grandWithRecovery() | number:'1.2-2' }}</strong></td>
                 </tr>
               </tfoot>
             </table>
@@ -329,17 +361,20 @@ interface CommRow {
                 <div class="bank-h">BANK DETAILS</div>
                 <div class="bank-l">Bank: ICICI Bank &nbsp;·&nbsp; A/C: XXXXXXXXXXX</div>
                 <div class="bank-l">IFSC: ICIC0000XXX &nbsp;·&nbsp; Surat Branch</div>
-                <div class="bank-words">In words: {{ words(netAmount()) }}</div>
+                <div class="bank-words">In words: {{ words(netPayable()) }}</div>
               </div>
               <div class="inv-pay">
-                <div class="pay-row"><span>Commission Base</span><strong>₹ {{ selectedCommTotal() | number:'1.2-2' }}</strong></div>
+                <div class="pay-row"><span>Total Commission</span><strong>₹ {{ selectedCommTotal() | number:'1.2-2' }}</strong></div>
                 <div class="pay-row"><span>GST &#64; {{ gstPct }}% (SAC 997119)</span><strong>₹ {{ gstAmt() | number:'1.2-2' }}</strong></div>
-                @if (roundOff() !== 0) {
-                  <div class="pay-row"><span>Round Off</span><strong>{{ roundOff() >= 0 ? '+' : '−' }} ₹ {{ (roundOff() < 0 ? -roundOff() : roundOff()) | number:'1.2-2' }}</strong></div>
+                @if (totalDiscRecovery() > 0) {
+                  <div class="pay-row"><span>Total Disc Recovery (purchase − sales)</span><strong>₹ {{ totalDiscRecovery() | number:'1.2-2' }}</strong></div>
+                }
+                @if (payRoundOff() !== 0) {
+                  <div class="pay-row"><span>Round Off</span><strong>{{ payRoundOff() >= 0 ? '+' : '−' }} ₹ {{ (payRoundOff() < 0 ? -payRoundOff() : payRoundOff()) | number:'1.2-2' }}</strong></div>
                 }
                 <div class="pay-total">
                   <span>TOTAL PAYABLE</span>
-                  <strong>₹ {{ netAmount() | number:'1.0-0' }}</strong>
+                  <strong>₹ {{ netPayable() | number:'1.0-0' }}</strong>
                 </div>
               </div>
             </div>
@@ -727,8 +762,13 @@ export class CommissionGenerateComponent {
   balDisc(r: CommRow): number { return +((r.bill as any).entitledDisc || 0); }
   discAmt(r: CommRow): number { return +(this.baseAmt(r.bill) * this.balDisc(r) / 100).toFixed(2); }
   // Totals — GST sirf COMMISSION par (disc recovery service nahi hai)
-  totalDiscRecovery = computed(() => this.selectedRows().reduce((s, r) => s + this.discAmt(r), 0));
-  grandWithRecovery = computed(() => this.selectedCommTotal() + this.totalDiscRecovery());
+  totalDiscRecovery = computed(() => +(this.selectedRows().reduce((s, r) => s + this.discAmt(r), 0)).toFixed(2));
+  /** Table footer ka Grand Total = commission + disc recovery (GST se pehle). */
+  grandWithRecovery = computed(() => +(this.selectedCommTotal() + this.totalDiscRecovery()).toFixed(2));
+  /** Supplier se kul lena = commission + GST + disc recovery. */
+  payableTotal = computed(() => +(this.grandTotal() + this.totalDiscRecovery()).toFixed(2));
+  netPayable = computed(() => Math.round(this.payableTotal()));
+  payRoundOff = computed(() => +(this.netPayable() - this.payableTotal()).toFixed(2));
 
   recomputeRow(r: CommRow) {
     r.commAmt = +(this.baseAmt(r.bill) * r.commPct / 100).toFixed(2);

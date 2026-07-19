@@ -36,8 +36,10 @@ public class SubAgentReportController : TradingControllerBase
                    COALESCE(b.taxable_amount,0) AS taxable,
                    buy.sub_agent, COALESCE(buy.sub_agent_pct,0) AS sub_pct
             FROM trading.bills b
-            JOIN core.contacts buy ON buy.id = b.buyer_party_id
-            LEFT JOIN core.contacts sup ON sup.id = b.party_id
+            JOIN trading.party_profiles bpp ON bpp.id = b.buyer_party_id
+            JOIN core.contacts buy          ON buy.id = bpp.contact_id
+            LEFT JOIN trading.party_profiles spp ON spp.id = b.party_id
+            LEFT JOIN core.contacts sup          ON sup.id = spp.contact_id
             WHERE b.firm_id = @f
               AND b.bill_date BETWEEN @from AND @to
               AND b.status <> 'cancelled'
@@ -145,9 +147,13 @@ public class SubAgentReportController : TradingControllerBase
         });
     }
 
-    public record IncentiveRow(string Buyer, decimal Taxable, decimal IncentivePct, decimal Incentive);
+    public record IncentiveRow(
+        string Buyer, decimal Taxable, decimal IncentivePct, decimal Incentive,
+        decimal BalDiscPct, decimal CapAmount, bool Capped, decimal RawIncentive);
 
     // Buyer-wise YEARLY incentive report — period ka total taxable × buyer ka incentive%.
+    // CAP: Sales Disc + Incentive <= Purchase Disc. Yaani incentive us bache hue
+    // (purchase − sales) disc se zyada nahi ho sakta — warna agency ko ulta nuksaan.
     [HttpGet("incentive")]
     public async Task<IActionResult> Incentive([FromQuery] DateOnly from, [FromQuery] DateOnly to)
     {
@@ -156,16 +162,33 @@ public class SubAgentReportController : TradingControllerBase
         var conn = (NpgsqlConnection)_db.Database.GetDbConnection();
         if (conn.State != ConnectionState.Open) await conn.OpenAsync();
         await using var cmd = new NpgsqlCommand(@"
+            WITH bill_disc AS (
+                SELECT b.buyer_party_id,
+                       b.taxable_amount,
+                       -- supplier ka committed purchase disc% (party pe ho to wo, warna group ka)
+                       COALESCE(sup.purchase_disc_pct, sg.purchase_disc_pct, 0) AS pur_pct,
+                       -- bill pe buyer ko diya gaya sales disc%
+                       CASE WHEN b.taxable_amount > 0
+                            THEN ROUND(b.discount / b.taxable_amount * 100, 2) ELSE 0 END AS sales_pct
+                FROM trading.bills b
+                JOIN trading.party_profiles spp ON spp.id = b.party_id
+                JOIN core.contacts sup       ON sup.id = spp.contact_id
+                LEFT JOIN core.party_groups sg
+                       ON sg.firm_id = sup.firm_id AND sg.name = sup.group_name
+                WHERE b.firm_id = @f
+                  AND b.bill_date BETWEEN @from AND @to
+                  AND b.status <> 'cancelled'
+                  AND b.buyer_party_id IS NOT NULL
+            )
             SELECT buy.display_name,
-                   COALESCE(SUM(b.taxable_amount),0) AS taxable,
-                   COALESCE(buy.incentive_pct,0) AS pct
-            FROM trading.bills b
-            JOIN core.party_profiles pp ON pp.id = b.buyer_party_id
-            JOIN core.contacts buy ON buy.id = pp.contact_id
-            WHERE b.firm_id = @f
-              AND b.bill_date BETWEEN @from AND @to
-              AND b.status <> 'cancelled'
-              AND COALESCE(buy.incentive_pct,0) > 0
+                   COALESCE(SUM(d.taxable_amount),0)                                    AS taxable,
+                   COALESCE(buy.incentive_pct,0)                                        AS pct,
+                   -- bacha hua disc, rupaye me (per-bill, kyunki har bill ka % alag ho sakta hai)
+                   COALESCE(SUM(d.taxable_amount * GREATEST(d.pur_pct - d.sales_pct, 0) / 100),0) AS cap_amt
+            FROM bill_disc d
+            JOIN trading.party_profiles pp ON pp.id = d.buyer_party_id
+            JOIN core.contacts buy      ON buy.id = pp.contact_id
+            WHERE COALESCE(buy.incentive_pct,0) > 0
             GROUP BY buy.display_name, buy.incentive_pct
             ORDER BY taxable DESC", conn);
         cmd.Parameters.AddWithValue("f", firmId);
@@ -174,16 +197,26 @@ public class SubAgentReportController : TradingControllerBase
         await using var r = await cmd.ExecuteReaderAsync();
         while (await r.ReadAsync())
         {
+            var buyer   = r.GetString(0);
             var taxable = r.GetDecimal(1);
-            var pct = r.GetDecimal(2);
-            rows.Add(new IncentiveRow(r.GetString(0), taxable, pct, Math.Round(taxable * pct / 100m, 2)));
+            var pct     = r.GetDecimal(2);
+            var capAmt  = Math.Round(r.GetDecimal(3), 2);
+
+            var raw    = Math.Round(taxable * pct / 100m, 2);
+            var final  = Math.Min(raw, capAmt);          // ← CAP lagta hai yahin
+            var capped = final < raw;
+            var balPct = taxable > 0 ? Math.Round(capAmt / taxable * 100m, 2) : 0m;
+
+            rows.Add(new IncentiveRow(buyer, taxable, pct, final, balPct, capAmt, capped, raw));
         }
         return Ok(new
         {
             rows,
-            totalTaxable = rows.Sum(x => x.Taxable),
-            totalIncentive = rows.Sum(x => x.Incentive),
-            count = rows.Count
+            totalTaxable      = rows.Sum(x => x.Taxable),
+            totalIncentive    = rows.Sum(x => x.Incentive),
+            totalRawIncentive = rows.Sum(x => x.RawIncentive),
+            cappedCount       = rows.Count(x => x.Capped),
+            count             = rows.Count
         });
     }
 }

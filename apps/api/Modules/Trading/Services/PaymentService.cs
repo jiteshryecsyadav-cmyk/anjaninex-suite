@@ -527,7 +527,7 @@ public class PaymentService : IPaymentService
             await using var gcmd = new NpgsqlCommand(@"
                 SELECT pp.id, g.discount_normal, g.discount_exhibition, g.discount_special,
                        g.exhibition_from, g.exhibition_to
-                FROM core.party_profiles pp
+                FROM trading.party_profiles pp
                 JOIN core.contacts c ON c.id = pp.contact_id
                 JOIN core.party_groups g ON g.firm_id = c.firm_id AND g.name = c.group_name
                 WHERE pp.id = ANY(@ids)", conn2);

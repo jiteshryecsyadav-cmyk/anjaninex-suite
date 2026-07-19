@@ -419,10 +419,15 @@ public class BillExtractorService : IBillExtractorService
         // 3. P0-5 fix: DEBIT WALLET FIRST (atomic, SELECT FOR UPDATE inside).
         //    Mock mode = free, otherwise pre-debit. Refund on confirmed failure with idempotency key.
         //    usingFirmKey → firm apni key se scan kar rahi (BYOK) → hamesha real call, wallet charge nahi.
-        //    platform key → global Gemini settings ke hisab se mock/real + wallet charge.
+        //    KEY HAI TO REAL SCAN: Admin panel (platform.billing_settings) me key set hote hi
+        //    real scan chalega — appsettings ka Enabled/EnableMockResponses sirf tab lagta hai
+        //    jab DB me koi key na ho (warna admin key lagane ke baad bhi mock aata tha — bug).
+        var hasDbKey = !string.IsNullOrEmpty(dbKeys.Gemini) || !string.IsNullOrEmpty(dbKeys.Claude)
+                       || !string.IsNullOrEmpty(dbKeys.OpenAi) || !string.IsNullOrEmpty(dbKeys.Sarvam);
         var isMockMode = usingFirmKey
             ? false   // firm ki apni key hai → hamesha real call
-            : (!settings.Enabled || string.IsNullOrEmpty(apiKey) || settings.EnableMockResponses);
+            : string.IsNullOrEmpty(apiKey)   // chosen provider ki key hi nahi → mock hi option hai
+              || (!hasDbKey && (!settings.Enabled || settings.EnableMockResponses));
         // PER-MODEL CHARGE: har model ki apni rate (admin-editable addon_services me:
         // bill_scan_flash / _pro / _sonnet / _haiku / _gpt4o). Choice na ho to purana 'bill_scan'.
         // Charge sirf REAL scan + PLATFORM key par hota hai. BYOK (usingFirmKey) → kharcha firm

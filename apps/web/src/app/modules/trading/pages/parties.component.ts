@@ -297,6 +297,10 @@ import { LedgerStatementComponent } from '../../accounting/components/ledger-sta
                 </div>
                 @if (newType() === 'supplier' || newType() === 'both') {
                 <div>
+                  <label class="lbl">PURCHASE DISC % <small style="color:#9CA3AF">(supplier ka committed, e.g. 6)</small></label>
+                  <input formControlName="purchaseDiscPct" type="number" step="0.01" placeholder="e.g. 6" class="ip">
+                </div>
+                <div>
                   <label class="lbl">SUPPLIER TYPE</label>
                   <select formControlName="supplierType" class="ip">
                     <option value="">Select...</option>
@@ -933,6 +937,7 @@ export class PartiesComponent {
     subAgent: [''],
     subAgentPct: [''],
     incentivePct: [''],
+    purchaseDiscPct: [''],
     address: [''],
     city: [''],
     state: [''],
@@ -1176,7 +1181,8 @@ export class PartiesComponent {
       buyerAgentSharePct: (p as any).buyerAgentSharePct ?? '',
       subAgent: (p as any).subAgent ?? '',
       subAgentPct: (p as any).subAgentPct ?? '',
-      incentivePct: (p as any).incentivePct ?? ''
+      incentivePct: (p as any).incentivePct ?? '',
+      purchaseDiscPct: (p as any).purchaseDiscPct ?? ''
     });
     // Extra addresses (2nd, 3rd...) — addresses[1..] se load karo
     this.extraAddresses.clear();
@@ -1229,7 +1235,8 @@ export class PartiesComponent {
       buyerAgentSharePct: (v.buyerAgentSharePct === '' || v.buyerAgentSharePct == null) ? null : Number(v.buyerAgentSharePct),
       subAgent: v.subAgent || null,
       subAgentPct: (v.subAgentPct === '' || v.subAgentPct == null) ? null : Number(v.subAgentPct),
-      incentivePct: (v.incentivePct === '' || v.incentivePct == null) ? null : Number(v.incentivePct)
+      incentivePct: (v.incentivePct === '' || v.incentivePct == null) ? null : Number(v.incentivePct),
+      purchaseDiscPct: (v.purchaseDiscPct === '' || v.purchaseDiscPct == null) ? null : Number(v.purchaseDiscPct)
     };
     const id = this.editingId();
     const obs = id ? this.svc.updateParty(id, data) : this.svc.createParty(data);

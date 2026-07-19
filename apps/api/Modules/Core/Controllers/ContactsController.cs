@@ -130,7 +130,8 @@ public class ContactsController : ControllerBase
         decimal Commission = 0, decimal DiscountNormal = 0, decimal DiscountExhibition = 0,
         decimal DiscountSpecial = 0, string? PaymentTerms = null,
         string? Address2 = null, string? PartyType = null, string? BuyerType = null,
-        string? ExhibitionFrom = null, string? ExhibitionTo = null);
+        string? ExhibitionFrom = null, string? ExhibitionTo = null,
+        decimal PurchaseDiscPct = 0);
 
     [HttpGet("groups/detail")]
     public async Task<IActionResult> GroupDetails()
@@ -142,7 +143,8 @@ public class ContactsController : ControllerBase
         await using var cmd = new NpgsqlCommand(@"
             SELECT name, owner_name, address, mobile, whatsapp, city, pincode, state,
                    commission, discount_normal, discount_exhibition, discount_special, payment_terms,
-                   address2, party_type, buyer_type, exhibition_from, exhibition_to
+                   address2, party_type, buyer_type, exhibition_from, exhibition_to,
+                   COALESCE(purchase_disc_pct,0)
             FROM core.party_groups WHERE firm_id = @f ORDER BY name", conn);
         cmd.Parameters.AddWithValue("f", firmId);
         await using var r = await cmd.ExecuteReaderAsync();
@@ -158,7 +160,8 @@ public class ContactsController : ControllerBase
                 r.IsDBNull(13) ? null : r.GetString(13), r.IsDBNull(14) ? null : r.GetString(14),
                 r.IsDBNull(15) ? null : r.GetString(15),
                 r.IsDBNull(16) ? null : r.GetDateTime(16).ToString("yyyy-MM-dd"),
-                r.IsDBNull(17) ? null : r.GetDateTime(17).ToString("yyyy-MM-dd")));
+                r.IsDBNull(17) ? null : r.GetDateTime(17).ToString("yyyy-MM-dd"),
+                r.GetDecimal(18)));
         return Ok(list);
     }
 
@@ -174,9 +177,9 @@ public class ContactsController : ControllerBase
             INSERT INTO core.party_groups
                 (firm_id, name, owner_name, address, mobile, whatsapp, city, pincode, state,
                  commission, discount_normal, discount_exhibition, discount_special, payment_terms,
-                 address2, party_type, buyer_type, exhibition_from, exhibition_to)
+                 address2, party_type, buyer_type, exhibition_from, exhibition_to, purchase_disc_pct)
             VALUES (@f, @n, @own, @adr, @mob, @wa, @city, @pin, @st, @com, @dn, @de, @ds, @pt,
-                 @adr2, @ptype, @btype, @exf, @ext)
+                 @adr2, @ptype, @btype, @exf, @ext, @pdisc)
             ON CONFLICT (firm_id, name) DO UPDATE SET
                 owner_name = EXCLUDED.owner_name, address = EXCLUDED.address,
                 mobile = EXCLUDED.mobile, whatsapp = EXCLUDED.whatsapp,
@@ -189,7 +192,8 @@ public class ContactsController : ControllerBase
                 address2 = EXCLUDED.address2, party_type = EXCLUDED.party_type,
                 buyer_type = EXCLUDED.buyer_type,
                 exhibition_from = EXCLUDED.exhibition_from,
-                exhibition_to = EXCLUDED.exhibition_to", conn))
+                exhibition_to = EXCLUDED.exhibition_to,
+                purchase_disc_pct = EXCLUDED.purchase_disc_pct", conn))
         {
             cmd.Parameters.AddWithValue("f", firmId);
             cmd.Parameters.AddWithValue("n", name);
@@ -210,6 +214,7 @@ public class ContactsController : ControllerBase
             cmd.Parameters.AddWithValue("btype", (object?)dto.BuyerType ?? DBNull.Value);
             cmd.Parameters.AddWithValue("exf", string.IsNullOrWhiteSpace(dto.ExhibitionFrom) ? DBNull.Value : (object)DateOnly.Parse(dto.ExhibitionFrom));
             cmd.Parameters.AddWithValue("ext", string.IsNullOrWhiteSpace(dto.ExhibitionTo) ? DBNull.Value : (object)DateOnly.Parse(dto.ExhibitionTo));
+            cmd.Parameters.AddWithValue("pdisc", dto.PurchaseDiscPct);
             await cmd.ExecuteNonQueryAsync();
         }
         await SyncGroupToMembersAsync(conn, firmId, name);

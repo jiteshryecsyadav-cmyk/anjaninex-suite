@@ -1437,14 +1437,14 @@ export class PaymentReceiptComponent {
       }
       return { ...b, selected: sel, dueDate: due, actualDays: actual, earlyLate, status };
     }));
-    // 🎯 Group disc alert — bill select karte hi, agar group me zyada disc banta hai par
-    // bill pe kam laga tha, to alert + sahi disc auto-fill (CD field me).
+    // 🎯 Supplier disc recovery alert — supplier ne jitna commit kiya (6%) usme se
+    // bill pe jitna diya (3%) ghata ke jo bacha, wo agency ko recover karna hai.
     if (val) {
       const b = this.bills()[idx];
-      if (b && (b.entitledDisc || 0) > (b.disPct || 0)) {
-        const ent = b.entitledDisc;
-        this.updateBill(idx, 'disPct', ent);   // disAmt + NET AMT dobara compute
-        this.discAlert.set(`${b.dispNo || b.billNo} — group me ${ent}% discount banta hai, bill pe kam laga tha. ${ent}% auto-bhar diya.`);
+      if (b && (b.entitledDisc || 0) > 0) {
+        // ⚠️ Buyer ko auto-fill NAHI karna — ye supplier se RECOVER karne wala disc hai,
+        // jo commission bill me claim hota hai. Yaha sirf yaad-dilane wala alert.
+        this.discAlert.set(`${b.dispNo || b.billNo} — Supplier se ${b.entitledDisc}% discount lena BAAKI hai. Ye commission bill me claim karo.`);
       }
     }
     // Bill select karte hi pehli payment txn me NET AMT (selected bills ka total) auto bhar do

@@ -220,6 +220,7 @@ public class Contact
     [MaxLength(120)] public string? SubAgent { get; set; }      // buyer ka sub-agent naam (record only, no calc)
     [Column(TypeName = "numeric(6,2)")] public decimal? SubAgentPct { get; set; }  // sub-agent % (sirf report)
     [Column(TypeName = "numeric(6,2)")] public decimal? IncentivePct { get; set; } // buyer yearly incentive % (taxable par, sirf report)
+    [Column(TypeName = "numeric(6,2)")] public decimal? PurchaseDiscPct { get; set; } // SUPPLIER ka committed disc % (6%) — recovery ke liye
 
     // Buyer ka default agent (del-credere / payment guarantee) + uska commission share%.
     public Guid? BuyerAgentId { get; set; }

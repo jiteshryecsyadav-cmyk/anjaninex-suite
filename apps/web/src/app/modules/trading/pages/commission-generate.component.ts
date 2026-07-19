@@ -706,7 +706,9 @@ export class CommissionGenerateComponent {
         // (commission base = taxable; disc kam laga ho to base zyada hoga — user check kar le).
         const discBills = rows.filter(r => +((r.bill as any).entitledDisc || 0) > 0);
         if (discBills.length > 0) {
-          this.discAlert.set(`${discBills.length} bill ke buyer ko group me discount banta hai — bill pe laga hai ya nahi check karo.`);
+          const totalRec = discBills.reduce((s, r) =>
+            s + (this.baseAmt(r.bill) * +((r.bill as any).entitledDisc || 0) / 100), 0);
+          this.discAlert.set(`${discBills.length} bill me supplier se discount lena BAAKI hai — kul ₹${totalRec.toFixed(2)}. Ye commission me claim karo.`);
         }
       },
       error: (e) => {

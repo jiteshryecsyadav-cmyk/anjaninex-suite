@@ -9,6 +9,7 @@ import { BackButtonComponent } from '../../../shared/back-button.component';
 import { InDatePipe } from '../../../shared/in-date.pipe';
 import { PaginatorComponent } from '../../../shared/paginator.component';
 import { FeatureService } from '../../../shared/feature.service';
+import { ToastService } from '../../../shared/toast.service';
 
 @Component({
   selector: 'app-gr-list',
@@ -40,6 +41,13 @@ import { FeatureService } from '../../../shared/feature.service';
       <div class="card p-0 overflow-hidden">
         @if (loading()) {
           <div class="p-8 text-center text-gray-500">Loading…</div>
+        } @else if (loadError()) {
+          <div style="margin:16px;padding:14px 16px;background:#FEE2E2;border:1px solid #FCA5A5;border-radius:10px;color:#991B1B">
+            <div style="font-weight:800;margin-bottom:4px">⚠ Data load nahi ho paya</div>
+            <div style="font-size:13px;margin-bottom:10px">{{ loadError() }}</div>
+            <div style="font-size:12px;opacity:.85;margin-bottom:10px">Aapka data safe hai — ye sirf load hone me dikkat hai. Dobara koshish karein.</div>
+            <button (click)="load()" style="background:#DC2626;color:#fff;border:none;border-radius:8px;padding:8px 16px;font-weight:700;cursor:pointer">🔄 Retry</button>
+          </div>
         } @else if (grs().length === 0) {
           <div class="p-8 text-center text-gray-500">
             No goods returns yet. <a routerLink="/trading/gr/new" class="text-[#5c1a8b] underline">Create first GR</a>
@@ -118,9 +126,11 @@ import { FeatureService } from '../../../shared/feature.service';
 })
 export class GrComponent {
   private svc = inject(TradingService);
+  private toast = inject(ToastService);
   features = inject(FeatureService);
 
   grs = signal<GoodsReturnListItem[]>([]);
+  loadError = signal<string | null>(null);
   loading = signal(true);
   filterStatus = '';
   previewData = signal<PreviewData | null>(null);
@@ -201,6 +211,7 @@ export class GrComponent {
 
   load() {
     this.loading.set(true);
+    this.loadError.set(null);
     this.svc.listGoodsReturns({ status: this.filterStatus || undefined, size: 500 }).subscribe({
       next: (res) => {
         // NEWEST upar (descending) — GR no ke trailing number se
@@ -208,7 +219,12 @@ export class GrComponent {
         this.grs.set([...res.items].sort((a, b) => num(b.grNo) - num(a.grNo)));
         this.loading.set(false);
       },
-      error: () => this.loading.set(false)
+      error: (e: any) => {
+        this.loading.set(false);
+        const msg = e?.error?.error ?? e?.message ?? 'Server se data nahi aa paya';
+        this.loadError.set(msg);
+        this.toast.error('Load nahi hua: ' + msg);
+      }
     });
   }
 

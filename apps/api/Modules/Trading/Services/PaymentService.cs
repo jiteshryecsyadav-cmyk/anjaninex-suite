@@ -519,7 +519,11 @@ public class PaymentService : IPaymentService
         // Group me exhibition_from/to window ho aur bill us window me ho → exhibition disc,
         // warna max(normal, special). Payment/Commission me "kam disc" popup ke liye.
         var custIds = bills.Select(b => b.BuyerPartyId ?? b.PartyId).Distinct().ToList();
+        // ⚠️ Sajawat (enrichment) query — payment ke liye zaroori NAHI. Fail ho to sirf
+        // entitled-disc popup nahi dikhega; outstanding bills ki list phir bhi aayegi.
         var grpDisc = new Dictionary<Guid, (decimal n, decimal e, decimal s, DateOnly? ef, DateOnly? et)>();
+        try
+        {
         if (custIds.Count > 0)
         {
             var conn2 = (NpgsqlConnection)_db.Database.GetDbConnection();
@@ -537,6 +541,12 @@ public class PaymentService : IPaymentService
                 grpDisc[gr.GetGuid(0)] = (gr.GetDecimal(1), gr.GetDecimal(2), gr.GetDecimal(3),
                     gr.IsDBNull(4) ? (DateOnly?)null : DateOnly.FromDateTime(gr.GetDateTime(4)),
                     gr.IsDBNull(5) ? (DateOnly?)null : DateOnly.FromDateTime(gr.GetDateTime(5)));
+        }
+        }
+        catch (Exception ex)
+        {
+            _log.LogError(ex, "Group-disc lookup fail hua — outstanding bills bina entitled-disc ke bheje ja rahe hain");
+            grpDisc.Clear();
         }
         decimal EntitledFor(Bill b)
         {

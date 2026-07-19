@@ -3060,8 +3060,12 @@ export class BillEntryComponent {
       transporterId: this.transporterId || undefined,
       lrNo: this.lrNo?.trim() || undefined,
       lrDate: this.lrDate || undefined,
-      // Fold Less + CD + Normal + Exhibition — backend isi total se tax-factor aur net nikalta hai
-      discount: this.foldAmt() + this.allDiscAmt(),
+      // CD + Normal + Exhibition — sirf ASLI discount (fold isme NAHI, wo alag jata hai)
+      discount: this.allDiscAmt(),
+      // Fold Less alag — gross me se discount se pehle katta hai. Isse backend
+      // "after GST" mode me bhi sahi tax-factor laga pata hai aur sales-disc %
+      // galat nahi nikalta (pehle dono ek hi field me mile hue the).
+      foldAmt: this.foldAmt(),
       // Sweet/L.S + Interest + Insurance + TCS − Bank Charge — backend total me bhi jude
       // (pehle sirf notes me jate the → list ka total entry screen se alag dikhta tha)
       otherCharges: this.sweetLs() + this.interestAmt() + (+this.insuranceAmt() || 0)

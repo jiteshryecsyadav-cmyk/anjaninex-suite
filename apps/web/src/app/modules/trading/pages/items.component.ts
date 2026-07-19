@@ -5,6 +5,7 @@ import { RouterLink, RouterLinkActive, ActivatedRoute } from '@angular/router';
 import { TradingSubNavComponent } from '../components/trading-sub-nav.component';
 import { TradingService, Item } from '../services/trading.service';
 import { BackButtonComponent } from '../../../shared/back-button.component';
+import { ToastService } from '../../../shared/toast.service';
 
 @Component({
   selector: 'app-items',
@@ -26,6 +27,14 @@ import { BackButtonComponent } from '../../../shared/back-button.component';
 
             <div class="card p-0 overflow-hidden">
         @if (loading()) { <div class="p-8 text-center text-gray-500">Loading...</div> }
+        @else if (loadError()) {
+          <div style="margin:16px;padding:14px 16px;background:#FEE2E2;border:1px solid #FCA5A5;border-radius:10px;color:#991B1B">
+            <div style="font-weight:800;margin-bottom:4px">⚠ Data load nahi ho paya</div>
+            <div style="font-size:13px;margin-bottom:10px">{{ loadError() }}</div>
+            <div style="font-size:12px;opacity:.85;margin-bottom:10px">Aapka data safe hai — ye sirf load hone me dikkat hai. Dobara koshish karein.</div>
+            <button (click)="load()" style="background:#DC2626;color:#fff;border:none;border-radius:8px;padding:8px 16px;font-weight:700;cursor:pointer">🔄 Retry</button>
+          </div>
+        }
         @else {
           <table class="w-full text-sm">
             <thead class="bg-[#f0e6ff] text-[#5c1a8b] uppercase text-xs">
@@ -75,8 +84,10 @@ export class ItemsComponent {
   private svc = inject(TradingService);
   private fb = inject(FormBuilder);
   private route = inject(ActivatedRoute);
+  private toast = inject(ToastService);
 
   items = signal<Item[]>([]);
+  loadError = signal<string | null>(null);
   loading = signal(true);
   showForm = signal(false);
   saving = signal(false);
@@ -102,9 +113,15 @@ export class ItemsComponent {
 
   load() {
     this.loading.set(true);
+    this.loadError.set(null);
     this.svc.listItems().subscribe({
       next: (items) => { this.items.set(items); this.loading.set(false); },
-      error: () => this.loading.set(false)
+      error: (e: any) => {
+        this.loading.set(false);
+        const msg = e?.error?.error ?? e?.message ?? 'Server se data nahi aa paya';
+        this.loadError.set(msg);
+        this.toast.error('Load nahi hua: ' + msg);
+      }
     });
   }
 

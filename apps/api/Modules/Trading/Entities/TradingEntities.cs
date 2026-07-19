@@ -106,6 +106,8 @@ public class Bill
 
     [Column(TypeName = "numeric(14,2)")] public decimal Subtotal { get; set; }
     [Column(TypeName = "numeric(14,2)")] public decimal Discount { get; set; }
+    /// Fold Less — gross me se discount se PEHLE ghata jata hai. Discount me shaamil nahi (migration 88).
+    [Column(TypeName = "numeric(14,2)")] public decimal FoldAmt { get; set; }
     [Column(TypeName = "numeric(14,2)")] public decimal TaxableAmount { get; set; }
     [Column(TypeName = "numeric(14,2)")] public decimal Cgst { get; set; }
     [Column(TypeName = "numeric(14,2)")] public decimal Sgst { get; set; }

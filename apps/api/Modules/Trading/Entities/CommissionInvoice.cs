@@ -30,6 +30,10 @@ public class CommissionInvoice
     [Column(TypeName = "numeric(14,2)")]
     public decimal GstAmount { get; set; }
 
+    /// Supplier se recover karne wala bacha hua discount (purchase − sales). TotalAmount me shaamil.
+    [Column(TypeName = "numeric(14,2)")]
+    public decimal DiscRecoveryAmount { get; set; }
+
     [Column(TypeName = "numeric(14,2)")]
     public decimal TotalAmount { get; set; }
 
@@ -60,6 +64,14 @@ public class CommissionInvoiceLine
 
     [Column(TypeName = "numeric(14,2)")]
     public decimal CommissionAmount { get; set; }
+
+    /// Balance disc % = purchase disc % − sales disc % (supplier se recover karna hai)
+    [Column(TypeName = "numeric(6,2)")]
+    public decimal BalDiscPct { get; set; }
+
+    /// Us bill par recoverable rupees = base × BalDiscPct / 100
+    [Column(TypeName = "numeric(14,2)")]
+    public decimal DiscAmount { get; set; }
 
     public int? SortOrder { get; set; }
 }

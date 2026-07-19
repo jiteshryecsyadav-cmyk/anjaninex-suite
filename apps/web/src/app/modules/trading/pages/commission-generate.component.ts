@@ -702,6 +702,8 @@ export class CommissionGenerateComponent {
   }
 
   fetchBills() {
+    // Purana disc alert hatao — party/date badle to pichhla alert nahi dikhna chahiye
+    this.discAlert.set('');
     // Agar naam type kiya par dropdown se select nahi kiya -> auto-resolve
     if (!this.supplierId && this.supplierSearch.trim()) {
       const r = this.resolveTyped(this.supplierSearch);
@@ -811,6 +813,10 @@ export class CommissionGenerateComponent {
         billAmount: r.bill.total,
         commissionPct: r.commPct,
         commissionAmount: r.commAmt,
+        // Supplier se recover karne wala bacha hua discount — pehle ye sirf screen par
+        // dikhta tha aur save nahi hota tha, isliye invoice ka total kam save ho raha tha.
+        balDiscPct: this.balDisc(r),
+        discAmount: this.discAmt(r),
       })),
     };
 

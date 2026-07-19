@@ -9,7 +9,9 @@ namespace Namokara.Api.Modules.Trading.Controllers;
 
 public record CommissionInvoiceLineDto(
     Guid BillId, string BillNo, DateOnly BillDate,
-    decimal BillAmount, decimal CommissionPct, decimal CommissionAmount);
+    decimal BillAmount, decimal CommissionPct, decimal CommissionAmount,
+    // Supplier se recover karne wala bacha hua discount (purchase % − sales %)
+    decimal BalDiscPct = 0, decimal DiscAmount = 0);
 
 public record CreateCommissionInvoiceDto(
     Guid PartyId,
@@ -22,7 +24,8 @@ public record CommissionInvoiceListDto(
     Guid Id, string InvoiceNo, DateOnly InvoiceDate,
     Guid PartyId, string PartyName,
     decimal GrossAmount, decimal CommissionAmount, decimal GstAmount, decimal TotalAmount,
-    int BillCount, string Status, DateTimeOffset CreatedAt);
+    int BillCount, string Status, DateTimeOffset CreatedAt,
+    decimal DiscRecoveryAmount = 0);
 
 public record CommissionInvoiceDetailDto(
     Guid Id, string InvoiceNo, DateOnly InvoiceDate,
@@ -30,7 +33,8 @@ public record CommissionInvoiceDetailDto(
     decimal CommissionPct, decimal GrossAmount, decimal CommissionAmount,
     decimal GstPct, decimal GstAmount, decimal TotalAmount,
     string Status, string? Notes,
-    List<CommissionInvoiceLineDto> Lines);
+    List<CommissionInvoiceLineDto> Lines,
+    decimal DiscRecoveryAmount = 0);
 
 [Authorize]
 [ModuleAccess("commission")]   // 🔒 Backend gate
@@ -85,7 +89,8 @@ public class CommissionInvoicesController : ControllerBase
             i.PartyId, parties.GetValueOrDefault(i.PartyId, "—"),
             i.GrossAmount, i.CommissionAmount, i.GstAmount, i.TotalAmount,
             lineCounts.GetValueOrDefault(i.Id, 0),
-            i.Status, i.CreatedAt
+            i.Status, i.CreatedAt,
+            i.DiscRecoveryAmount
         )).ToList();
 
         return Ok(result);
@@ -109,7 +114,8 @@ public class CommissionInvoicesController : ControllerBase
             .OrderBy(l => l.SortOrder)
             .Select(l => new CommissionInvoiceLineDto(
                 l.BillId, l.BillNo, l.BillDate,
-                l.BillAmount, l.CommissionPct, l.CommissionAmount))
+                l.BillAmount, l.CommissionPct, l.CommissionAmount,
+                l.BalDiscPct, l.DiscAmount))
             .ToListAsync();
 
         return Ok(new CommissionInvoiceDetailDto(
@@ -118,7 +124,8 @@ public class CommissionInvoicesController : ControllerBase
             inv.CommissionPct, inv.GrossAmount, inv.CommissionAmount,
             inv.GstPct, inv.GstAmount, inv.TotalAmount,
             inv.Status, inv.Notes,
-            lines
+            lines,
+            inv.DiscRecoveryAmount
         ));
     }
 
@@ -161,9 +168,12 @@ public class CommissionInvoicesController : ControllerBase
 
             var grossAmount = dto.Lines.Sum(l => l.BillAmount);
             var commissionAmount = dto.Lines.Sum(l => l.CommissionAmount);
-            var gstAmount = Math.Round(commissionAmount * dto.GstPct / 100m, 2);
+            var gstAmount = Math.Round(commissionAmount * dto.GstPct / 100m, 2, MidpointRounding.AwayFromZero);
+            // Disc recovery = supplier ka bacha hua discount. GST sirf commission par lagta hai
+            // (recovery service nahi, reimbursement hai) — par supplier se lena isme bhi hai.
+            var discRecovery = Math.Round(dto.Lines.Sum(l => l.DiscAmount), 2, MidpointRounding.AwayFromZero);
             // Round-off: final invoice amount poore rupee me (e.g. 907.70 -> 908).
-            var totalAmount = Math.Round(commissionAmount + gstAmount, 0, MidpointRounding.AwayFromZero);
+            var totalAmount = Math.Round(commissionAmount + gstAmount + discRecovery, 0, MidpointRounding.AwayFromZero);
 
             // Header + lines must be atomic, and the invoice number must be race-safe
             // (the old CountAsync+1 gave duplicate numbers under concurrent requests).
@@ -191,6 +201,7 @@ public class CommissionInvoicesController : ControllerBase
                     CommissionAmount = commissionAmount,
                     GstPct = dto.GstPct,
                     GstAmount = gstAmount,
+                    DiscRecoveryAmount = discRecovery,
                     TotalAmount = totalAmount,
                     Status = "pending",
                     Notes = dto.Notes,
@@ -214,6 +225,8 @@ public class CommissionInvoicesController : ControllerBase
                         BillAmount = line.BillAmount,
                         CommissionPct = line.CommissionPct,
                         CommissionAmount = line.CommissionAmount,
+                        BalDiscPct = line.BalDiscPct,
+                        DiscAmount = line.DiscAmount,
                         SortOrder = sort++
                     });
                 }
@@ -248,7 +261,7 @@ public class CommissionInvoicesController : ControllerBase
                         var aid = bi.BuyerAgentId.Value;
                         var pct = bi.BuyerAgentSharePct ?? agentDefaults.GetValueOrDefault(aid, 0m);
                         if (pct <= 0) continue;
-                        var sh = Math.Round(line.CommissionAmount * pct / 100m, 2);
+                        var sh = Math.Round(line.CommissionAmount * pct / 100m, 2, MidpointRounding.AwayFromZero);
                         (decimal gross, decimal share, decimal pct, HashSet<string> buyers) cur;
                         if (!acc.TryGetValue(aid, out cur)) cur = (0m, 0m, pct, new HashSet<string>());
                         cur.gross += line.CommissionAmount;

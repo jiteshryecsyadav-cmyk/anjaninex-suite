@@ -60,7 +60,7 @@ public class SubAgentReportController : TradingControllerBase
                 r.IsDBNull(2) ? null : r.GetString(2),
                 r.GetString(3), DateOnly.FromDateTime(r.GetDateTime(4)),
                 taxable, r.IsDBNull(6) ? null : r.GetString(6),
-                pct, Math.Round(taxable * pct / 100m, 2)));
+                pct, Math.Round(taxable * pct / 100m, 2, MidpointRounding.AwayFromZero)));
         }
         return Ok(new
         {
@@ -168,8 +168,10 @@ public class SubAgentReportController : TradingControllerBase
                        -- supplier ka committed purchase disc% (party pe ho to wo, warna group ka)
                        COALESCE(sup.purchase_disc_pct, sg.purchase_disc_pct, 0) AS pur_pct,
                        -- bill pe buyer ko diya gaya sales disc%
-                       CASE WHEN b.taxable_amount > 0
-                            THEN ROUND(b.discount / b.taxable_amount * 100, 2) ELSE 0 END AS sales_pct
+                       -- base = subtotal − fold (discount se PEHLE ka gross), taxable_amount NAHI
+                       CASE WHEN (b.subtotal - COALESCE(b.fold_amt,0)) > 0
+                            THEN ROUND(b.discount / (b.subtotal - COALESCE(b.fold_amt,0)) * 100, 2)
+                            ELSE 0 END AS sales_pct
                 FROM trading.bills b
                 JOIN trading.party_profiles spp ON spp.id = b.party_id
                 JOIN core.contacts sup       ON sup.id = spp.contact_id
@@ -200,12 +202,12 @@ public class SubAgentReportController : TradingControllerBase
             var buyer   = r.GetString(0);
             var taxable = r.GetDecimal(1);
             var pct     = r.GetDecimal(2);
-            var capAmt  = Math.Round(r.GetDecimal(3), 2);
+            var capAmt  = Math.Round(r.GetDecimal(3), 2, MidpointRounding.AwayFromZero);
 
-            var raw    = Math.Round(taxable * pct / 100m, 2);
+            var raw    = Math.Round(taxable * pct / 100m, 2, MidpointRounding.AwayFromZero);
             var final  = Math.Min(raw, capAmt);          // ← CAP lagta hai yahin
             var capped = final < raw;
-            var balPct = taxable > 0 ? Math.Round(capAmt / taxable * 100m, 2) : 0m;
+            var balPct = taxable > 0 ? Math.Round(capAmt / taxable * 100m, 2, MidpointRounding.AwayFromZero) : 0m;
 
             rows.Add(new IncentiveRow(buyer, taxable, pct, final, balPct, capAmt, capped, raw));
         }

@@ -1378,6 +1378,9 @@ export class PaymentReceiptComponent {
   async loadBills() {
     if (!this.supplierId && !this.buyerId) return;
     this.billsError.set('');
+    // Purana disc alert hatao — warna party badalne par pichhli party ka bill no
+    // aur % chipka reh jata tha aur galat party par claim ho sakta tha.
+    this.discAlert.set('');
     const partyId = this.buyerId || this.supplierId;
     try {
       // Supplier + Buyer dono select hain to sirf US PAIR ke beech ke bills

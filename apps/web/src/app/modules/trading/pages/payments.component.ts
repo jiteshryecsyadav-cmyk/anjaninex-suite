@@ -9,6 +9,7 @@ import { InvoicePreviewComponent, PreviewData } from '../../../shared/invoice-pr
 import { InDatePipe } from '../../../shared/in-date.pipe';
 import { PaginatorComponent } from '../../../shared/paginator.component';
 import { FeatureService } from '../../../shared/feature.service';
+import { ToastService } from '../../../shared/toast.service';
 
 @Component({
   selector: 'app-payments',
@@ -52,6 +53,14 @@ import { FeatureService } from '../../../shared/feature.service';
 
       <div class="card p-0 overflow-hidden">
         @if (loading()) { <div class="p-8 text-center text-gray-500">Loading...</div> }
+        @else if (loadError()) {
+          <div style="margin:16px;padding:14px 16px;background:#FEE2E2;border:1px solid #FCA5A5;border-radius:10px;color:#991B1B">
+            <div style="font-weight:800;margin-bottom:4px">⚠ Data load nahi ho paya</div>
+            <div style="font-size:13px;margin-bottom:10px">{{ loadError() }}</div>
+            <div style="font-size:12px;opacity:.85;margin-bottom:10px">Aapka data safe hai — ye sirf load hone me dikkat hai. Dobara koshish karein.</div>
+            <button (click)="load()" style="background:#DC2626;color:#fff;border:none;border-radius:8px;padding:8px 16px;font-weight:700;cursor:pointer">🔄 Retry</button>
+          </div>
+        }
         @else if (payments().length === 0) {
           <div class="p-8 text-center text-gray-500">No payments yet. <a routerLink="/trading/payments/new" class="text-[#5c1a8b] underline">Record first</a></div>
         }
@@ -136,8 +145,10 @@ import { FeatureService } from '../../../shared/feature.service';
 })
 export class PaymentsComponent {
   private svc = inject(TradingService);
+  private toast = inject(ToastService);
   features = inject(FeatureService);
   payments = signal<PaymentListItem[]>([]);
+  loadError = signal<string | null>(null);
   loading = signal(true);
   filterType = '';
   previewData = signal<PreviewData | null>(null);
@@ -301,9 +312,15 @@ export class PaymentsComponent {
 
   load() {
     this.loading.set(true);
+    this.loadError.set(null);
     this.svc.listPayments({ type: this.filterType || undefined, size: 500 }).subscribe({
       next: (res) => { this.payments.set(res.items); this.loading.set(false); },
-      error: () => this.loading.set(false)
+      error: (e: any) => {
+        this.loading.set(false);
+        const msg = e?.error?.error ?? e?.message ?? 'Server se data nahi aa paya';
+        this.loadError.set(msg);
+        this.toast.error('Load nahi hua: ' + msg);
+      }
     });
   }
 }

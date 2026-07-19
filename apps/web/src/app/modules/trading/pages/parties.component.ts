@@ -16,6 +16,7 @@ import { IndiaPincodeService } from '../../../shared/india-pincode.service';
 import { amountInWords } from '../../../shared/amount-in-words.util';
 import { AccountingService } from '../../accounting/services/accounting.service';
 import { LedgerStatementComponent } from '../../accounting/components/ledger-statement.component';
+import { ToastService } from '../../../shared/toast.service';
 
 @Component({
   selector: 'app-parties',
@@ -136,6 +137,14 @@ import { LedgerStatementComponent } from '../../accounting/components/ledger-sta
       <!-- ============ RICH TABLE ============ -->
       <div class="card p-0 overflow-hidden mt-3">
         @if (loading()) { <div class="p-8 text-center text-gray-500">Loading...</div> }
+        @else if (loadError()) {
+          <div style="margin:16px;padding:14px 16px;background:#FEE2E2;border:1px solid #FCA5A5;border-radius:10px;color:#991B1B">
+            <div style="font-weight:800;margin-bottom:4px">⚠ Data load nahi ho paya</div>
+            <div style="font-size:13px;margin-bottom:10px">{{ loadError() }}</div>
+            <div style="font-size:12px;opacity:.85;margin-bottom:10px">Aapka data safe hai — ye sirf load hone me dikkat hai. Dobara koshish karein.</div>
+            <button (click)="load()" style="background:#DC2626;color:#fff;border:none;border-radius:8px;padding:8px 16px;font-weight:700;cursor:pointer">🔄 Retry</button>
+          </div>
+        }
         @else if (filtered().length === 0) {
           <div class="p-8 text-center text-gray-500">No parties match the filters</div>
         }
@@ -819,6 +828,7 @@ export class PartiesComponent {
   private fb = inject(FormBuilder);
   private pinSvc = inject(IndiaPincodeService);
   private acctSvc = inject(AccountingService);
+  private toast = inject(ToastService);
 
   // Ledger / Khata statement modal (per-party shortcut)
   ledgerStmtId = signal<string | null>(null);
@@ -907,6 +917,7 @@ export class PartiesComponent {
   staffCount = signal(0);
 
   parties = signal<Party[]>([]);
+  loadError = signal<string | null>(null);
   loading = signal(true);
   saving = signal(false);
   showForm = signal(false);
@@ -1130,9 +1141,15 @@ export class PartiesComponent {
 
   load() {
     this.loading.set(true);
+    this.loadError.set(null);
     this.svc.listParties(this.searchQuery || undefined).subscribe({
       next: (p) => { this.parties.set(p); this.loading.set(false); },
-      error: () => this.loading.set(false)
+      error: (e: any) => {
+        this.loading.set(false);
+        const msg = e?.error?.error ?? e?.message ?? 'Server se data nahi aa paya';
+        this.loadError.set(msg);
+        this.toast.error('Load nahi hua: ' + msg);
+      }
     });
   }
 

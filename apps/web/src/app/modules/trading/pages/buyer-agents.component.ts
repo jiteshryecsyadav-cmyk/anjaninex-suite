@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../environments/environment';
+import { ToastService } from '../../../shared/toast.service';
 
 // Buyer Agent (del-credere): buyer ka agent jo payment guarantee leta hai aur
 // hamari commission ka X% leta hai. Ye screen: master + earned/paid/balance + payout + ledger.
@@ -29,6 +30,14 @@ import { environment } from '../../../../environments/environment';
       </div>
 
       @if (loading()) { <div class="empty">Loading...</div> }
+      @else if (loadError()) {
+        <div style="margin:16px 0;padding:14px 16px;background:#FEE2E2;border:1px solid #FCA5A5;border-radius:10px;color:#991B1B">
+          <div style="font-weight:800;margin-bottom:4px">⚠ Data load nahi ho paya</div>
+          <div style="font-size:13px;margin-bottom:10px">{{ loadError() }}</div>
+          <div style="font-size:12px;opacity:.85;margin-bottom:10px">Aapka data safe hai — ye sirf load hone me dikkat hai. Dobara koshish karein.</div>
+          <button (click)="load()" style="background:#DC2626;color:#fff;border:none;border-radius:8px;padding:8px 16px;font-weight:700;cursor:pointer">🔄 Retry</button>
+        </div>
+      }
       @else if (rows().length === 0) {
         <div class="empty">Abhi koi buyer agent nahi. "+ New Agent" se add karo, phir buyer master me us agent ko chuno.</div>
       } @else {
@@ -187,9 +196,11 @@ import { environment } from '../../../../environments/environment';
 })
 export class BuyerAgentsComponent implements OnInit {
   private http = inject(HttpClient);
+  private toast = inject(ToastService);
   private base = `${environment.apiUrl}/api/trading/buyer-agents`;
 
   loading = signal(true);
+  loadError = signal<string | null>(null);
   saving = signal(false);
   rows = signal<any[]>([]);
 
@@ -213,9 +224,15 @@ export class BuyerAgentsComponent implements OnInit {
 
   load() {
     this.loading.set(true);
+    this.loadError.set(null);
     this.http.get<any[]>(`${this.base}/summary`).subscribe({
       next: r => { this.rows.set(r || []); this.loading.set(false); },
-      error: () => this.loading.set(false)
+      error: (e: any) => {
+        this.loading.set(false);
+        const msg = e?.error?.error ?? e?.message ?? 'Server se data nahi aa paya';
+        this.loadError.set(msg);
+        this.toast.error('Load nahi hua: ' + msg);
+      }
     });
   }
 

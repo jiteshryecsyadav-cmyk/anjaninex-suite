@@ -115,7 +115,27 @@ public record CreateBillDto(
     List<BillLineDto> Lines,
     string? CdType = "before",     // before = GST se pehle discount | after = GST ke baad
     Guid? OrderId = null,          // jis order se bill bana — wo auto-BILLED hoga
-    decimal OtherCharges = 0);     // Sweet/L.S + Interest + Insurance − Bank Charge (net me judte hain)
+    decimal OtherCharges = 0,      // Sweet/L.S + Interest + Insurance − Bank Charge (net me judte hain)
+    decimal FoldAmt = 0);          // Fold Less — Discount me shaamil NAHI, alag bhejo (migration 88)
+
+public static class BillMath
+{
+    /// <summary>
+    /// GST kis base par lage — frontend ke cdTaxFactor se BILKUL match karta hai.
+    ///   CD "before" → fold + discount dono tax base se ghatte hain
+    ///   CD "after"  → sirf FOLD ghatta hai (discount GST ke baad lagta hai)
+    /// Dono jagah (Create + Update) yahi method use ho, taaki formula kabhi alag na ho.
+    /// </summary>
+    public static decimal ApplyCdTaxFactor(decimal totalTax, decimal subtotal,
+                                           decimal discount, decimal foldAmt, string? cdType)
+    {
+        if (subtotal <= 0 || totalTax == 0) return totalTax;
+        var deduction = cdType == "after" ? foldAmt : foldAmt + discount;
+        if (deduction <= 0) return totalTax;
+        var factor = Math.Max(0m, (subtotal - deduction) / subtotal);
+        return Math.Round(totalTax * factor, 2, MidpointRounding.AwayFromZero);
+    }
+}
 
 public class BillDuplicateException : Exception
 {
@@ -184,7 +204,12 @@ public class BillService : IBillService
 
         // SUPPLIER ka committed PURCHASE DISC % (party pe ho to wo, warna uske group ka).
         // Recoverable = purchase disc − bill pe diya sales disc → agency commission me claim karti hai.
+        // ⚠️ Ye ek SAJAWAT (enrichment) query hai — bill list ka ASLI data ise bina bhi poora hai.
+        // Isliye try/catch me hai: agar ye fail ho to sirf disc% 0 dikhega, POORI LIST GAYAB NAHI hogi.
+        // (Ek baar isi tarah ki query fail hui thi aur users ko laga saara data delete ho gaya.)
         var purchDisc = new Dictionary<Guid, decimal>();
+        try
+        {
         if (allPartyIds.Count > 0)
         {
             var gconn = (NpgsqlConnection)_db.Database.GetDbConnection();
@@ -201,6 +226,12 @@ public class BillService : IBillService
             await using var gr = await gcmd.ExecuteReaderAsync();
             while (await gr.ReadAsync())
                 purchDisc[gr.GetGuid(0)] = gr.GetDecimal(1);
+        }
+        }
+        catch (Exception ex)
+        {
+            _log.LogError(ex, "Purchase-disc lookup fail hua — bill list bina disc% ke bheji ja rahi hai");
+            purchDisc.Clear();
         }
 
         // Prepared by — login user (created_by) ka naam
@@ -228,8 +259,14 @@ public class BillService : IBillService
             var supplier = parties.GetValueOrDefault(b.PartyId);
             var buyer = b.BuyerPartyId.HasValue ? parties.GetValueOrDefault(b.BuyerPartyId.Value) : null;
             // Supplier ka committed % − bill pe diya gaya sales disc % = recoverable %
+            // NOTE: denominator SUBTOTAL hai (discount se PEHLE ka gross), TaxableAmount nahi —
+            // user bhi disc% isi base par daalta hai. TaxableAmount lene se % zyada nikalta tha
+            // aur agency har bill par kam recover karti thi.
             var pDisc = purchDisc.GetValueOrDefault(b.PartyId, 0m);
-            var salesDisc = b.TaxableAmount > 0 ? Math.Round(b.Discount / b.TaxableAmount * 100m, 2) : 0m;
+            var discBase = b.Subtotal - b.FoldAmt;   // fold gross me se pehle katta hai
+            var salesDisc = discBase > 0
+                ? Math.Round(b.Discount / discBase * 100m, 2, MidpointRounding.AwayFromZero)
+                : 0m;
             var entDisc = Math.Max(0m, pDisc - salesDisc);   // = balance disc, commission me claim
             return new BillListItemDto(
                 b.Id, b.BillType, b.BillNo, b.BillDate, b.PartyId,
@@ -373,15 +410,11 @@ public class BillService : IBillService
             //   before = GST se pehle discount → tax discounted base par (proportional)
             //   after  = GST poore par → discount total (incl GST) par
             var subtotal = dto.Lines.Sum(l => l.TaxableAmount);
-            var totalTax = dto.Lines.Sum(l => l.TotalAmount - l.TaxableAmount);
-            var cdBefore = dto.CdType != "after";
-            if (cdBefore && dto.Discount > 0 && subtotal > 0)
-            {
-                var factor = Math.Max(0, (subtotal - dto.Discount) / subtotal);
-                totalTax = Math.Round(totalTax * factor, 2);
-            }
+            var totalTax = BillMath.ApplyCdTaxFactor(
+                dto.Lines.Sum(l => l.TotalAmount - l.TaxableAmount),
+                subtotal, dto.Discount, dto.FoldAmt, dto.CdType);
             // OtherCharges = Sweet/L.S + Interest + Insurance − Bank Charge (frontend jaisa hi)
-            var total = subtotal + totalTax - dto.Discount + dto.OtherCharges + dto.RoundOff;
+            var total = subtotal + totalTax - dto.FoldAmt - dto.Discount + dto.OtherCharges + dto.RoundOff;
 
             // Correct Indian GST split: intra-state → CGST + SGST (50/50), inter-state → IGST (full)
             decimal cgst = 0, sgst = 0, igst = 0;
@@ -417,7 +450,8 @@ public class BillService : IBillService
                 DeliveryDate = dto.DeliveryDate,
                 Subtotal = subtotal,
                 Discount = dto.Discount,
-                TaxableAmount = subtotal - dto.Discount,
+                FoldAmt = dto.FoldAmt,
+                TaxableAmount = subtotal - dto.FoldAmt - dto.Discount,
                 Cgst = cgst,
                 Sgst = sgst,
                 Igst = igst,
@@ -580,11 +614,10 @@ public class BillService : IBillService
                 && branchStateCode != partyStateCode;
 
             var subtotal = dto.Lines.Sum(l => l.TaxableAmount);
-            var totalTax = dto.Lines.Sum(l => l.TotalAmount - l.TaxableAmount);
-            var cdBefore = dto.CdType != "after";
-            if (cdBefore && dto.Discount > 0 && subtotal > 0)
-                totalTax = Math.Round(totalTax * Math.Max(0, (subtotal - dto.Discount) / subtotal), 2);
-            var total = subtotal + totalTax - dto.Discount + dto.OtherCharges + dto.RoundOff;
+            var totalTax = BillMath.ApplyCdTaxFactor(
+                dto.Lines.Sum(l => l.TotalAmount - l.TaxableAmount),
+                subtotal, dto.Discount, dto.FoldAmt, dto.CdType);
+            var total = subtotal + totalTax - dto.FoldAmt - dto.Discount + dto.OtherCharges + dto.RoundOff;
             decimal cgst = 0, sgst = 0, igst = 0;
             if (isInterState) igst = totalTax; else { cgst = totalTax / 2m; sgst = totalTax / 2m; }
 
@@ -604,7 +637,8 @@ public class BillService : IBillService
             bill.DeliveryDate = dto.DeliveryDate;
             bill.Subtotal = subtotal;
             bill.Discount = dto.Discount;
-            bill.TaxableAmount = subtotal - dto.Discount;
+            bill.FoldAmt = dto.FoldAmt;
+            bill.TaxableAmount = subtotal - dto.FoldAmt - dto.Discount;
             bill.Cgst = cgst; bill.Sgst = sgst; bill.Igst = igst;
             bill.RoundOff = dto.RoundOff;
             bill.Total = total;

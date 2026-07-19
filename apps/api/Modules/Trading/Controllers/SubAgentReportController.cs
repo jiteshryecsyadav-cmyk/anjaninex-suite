@@ -69,6 +69,82 @@ public class SubAgentReportController : TradingControllerBase
         });
     }
 
+    public record LedgerRow(DateOnly Date, string Kind, string Ref, string? VoucherNo,
+        decimal Debit, decimal Credit, decimal Balance, string? Remark);
+
+    // PARTY LEDGER — opening balance + sales(debit) & receipts(credit) chronological + running balance.
+    [HttpGet("party-ledger")]
+    public async Task<IActionResult> PartyLedger([FromQuery] Guid partyId,
+                                                 [FromQuery] DateOnly from, [FromQuery] DateOnly to)
+    {
+        var firmId = CurrentFirmId;
+        var conn = (NpgsqlConnection)_db.Database.GetDbConnection();
+        if (conn.State != ConnectionState.Open) await conn.OpenAsync();
+
+        // 1) Opening balance (period se pehle ka: sales − receipts)
+        decimal opening;
+        await using (var ocmd = new NpgsqlCommand(@"
+            SELECT COALESCE((SELECT SUM(b.total) FROM trading.bills b
+                             WHERE b.firm_id=@f AND b.buyer_party_id=@p
+                               AND b.bill_date < @from AND b.status <> 'cancelled'),0)
+                 - COALESCE((SELECT SUM(pm.amount) FROM trading.payments pm
+                             WHERE pm.firm_id=@f AND pm.party_id=@p
+                               AND pm.payment_date < @from AND pm.deleted_at IS NULL),0)", conn))
+        {
+            ocmd.Parameters.AddWithValue("f", firmId);
+            ocmd.Parameters.AddWithValue("p", partyId);
+            ocmd.Parameters.AddWithValue("from", from);
+            opening = Convert.ToDecimal(await ocmd.ExecuteScalarAsync() ?? 0m);
+        }
+
+        // 2) Period ki entries — bills (Dr) + receipts (Cr), date-wise
+        var rows = new List<LedgerRow>();
+        var running = opening;
+        await using (var cmd = new NpgsqlCommand(@"
+            SELECT b.bill_date AS d, 'SALES' AS kind,
+                   COALESCE(NULLIF(b.supplier_bill_no,''), b.bill_no) AS ref,
+                   b.bill_no AS vno, b.total AS debit, 0::numeric AS credit, ''::text AS remark
+            FROM trading.bills b
+            WHERE b.firm_id=@f AND b.buyer_party_id=@p
+              AND b.bill_date BETWEEN @from AND @to AND b.status <> 'cancelled'
+            UNION ALL
+            SELECT pm.payment_date, UPPER(pm.payment_mode), pm.payment_no, pm.reference_no,
+                   0::numeric, pm.amount,
+                   COALESCE((SELECT 'BILL NOS. ' || string_agg(bb.bill_no, ', ')
+                             FROM trading.payment_allocations pa
+                             JOIN trading.bills bb ON bb.id = pa.bill_id
+                             WHERE pa.payment_id = pm.id), COALESCE(pm.notes,''))
+            FROM trading.payments pm
+            WHERE pm.firm_id=@f AND pm.party_id=@p
+              AND pm.payment_date BETWEEN @from AND @to AND pm.deleted_at IS NULL
+            ORDER BY d", conn))
+        {
+            cmd.Parameters.AddWithValue("f", firmId);
+            cmd.Parameters.AddWithValue("p", partyId);
+            cmd.Parameters.AddWithValue("from", from);
+            cmd.Parameters.AddWithValue("to", to);
+            await using var r = await cmd.ExecuteReaderAsync();
+            while (await r.ReadAsync())
+            {
+                var dr = r.GetDecimal(4); var cr = r.GetDecimal(5);
+                running += dr - cr;
+                rows.Add(new LedgerRow(DateOnly.FromDateTime(r.GetDateTime(0)), r.GetString(1),
+                    r.IsDBNull(2) ? "" : r.GetString(2), r.IsDBNull(3) ? null : r.GetString(3),
+                    dr, cr, running, r.IsDBNull(6) ? null : r.GetString(6)));
+            }
+        }
+
+        return Ok(new
+        {
+            opening,
+            rows,
+            totalDebit = rows.Sum(x => x.Debit),
+            totalCredit = rows.Sum(x => x.Credit),
+            closing = running,
+            count = rows.Count
+        });
+    }
+
     public record IncentiveRow(string Buyer, decimal Taxable, decimal IncentivePct, decimal Incentive);
 
     // Buyer-wise YEARLY incentive report — period ka total taxable × buyer ka incentive%.

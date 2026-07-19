@@ -75,6 +75,10 @@ export const reportsRoutes: Routes = [
     loadComponent: () => import('../trading/pages/incentive-report.component').then(m => m.IncentiveReportComponent)
   },
   {
+    path: 'party-ledger',
+    loadComponent: () => import('../trading/pages/party-ledger-report.component').then(m => m.PartyLedgerReportComponent)
+  },
+  {
     path: 'scan',
     loadComponent: () => import('./pages/reports-pages.components').then(m => m.ScanReportComponent)
   },

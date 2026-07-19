@@ -68,4 +68,46 @@ public class SubAgentReportController : TradingControllerBase
             count = rows.Count
         });
     }
+
+    public record IncentiveRow(string Buyer, decimal Taxable, decimal IncentivePct, decimal Incentive);
+
+    // Buyer-wise YEARLY incentive report — period ka total taxable × buyer ka incentive%.
+    [HttpGet("incentive")]
+    public async Task<IActionResult> Incentive([FromQuery] DateOnly from, [FromQuery] DateOnly to)
+    {
+        var firmId = CurrentFirmId;
+        var rows = new List<IncentiveRow>();
+        var conn = (NpgsqlConnection)_db.Database.GetDbConnection();
+        if (conn.State != ConnectionState.Open) await conn.OpenAsync();
+        await using var cmd = new NpgsqlCommand(@"
+            SELECT buy.display_name,
+                   COALESCE(SUM(b.taxable_amount),0) AS taxable,
+                   COALESCE(buy.incentive_pct,0) AS pct
+            FROM trading.bills b
+            JOIN core.party_profiles pp ON pp.id = b.buyer_party_id
+            JOIN core.contacts buy ON buy.id = pp.contact_id
+            WHERE b.firm_id = @f
+              AND b.bill_date BETWEEN @from AND @to
+              AND b.status <> 'cancelled'
+              AND COALESCE(buy.incentive_pct,0) > 0
+            GROUP BY buy.display_name, buy.incentive_pct
+            ORDER BY taxable DESC", conn);
+        cmd.Parameters.AddWithValue("f", firmId);
+        cmd.Parameters.AddWithValue("from", from);
+        cmd.Parameters.AddWithValue("to", to);
+        await using var r = await cmd.ExecuteReaderAsync();
+        while (await r.ReadAsync())
+        {
+            var taxable = r.GetDecimal(1);
+            var pct = r.GetDecimal(2);
+            rows.Add(new IncentiveRow(r.GetString(0), taxable, pct, Math.Round(taxable * pct / 100m, 2)));
+        }
+        return Ok(new
+        {
+            rows,
+            totalTaxable = rows.Sum(x => x.Taxable),
+            totalIncentive = rows.Sum(x => x.Incentive),
+            count = rows.Count
+        });
+    }
 }

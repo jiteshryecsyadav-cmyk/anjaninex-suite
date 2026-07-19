@@ -44,6 +44,7 @@ public record PartyDto(
     string? WaExtraRole = null,
     string? SubAgent = null,
     decimal? SubAgentPct = null,
+    decimal? IncentivePct = null,
     string? Addresses = null);
 
 public record CreatePartyDto(
@@ -79,6 +80,7 @@ public record CreatePartyDto(
     string? WaExtraRole = null,
     string? SubAgent = null,
     decimal? SubAgentPct = null,
+    decimal? IncentivePct = null,
     List<PartyAddressDto>? ExtraAddresses = null);
 
 // =============================================================================
@@ -181,7 +183,7 @@ public class PartyService : IPartyService
                 x.c.PanNumber, x.c.GroupName, x.c.BuyerAgentId, x.c.BuyerAgentSharePct,
                 x.p.DiscountNormal, x.p.DiscountExhibition, x.p.DiscountSpecial,
                 x.c.SupplierType, x.c.BuyerType, x.c.UdyamNo, x.c.MsmeType, x.c.WaExtra, x.c.WaExtraRole,
-                x.c.SubAgent, x.c.SubAgentPct,
+                x.c.SubAgent, x.c.SubAgentPct, x.c.IncentivePct,
                 x.c.Addresses);
         }).ToList();
     }
@@ -410,6 +412,7 @@ public class PartyService : IPartyService
         if (dto.WaExtraRole != null) contact.WaExtraRole = string.IsNullOrWhiteSpace(dto.WaExtraRole) ? null : dto.WaExtraRole.Trim();
         if (dto.SubAgent != null) contact.SubAgent = string.IsNullOrWhiteSpace(dto.SubAgent) ? null : dto.SubAgent.Trim();
         if (dto.SubAgentPct != null) contact.SubAgentPct = dto.SubAgentPct;
+        if (dto.IncentivePct != null) contact.IncentivePct = dto.IncentivePct;
         contact.BuyerAgentId = dto.BuyerAgentId;
         contact.BuyerAgentSharePct = dto.BuyerAgentSharePct;
         contact.EmailPrimary = dto.Email?.Trim();
@@ -539,6 +542,7 @@ public class PartyService : IPartyService
             WaExtraRole = string.IsNullOrWhiteSpace(dto.WaExtraRole) ? null : dto.WaExtraRole.Trim(),
             SubAgent = string.IsNullOrWhiteSpace(dto.SubAgent) ? null : dto.SubAgent.Trim(),
             SubAgentPct = dto.SubAgentPct,
+            IncentivePct = dto.IncentivePct,
             BuyerAgentId = dto.BuyerAgentId,
             BuyerAgentSharePct = dto.BuyerAgentSharePct,
             EmailPrimary = dto.Email?.Trim(),

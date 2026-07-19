@@ -71,6 +71,10 @@ export const reportsRoutes: Routes = [
     loadComponent: () => import('../trading/pages/sub-agent-report.component').then(m => m.SubAgentReportComponent)
   },
   {
+    path: 'incentive',
+    loadComponent: () => import('../trading/pages/incentive-report.component').then(m => m.IncentiveReportComponent)
+  },
+  {
     path: 'scan',
     loadComponent: () => import('./pages/reports-pages.components').then(m => m.ScanReportComponent)
   },

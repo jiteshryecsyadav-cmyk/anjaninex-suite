@@ -116,10 +116,10 @@ interface C { id: string; displayName: string; gst?: string | null; groupName?: 
               </select></div>
             <div><label class="text-[10px] text-gray-500 block">NORMAL DISC %</label>
               <input [(ngModel)]="gDiscN" type="number" step="0.1" min="0" class="input" placeholder="0"></div>
-            <div><label class="text-[10px] text-gray-500 block">EXHIBITION DISC %</label>
-              <input [(ngModel)]="gDiscE" type="number" step="0.1" min="0" class="input" placeholder="0"></div>
             <div><label class="text-[10px] text-gray-500 block">SPECIAL DISC %</label>
               <input [(ngModel)]="gDiscS" type="number" step="0.1" min="0" class="input" placeholder="0"></div>
+            <div><label class="text-[10px] text-gray-500 block">EXHIBITION DISC %</label>
+              <input [(ngModel)]="gDiscE" type="number" step="0.1" min="0" class="input" placeholder="0"></div>
             <div><label class="text-[10px] text-gray-500 block">EXHIBITION FROM</label>
               <input [(ngModel)]="gExhFrom" type="date" class="input"></div>
             <div><label class="text-[10px] text-gray-500 block">EXHIBITION TO</label>

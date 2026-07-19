@@ -217,6 +217,8 @@ public class Contact
     [MaxLength(30)] public string? MsmeType { get; set; }       // micro/small/medium/trader/...
     [MaxLength(20)] public string? WaExtra { get; set; }        // 3rd WhatsApp number
     [MaxLength(20)] public string? WaExtraRole { get; set; }    // accountant/manager/staff
+    [MaxLength(120)] public string? SubAgent { get; set; }      // buyer ka sub-agent naam (record only, no calc)
+    [Column(TypeName = "numeric(6,2)")] public decimal? SubAgentPct { get; set; }  // sub-agent % (sirf report)
 
     // Buyer ka default agent (del-credere / payment guarantee) + uska commission share%.
     public Guid? BuyerAgentId { get; set; }

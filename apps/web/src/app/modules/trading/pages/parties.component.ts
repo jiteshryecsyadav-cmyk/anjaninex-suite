@@ -367,6 +367,14 @@ import { LedgerStatementComponent } from '../../accounting/components/ledger-sta
                   <label class="lbl">AGENT SHARE % <small style="color:#9CA3AF">(hamari commission ka)</small></label>
                   <input formControlName="buyerAgentSharePct" type="number" step="0.01" placeholder="e.g. 25" class="ip">
                 </div>
+                <div>
+                  <label class="lbl">SUB AGENT <small style="color:#9CA3AF">(buyer ka)</small></label>
+                  <input formControlName="subAgent" placeholder="Sub-agent ka naam" class="ip">
+                </div>
+                <div>
+                  <label class="lbl">SUB AGENT % <small style="color:#9CA3AF">(sirf report — koi effect nahi)</small></label>
+                  <input formControlName="subAgentPct" type="number" step="0.01" placeholder="e.g. 1" class="ip">
+                </div>
                 }
                 <div class="col-span-3">
                   <label class="lbl">ADDRESS</label>
@@ -918,6 +926,8 @@ export class PartiesComponent {
     extraAddresses: this.fb.array([]),
     buyerAgentId: [''],
     buyerAgentSharePct: [''],
+    subAgent: [''],
+    subAgentPct: [''],
     address: [''],
     city: [''],
     state: [''],
@@ -1158,7 +1168,9 @@ export class PartiesComponent {
       supplierType: (p as any).supplierType ?? '', buyerType: (p as any).buyerType ?? '',
       udyamNo: (p as any).udyamNo ?? '', msmeType: (p as any).msmeType ?? '',
       buyerAgentId: (p as any).buyerAgentId ?? '',
-      buyerAgentSharePct: (p as any).buyerAgentSharePct ?? ''
+      buyerAgentSharePct: (p as any).buyerAgentSharePct ?? '',
+      subAgent: (p as any).subAgent ?? '',
+      subAgentPct: (p as any).subAgentPct ?? ''
     });
     // Extra addresses (2nd, 3rd...) — addresses[1..] se load karo
     this.extraAddresses.clear();
@@ -1208,7 +1220,9 @@ export class PartiesComponent {
       udyamNo: v.udyamNo || null, msmeType: v.msmeType || null,
       extraAddresses: (v.extraAddresses || []).filter((a: any) => (a.line || a.city || a.pincode || a.state)),
       buyerAgentId: v.buyerAgentId || null,
-      buyerAgentSharePct: (v.buyerAgentSharePct === '' || v.buyerAgentSharePct == null) ? null : Number(v.buyerAgentSharePct)
+      buyerAgentSharePct: (v.buyerAgentSharePct === '' || v.buyerAgentSharePct == null) ? null : Number(v.buyerAgentSharePct),
+      subAgent: v.subAgent || null,
+      subAgentPct: (v.subAgentPct === '' || v.subAgentPct == null) ? null : Number(v.subAgentPct)
     };
     const id = this.editingId();
     const obs = id ? this.svc.updateParty(id, data) : this.svc.createParty(data);

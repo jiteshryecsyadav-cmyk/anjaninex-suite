@@ -1,5 +1,6 @@
 using System.Data;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using Namokara.Api.Infrastructure.Persistence;
 using Namokara.Api.Modules.Accounting.Entities;
 using Namokara.Api.Modules.Trading.Entities;
@@ -181,6 +182,27 @@ public class BillService : IBillService
                              select new { p.Id, c.DisplayName, c.GstNumber, c.GroupName })
                             .ToDictionaryAsync(x => x.Id, x => new { x.DisplayName, x.GstNumber, x.GroupName });
 
+        // Buyer group entitled disc (bill date ke hisaab se) — commission/payment popup ke liye
+        var grpDisc = new Dictionary<Guid, (decimal n, decimal e, decimal s, DateOnly? ef, DateOnly? et)>();
+        if (allPartyIds.Count > 0)
+        {
+            var gconn = (NpgsqlConnection)_db.Database.GetDbConnection();
+            if (gconn.State != ConnectionState.Open) await gconn.OpenAsync();
+            await using var gcmd = new NpgsqlCommand(@"
+                SELECT pp.id, g.discount_normal, g.discount_exhibition, g.discount_special,
+                       g.exhibition_from, g.exhibition_to
+                FROM core.party_profiles pp
+                JOIN core.contacts c ON c.id = pp.contact_id
+                JOIN core.party_groups g ON g.firm_id = c.firm_id AND g.name = c.group_name
+                WHERE pp.id = ANY(@ids)", gconn);
+            gcmd.Parameters.AddWithValue("ids", allPartyIds.ToArray());
+            await using var gr = await gcmd.ExecuteReaderAsync();
+            while (await gr.ReadAsync())
+                grpDisc[gr.GetGuid(0)] = (gr.GetDecimal(1), gr.GetDecimal(2), gr.GetDecimal(3),
+                    gr.IsDBNull(4) ? (DateOnly?)null : DateOnly.FromDateTime(gr.GetDateTime(4)),
+                    gr.IsDBNull(5) ? (DateOnly?)null : DateOnly.FromDateTime(gr.GetDateTime(5)));
+        }
+
         // Prepared by — login user (created_by) ka naam
         var creatorIds = rawItems.Select(b => b.CreatedBy).Distinct().ToList();
         var creators = await _db.Users.AsNoTracking()
@@ -205,6 +227,14 @@ public class BillService : IBillService
         {
             var supplier = parties.GetValueOrDefault(b.PartyId);
             var buyer = b.BuyerPartyId.HasValue ? parties.GetValueOrDefault(b.BuyerPartyId.Value) : null;
+            var custId = b.BuyerPartyId ?? b.PartyId;
+            decimal entDisc = 0m;
+            if (grpDisc.TryGetValue(custId, out var gd))
+            {
+                bool inExh = gd.e > 0 && gd.ef.HasValue && gd.et.HasValue
+                             && b.BillDate >= gd.ef.Value && b.BillDate <= gd.et.Value;
+                entDisc = inExh ? gd.e : Math.Max(gd.n, gd.s);
+            }
             return new BillListItemDto(
                 b.Id, b.BillType, b.BillNo, b.BillDate, b.PartyId,
                 supplier?.DisplayName ?? "—",
@@ -225,7 +255,8 @@ public class BillService : IBillService
                 AdvanceExtra: advanceByBill.GetValueOrDefault(b.Id, 0m),
                 SupplierBillNo: b.SupplierBillNo,
                 PartyGroup: supplier?.GroupName,
-                BuyerGroup: buyer?.GroupName);
+                BuyerGroup: buyer?.GroupName,
+                EntitledDisc: entDisc);
         }).ToList();
 
         return (items, total);

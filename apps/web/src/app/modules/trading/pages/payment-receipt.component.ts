@@ -68,6 +68,16 @@ interface PartyBehavior {
   standalone: true,
   imports: [CommonModule, FormsModule, RouterLink, RouterLinkActive, DecimalPipe, BackButtonComponent, InDatePipe, InvoicePreviewComponent],
   template: `
+    <!-- 🚨 Group-disc blinking alert -->
+    @if (discAlert()) {
+      <div class="disc-alert-overlay" (click)="discAlert.set('')">
+        <div class="disc-alert-box" (click)="$event.stopPropagation()">
+          <div class="disc-alert-light">🚨</div>
+          <div class="disc-alert-msg">{{ discAlert() }}</div>
+          <button class="disc-alert-ok" (click)="discAlert.set('')">OK</button>
+        </div>
+      </div>
+    }
     <div class="max-w-7xl mx-auto">
       <div class="page-top-bar"><app-back-button></app-back-button></div>
 
@@ -708,6 +718,13 @@ interface PartyBehavior {
     </div>
   `,
   styles: [`
+    @keyframes discBlink { 0%,100%{opacity:1} 50%{opacity:.25} }
+    @keyframes discPulse { 0%,100%{box-shadow:0 0 0 0 rgba(220,38,38,.55)} 50%{box-shadow:0 0 0 14px rgba(220,38,38,0)} }
+    .disc-alert-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:9999}
+    .disc-alert-box{background:#fff;border:3px solid #DC2626;border-radius:16px;padding:22px 26px;max-width:420px;text-align:center;animation:discPulse 1s infinite}
+    .disc-alert-light{font-size:44px;animation:discBlink .6s infinite}
+    .disc-alert-msg{margin:10px 0 16px;font-weight:700;color:#1B2E5C;font-size:15px;line-height:1.4}
+    .disc-alert-ok{background:#DC2626;color:#fff;border:none;border-radius:8px;padding:9px 30px;font-weight:800;cursor:pointer}
     /* ============ Anjaninex BRAND ============ */
     :host { display: block; background: #FAF7F0; min-height: 100vh; padding: 16px 0; }
 
@@ -1348,6 +1365,7 @@ export class PaymentReceiptComponent {
 
   // ===== BILL PICKER POPUP =====
   billPickerOpen = signal(false);
+  discAlert = signal<string>('');   // group-disc blinking alert message
   openBillPicker() {
     if (!this.supplierId && !this.buyerId) {
       alert('Pehle Supplier aur Buyer select karo');
@@ -1426,7 +1444,7 @@ export class PaymentReceiptComponent {
       if (b && (b.entitledDisc || 0) > (b.disPct || 0)) {
         const ent = b.entitledDisc;
         this.updateBill(idx, 'disPct', ent);   // disAmt + NET AMT dobara compute
-        setTimeout(() => alert(`⚠️ ${b.dispNo || b.billNo}\nIs party ke group me ${ent}% discount banta hai — bill pe kam laga tha.\n${ent}% auto-bhar diya gaya hai.`), 40);
+        this.discAlert.set(`${b.dispNo || b.billNo} — group me ${ent}% discount banta hai, bill pe kam laga tha. ${ent}% auto-bhar diya.`);
       }
     }
     // Bill select karte hi pehli payment txn me NET AMT (selected bills ka total) auto bhar do

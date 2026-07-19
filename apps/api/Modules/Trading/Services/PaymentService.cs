@@ -525,11 +525,12 @@ public class PaymentService : IPaymentService
             var conn2 = (NpgsqlConnection)_db.Database.GetDbConnection();
             if (conn2.State != ConnectionState.Open) await conn2.OpenAsync();
             await using var gcmd = new NpgsqlCommand(@"
-                SELECT c.id, g.discount_normal, g.discount_exhibition, g.discount_special,
+                SELECT pp.id, g.discount_normal, g.discount_exhibition, g.discount_special,
                        g.exhibition_from, g.exhibition_to
-                FROM core.contacts c
+                FROM core.party_profiles pp
+                JOIN core.contacts c ON c.id = pp.contact_id
                 JOIN core.party_groups g ON g.firm_id = c.firm_id AND g.name = c.group_name
-                WHERE c.id = ANY(@ids)", conn2);
+                WHERE pp.id = ANY(@ids)", conn2);
             gcmd.Parameters.AddWithValue("ids", custIds.ToArray());
             await using var gr = await gcmd.ExecuteReaderAsync();
             while (await gr.ReadAsync())

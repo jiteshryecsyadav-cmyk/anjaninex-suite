@@ -24,6 +24,15 @@ interface CommRow {
   standalone: true,
   imports: [CommonModule, FormsModule, RouterLink, DecimalPipe, TradingSubNavComponent, BackButtonComponent, InDatePipe],
   template: `
+  @if (discAlert()) {
+    <div class="disc-alert-overlay" (click)="discAlert.set('')">
+      <div class="disc-alert-box" (click)="$event.stopPropagation()">
+        <div class="disc-alert-light">🚨</div>
+        <div class="disc-alert-msg">{{ discAlert() }}</div>
+        <button class="disc-alert-ok" (click)="discAlert.set('')">OK</button>
+      </div>
+    </div>
+  }
   <div class="max-w-7xl mx-auto">
     <div class="page-top-bar"><app-back-button></app-back-button></div>
 
@@ -355,6 +364,13 @@ interface CommRow {
   </div>
   `,
   styles: [`
+    @keyframes discBlink { 0%,100%{opacity:1} 50%{opacity:.25} }
+    @keyframes discPulse { 0%,100%{box-shadow:0 0 0 0 rgba(220,38,38,.55)} 50%{box-shadow:0 0 0 14px rgba(220,38,38,0)} }
+    .disc-alert-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:9999}
+    .disc-alert-box{background:#fff;border:3px solid #DC2626;border-radius:16px;padding:22px 26px;max-width:420px;text-align:center;animation:discPulse 1s infinite}
+    .disc-alert-light{font-size:44px;animation:discBlink .6s infinite}
+    .disc-alert-msg{margin:10px 0 16px;font-weight:700;color:#1B2E5C;font-size:15px;line-height:1.4}
+    .disc-alert-ok{background:#DC2626;color:#fff;border:none;border-radius:8px;padding:9px 30px;font-weight:800;cursor:pointer}
     .card { background:#fff; border:1px solid #D6DDEA; border-radius:10px; }
     .back-link { display:inline-flex; align-items:center; gap:6px; font-size:13px; font-weight:700;
       color:#1B2E5C; text-decoration:none; padding:7px 12px; border:1px solid #D6DDEA;
@@ -541,6 +557,7 @@ export class CommissionGenerateComponent {
   }
 
   rows = signal<CommRow[]>([]);
+  discAlert = signal<string>('');   // group-disc blinking alert
   fetched = signal(false);
   showPreview = signal(false);
   saving = signal(false);
@@ -685,6 +702,12 @@ export class CommissionGenerateComponent {
         }));
         this.rows.set(rows);
         this.fetched.set(true);
+        // 🎯 Group disc alert — jin bills ke buyer ko group me disc banta hai, unhe warn karo
+        // (commission base = taxable; disc kam laga ho to base zyada hoga — user check kar le).
+        const discBills = rows.filter(r => +((r.bill as any).entitledDisc || 0) > 0);
+        if (discBills.length > 0) {
+          this.discAlert.set(`${discBills.length} bill ke buyer ko group me discount banta hai — bill pe laga hai ya nahi check karo.`);
+        }
       },
       error: (e) => {
         alert('Failed to fetch bills: ' + (e?.error?.error ?? 'unknown error'));

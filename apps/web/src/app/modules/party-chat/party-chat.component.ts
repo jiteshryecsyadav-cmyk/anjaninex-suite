@@ -3,6 +3,7 @@ import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { CommonModule, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
+import { ActivatedRoute } from '@angular/router';
 import * as signalR from '@microsoft/signalr';
 import { environment } from '../../../environments/environment';
 import { AuthService } from '../../core/auth/auth.service';
@@ -202,6 +203,7 @@ import { BackButtonComponent } from '../../shared/back-button.component';
 })
 export class PartyChatComponent {
   private http = inject(HttpClient);
+  private route = inject(ActivatedRoute);   // deep-link (?partyId=...) padhne ke liye
   private auth = inject(AuthService);
   private trading = inject(TradingService);
   private toast = inject(ToastService);
@@ -337,7 +339,20 @@ export class PartyChatComponent {
 
   ngOnInit() {
     this.loadThreads();
-    this.trading.listParties().subscribe({ next: (p: any) => { this.parties = p; this.filteredParties.set(p); }, error: () => {} });
+    this.trading.listParties().subscribe({
+      next: (p: any) => {
+        this.parties = p; this.filteredParties.set(p);
+        // DEEP-LINK: /party-chat?partyId=X&msg=... — doosri screen se seedha us party
+        // ka chat khul jaye (pehle yahan aakar list me se party dhoondni padti thi).
+        const qp = this.route.snapshot.queryParamMap;
+        const pid = qp.get('partyId');
+        if (pid) {
+          const party = this.parties.find((x: any) => x.id === pid);
+          if (party) this.startChat(party, qp.get('msg') || undefined);
+        }
+      },
+      error: () => {}
+    });
     // Polling ab sirf BACKUP hai (live connection toot jaye to) — main rasta SignalR
     this.pollTimer = setInterval(() => {
       this.loadThreads();
@@ -379,12 +394,16 @@ export class PartyChatComponent {
     this.filteredParties.set(!q ? this.parties : this.parties.filter(p => (p.displayName || '').toLowerCase().includes(q)));
   }
 
-  startChat(p: any) {
+  /** prefill: deep-link se aaya message draft me bhar dete hain (bheja user hi karega). */
+  startChat(p: any, prefill?: string) {
     this.http.post<any>(`${this.base}/start`, { partyId: p.id }).subscribe({
       next: (r) => {
         this.openNew.set(false);
         this.loadThreads();
         this.openThread({ id: r.threadId, partyName: r.partyName, phone: r.phone, lastMsgAt: '', unread: 0, lastBody: null });
+        // Message apne aap NAHI bhejte — draft me daalte hain taaki user padh ke,
+        // badal ke, khud bheje. (Galti se kuch chala jana bura hoga.)
+        if (prefill) this.draft = prefill;
       },
       error: (e) => alert('⚠️ ' + (e?.error?.error ?? 'Chat start nahi hui'))
     });

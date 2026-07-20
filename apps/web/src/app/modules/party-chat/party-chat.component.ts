@@ -391,7 +391,12 @@ export class PartyChatComponent {
 
   filterParties() {
     const q = this.partySearch.toLowerCase().trim();
-    this.filteredParties.set(!q ? this.parties : this.parties.filter(p => (p.displayName || '').toLowerCase().includes(q)));
+    // Naam ke saath MOBILE NO se bhi — aksar naam ki spelling yaad nahi hoti
+    // par number saamne hota hai.
+    this.filteredParties.set(!q ? this.parties : this.parties.filter(p =>
+      (p.displayName || '').toLowerCase().includes(q) ||
+      (p.phone || '').replace(/\D/g, '').includes(q.replace(/\D/g, '') || ' ')
+    ));
   }
 
   /** prefill: deep-link se aaya message draft me bhar dete hain (bheja user hi karega). */

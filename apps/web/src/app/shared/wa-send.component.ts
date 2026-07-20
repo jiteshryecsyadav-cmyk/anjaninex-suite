@@ -33,19 +33,23 @@ import { TradingService } from '../modules/trading/services/trading.service';
       @if (open()) {
         <div class="was-pop">
           <div class="was-title">💬 Kis party ko bhejni hai?</div>
-          <input type="text" [(ngModel)]="search" (ngModelChange)="search = $event"
-                 placeholder="Party ka naam type karo" class="was-ip" autocomplete="off">
+          <input type="text" [ngModel]="search()" (ngModelChange)="onSearch($event)"
+                 placeholder="Naam ya mobile no" class="was-ip" autocomplete="off">
           @if (err()) { <div class="was-err">⚠️ {{ err() }}</div> }
           <div class="was-list">
             @for (p of shown(); track p.id) {
               <button type="button" class="was-item" (click)="pick(p)">
                 <span class="was-item-name">{{ p.displayName }}</span>
-                @if (p.city) { <span class="was-item-sub">{{ p.city }}</span> }
+                <span class="was-item-sub">
+                  {{ p.phone || 'mobile nahi' }}@if (p.city) { <span> · {{ p.city }}</span> }
+                </span>
               </button>
             }
             @if (shown().length === 0) {
               <div class="was-empty">
-                {{ search.trim() ? 'Koi party nahi mili' : 'Naam type karke dhoondo' }}
+                @if (searching()) { Dhoondh rahe hain… }
+                @else if (search().trim()) { "{{ search() }}" se koi party nahi mili }
+                @else { Naam ya mobile no type karke dhoondo }
               </div>
             }
           </div>
@@ -94,30 +98,36 @@ export class WaSendComponent {
 
   open = signal(false);
   err = signal('');
-  search = '';
+  /** SIGNAL hona zaroori hai — plain property hoti to computed ko badalne ka
+   *  pata hi nahi chalta aur list kabhi update nahi hoti (typing par kuch na hota). */
+  search = signal('');
   private parties = signal<any[]>([]);
-  private loaded = false;
+  searching = signal(false);
 
-  /** Bina naam type kiye poori list nahi dikhate — 600+ parties me scroll bekaar. */
-  shown = computed(() => {
-    const q = this.search.trim().toLowerCase();
-    if (!q) return [];
-    return this.parties()
-      .filter(p => (p.displayName || '').toLowerCase().includes(q))
-      .slice(0, 30);
-  });
+  /** Bina kuch type kiye poori list nahi dikhate — 600+ parties me scroll bekaar. */
+  shown = computed(() => (this.search().trim() ? this.parties() : []));
 
   toggle() {
     this.open.set(!this.open());
     this.err.set('');
-    // Party list pehli baar khulne par hi laate hain (report page par nahi hoti).
-    if (this.open() && !this.loaded) {
-      this.loaded = true;
-      this.trading.listParties().subscribe({
-        next: (p: any) => this.parties.set(p || []),
-        error: () => this.err.set('Party list nahi aayi — dobara try karo')
+  }
+
+  /** SERVER se search — naam, MOBILE NO aur GST teeno se dhoondta hai.
+   *  Client-side filter me sirf naam milta, aur list bhi sirf ACTIVE parties
+   *  ki hoti — isliye server par hi chhodna behtar hai. */
+  private timer: any;
+  onSearch(v: string) {
+    this.search.set(v);
+    clearTimeout(this.timer);
+    const q = (v || '').trim();
+    if (!q) { this.parties.set([]); return; }
+    this.searching.set(true);
+    this.timer = setTimeout(() => {
+      this.trading.listParties(q).subscribe({
+        next: (p: any) => { this.parties.set((p || []).slice(0, 40)); this.searching.set(false); },
+        error: () => { this.err.set('Party list nahi aayi — dobara try karo'); this.searching.set(false); }
       });
-    }
+    }, 300);
   }
 
   pick(p: any) {

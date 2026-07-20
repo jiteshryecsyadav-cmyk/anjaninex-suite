@@ -30,18 +30,11 @@ import { BackButtonComponent } from '../../../shared/back-button.component';
           @for (g of groups(); track g) { <option [value]="g">{{ g }}</option> }
         </select>
       </div>
-      <div><label style="font-size:11px;color:#6B7280;display:block">PARTY</label>
+      <div><label style="font-size:11px;color:#6B7280;display:block">SISTER FIRM</label>
         <input [(ngModel)]="partySearch" list="plList" placeholder="Naam type karo" class="ip" style="min-width:230px"
                (change)="pickParty()">
         <datalist id="plList">
           @for (p of partyOptions(); track p.id) { <option [value]="p.displayName"></option> }
-        </datalist>
-      </div>
-      <div><label style="font-size:11px;color:#6B7280;display:block">SUPPLIER</label>
-        <input [(ngModel)]="supplierSearch" list="slList" placeholder="Sab suppliers" class="ip" style="min-width:200px"
-               (change)="pickSupplier()">
-        <datalist id="slList">
-          @for (s of suppliers(); track s.id) { <option [value]="s.displayName"></option> }
         </datalist>
       </div>
       <div><label style="font-size:11px;color:#6B7280;display:block">FROM</label>
@@ -58,20 +51,18 @@ import { BackButtonComponent } from '../../../shared/back-button.component';
         @if (p.groupName) { <span> · GROUP: {{ p.groupName }}</span> }
         @if (p.city) { <span> · CITY: {{ p.city }}</span> }
         @if (p.phone) { <span> · PH: {{ p.phone }}</span> }
-        @if (supplierId) { <span> · SUPPLIER: {{ supplierSearch }}</span> }
         <span> · PERIOD: {{ from }} → {{ to }}</span>
       </div>
     } @else if (groupSel()) {
       <div style="background:#F3F0FA;border-radius:8px;padding:8px 12px;font-size:12px;margin-bottom:10px">
         <b style="color:#1B2E5C">GROUP: {{ groupSel() }}</b>
         <span> · {{ partyOptions().length }} firms ka joda hua khata</span>
-        @if (supplierId) { <span> · SUPPLIER: {{ supplierSearch }}</span> }
         <span> · PERIOD: {{ from }} → {{ to }}</span>
       </div>
     }
 
     @if (loading()) { <p>Loading…</p> }
-    @else if (!partyId) { <p style="color:#9CA3AF">Pehle party chuno.</p> }
+    @else if (!partyId && !groupSel()) { <p style="color:#9CA3AF">Pehle GROUP ya SISTER FIRM chuno.</p> }
     @else {
       <div style="overflow-x:auto">
       <table style="width:100%;border-collapse:collapse;font-size:13px">
@@ -127,9 +118,8 @@ export class PartyLedgerReportComponent implements OnInit {
   private base = `${environment.apiUrl}/api/trading`;
   partySearch = ''; partyId = ''; from = ''; to = '';
   // SIGNAL — plain property hoti to partyOptions() computed dobara nahi chalta
-  // aur group badalne par PARTY dropdown filter hi nahi hota.
+  // aur group badalne par SISTER FIRM dropdown filter hi nahi hota.
   groupSel = signal('');                  // group chuno → us group ki firms ka joda khata
-  supplierSearch = ''; supplierId = '';   // sirf is supplier ke saath ka len-den
   parties = signal<PartyOpt[]>([]);
   selected = signal<PartyOpt | null>(null);
 
@@ -137,15 +127,11 @@ export class PartyLedgerReportComponent implements OnInit {
   groups = computed(() => [...new Set(
     this.parties().map(p => (p.groupName || '').trim()).filter(g => g))].sort());
 
-  // GROUP chuna ho to PARTY dropdown me sirf usi group ki firms.
+  // GROUP chuna ho to SISTER FIRM dropdown me sirf usi group ki firms.
   partyOptions = computed(() => {
     const g = this.groupSel().trim();
     return g ? this.parties().filter(p => (p.groupName || '').trim() === g) : this.parties();
   });
-
-  // SUPPLIER dropdown — sirf seller/both wali parties.
-  suppliers = computed(() =>
-    this.parties().filter(p => p.partyType === 'seller' || p.partyType === 'both'));
   rows = signal<LedgerRow[]>([]);
   opening = signal(0); totalDebit = signal(0); totalCredit = signal(0); closing = signal(0);
   loading = signal(false);
@@ -176,22 +162,14 @@ export class PartyLedgerReportComponent implements OnInit {
     this.load();
   }
 
-  pickSupplier() {
-    const s = this.suppliers().find(x => x.displayName === this.supplierSearch.trim());
-    this.supplierId = s ? s.id : '';
-    if (!this.supplierSearch.trim()) this.supplierId = '';
-    this.load();
-  }
-
   async load() {
-    // Party ya group — koi ek zaroori hai.
+    // Sister firm ya group — koi ek zaroori hai.
     if ((!this.partyId && !this.groupSel()) || !this.from || !this.to) { this.rows.set([]); return; }
     this.loading.set(true);
     try {
       const params: any = { from: this.from, to: this.to };
       if (this.partyId) params.partyId = this.partyId;
       else params.group = this.groupSel();
-      if (this.supplierId) params.supplierId = this.supplierId;
       const res: any = await firstValueFrom(this.http.get(`${this.base}/reports/party-ledger`, { params }));
       this.rows.set(res.rows || []);
       this.opening.set(res.opening || 0);

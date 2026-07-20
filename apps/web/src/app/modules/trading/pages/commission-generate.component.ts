@@ -258,8 +258,19 @@ interface CommRow {
     } @else if (fetched()) {
       <div class="card p-8 text-center text-gray-500">
         <div class="text-4xl mb-2">📭</div>
-        <div class="font-semibold">No bills found for this buyer in the selected date range.</div>
-        <div class="text-xs text-gray-400 mt-1">Try changing the date range or buyer.</div>
+        <div class="font-semibold">Is date range me koi bill nahi mila.</div>
+        @if (lastFetchInfo(); as f) {
+          <div class="text-xs text-gray-500 mt-2">
+            Supplier ke <b>{{ f.total }}</b> bill mile {{ fromDate }} → {{ toDate }} me.
+            @if (f.total > 0 && f.afterBuyer === 0) {
+              <span class="text-amber-700">Par un me se kisi ka buyer <b>{{ buyerSearch }}</b> nahi hai.</span>
+            }
+          </div>
+        }
+        <div class="text-xs text-gray-400 mt-2">
+          ⚠️ Yaad rakho: yahan <b>BILL ki date</b> se dhoonda jata hai, payment ki date se nahi.
+          Purane bill ki payment aaj hui ho to bill ki apni date wala range chuno.
+        </div>
       </div>
     }
 
@@ -734,7 +745,10 @@ export class CommissionGenerateComponent {
     this.svc.listBills({
       partyId: this.supplierId || undefined,
       from: this.fromDate,
-      to: this.toDate
+      to: this.toDate,
+      // size na bhejo to backend default 50 leta hai — busy supplier ke 50 se zyada
+      // bills hone par baaki chhut jate the aur "No bills found" aa jata tha.
+      size: 1000
     }).subscribe({
       next: (res) => {
         // Commission % — STEP 1 me bhara ho to WAHI (sab bills par), warna Party Master ka rate.
@@ -746,7 +760,11 @@ export class CommissionGenerateComponent {
         // Field khali ho to party ka rate usme dikha do — user ko pata rahe kya lag raha hai.
         if (typedPct <= 0 && partyPct > 0) this.commPctAll = partyPct;
         let items = res.items.filter(b => !b.isDeleted);
+        const supplierBillCount = items.length;
         if (buyFilter) items = items.filter(b => b.buyerPartyId === buyFilter);
+        // Khali nateeje par user ko batane ke liye: supplier ke kitne bill mile the,
+        // aur buyer filter ne kitne bachaye — taaki pata chale kahan chhanta gaya.
+        this.lastFetchInfo.set({ total: supplierBillCount, afterBuyer: items.length });
         const rows: CommRow[] = items.map(b => ({
           selected: true,
           bill: b,
@@ -791,6 +809,9 @@ export class CommissionGenerateComponent {
   payableTotal = computed(() => +(this.grandTotal() + this.totalDiscRecovery()).toFixed(2));
   netPayable = computed(() => Math.round(this.payableTotal()));
   payRoundOff = computed(() => +(this.netPayable() - this.payableTotal()).toFixed(2));
+
+  // Khali nateeja aane par diagnostic: supplier ke kitne bill mile, buyer filter ke baad kitne bache.
+  lastFetchInfo = signal<{ total: number; afterBuyer: number } | null>(null);
 
   // STEP 1 ka COMMISSION % — sab bills par ek saath lagta hai.
   // Khali/0 rakho to Party Master ka rate chalega (fetch ke waqt).

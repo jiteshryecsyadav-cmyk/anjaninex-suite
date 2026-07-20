@@ -1199,7 +1199,16 @@ export class PartiesComponent {
       subAgent: (p as any).subAgent ?? '',
       subAgentPct: (p as any).subAgentPct ?? '',
       incentivePct: (p as any).incentivePct ?? '',
-      purchaseDiscPct: (p as any).purchaseDiscPct ?? ''
+      purchaseDiscPct: (p as any).purchaseDiscPct ?? '',
+      // Edit kholte waqt ye bhi wapas bhar do — warna save karne par purana mit jata
+      contactPerson: (p as any).contactPerson ?? '',
+      contactMobile: (p as any).contactMobile ?? '',
+      landline: (p as any).landline ?? '',
+      note: (p as any).note ?? '',
+      rating: (p as any).rating ?? 'A',
+      stars: (p as any).stars ?? '5',
+      avgPayDays: (p as any).avgPayDays ?? 45,
+      returnRate: (p as any).returnRatePct ?? 2.5
     });
     // Extra addresses (2nd, 3rd...) — addresses[1..] se load karo
     this.extraAddresses.clear();
@@ -1253,7 +1262,17 @@ export class PartiesComponent {
       subAgent: v.subAgent || null,
       subAgentPct: (v.subAgentPct === '' || v.subAgentPct == null) ? null : Number(v.subAgentPct),
       incentivePct: (v.incentivePct === '' || v.incentivePct == null) ? null : Number(v.incentivePct),
-      purchaseDiscPct: (v.purchaseDiscPct === '' || v.purchaseDiscPct == null) ? null : Number(v.purchaseDiscPct)
+      purchaseDiscPct: (v.purchaseDiscPct === '' || v.purchaseDiscPct == null) ? null : Number(v.purchaseDiscPct),
+      // Ye 8 fields form me the par payload me jaate hi nahi the — user bharta tha
+      // aur data chup-chaap gayab ho jata tha. Ab backend tak jaate hain (migration 91).
+      contactPerson: v.contactPerson || null,
+      contactMobile: v.contactMobile || null,
+      landline: v.landline || null,
+      note: v.note || null,
+      rating: v.rating || null,
+      stars: (v.stars === '' || v.stars == null) ? null : Number(v.stars),
+      avgPayDays: (v.avgPayDays === '' || v.avgPayDays == null) ? null : Number(v.avgPayDays),
+      returnRatePct: (v.returnRate === '' || v.returnRate == null) ? null : Number(v.returnRate)
     };
     const id = this.editingId();
     const obs = id ? this.svc.updateParty(id, data) : this.svc.createParty(data);

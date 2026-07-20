@@ -46,6 +46,15 @@ public record PartyDto(
     decimal? SubAgentPct = null,
     decimal? IncentivePct = null,
     decimal? PurchaseDiscPct = null,
+    // Contact + rating fields (migration 91) — pehle form me the par save nahi hote the
+    string? ContactPerson = null,
+    string? ContactMobile = null,
+    string? Landline = null,
+    string? Note = null,
+    string? Rating = null,
+    int? Stars = null,
+    int? AvgPayDays = null,
+    decimal? ReturnRatePct = null,
     string? Addresses = null);
 
 public record CreatePartyDto(
@@ -83,6 +92,15 @@ public record CreatePartyDto(
     decimal? SubAgentPct = null,
     decimal? IncentivePct = null,
     decimal? PurchaseDiscPct = null,
+    // Contact + rating fields (migration 91)
+    string? ContactPerson = null,
+    string? ContactMobile = null,
+    string? Landline = null,
+    string? Note = null,
+    string? Rating = null,
+    int? Stars = null,
+    int? AvgPayDays = null,
+    decimal? ReturnRatePct = null,
     List<PartyAddressDto>? ExtraAddresses = null);
 
 // =============================================================================
@@ -186,6 +204,8 @@ public class PartyService : IPartyService
                 x.p.DiscountNormal, x.p.DiscountExhibition, x.p.DiscountSpecial,
                 x.c.SupplierType, x.c.BuyerType, x.c.UdyamNo, x.c.MsmeType, x.c.WaExtra, x.c.WaExtraRole,
                 x.c.SubAgent, x.c.SubAgentPct, x.c.IncentivePct, x.c.PurchaseDiscPct,
+                x.c.ContactPerson, x.c.ContactMobile, x.c.Landline, x.c.Notes,
+                x.c.Rating, x.c.Stars, x.c.AvgPayDays, x.c.ReturnRatePct,
                 x.c.Addresses);
         }).ToList();
     }
@@ -416,6 +436,15 @@ public class PartyService : IPartyService
         if (dto.SubAgentPct != null) contact.SubAgentPct = dto.SubAgentPct;
         if (dto.IncentivePct != null) contact.IncentivePct = dto.IncentivePct;
         if (dto.PurchaseDiscPct != null) contact.PurchaseDiscPct = dto.PurchaseDiscPct;
+        // Contact + rating fields — null aaye to purana rehne do (partial update safe)
+        if (dto.ContactPerson != null) contact.ContactPerson = dto.ContactPerson;
+        if (dto.ContactMobile != null) contact.ContactMobile = dto.ContactMobile;
+        if (dto.Landline      != null) contact.Landline      = dto.Landline;
+        if (dto.Note          != null) contact.Notes         = dto.Note;
+        if (dto.Rating        != null) contact.Rating        = dto.Rating;
+        if (dto.Stars         != null) contact.Stars         = dto.Stars;
+        if (dto.AvgPayDays    != null) contact.AvgPayDays    = dto.AvgPayDays;
+        if (dto.ReturnRatePct != null) contact.ReturnRatePct = dto.ReturnRatePct;
         contact.BuyerAgentId = dto.BuyerAgentId;
         contact.BuyerAgentSharePct = dto.BuyerAgentSharePct;
         contact.EmailPrimary = dto.Email?.Trim();
@@ -547,6 +576,14 @@ public class PartyService : IPartyService
             SubAgentPct = dto.SubAgentPct,
             IncentivePct = dto.IncentivePct,
             PurchaseDiscPct = dto.PurchaseDiscPct,
+            ContactPerson = dto.ContactPerson,
+            ContactMobile = dto.ContactMobile,
+            Landline = dto.Landline,
+            Notes = dto.Note,
+            Rating = dto.Rating,
+            Stars = dto.Stars,
+            AvgPayDays = dto.AvgPayDays,
+            ReturnRatePct = dto.ReturnRatePct,
             BuyerAgentId = dto.BuyerAgentId,
             BuyerAgentSharePct = dto.BuyerAgentSharePct,
             EmailPrimary = dto.Email?.Trim(),

@@ -249,6 +249,16 @@ public class Contact
     [Column(TypeName = "jsonb")]
     public string Flags { get; set; } = "{}";
 
+    // Party Master ke contact + rating fields (migration 91). Pehle form me the par
+    // save hi nahi hote the — na payload me jaate the, na column tha.
+    [MaxLength(200)] public string? ContactPerson { get; set; }
+    [MaxLength(20)]  public string? ContactMobile { get; set; }
+    [MaxLength(30)]  public string? Landline { get; set; }
+    [MaxLength(20)]  public string? Rating { get; set; }
+    public int? Stars { get; set; }
+    public int? AvgPayDays { get; set; }
+    [Column(TypeName = "numeric(5,2)")] public decimal? ReturnRatePct { get; set; }
+
     public string? SourceModule { get; set; }
     public string? Notes { get; set; }
     public string? AvatarUrl { get; set; }

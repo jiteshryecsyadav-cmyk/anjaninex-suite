@@ -166,7 +166,12 @@ interface PMsg {
           <textarea [(ngModel)]="draft" (keydown)="onEnter($event)" rows="1"
                     placeholder="Message likho…"
                     class="pc-input"></textarea>
-          <button (click)="send()" [disabled]="busy() || !draft.trim()" class="pc-send">➤</button>
+          <!-- Wahi SVG jo firm side par — dono taraf ek jaisa dikhe -->
+          <button (click)="send()" [disabled]="busy() || !draft.trim()" class="pc-send" title="Bhejo">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" style="width:20px;height:20px">
+              <path d="M3.4 20.4 22 12 3.4 3.6 3.4 10.1 16 12 3.4 13.9z"/>
+            </svg>
+          </button>
         </div>
       }
     </div>
@@ -218,6 +223,7 @@ interface PMsg {
     .pc-send {
       width: 54px; height: 54px; border-radius: 50%; border: 0; flex-shrink: 0;
       background: #1B2E5C; color: #fff; font-size: 24px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;   /* SVG beech me */
     }
     .pc-send:disabled { opacity: .5; }
     .pc-logout {

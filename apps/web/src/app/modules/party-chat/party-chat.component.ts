@@ -258,7 +258,14 @@ import { BackButtonComponent } from '../../shared/back-button.component';
               <textarea [(ngModel)]="draft" (keydown)="onEnter($event)" rows="1"
                         placeholder="Message likho… (Enter = send)"
                         class="input flex-1 resize-none"></textarea>
-              <button (click)="send()" [disabled]="busy() || !draft.trim()" class="btn-primary">📤</button>
+              <!-- SVG icon, emoji nahi: 📤 Windows par printer/tray jaisa dikhta tha.
+                   SVG har device par ek jaisa aur saaf 'send' dikhta hai. -->
+              <button (click)="send()" [disabled]="busy() || !draft.trim()"
+                      class="btn-primary pc-send" title="Bhejo">
+                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                  <path d="M3.4 20.4 22 12 3.4 3.6 3.4 10.1 16 12 3.4 13.9z"/>
+                </svg>
+              </button>
             </div>
           }
         </div>
@@ -300,6 +307,11 @@ import { BackButtonComponent } from '../../shared/back-button.component';
     </div>
   `,
   styles: [`
+    /* Send button — icon theek beech me aur sahi size ka rahe */
+    .pc-send { display:inline-flex; align-items:center; justify-content:center;
+      width:44px; height:44px; padding:0; }
+    .pc-send svg { width:20px; height:20px; }
+
     /* ===== Message menu + Reply (WhatsApp jaisa) ===== */
     /* Hamesha dikhta hai (sirf hover par nahi) — mobile/tablet par na hover hota
        hai na right-click, wahan menu milta hi nahi. Halka rakha hai taaki message

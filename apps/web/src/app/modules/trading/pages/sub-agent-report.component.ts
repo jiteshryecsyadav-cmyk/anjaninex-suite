@@ -21,7 +21,15 @@ import { BackButtonComponent } from '../../../shared/back-button.component';
     <h2 style="font-weight:800;color:#1B2E5C;font-size:20px;margin-bottom:2px">🤝 Buyer Agent Report</h2>
     <p style="color:#6B7280;font-size:13px;margin-bottom:14px">Buyer ke agent ka bill-wise hissa (taxable × agent%). Wahi agents jo <b>Trading → Buyer Agents</b> me hain. Date range chuno.</p>
 
-    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:end;margin-bottom:14px">
+    <!-- Print par sirf ye header — filter box nahi (no-print) -->
+    <div class="print-only" style="margin-bottom:10px;border-bottom:2px solid #1B2E5C;padding-bottom:6px">
+      <div style="font-weight:800;font-size:16px;color:#1B2E5C">Buyer Agent Report</div>
+      <div style="font-size:12px;color:#374151">
+        {{ subAgent ? 'Agent: ' + subAgent : 'Sab agents' }} · {{ from }} → {{ to }}
+      </div>
+    </div>
+
+    <div class="no-print" style="display:flex;gap:10px;flex-wrap:wrap;align-items:end;margin-bottom:14px">
       <div><label style="font-size:11px;color:#6B7280;display:block">FROM</label>
         <input type="date" [(ngModel)]="from" class="ip"></div>
       <div><label style="font-size:11px;color:#6B7280;display:block">TO</label>

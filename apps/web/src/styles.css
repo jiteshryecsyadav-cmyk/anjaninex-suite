@@ -7,12 +7,45 @@
    hata do. Invoice-preview modal apna khud ka print CSS use karta hai.
    ============================================================ */
 @media print {
+  /* Screen ka saara chrome hatao — kagaz par sirf report chahiye.
+     Pehle sirf aside/header chhupte the, isliye floating Help button, footer,
+     filter ke buttons sab chhap jate the aur print bekaar dikhti thi. */
   app-shell aside,
   app-shell header,
+  app-anji-help,
+  app-calculator,
+  app-toast-container,
+  app-update-banner,
+  app-trial-banner,
+  app-upgrade-nudge,
+  .page-top-bar,
+  footer,
+  button,
   .no-print { display: none !important; }
-  app-shell main { width: 100% !important; max-width: 100% !important; overflow: visible !important; }
+
+  app-shell main {
+    width: 100% !important; max-width: 100% !important;
+    overflow: visible !important; padding: 0 !important;
+  }
   html, body { height: auto !important; overflow: visible !important; background: #fff !important; }
+
+  /* Sirf print par dikhne wala header (report ka naam, party, period) */
+  .print-only { display: block !important; }
+
+  /* Lambi report kai page me jaye to har page par table ka header dobara aaye,
+     aur ek row beech se na kate. */
+  table { width: 100% !important; border-collapse: collapse !important; }
+  thead { display: table-header-group; }
+  tr, tfoot { page-break-inside: avoid; }
+
+  /* Scroll wale box print me poore khul jaayein, warna content kat jata hai */
+  [style*="overflow-x"], [style*="overflow-y"], .overflow-x-auto, .overflow-y-auto {
+    overflow: visible !important;
+  }
 }
+
+/* Screen par chhupa rehta hai, sirf print me khulta hai */
+.print-only { display: none; }
 
 /* ============================================================
    ANJANINEX BRAND THEME — 3 solid colors, NO gradients/blends

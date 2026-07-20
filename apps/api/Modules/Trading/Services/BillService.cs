@@ -55,7 +55,8 @@ public record BillListItemDto(
     string? SupplierBillNo = null,      // supplier ka original invoice no — list me dikhane ke liye
     string? PartyGroup = null,          // supplier/party ka group name (sister firms)
     string? BuyerGroup = null,          // buyer ka group name
-    decimal EntitledDisc = 0);          // buyer group ka banta-hua disc% (bill date ke hisaab se) — payment/commission popup ke liye
+    decimal EntitledDisc = 0,           // buyer group ka banta-hua disc% (bill date ke hisaab se) — payment/commission popup ke liye
+    decimal EntitledDiscAmount = 0);    // ^ wahi % RUPEES me, sahi base (Subtotal − Fold) par — frontend khud multiply na kare
 
 public record BillDetailDto(
     Guid Id,
@@ -268,6 +269,12 @@ public class BillService : IBillService
                 ? Math.Round(b.Discount / discBase * 100m, 2, MidpointRounding.AwayFromZero)
                 : 0m;
             var entDisc = Math.Max(0m, pDisc - salesDisc);   // = balance disc, commission me claim
+            // RUPEES bhi yahin nikalo — usi base (discBase) par jis par % nikla hai.
+            // Pehle frontend khud multiply karta tha (taxable ya total se) — dono galat the:
+            // taxable discount ke BAAD ka hai aur total me GST bhi hai, jabki supplier ka
+            // committed disc% gross (Subtotal − Fold) par banta hai. Isse har bill par
+            // recovery kam/zyada ho rahi thi.
+            var entDiscAmt = Math.Round(discBase * entDisc / 100m, 2, MidpointRounding.AwayFromZero);
             return new BillListItemDto(
                 b.Id, b.BillType, b.BillNo, b.BillDate, b.PartyId,
                 supplier?.DisplayName ?? "—",
@@ -289,7 +296,8 @@ public class BillService : IBillService
                 SupplierBillNo: b.SupplierBillNo,
                 PartyGroup: supplier?.GroupName,
                 BuyerGroup: buyer?.GroupName,
-                EntitledDisc: entDisc);
+                EntitledDisc: entDisc,
+                EntitledDiscAmount: entDiscAmt);
         }).ToList();
 
         return (items, total);

@@ -22,7 +22,15 @@ import { BackButtonComponent } from '../../../shared/back-button.component';
     <h2 style="font-weight:800;color:#1B2E5C;font-size:20px;margin-bottom:2px">📒 Party Ledger</h2>
     <p style="color:#6B7280;font-size:13px;margin-bottom:14px">Opening balance + Sales (Debit) aur Receipts (Credit) date-wise, running balance ke saath.</p>
 
-    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:end;margin-bottom:12px">
+    <!-- Print par sirf ye header — filter box nahi (no-print) -->
+    <div class="print-only" style="margin-bottom:10px;border-bottom:2px solid #1B2E5C;padding-bottom:6px">
+      <div style="font-weight:800;font-size:16px;color:#1B2E5C">
+        {{ selected() ? selected()!.displayName : (groupSel() ? 'GROUP: ' + groupSel() : 'Party Ledger') }}
+      </div>
+      <div style="font-size:12px;color:#374151">Party Ledger · {{ from }} → {{ to }}</div>
+    </div>
+
+    <div class="no-print" style="display:flex;gap:10px;flex-wrap:wrap;align-items:end;margin-bottom:12px">
       <div><label style="font-size:11px;color:#6B7280;display:block">GROUP</label>
         <select [ngModel]="groupSel()" (ngModelChange)="groupSel.set($event); onGroupChange()"
                 class="ip" style="min-width:170px">

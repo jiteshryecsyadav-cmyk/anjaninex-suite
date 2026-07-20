@@ -41,6 +41,7 @@ interface BillRow {
   other: number;       // other deduction
   gstMode: 'before' | 'after';  // deductions GST se pehle (taxable par) ya baad me (total par)
   entitledDisc: number;// buyer group ka banta-hua disc% (bill date ke hisaab se) — popup ke liye
+  entitledDiscAmount: number; // ^ wahi % rupees me (backend, sahi base par) — popup ke liye
   baseNet: number;     // bill ka apna NET (grand total − GR, round-off bill-time se) — deductions isi par
   toPay: number;       // computed
   pending: number;
@@ -1401,6 +1402,7 @@ export class PaymentReceiptComponent {
         rateDiff: 0, packing: 0, other: 0,
         gstMode: 'after',
         entitledDisc: +(b.entitledDisc ?? 0),
+        entitledDiscAmount: +((b as any).entitledDiscAmount ?? 0),
         disPct: 0,
         disAmt: 0,
         interest: 0,
@@ -1448,8 +1450,9 @@ export class PaymentReceiptComponent {
         // ⚠️ Buyer ko auto-fill NAHI karna — ye supplier se RECOVER karne wala disc hai,
         // jo commission bill me claim hota hai. Yaha sirf yaad-dilane wala alert.
         // % ke saath ₹ bhi — sirf % se pata nahi chalta kitna paisa banta hai.
-        // Base wahi taxable (netAmt) jo commission screen bhi use karti hai.
-        const recAmt = (b.netAmt || 0) * (b.entitledDisc || 0) / 100;
+        // Amount backend se (sahi base = Subtotal − Fold par nikla hua). netAmt se
+        // multiply karna galat tha — wo discount ke BAAD ka taxable hai.
+        const recAmt = b.entitledDiscAmount || ((b.netAmt || 0) * (b.entitledDisc || 0) / 100);
         const recStr = new Intl.NumberFormat('en-IN',
           { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(recAmt);
         this.discAlert.set(`${b.dispNo || b.billNo} — Supplier se ${b.entitledDisc}% discount lena BAAKI hai = ₹${recStr}. Ye commission bill me claim karo.`);

@@ -802,7 +802,19 @@ export class CommissionGenerateComponent {
 
   // ── Supplier disc recovery (purchase − sales = balance, agency claim karti hai) ──
   balDisc(r: CommRow): number { return +((r.bill as any).entitledDisc || 0); }
-  discAmt(r: CommRow): number { return +(this.baseAmt(r.bill) * this.balDisc(r) / 100).toFixed(2); }
+  /**
+   * Disc recovery ke RUPEES backend se aate hain — wahan sahi base (Subtotal − Fold,
+   * yaani discount se pehle ka gross) par nikle hote hain, usi base par jis par % nikla.
+   * Yahan baseAmt() se multiply NAHI karna: wo taxable (disc ke baad) ya total (GST samet)
+   * deta hai — dono galat, aur Before/After GST toggle se recovery badal jaati thi
+   * jabki supplier ka discount commission base se koi lena-dena nahi rakhta.
+   * Fallback purane behaviour par sirf tab jab backend ne amount na bheja ho.
+   */
+  discAmt(r: CommRow): number {
+    const fromApi = +((r.bill as any).entitledDiscAmount ?? 0);
+    if (fromApi > 0) return fromApi;
+    return +(this.baseAmt(r.bill) * this.balDisc(r) / 100).toFixed(2);
+  }
   // Totals — GST sirf COMMISSION par (disc recovery service nahi hai)
   totalDiscRecovery = computed(() => +(this.selectedRows().reduce((s, r) => s + this.discAmt(r), 0)).toFixed(2));
   /** Table footer ka Grand Total = commission + disc recovery (GST se pehle). */

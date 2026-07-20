@@ -24,7 +24,8 @@ import { BackButtonComponent } from '../../../shared/back-button.component';
 
     <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:end;margin-bottom:12px">
       <div><label style="font-size:11px;color:#6B7280;display:block">GROUP</label>
-        <select [(ngModel)]="groupSel" (change)="onGroupChange()" class="ip" style="min-width:170px">
+        <select [ngModel]="groupSel()" (ngModelChange)="groupSel.set($event); onGroupChange()"
+                class="ip" style="min-width:170px">
           <option value="">— Sab —</option>
           @for (g of groups(); track g) { <option [value]="g">{{ g }}</option> }
         </select>
@@ -60,9 +61,9 @@ import { BackButtonComponent } from '../../../shared/back-button.component';
         @if (supplierId) { <span> · SUPPLIER: {{ supplierSearch }}</span> }
         <span> · PERIOD: {{ from }} → {{ to }}</span>
       </div>
-    } @else if (groupSel) {
+    } @else if (groupSel()) {
       <div style="background:#F3F0FA;border-radius:8px;padding:8px 12px;font-size:12px;margin-bottom:10px">
-        <b style="color:#1B2E5C">GROUP: {{ groupSel }}</b>
+        <b style="color:#1B2E5C">GROUP: {{ groupSel() }}</b>
         <span> · {{ partyOptions().length }} firms ka joda hua khata</span>
         @if (supplierId) { <span> · SUPPLIER: {{ supplierSearch }}</span> }
         <span> · PERIOD: {{ from }} → {{ to }}</span>
@@ -125,7 +126,9 @@ import { BackButtonComponent } from '../../../shared/back-button.component';
 export class PartyLedgerReportComponent implements OnInit {
   private base = `${environment.apiUrl}/api/trading`;
   partySearch = ''; partyId = ''; from = ''; to = '';
-  groupSel = '';                          // group chuno → us group ki firms ka joda khata
+  // SIGNAL — plain property hoti to partyOptions() computed dobara nahi chalta
+  // aur group badalne par PARTY dropdown filter hi nahi hota.
+  groupSel = signal('');                  // group chuno → us group ki firms ka joda khata
   supplierSearch = ''; supplierId = '';   // sirf is supplier ke saath ka len-den
   parties = signal<PartyOpt[]>([]);
   selected = signal<PartyOpt | null>(null);
@@ -136,7 +139,7 @@ export class PartyLedgerReportComponent implements OnInit {
 
   // GROUP chuna ho to PARTY dropdown me sirf usi group ki firms.
   partyOptions = computed(() => {
-    const g = this.groupSel.trim();
+    const g = this.groupSel().trim();
     return g ? this.parties().filter(p => (p.groupName || '').trim() === g) : this.parties();
   });
 
@@ -182,12 +185,12 @@ export class PartyLedgerReportComponent implements OnInit {
 
   async load() {
     // Party ya group — koi ek zaroori hai.
-    if ((!this.partyId && !this.groupSel) || !this.from || !this.to) { this.rows.set([]); return; }
+    if ((!this.partyId && !this.groupSel()) || !this.from || !this.to) { this.rows.set([]); return; }
     this.loading.set(true);
     try {
       const params: any = { from: this.from, to: this.to };
       if (this.partyId) params.partyId = this.partyId;
-      else params.group = this.groupSel;
+      else params.group = this.groupSel();
       if (this.supplierId) params.supplierId = this.supplierId;
       const res: any = await firstValueFrom(this.http.get(`${this.base}/reports/party-ledger`, { params }));
       this.rows.set(res.rows || []);

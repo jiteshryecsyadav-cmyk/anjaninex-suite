@@ -133,7 +133,8 @@ import { BackButtonComponent } from '../../shared/back-button.component';
         </div>
         @if (msg()) { <p class="text-sm mb-2" [class]="msg().includes('Error') || msg().includes('daalein') ? 'text-red-600' : 'text-green-600'">{{ msg() }}</p> }
 
-        <input [(ngModel)]="search" placeholder="Firm dhoondo (naam / GST)..." class="input mb-2">
+        <input [ngModel]="search()" (ngModelChange)="search.set($event)"
+               placeholder="Firm dhoondo (naam / GST)..." class="input mb-2">
         <p class="text-xs text-gray-500 mb-1">Ticked = is group me. Selected: <b>{{ picked().size }}</b></p>
         <div class="border border-[#eee] rounded max-h-[52vh] overflow-y-auto divide-y">
           @for (c of filtered(); track c.id) {
@@ -165,13 +166,15 @@ export class PartyGroupsComponent {
   all = signal<C[]>([]);
   groups = signal<string[]>([]);
   groupName = '';
-  search = '';
+  // SIGNAL hona zaroori hai — plain property hoti to computed() ko badalne ka pata hi
+  // nahi chalta aur list kabhi filter nahi hoti (typing par kuch na hota).
+  search = signal('');
   picked = signal<Set<string>>(new Set<string>());
   saving = signal(false);
   msg = signal('');
 
   filtered = computed(() => {
-    const s = this.search.trim().toLowerCase();
+    const s = this.search().trim().toLowerCase();
     return this.all().filter(c => !s
       || c.displayName.toLowerCase().includes(s)
       || (c.gst || '').toLowerCase().includes(s));

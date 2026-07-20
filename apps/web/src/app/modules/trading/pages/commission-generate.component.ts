@@ -748,7 +748,9 @@ export class CommissionGenerateComponent {
       to: this.toDate,
       // size na bhejo to backend default 50 leta hai — busy supplier ke 50 se zyada
       // bills hone par baaki chhut jate the aur "No bills found" aa jata tha.
-      size: 1000
+      // 99999 = practically "sab" — commission ke liye poora range chahiye,
+      // aadha data aane se commission kam ban jata (paise ka nuksaan).
+      size: 99999
     }).subscribe({
       next: (res) => {
         // Commission % — STEP 1 me bhara ho to WAHI (sab bills par), warna Party Master ka rate.

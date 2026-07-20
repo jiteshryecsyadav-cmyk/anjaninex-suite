@@ -22,10 +22,10 @@ namespace Namokara.Api.Modules.Platform.Controllers;
 // =============================================================================
 
 public record PchatStartDto(Guid PartyId);
-public record PchatMsgDto(string Body);
+public record PchatMsgDto(string Body, Guid? ReplyToId = null);
 public record PchatOtpReqDto(Guid FirmId, string Phone);
 public record PchatVerifyDto(Guid FirmId, string Phone, string Otp);
-public record PchatPublicMsgDto(string Token, string Body);
+public record PchatPublicMsgDto(string Token, string Body, Guid? ReplyToId = null);
 
 [ApiController]
 [Route("api/party-chat")]
@@ -167,9 +167,12 @@ public class PartyChatController : ControllerBase
         var list = new List<object>();
         await using (var cmd = await CmdAsync(@"
             SELECT m.id, m.sender, m.sender_name, m.body, m.read_at, m.created_at,
-                   m.attachment_url, m.attachment_name, m.attachment_type
+                   m.attachment_url, m.attachment_name, m.attachment_type,
+                   -- Jis message ka jawab hai uska thoda sa hissa (quote dikhane ke liye)
+                   rm.body, rm.sender, rm.sender_name
             FROM platform.party_chat_messages m
             JOIN platform.party_chat_threads t ON t.id = m.thread_id
+            LEFT JOIN platform.party_chat_messages rm ON rm.id = m.reply_to_id
             WHERE m.thread_id = @t AND t.firm_id = @f AND NOT m.deleted_for_firm
             ORDER BY m.created_at"))
         {
@@ -187,7 +190,12 @@ public class PartyChatController : ControllerBase
                     createdAt = r.GetFieldValue<DateTimeOffset>(5),
                     attachmentUrl = r.IsDBNull(6) ? null : r.GetString(6),
                     attachmentName = r.IsDBNull(7) ? null : r.GetString(7),
-                    attachmentType = r.IsDBNull(8) ? null : r.GetString(8)
+                    attachmentType = r.IsDBNull(8) ? null : r.GetString(8),
+                    // Quote — jis message ka jawab hai. Wo delete ho gaya ho to null
+                    // (jawab phir bhi rehta hai, bas quote hat jata hai).
+                    replyBody = r.IsDBNull(9) ? null : r.GetString(9),
+                    replySender = r.IsDBNull(10) ? null : r.GetString(10),
+                    replySenderName = r.IsDBNull(11) ? null : r.GetString(11)
                 });
         }
         return Ok(list);
@@ -275,12 +283,18 @@ public class PartyChatController : ControllerBase
         if (string.IsNullOrWhiteSpace(dto.Body)) return BadRequest(new { error = "Message khali hai" });
         await using var cmd = await CmdAsync(@"
             WITH t AS (SELECT id FROM platform.party_chat_threads WHERE id = @t AND firm_id = @f)
-            INSERT INTO platform.party_chat_messages (thread_id, sender, sender_name, body)
-            SELECT id, 'firm', @n, @b FROM t RETURNING id");
+            INSERT INTO platform.party_chat_messages (thread_id, sender, sender_name, body, reply_to_id)
+            SELECT id, 'firm', @n, @b,
+                   -- reply sirf USI thread ka message ho sakta hai (doosri party ka
+                   -- message quote karna galat hoga) — isliye yahin check
+                   (SELECT rm.id FROM platform.party_chat_messages rm
+                     WHERE rm.id = @rid AND rm.thread_id = @t)
+            FROM t RETURNING id");
         cmd.Parameters.Add(new NpgsqlParameter("t", id));
         cmd.Parameters.Add(new NpgsqlParameter("f", CurrentFirmId));
         cmd.Parameters.Add(new NpgsqlParameter("n", CurrentName));
         cmd.Parameters.Add(new NpgsqlParameter("b", dto.Body.Trim()));
+        cmd.Parameters.Add(new NpgsqlParameter("rid", (object?)dto.ReplyToId ?? DBNull.Value));
         var mid = await cmd.ExecuteScalarAsync();
         if (mid is null) return NotFound();
 
@@ -666,10 +680,12 @@ public class PartyChatPublicController : ControllerBase
 
         var list = new List<object>();
         await using (var cmd = await CmdAsync(@"
-            SELECT id, sender, sender_name, body, read_at, created_at,
-                   attachment_url, attachment_name, attachment_type
-            FROM platform.party_chat_messages
-            WHERE thread_id = @t AND NOT deleted_for_party ORDER BY created_at"))
+            SELECT m.id, m.sender, m.sender_name, m.body, m.read_at, m.created_at,
+                   m.attachment_url, m.attachment_name, m.attachment_type,
+                   rm.body, rm.sender, rm.sender_name
+            FROM platform.party_chat_messages m
+            LEFT JOIN platform.party_chat_messages rm ON rm.id = m.reply_to_id
+            WHERE m.thread_id = @t AND NOT m.deleted_for_party ORDER BY m.created_at"))
         {
             cmd.Parameters.Add(new NpgsqlParameter("t", threadId.Value));
             await using var r = await cmd.ExecuteReaderAsync();
@@ -684,7 +700,10 @@ public class PartyChatPublicController : ControllerBase
                     createdAt = r.GetFieldValue<DateTimeOffset>(5),
                     attachmentUrl = r.IsDBNull(6) ? null : r.GetString(6),
                     attachmentName = r.IsDBNull(7) ? null : r.GetString(7),
-                    attachmentType = r.IsDBNull(8) ? null : r.GetString(8)
+                    attachmentType = r.IsDBNull(8) ? null : r.GetString(8),
+                    replyBody = r.IsDBNull(9) ? null : r.GetString(9),
+                    replySender = r.IsDBNull(10) ? null : r.GetString(10),
+                    replySenderName = r.IsDBNull(11) ? null : r.GetString(11)
                 });
         }
         return Ok(new { firmName, partyName, messages = list });
@@ -780,11 +799,16 @@ public class PartyChatPublicController : ControllerBase
         if (threadId is null) return Unauthorized(new { error = "Session expire — dobara OTP se kholo" });
 
         await using (var cmd = await CmdAsync(@"
-            INSERT INTO platform.party_chat_messages (thread_id, sender, sender_name, body)
-            SELECT id, 'party', party_name, @b FROM platform.party_chat_threads WHERE id = @t"))
+            INSERT INTO platform.party_chat_messages (thread_id, sender, sender_name, body, reply_to_id)
+            SELECT id, 'party', party_name, @b,
+                   -- reply sirf ISI thread ka message ho sakta hai
+                   (SELECT rm.id FROM platform.party_chat_messages rm
+                     WHERE rm.id = @rid AND rm.thread_id = @t)
+            FROM platform.party_chat_threads WHERE id = @t"))
         {
             cmd.Parameters.Add(new NpgsqlParameter("b", dto.Body.Trim()));
             cmd.Parameters.Add(new NpgsqlParameter("t", threadId.Value));
+            cmd.Parameters.Add(new NpgsqlParameter("rid", (object?)dto.ReplyToId ?? DBNull.Value));
             await cmd.ExecuteNonQueryAsync();
         }
         await TouchAndNotify(threadId.Value);

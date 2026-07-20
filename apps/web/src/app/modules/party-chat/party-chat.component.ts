@@ -18,6 +18,8 @@ interface PchatMsg {
   id: string; sender: 'firm' | 'party'; senderName: string | null;
   body: string; readAt: string | null; createdAt: string;
   attachmentUrl?: string | null; attachmentName?: string | null; attachmentType?: string | null;
+  // Reply ka quote — jis message ka jawab hai uska hissa (wo delete ho jaye to null)
+  replyBody?: string | null; replySender?: 'firm' | 'party' | null; replySenderName?: string | null;
 }
 
 /**
@@ -176,10 +178,24 @@ import { BackButtonComponent } from '../../shared/back-button.component';
                     <input type="checkbox" class="w-5 h-5 accent-[#1B2E5C] mx-2 shrink-0"
                            [checked]="selected().has(m.id)" (click)="$event.stopPropagation(); toggleSel(m)">
                   }
-                  <div class="rounded-2xl px-3 py-2 max-w-[75%] text-sm"
-                       [class]="m.sender === 'firm' ? 'bg-[#DCF8C6]' : 'bg-gray-100'">
+                  <div class="rounded-2xl px-3 py-2 max-w-[75%] text-sm relative"
+                       [class]="m.sender === 'firm' ? 'bg-[#DCF8C6]' : 'bg-gray-100'"
+                       (contextmenu)="openMsgMenu($event, m)">
+                    <!-- WhatsApp jaisa: message par hover/right-click -> menu (Reply/Copy/Forward/Delete) -->
+                    @if (!selectMode()) {
+                      <button class="pc-menu-btn" (click)="openMsgMenu($event, m)" title="Options">⌄</button>
+                    }
+
                     @if (m.sender === 'party') {
                       <div class="text-[10px] font-bold text-purple-700">{{ m.senderName || active()!.partyName }}</div>
+                    }
+
+                    <!-- Reply ka QUOTE — jis message ka jawab hai wo upar chhota dikhta hai -->
+                    @if (m.replyBody) {
+                      <div class="pc-quote">
+                        <div class="pc-quote-who">{{ m.replySender === 'firm' ? 'You' : (m.replySenderName || active()!.partyName) }}</div>
+                        <div class="pc-quote-txt">{{ m.replyBody }}</div>
+                      </div>
                     }
                     @if (m.attachmentType === 'image') {
                       <a [href]="fileUrl(m.attachmentUrl!)" target="_blank">
@@ -202,6 +218,29 @@ import { BackButtonComponent } from '../../shared/back-button.component';
                 </div>
               }
             </div>
+
+            <!-- Message ka menu — WhatsApp jaisa -->
+            @if (msgMenu(); as mm) {
+              <div class="pc-menu-back" (click)="msgMenu.set(null)"></div>
+              <div class="pc-menu" [style.left.px]="mm.x" [style.top.px]="mm.y">
+                <button (click)="startReply(mm.msg)">↩️ Reply</button>
+                <button (click)="copyMsg(mm.msg)">📋 Copy</button>
+                <button (click)="startForward(mm.msg)">➡️ Forward</button>
+                <button (click)="selectOne(mm.msg)">☑️ Select</button>
+                <button class="pc-menu-del" (click)="deleteOne(mm.msg)">🗑️ Delete</button>
+              </div>
+            }
+
+            <!-- Reply draft — kis message ka jawab de rahe hain -->
+            @if (replyTo(); as rt) {
+              <div class="pc-replybar">
+                <div class="pc-replybar-txt">
+                  <div class="pc-quote-who">{{ rt.sender === 'firm' ? 'You' : (rt.senderName || active()!.partyName) }}</div>
+                  <div class="pc-quote-txt">{{ rt.body || (rt.attachmentName || 'Attachment') }}</div>
+                </div>
+                <button (click)="replyTo.set(null)" class="pc-replybar-x">×</button>
+              </div>
+            }
 
             <div class="p-3 border-t border-[#F0F0F0] flex gap-2 items-end relative">
               <!-- ➕ attach menu (WhatsApp jaisa) -->
@@ -261,6 +300,32 @@ import { BackButtonComponent } from '../../shared/back-button.component';
     </div>
   `,
   styles: [`
+    /* ===== Message menu + Reply (WhatsApp jaisa) ===== */
+    .pc-menu-btn { position:absolute; top:2px; right:4px; border:none; background:none;
+      color:#6B7280; font-size:14px; line-height:1; cursor:pointer; opacity:0; transition:opacity .12s; }
+    .group:hover .pc-menu-btn { opacity:1; }
+    .pc-menu-back { position:fixed; inset:0; z-index:1290; }
+    .pc-menu { position:fixed; z-index:1300; background:#fff; border-radius:10px;
+      box-shadow:0 10px 30px rgba(0,0,0,.22); padding:5px; min-width:170px; }
+    .pc-menu button { display:block; width:100%; text-align:left; border:none; background:none;
+      padding:9px 12px; font-size:13px; color:#1B2E5C; border-radius:7px; cursor:pointer; font-family:inherit; }
+    .pc-menu button:hover { background:#F3F0FA; }
+    .pc-menu .pc-menu-del { color:#DC2626; }
+
+    /* Quote — message ke andar, jis baat ka jawab hai */
+    .pc-quote { border-left:3px solid #7C3AED; background:rgba(255,255,255,.55);
+      border-radius:6px; padding:4px 8px; margin-bottom:4px; }
+    .pc-quote-who { font-size:11px; font-weight:800; color:#6D28D9; }
+    .pc-quote-txt { font-size:12px; color:#4B5563; white-space:pre-wrap;
+      display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+
+    /* Reply draft bar — input ke upar */
+    .pc-replybar { display:flex; align-items:center; gap:8px; padding:8px 12px;
+      background:#F3F0FA; border-top:1px solid #E5E7EB; }
+    .pc-replybar-txt { flex:1; border-left:3px solid #7C3AED; padding-left:8px; min-width:0; }
+    .pc-replybar-x { border:none; background:none; font-size:22px; line-height:1;
+      color:#6B7280; cursor:pointer; }
+
     /* ===== Broadcast dialog ===== */
     .bc-overlay { position:fixed; inset:0; background:rgba(27,46,92,.55); z-index:1200;
       display:flex; align-items:center; justify-content:center; padding:16px; }
@@ -359,6 +424,56 @@ export class PartyChatComponent {
     const q = this.searchQ.toLowerCase().trim();
     if (!q) return this.threads();
     return this.threads().filter(t => t.partyName.toLowerCase().includes(q) || t.phone.includes(q));
+  }
+
+  // ===== MESSAGE MENU + REPLY (WhatsApp jaisa) =====
+  msgMenu = signal<{ x: number; y: number; msg: PchatMsg } | null>(null);
+  replyTo = signal<PchatMsg | null>(null);
+  fwdMsg = signal<PchatMsg | null>(null);
+
+  openMsgMenu(ev: MouseEvent, m: PchatMsg) {
+    ev.preventDefault();
+    ev.stopPropagation();
+    // Menu screen se bahar na nikle — kinare se thoda andar rakhte hain
+    const x = Math.min(ev.clientX, window.innerWidth - 190);
+    const y = Math.min(ev.clientY, window.innerHeight - 240);
+    this.msgMenu.set({ x, y, msg: m });
+  }
+
+  startReply(m: PchatMsg) {
+    this.replyTo.set(m);
+    this.msgMenu.set(null);
+  }
+
+  copyMsg(m: PchatMsg) {
+    const text = m.body || m.attachmentName || '';
+    navigator.clipboard?.writeText(text)
+      .then(() => this.toast.success('Copy ho gaya'))
+      .catch(() => this.toast.error('Copy nahi ho paya'));
+    this.msgMenu.set(null);
+  }
+
+  /** Forward — broadcast wali hi screen khol dete hain, message pehle se bhara hua.
+   *  Wahan se jitni chahe parties chuno. */
+  startForward(m: PchatMsg) {
+    this.msgMenu.set(null);
+    this.bcBody = m.body || m.attachmentName || '';
+    this.bcSelected.set(new Set());
+    this.bcMsg.set('');
+    this.bcOpen.set(true);
+  }
+
+  selectOne(m: PchatMsg) {
+    this.msgMenu.set(null);
+    this.selectMode.set(true);
+    this.selected.set(new Set([m.id]));
+  }
+
+  deleteOne(m: PchatMsg) {
+    this.msgMenu.set(null);
+    this.selectMode.set(true);
+    this.selected.set(new Set([m.id]));
+    this.showDelDialog.set(true);
   }
 
   // ===== BROADCAST — ek message, kai parties =====
@@ -623,8 +738,11 @@ export class PartyChatComponent {
     const body = this.draft.trim();
     if (!t || !body || this.busy()) return;
     this.busy.set(true);
-    this.http.post(`${this.base}/threads/${t.id}/messages`, { body }).subscribe({
-      next: () => { this.busy.set(false); this.draft = ''; this.loadMsgs(t.id); },
+    const replyToId = this.replyTo()?.id ?? null;
+    this.http.post(`${this.base}/threads/${t.id}/messages`, { body, replyToId }).subscribe({
+      next: () => {
+        this.busy.set(false); this.draft = ''; this.replyTo.set(null); this.loadMsgs(t.id);
+      },
       error: (e) => { this.busy.set(false); alert('⚠️ ' + (e?.error?.error ?? 'Message nahi gaya')); }
     });
   }

@@ -18,15 +18,15 @@ import { BackButtonComponent } from '../../../shared/back-button.component';
   template: `
     <div class="page-top-bar"><app-back-button></app-back-button></div>
   <div style="padding:16px">
-    <h2 style="font-weight:800;color:#1B2E5C;font-size:20px;margin-bottom:2px">🧾 Sub-Agent Report</h2>
-    <p style="color:#6B7280;font-size:13px;margin-bottom:14px">Buyer ke sub-agent ka bill-wise hissa (taxable × sub-agent%). Date range chuno.</p>
+    <h2 style="font-weight:800;color:#1B2E5C;font-size:20px;margin-bottom:2px">🤝 Buyer Agent Report</h2>
+    <p style="color:#6B7280;font-size:13px;margin-bottom:14px">Buyer ke agent ka bill-wise hissa (taxable × agent%). Wahi agents jo <b>Trading → Buyer Agents</b> me hain. Date range chuno.</p>
 
     <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:end;margin-bottom:14px">
       <div><label style="font-size:11px;color:#6B7280;display:block">FROM</label>
         <input type="date" [(ngModel)]="from" class="ip"></div>
       <div><label style="font-size:11px;color:#6B7280;display:block">TO</label>
         <input type="date" [(ngModel)]="to" class="ip"></div>
-      <div><label style="font-size:11px;color:#6B7280;display:block">SUB-AGENT (optional)</label>
+      <div><label style="font-size:11px;color:#6B7280;display:block">AGENT (optional)</label>
         <input [(ngModel)]="subAgent" list="saList" placeholder="Naam ka hissa ya list se chuno"
                class="ip" style="min-width:220px" (change)="load()">
         <datalist id="saList">
@@ -38,7 +38,11 @@ import { BackButtonComponent } from '../../../shared/back-button.component';
     </div>
 
     @if (loading()) { <p>Loading…</p> }
-    @else if (rows().length === 0) { <p style="color:#9CA3AF">Is period me koi sub-agent bill nahi mila.</p> }
+    @else if (rows().length === 0) {
+      <p style="color:#9CA3AF">Is period me koi agent-wala bill nahi mila.</p>
+      <p style="color:#9CA3AF;font-size:12px">Bill tabhi aata hai jab buyer ke Party Master me
+        <b>BUYER AGENT (payment guarantee)</b> set ho. Agent add karne ke liye: Trading → Buyer Agents.</p>
+    }
     @else {
       <div style="overflow-x:auto">
       <table style="width:100%;border-collapse:collapse;font-size:13px">
@@ -47,9 +51,9 @@ import { BackButtonComponent } from '../../../shared/back-button.component';
             <th style="padding:8px">SUPPLIER</th><th style="padding:8px">BUYER</th>
             <th style="padding:8px">SUPP. BILL NO</th><th style="padding:8px">BILL DATE</th>
             <th style="padding:8px;text-align:right">TAXABLE AMT</th>
-            <th style="padding:8px">SUB-AGENT</th>
-            <th style="padding:8px;text-align:right">SUB %</th>
-            <th style="padding:8px;text-align:right">SUB COMMISSION</th>
+            <th style="padding:8px">AGENT</th>
+            <th style="padding:8px;text-align:right">AGENT %</th>
+            <th style="padding:8px;text-align:right">AGENT COMMISSION</th>
           </tr>
         </thead>
         <tbody>

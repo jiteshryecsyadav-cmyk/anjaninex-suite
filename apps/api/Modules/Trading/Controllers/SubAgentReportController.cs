@@ -19,8 +19,11 @@ public class SubAgentReportController : TradingControllerBase
         string BillNo, DateOnly BillDate, decimal Taxable, string? SubAgent,
         decimal SubAgentPct, decimal Share);
 
-    // Bill-wise sub-agent report (date range). Sub-agent % ka koi calc effect nahi —
-    // yaha bill ke taxable par % laga ke sub-agent ka hissa (share) dikhaya jata hai.
+    // Bill-wise BUYER AGENT report (date range) — Trading > Buyer Agents (payment
+    // guarantee) wale agents. Pehle ye contacts.sub_agent (khali text field) se banti
+    // thi jo kisi aur cheez se juda hi nahi tha — isliye report hamesha khali aati thi
+    // jabki Buyer Agents screen me agent maujood the. Ab dono EK hi cheez hain.
+    // NOTE: Anjaninex admin ke "Agents/Resellers" aur Voice Agents ALAG hain.
     [HttpGet("sub-agent")]
     public async Task<IActionResult> SubAgent([FromQuery] DateOnly from, [FromQuery] DateOnly to,
                                               [FromQuery] string? subAgent = null)
@@ -34,17 +37,19 @@ public class SubAgentReportController : TradingControllerBase
                    COALESCE(buy.display_name,'') AS buyer,
                    b.supplier_bill_no, b.bill_no, b.bill_date,
                    COALESCE(b.taxable_amount,0) AS taxable,
-                   buy.sub_agent, COALESCE(buy.sub_agent_pct,0) AS sub_pct
+                   ag.name AS agent_name,
+                   -- Party par apna % set ho to wahi, warna agent ka default
+                   COALESCE(buy.buyer_agent_share_pct, ag.default_share_pct, 0) AS agent_pct
             FROM trading.bills b
             JOIN trading.party_profiles bpp ON bpp.id = b.buyer_party_id
             JOIN core.contacts buy          ON buy.id = bpp.contact_id
+            JOIN trading.buyer_agents ag    ON ag.id = buy.buyer_agent_id AND ag.firm_id = @f
             LEFT JOIN trading.party_profiles spp ON spp.id = b.party_id
             LEFT JOIN core.contacts sup          ON sup.id = spp.contact_id
             WHERE b.firm_id = @f
               AND b.bill_date BETWEEN @from AND @to
               AND b.status <> 'cancelled'
-              AND buy.sub_agent IS NOT NULL AND buy.sub_agent <> ''
-              AND (@sa IS NULL OR buy.sub_agent ILIKE '%' || @sa || '%')
+              AND (@sa IS NULL OR ag.name ILIKE '%' || @sa || '%')
             ORDER BY b.bill_date, b.bill_no", conn);
         cmd.Parameters.AddWithValue("f", firmId);
         cmd.Parameters.AddWithValue("from", from);
@@ -71,8 +76,9 @@ public class SubAgentReportController : TradingControllerBase
         });
     }
 
-    // Sab sub-agent naam (dropdown ke liye) — user ko poora naam yaad rakhne ki
-    // zaroorat na pade, list me se chun le.
+    // Sab BUYER AGENT naam (dropdown ke liye) — Trading > Buyer Agents wale hi.
+    // (Anjaninex admin ke "Agents/Resellers" aur Voice Agents ALAG cheez hain — unse
+    //  iska koi lena-dena nahi.)
     [HttpGet("sub-agent/names")]
     public async Task<IActionResult> SubAgentNames()
     {
@@ -81,10 +87,9 @@ public class SubAgentReportController : TradingControllerBase
         var conn = (NpgsqlConnection)_db.Database.GetDbConnection();
         if (conn.State != ConnectionState.Open) await conn.OpenAsync();
         await using var cmd = new NpgsqlCommand(@"
-            SELECT DISTINCT trim(sub_agent) FROM core.contacts
-            WHERE firm_id = @f AND deleted_at IS NULL
-              AND sub_agent IS NOT NULL AND trim(sub_agent) <> ''
-            ORDER BY 1", conn);
+            SELECT name FROM trading.buyer_agents
+            WHERE firm_id = @f AND is_active
+            ORDER BY name", conn);
         cmd.Parameters.AddWithValue("f", firmId);
         await using var r = await cmd.ExecuteReaderAsync();
         while (await r.ReadAsync()) names.Add(r.GetString(0));

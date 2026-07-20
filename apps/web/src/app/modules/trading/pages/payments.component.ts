@@ -189,6 +189,7 @@ export class PaymentsComponent {
     // Fetch full party details
     this.svc.getParty(p.partyId).subscribe(party => {
       const partyCard = {
+        id: party.id,                   // Party Chat kholne ke liye
         name: party.displayName,
         gst: party.gst,
         mobile: party.phone,
@@ -208,6 +209,7 @@ export class PaymentsComponent {
       const supParty = supName ? this.parties().find(x => x.displayName.toLowerCase() === supName.toLowerCase()) : undefined;
       const supCard = supName
         ? {
+            id: supParty?.id || null,   // Party Chat kholne ke liye
             name: supParty?.displayName || supName,
             gst: supParty?.gst || null,
             mobile: supParty?.phone || null,

@@ -1,9 +1,12 @@
 import { Component, Input, Output, EventEmitter, inject } from '@angular/core';
 import { CommonModule, DatePipe, DecimalPipe } from '@angular/common';
+import { Router } from '@angular/router';
 import { amountInWords } from './amount-in-words.util';
 import { FeatureService } from './feature.service';
 
 export interface PreviewParty {
+  /** Party Master ki id — Party Chat kholne ke liye. Na ho to chat button disabled. */
+  id?: string | null;
   name: string;
   gst?: string | null;
   address?: string | null;
@@ -79,7 +82,10 @@ export interface PreviewData {
         <div class="tb-right">
           <button (click)="print()" class="tb-btn"><span>🖨️</span> Print</button>
           <button (click)="savePdf()" class="tb-btn"><span>📄</span> Save PDF</button>
-          <button (click)="shareWhatsApp()" class="tb-btn tb-wa"><span>💬</span> WhatsApp</button>
+          <button (click)="sharePartyChat()" class="tb-btn tb-wa" [disabled]="!chatPartyId()"
+                  [title]="chatPartyId() ? 'Party Chat me bhejo' : 'Party Master me ye party nahi mili — chat nahi ho sakti'">
+            <span>💬</span> Party Chat
+          </button>
           <button (click)="close.emit()" class="tb-close">×</button>
         </div>
       </div>
@@ -438,6 +444,7 @@ export class InvoicePreviewComponent {
   @Input() data!: PreviewData;
   @Output() close = new EventEmitter<void>();
   features = inject(FeatureService);
+  private router = inject(Router);   // Party Chat deep-link ke liye
 
   /** Watermark text — firm ka pehla shabd (Namokara) uppercase. */
   wmText(): string {
@@ -462,20 +469,26 @@ export class InvoicePreviewComponent {
     // Browser's print dialog → user picks "Save as PDF" destination
     window.print();
   }
-  shareWhatsApp() {
-    const text = encodeURIComponent(
+  /** Kis party se baat karni hai — buyer pehle, warna supplier. */
+  chatPartyId(): string | null {
+    return this.data.buyer?.id || this.data.supplier?.id || null;
+  }
+
+  /** Document ki detail PARTY CHAT me bhejo (pehle WhatsApp par jata tha).
+   *  Fayda: baat-cheet party ke saath app me record rehti hai — WhatsApp par
+   *  bheja hua kahin nahi dikhta tha aur party ka jawab bhi gum ho jata tha.
+   *  Message draft me bharta hai; bhejta user khud hai. */
+  sharePartyChat() {
+    const partyId = this.chatPartyId();
+    if (!partyId) return;
+    const msg =
       `${this.data.title}\n` +
       `No: ${this.data.number}\n` +
       `Date: ${new Date(this.data.date).toLocaleDateString('en-IN')}\n` +
       (this.data.supplier ? `Supplier: ${this.data.supplier.name}\n` : '') +
       (this.data.buyer ? `Buyer: ${this.data.buyer.name}\n` : '') +
       `Net Amount: ₹${this.data.netAmount.toFixed(2)}\n` +
-      `\n— ${this.data.firmName}`
-    );
-    const phone = (this.data.buyer?.mobile || this.data.supplier?.mobile || '').replace(/[^0-9]/g, '');
-    const url = phone
-      ? `https://wa.me/${phone}?text=${text}`
-      : `https://wa.me/?text=${text}`;
-    window.open(url, '_blank');
+      `\n— ${this.data.firmName}`;
+    this.router.navigate(['/party-chat'], { queryParams: { partyId, msg } });
   }
 }

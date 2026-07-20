@@ -410,6 +410,7 @@ export class OrdersComponent {
             firmGst: this.features.firmGst(),
             firmAddress: 'Commission Agent · Surat, Gujarat',
             supplier: {
+              id: sup.id,               // Party Chat kholne ke liye
               name: sup.displayName,
               gst: sup.gst,
               mobile: sup.phone,
@@ -434,6 +435,7 @@ export class OrdersComponent {
         if (o.buyerPartyId) {
           this.svc.getParty(o.buyerPartyId).subscribe(buy => {
             buildOrder({
+              id: buy.id,               // Party Chat kholne ke liye
               name: buy.displayName,
               gst: buy.gst,
               mobile: buy.phone,

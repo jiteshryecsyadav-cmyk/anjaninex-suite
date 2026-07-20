@@ -386,6 +386,7 @@ export class BillsComponent {
       }));
 
       const card = (p: any) => p ? ({
+        id: p.id,                       // Party Chat kholne ke liye
         name: p.displayName,
         gst: p.gst,
         mobile: p.phone,

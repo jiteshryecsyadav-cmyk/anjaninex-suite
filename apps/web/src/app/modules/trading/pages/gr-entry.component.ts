@@ -1164,10 +1164,10 @@ export class GrEntryComponent {
   preview() {
     const sup = this.parties().find(p => p.id === this.supplierId);
     const buy = this.parties().find(p => p.id === this.buyerId);
-    const supCard = sup ? { name: sup.displayName, gst: sup.gst, mobile: sup.phone, city: sup.city,
+    const supCard = sup ? { id: sup.id, name: sup.displayName, gst: sup.gst, mobile: sup.phone, city: sup.city,
         address: sup.city ? `Address on file · ${sup.city}` : null }
       : { name: '—', gst: null, mobile: null, city: null, address: null };
-    const buyCard = buy ? { name: buy.displayName, gst: buy.gst, mobile: buy.phone, city: buy.city,
+    const buyCard = buy ? { id: buy.id, name: buy.displayName, gst: buy.gst, mobile: buy.phone, city: buy.city,
         address: buy.city ? `Address on file · ${buy.city}` : null }
       : { name: '—', gst: null, mobile: null, city: null, address: null };
 

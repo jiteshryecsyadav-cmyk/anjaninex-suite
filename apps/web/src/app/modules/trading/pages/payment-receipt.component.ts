@@ -1574,13 +1574,13 @@ export class PaymentReceiptComponent {
     if (!buyer) { alert('Pehle Buyer select karo'); return; }
     const selBills = this.bills().filter(b => b.selected);
     const partyCard = {
-      name: buyer.displayName, gst: buyer.gst, mobile: buyer.phone,
+      id: buyer.id, name: buyer.displayName, gst: buyer.gst, mobile: buyer.phone,
       city: buyer.city, address: buyer.city ? `Address on file · ${buyer.city}` : null
     };
     // ASLI supplier dikhao (Rahul Prints etc.) — Namokara to broker hai
     const sup = this.supplier();
     const supCard = sup
-      ? { name: sup.displayName, gst: sup.gst, mobile: sup.phone, city: sup.city,
+      ? { id: sup.id, name: sup.displayName, gst: sup.gst, mobile: sup.phone, city: sup.city,
           address: sup.city ? `Address on file · ${sup.city}` : null }
       : { name: this.features.firmName() || 'Anjaninex', gst: this.features.firmGst(), mobile: null,
           city: 'Surat', address: 'Commission Agent · Surat, Gujarat' };

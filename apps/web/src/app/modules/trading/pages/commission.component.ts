@@ -744,6 +744,7 @@ export class CommissionComponent {
           totalAmount: l.totalAmount
         }));
         const partyCard = {
+          id: party.id,                 // Party Chat kholne ke liye
           name: party.displayName,
           gst: party.gst,
           mobile: party.phone,
@@ -886,6 +887,7 @@ export class CommissionComponent {
         }));
 
         const partyCard = {
+          id: party.id,                 // Party Chat kholne ke liye
           name: party.displayName,
           gst: party.gst,
           mobile: party.phone,

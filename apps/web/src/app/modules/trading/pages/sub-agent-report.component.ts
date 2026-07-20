@@ -27,7 +27,12 @@ import { BackButtonComponent } from '../../../shared/back-button.component';
       <div><label style="font-size:11px;color:#6B7280;display:block">TO</label>
         <input type="date" [(ngModel)]="to" class="ip"></div>
       <div><label style="font-size:11px;color:#6B7280;display:block">SUB-AGENT (optional)</label>
-        <input [(ngModel)]="subAgent" placeholder="Naam" class="ip"></div>
+        <input [(ngModel)]="subAgent" list="saList" placeholder="Naam ka hissa ya list se chuno"
+               class="ip" style="min-width:220px" (change)="load()">
+        <datalist id="saList">
+          @for (n of names(); track n) { <option [value]="n"></option> }
+        </datalist>
+      </div>
       <button (click)="load()" style="background:#7C3AED;color:#fff;font-weight:700;border:none;border-radius:8px;padding:9px 18px;cursor:pointer">Dekho</button>
       <button (click)="print()" style="background:#fff;border:1px solid #D6DDEA;border-radius:8px;padding:9px 14px;cursor:pointer">🖨 Print</button>
     </div>
@@ -79,6 +84,7 @@ import { BackButtonComponent } from '../../../shared/back-button.component';
 export class SubAgentReportComponent implements OnInit {
   private base = `${environment.apiUrl}/api/trading/reports/sub-agent`;
   from = ''; to = ''; subAgent = '';
+  names = signal<string[]>([]);   // dropdown ke liye sab sub-agent naam
   rows = signal<SubAgentRow[]>([]);
   totalTaxable = signal(0);
   totalShare = signal(0);
@@ -90,7 +96,15 @@ export class SubAgentReportComponent implements OnInit {
     const now = new Date();
     this.to = now.toISOString().slice(0, 10);
     this.from = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
+    this.loadNames();
     this.load();
+  }
+
+  private async loadNames() {
+    try {
+      const r: any = await firstValueFrom(this.http.get(`${this.base}/names`));
+      this.names.set(r || []);
+    } catch { this.names.set([]); }
   }
 
   async load() {

@@ -44,7 +44,7 @@ public class SubAgentReportController : TradingControllerBase
               AND b.bill_date BETWEEN @from AND @to
               AND b.status <> 'cancelled'
               AND buy.sub_agent IS NOT NULL AND buy.sub_agent <> ''
-              AND (@sa IS NULL OR buy.sub_agent ILIKE @sa)
+              AND (@sa IS NULL OR buy.sub_agent ILIKE '%' || @sa || '%')
             ORDER BY b.bill_date, b.bill_no", conn);
         cmd.Parameters.AddWithValue("f", firmId);
         cmd.Parameters.AddWithValue("from", from);
@@ -69,6 +69,26 @@ public class SubAgentReportController : TradingControllerBase
             totalShare = rows.Sum(x => x.Share),
             count = rows.Count
         });
+    }
+
+    // Sab sub-agent naam (dropdown ke liye) — user ko poora naam yaad rakhne ki
+    // zaroorat na pade, list me se chun le.
+    [HttpGet("sub-agent/names")]
+    public async Task<IActionResult> SubAgentNames()
+    {
+        var firmId = CurrentFirmId;
+        var names = new List<string>();
+        var conn = (NpgsqlConnection)_db.Database.GetDbConnection();
+        if (conn.State != ConnectionState.Open) await conn.OpenAsync();
+        await using var cmd = new NpgsqlCommand(@"
+            SELECT DISTINCT trim(sub_agent) FROM core.contacts
+            WHERE firm_id = @f AND deleted_at IS NULL
+              AND sub_agent IS NOT NULL AND trim(sub_agent) <> ''
+            ORDER BY 1", conn);
+        cmd.Parameters.AddWithValue("f", firmId);
+        await using var r = await cmd.ExecuteReaderAsync();
+        while (await r.ReadAsync()) names.Add(r.GetString(0));
+        return Ok(names);
     }
 
     public record LedgerRow(DateOnly Date, string Kind, string Ref, string? VoucherNo,

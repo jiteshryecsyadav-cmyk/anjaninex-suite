@@ -9,10 +9,11 @@ import { PaginatorComponent } from '../../../shared/paginator.component';
 import { INDIAN_STATES, citiesForState, matchIndiaState } from '../../../shared/india-data';
 import { IndiaPincodeService } from '../../../shared/india-pincode.service';
 
+import { UppercaseDirective } from '../../../shared/uppercase.directive';
 @Component({
   selector: 'app-transporters',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterLink, BackButtonComponent, PaginatorComponent],
+  imports: [UppercaseDirective, CommonModule, FormsModule, ReactiveFormsModule, RouterLink, BackButtonComponent, PaginatorComponent],
   template: `
     <div class="max-w-7xl mx-auto">
       <div class="page-top-bar"><app-back-button></app-back-button></div>
@@ -128,13 +129,13 @@ import { IndiaPincodeService } from '../../../shared/india-pincode.service';
                 <div>
                   <label class="lbl">GST NO.</label>
                   <div class="flex gap-1">
-                    <input formControlName="gstNo" placeholder="24XXXXX0000X1ZX" class="ip">
+                    <input appUpper formControlName="gstNo" placeholder="24XXXXX0000X1ZX" class="ip">
                     <button type="button" (click)="fetchGst()" class="btn-fetch">🔍 Get GST</button>
                   </div>
                 </div>
                 <div>
                   <label class="lbl">PAN</label>
-                  <input formControlName="pan" placeholder="XXXXX0000X" class="ip">
+                  <input appUpper formControlName="pan" placeholder="XXXXX0000X" class="ip">
                 </div>
                 <div>
                   <label class="lbl">PIN CODE <small style="color:#9CA3AF">(dalte hi city/state auto)</small></label>

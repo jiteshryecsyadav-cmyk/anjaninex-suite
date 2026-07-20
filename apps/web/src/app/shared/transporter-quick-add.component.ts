@@ -11,10 +11,11 @@ import { IndiaPincodeService } from './india-pincode.service';
  * Party Quick Add jaisa modal: naam, contact, mobile, GST/PAN,
  * pincode→city/state auto, address. Save hote hi parent ko naya transporter milta hai.
  */
+import { UppercaseDirective } from '../shared/uppercase.directive';
 @Component({
   selector: 'app-transporter-quick-add',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [UppercaseDirective, CommonModule, FormsModule],
   template: `
     <div class="tqa-overlay" (click)="close.emit()">
       <div class="tqa-modal" (click)="$event.stopPropagation()">
@@ -58,12 +59,12 @@ import { IndiaPincodeService } from './india-pincode.service';
           <div class="tqa-row">
             <div class="tqa-field">
               <label>GST NO</label>
-              <input type="text" [(ngModel)]="gstNo" maxlength="15" placeholder="optional"
+              <input appUpper type="text" [(ngModel)]="gstNo" maxlength="15" placeholder="optional"
                      (input)="gstNo = gstNo.toUpperCase()" class="tqa-ip">
             </div>
             <div class="tqa-field">
               <label>PAN</label>
-              <input type="text" [(ngModel)]="pan" maxlength="10" placeholder="optional"
+              <input appUpper type="text" [(ngModel)]="pan" maxlength="10" placeholder="optional"
                      (input)="pan = pan.toUpperCase()" class="tqa-ip">
             </div>
             <div class="tqa-field">

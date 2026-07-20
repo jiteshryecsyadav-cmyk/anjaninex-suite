@@ -8,10 +8,11 @@ import { environment } from '../../../environments/environment';
 
 type Tab = 'recharge' | 'history' | 'pricing' | 'auto';
 
+import { UppercaseDirective } from '../../shared/uppercase.directive';
 @Component({
   selector: 'app-recharge-modal',
   standalone: true,
-  imports: [CommonModule, FormsModule, WalletIconComponent],
+  imports: [UppercaseDirective, CommonModule, FormsModule, WalletIconComponent],
   template: `
     <div class="modal-backdrop" (click)="onBackdropClick($event)">
       <div class="modal" (click)="$event.stopPropagation()">
@@ -140,7 +141,7 @@ type Tab = 'recharge' | 'history' | 'pricing' | 'auto';
 
                 <!-- GSTIN -->
                 <div class="sec-title" style="margin-top:14px">GST Invoice (Optional)</div>
-                <input type="text" class="input" [(ngModel)]="gstin"
+                <input appUpper type="text" class="input" [(ngModel)]="gstin"
                        placeholder="Your GSTIN (for input tax credit)">
                 <div style="font-size:10px;color:var(--xs);margin-top:5px">
                   ✓ GST invoice emailed · Eligible for full ITC claim

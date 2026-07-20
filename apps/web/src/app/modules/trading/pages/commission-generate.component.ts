@@ -19,10 +19,11 @@ interface CommRow {
   commAmt: number;
 }
 
+import { UppercaseDirective } from '../../../shared/uppercase.directive';
 @Component({
   selector: 'app-commission-generate',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, DecimalPipe, TradingSubNavComponent, BackButtonComponent, InDatePipe],
+  imports: [UppercaseDirective, CommonModule, FormsModule, RouterLink, DecimalPipe, TradingSubNavComponent, BackButtonComponent, InDatePipe],
   template: `
   @if (discAlert()) {
     <div class="disc-alert-overlay" (click)="discAlert.set('')">
@@ -208,7 +209,7 @@ interface CommRow {
           </div>
           <div>
             <label class="lbl">GST %</label>
-            <input [(ngModel)]="gstPct" type="number" step="0.01" class="ip">
+            <input appUpper [(ngModel)]="gstPct" type="number" step="0.01" class="ip">
           </div>
           <div class="flex gap-2">
             <button (click)="generate()" [disabled]="selectedCount() === 0 || saving()" class="btn-primary flex-1">

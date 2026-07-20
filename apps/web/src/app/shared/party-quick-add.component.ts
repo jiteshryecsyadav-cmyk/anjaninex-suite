@@ -4,10 +4,11 @@ import { FormsModule } from '@angular/forms';
 import { TradingService, Party, CreateParty } from '../modules/trading/services/trading.service';
 import { INDIA_STATES, STATES_ALPHA, findStateByName, findStateByGstCode, suggestPincode } from './india-states';
 
+import { UppercaseDirective } from '../shared/uppercase.directive';
 @Component({
   selector: 'app-party-quick-add',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [UppercaseDirective, CommonModule, FormsModule],
   template: `
     <div class="qa-overlay" (click)="close.emit()">
       <div class="qa-modal" (click)="$event.stopPropagation()">
@@ -66,7 +67,7 @@ import { INDIA_STATES, STATES_ALPHA, findStateByName, findStateByGstCode, sugges
                 <input type="text" value="URP" disabled class="qa-ip" title="Unregistered party — no GSTIN">
                 <div class="qa-hint">Unregistered party — GSTIN ki jagah "URP". PAN neeche zaroori hai.</div>
               } @else {
-                <input type="text" [(ngModel)]="gst" placeholder="e.g., 24AABCO5612R1ZX"
+                <input appUpper type="text" [(ngModel)]="gst" placeholder="e.g., 24AABCO5612R1ZX"
                        maxlength="15" (input)="gst = gst.toUpperCase()"
                        class="qa-ip" [class.qa-ip-err]="submitted() && !isValidGst()">
                 @if (gst && gst.length > 0 && gst.length < 15) {
@@ -76,7 +77,7 @@ import { INDIA_STATES, STATES_ALPHA, findStateByName, findStateByGstCode, sugges
             </div>
             <div class="qa-field">
               <label>PAN @if (isUrp) { <span class="req">*</span> }</label>
-              <input type="text" [(ngModel)]="pan" placeholder="AABCO5612R" maxlength="10"
+              <input appUpper type="text" [(ngModel)]="pan" placeholder="AABCO5612R" maxlength="10"
                      (input)="pan = pan.toUpperCase()" class="qa-ip"
                      [class.qa-ip-err]="submitted() && isUrp && !isValidPan()">
               @if (isUrp && pan && pan.length > 0 && !isValidPan()) {

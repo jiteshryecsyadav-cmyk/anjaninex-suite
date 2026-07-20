@@ -10,6 +10,7 @@ import { TradingService, Party } from '../services/trading.service';
 type FilterKey = 'all' | 'supplier' | 'buyer' | 'both' | 'aplus';
 type PartyType = 'supplier' | 'buyer' | 'both';
 import { BackButtonComponent } from '../../../shared/back-button.component';
+import { UppercaseDirective } from '../../../shared/uppercase.directive';
 import { PaginatorComponent } from '../../../shared/paginator.component';
 import { INDIAN_STATES, citiesForState, matchIndiaState } from '../../../shared/india-data';
 import { IndiaPincodeService } from '../../../shared/india-pincode.service';
@@ -21,7 +22,7 @@ import { ToastService } from '../../../shared/toast.service';
 @Component({
   selector: 'app-parties',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterLink, RouterLinkActive, DecimalPipe, TradingSubNavComponent, BackButtonComponent, PaginatorComponent, LedgerStatementComponent],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterLink, RouterLinkActive, DecimalPipe, TradingSubNavComponent, BackButtonComponent, PaginatorComponent, LedgerStatementComponent, UppercaseDirective],
   template: `
     <div class="max-w-7xl mx-auto">
       <div class="page-top-bar"><app-back-button></app-back-button></div>
@@ -277,13 +278,13 @@ import { ToastService } from '../../../shared/toast.service';
                 <div>
                   <label class="lbl">GSTIN</label>
                   <div class="flex gap-1">
-                    <input formControlName="gst" placeholder="24XXXXX0000X1ZX" class="ip">
+                    <input appUpper formControlName="gst" placeholder="24XXXXX0000X1ZX" class="ip">
                     <button type="button" (click)="fetchGst()" class="btn-fetch">🔍 Fetch</button>
                   </div>
                 </div>
                 <div>
                   <label class="lbl">PAN NUMBER <small>10 chars · ABCDE1234F</small></label>
-                  <input formControlName="pan" placeholder="ABCDE1234F" class="ip">
+                  <input appUpper formControlName="pan" placeholder="ABCDE1234F" class="ip">
                 </div>
                 <div>
                   <label class="lbl">MOBILE *</label>

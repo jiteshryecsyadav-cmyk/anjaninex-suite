@@ -9,10 +9,11 @@ import { SupplierCatalogComponent } from './supplier-catalog.component';
 import { INDIAN_STATES, citiesForState, matchIndiaState } from '../../../shared/india-data';
 import { IndiaPincodeService } from '../../../shared/india-pincode.service';
 
+import { UppercaseDirective } from '../../../shared/uppercase.directive';
 @Component({
   selector: 'app-supplier-form',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, FormsModule, RouterLink, BackButtonComponent, SupplierCatalogComponent],
+  imports: [UppercaseDirective, CommonModule, ReactiveFormsModule, FormsModule, RouterLink, BackButtonComponent, SupplierCatalogComponent],
   template: `
     <div class="max-w-3xl mx-auto">
       <div class="page-top-bar"><app-back-button></app-back-button></div>
@@ -99,12 +100,12 @@ import { IndiaPincodeService } from '../../../shared/india-pincode.service';
           </div>
           <div>
             <label class="text-xs font-bold text-[#6b3fa0] uppercase">GST Number</label>
-            <input formControlName="gst" class="input font-mono uppercase" maxlength="15"
+            <input appUpper formControlName="gst" class="input font-mono uppercase" maxlength="15"
                    [readonly]="lockCommon()" [class.bg-gray-100]="lockCommon()">
           </div>
           <div>
             <label class="text-xs font-bold text-[#6b3fa0] uppercase">PAN</label>
-            <input formControlName="pan" class="input font-mono uppercase" maxlength="10"
+            <input appUpper formControlName="pan" class="input font-mono uppercase" maxlength="10"
                    [readonly]="lockCommon()" [class.bg-gray-100]="lockCommon()">
           </div>
         </div>

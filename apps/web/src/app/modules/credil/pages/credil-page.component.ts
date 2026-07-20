@@ -5,10 +5,11 @@ import jsPDF from 'jspdf';
 import { CredilService, CredilStatus, CredilRequestRow, CredilReport, CredilRequestResult } from '../credil.service';
 
 import { BackButtonComponent } from '../../../shared/back-button.component';
+import { UppercaseDirective } from '../../../shared/uppercase.directive';
 @Component({
   standalone: true,
   selector: 'app-credil-page',
-  imports: [BackButtonComponent, CommonModule, FormsModule],
+  imports: [UppercaseDirective, BackButtonComponent, CommonModule, FormsModule],
   template: `
     <div class="page-top-bar"><app-back-button></app-back-button></div>
   <div class="credil-wrap">
@@ -44,7 +45,7 @@ import { BackButtonComponent } from '../../../shared/back-button.component';
 
           @if (step()===1) {
             <label class="lbl">Party ka GST Number</label>
-            <input class="inp" [(ngModel)]="gst" placeholder="24ABCDE1234F1Z5" maxlength="15"
+            <input appUpper class="inp" [(ngModel)]="gst" placeholder="24ABCDE1234F1Z5" maxlength="15"
                    (input)="gst = gst.toUpperCase()">
 
             <label class="lbl">Kaun se scores chahiye?</label>

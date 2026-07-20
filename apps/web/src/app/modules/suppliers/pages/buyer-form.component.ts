@@ -11,10 +11,11 @@ import { BuyerCatalogComponent } from './buyer-catalog.component';
 import { INDIAN_STATES, citiesForState, matchIndiaState } from '../../../shared/india-data';
 import { IndiaPincodeService } from '../../../shared/india-pincode.service';
 
+import { UppercaseDirective } from '../../../shared/uppercase.directive';
 @Component({
   selector: 'app-buyer-form',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterLink, BackButtonComponent, BuyerCatalogComponent],
+  imports: [UppercaseDirective, CommonModule, ReactiveFormsModule, RouterLink, BackButtonComponent, BuyerCatalogComponent],
   template: `
     <div class="max-w-3xl mx-auto">
       <div class="page-top-bar"><app-back-button></app-back-button></div>
@@ -109,12 +110,12 @@ import { IndiaPincodeService } from '../../../shared/india-pincode.service';
           </div>
           <div>
             <label class="lbl">GST Number</label>
-            <input formControlName="gst" class="input font-mono uppercase" maxlength="15"
+            <input appUpper formControlName="gst" class="input font-mono uppercase" maxlength="15"
                    [readonly]="lockCommon()" [class.bg-gray-100]="lockCommon()">
           </div>
           <div>
             <label class="lbl">PAN</label>
-            <input formControlName="pan" class="input font-mono uppercase" maxlength="10"
+            <input appUpper formControlName="pan" class="input font-mono uppercase" maxlength="10"
                    [readonly]="lockCommon()" [class.bg-gray-100]="lockCommon()">
           </div>
           <div>

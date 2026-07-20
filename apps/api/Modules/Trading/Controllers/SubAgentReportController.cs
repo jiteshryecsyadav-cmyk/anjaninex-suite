@@ -74,14 +74,48 @@ public class SubAgentReportController : TradingControllerBase
     public record LedgerRow(DateOnly Date, string Kind, string Ref, string? VoucherNo,
         decimal Debit, decimal Credit, decimal Balance, string? Remark);
 
-    // PARTY LEDGER — opening balance + sales(debit) & receipts(credit) chronological + running balance.
+    // PARTY LEDGER — opening balance + Dr/Cr entries chronological + running balance.
+    //   partyId    → ek party ka khata
+    //   group      → partyId khali ho to us GROUP (sister firms) ki saari parties ka JODA hua khata
+    //   supplierId → sirf us supplier ke saath ke len-den (broker ka mill-wise hisaab)
     [HttpGet("party-ledger")]
     public async Task<IActionResult> PartyLedger([FromQuery] Guid partyId,
-                                                 [FromQuery] DateOnly from, [FromQuery] DateOnly to)
+                                                 [FromQuery] DateOnly from, [FromQuery] DateOnly to,
+                                                 [FromQuery] string? group = null,
+                                                 [FromQuery] Guid? supplierId = null)
     {
         var firmId = CurrentFirmId;
         var conn = (NpgsqlConnection)_db.Database.GetDbConnection();
         if (conn.State != ConnectionState.Open) await conn.OpenAsync();
+
+        // 0) Kis-kis party ka khata banega — ek party, ya poore group ki sister firms.
+        Guid[] partyIds;
+        if (partyId != Guid.Empty)
+        {
+            partyIds = new[] { partyId };
+        }
+        else if (!string.IsNullOrWhiteSpace(group))
+        {
+            var ids = new List<Guid>();
+            await using var gcmd = new NpgsqlCommand(@"
+                SELECT pp.id FROM trading.party_profiles pp
+                JOIN core.contacts c ON c.id = pp.contact_id
+                WHERE pp.firm_id = @f AND c.group_name = @g", conn);
+            gcmd.Parameters.AddWithValue("f", firmId);
+            gcmd.Parameters.AddWithValue("g", group.Trim());
+            await using (var gr = await gcmd.ExecuteReaderAsync())
+                while (await gr.ReadAsync()) ids.Add(gr.GetGuid(0));
+            partyIds = ids.ToArray();
+        }
+        else partyIds = Array.Empty<Guid>();
+
+        // Na party na group (ya group me koi firm nahi) → khali statement, error nahi.
+        if (partyIds.Length == 0)
+            return Ok(new { opening = 0m, rows = new List<LedgerRow>(),
+                            totalDebit = 0m, totalCredit = 0m, closing = 0m, count = 0 });
+
+        object supVal = supplierId.HasValue && supplierId.Value != Guid.Empty
+            ? supplierId.Value : DBNull.Value;
 
         // 1) Opening balance (period se pehle ka). Broker model me ek bill par DO party hoti
         //    hain — party_id = SUPPLIER, buyer_party_id = BUYER. Isliye khata dono taraf banta hai:
@@ -92,20 +126,26 @@ public class SubAgentReportController : TradingControllerBase
         //    Sign: (+) = humein lena hai (receivable), (−) = humein dena hai (payable).
         decimal opening;
         await using (var ocmd = new NpgsqlCommand(@"
-            SELECT COALESCE((SELECT SUM(CASE WHEN (b.buyer_party_id = @p
+            SELECT COALESCE((SELECT SUM(CASE WHEN (b.buyer_party_id = ANY(@ps)
                                                    OR (b.buyer_party_id IS NULL AND b.bill_type = 'sales'))
                                              THEN b.total ELSE -b.total END)
                              FROM trading.bills b
-                             WHERE b.firm_id=@f AND (b.party_id=@p OR b.buyer_party_id=@p)
+                             WHERE b.firm_id=@f AND (b.party_id = ANY(@ps) OR b.buyer_party_id = ANY(@ps))
+                               AND (@sup IS NULL OR b.party_id = @sup)
                                AND b.bill_date < @from AND b.status <> 'cancelled'),0)
                  + COALESCE((SELECT SUM(CASE WHEN pm.payment_type = 'receipt'
                                              THEN -pm.amount ELSE pm.amount END)
                              FROM trading.payments pm
-                             WHERE pm.firm_id=@f AND pm.party_id=@p
+                             WHERE pm.firm_id=@f AND pm.party_id = ANY(@ps)
+                               AND (@sup IS NULL OR EXISTS (
+                                     SELECT 1 FROM trading.payment_allocations pa
+                                     JOIN trading.bills bb ON bb.id = pa.bill_id
+                                     WHERE pa.payment_id = pm.id AND bb.party_id = @sup))
                                AND pm.payment_date < @from AND pm.deleted_at IS NULL),0)", conn))
         {
             ocmd.Parameters.AddWithValue("f", firmId);
-            ocmd.Parameters.AddWithValue("p", partyId);
+            ocmd.Parameters.AddWithValue("ps", partyIds);
+            ocmd.Parameters.Add(new NpgsqlParameter("sup", NpgsqlTypes.NpgsqlDbType.Uuid) { Value = supVal });
             ocmd.Parameters.AddWithValue("from", from);
             opening = Convert.ToDecimal(await ocmd.ExecuteScalarAsync() ?? 0m);
         }
@@ -117,18 +157,18 @@ public class SubAgentReportController : TradingControllerBase
         var running = opening;
         await using (var cmd = new NpgsqlCommand(@"
             SELECT b.bill_date AS d,
-                   CASE WHEN (b.buyer_party_id = @p
+                   CASE WHEN (b.buyer_party_id = ANY(@ps)
                               OR (b.buyer_party_id IS NULL AND b.bill_type = 'sales'))
                         THEN 'SALES' ELSE 'PURCHASE' END AS kind,
                    COALESCE(NULLIF(b.supplier_bill_no,''), b.bill_no) AS ref,
                    b.bill_no AS vno,
-                   CASE WHEN (b.buyer_party_id = @p
+                   CASE WHEN (b.buyer_party_id = ANY(@ps)
                               OR (b.buyer_party_id IS NULL AND b.bill_type = 'sales'))
                         THEN b.total ELSE 0::numeric END AS debit,
-                   CASE WHEN (b.buyer_party_id = @p
+                   CASE WHEN (b.buyer_party_id = ANY(@ps)
                               OR (b.buyer_party_id IS NULL AND b.bill_type = 'sales'))
                         THEN 0::numeric ELSE b.total END AS credit,
-                   CASE WHEN (b.buyer_party_id = @p
+                   CASE WHEN (b.buyer_party_id = ANY(@ps)
                               OR (b.buyer_party_id IS NULL AND b.bill_type = 'sales'))
                         THEN COALESCE(sup.display_name,'')
                         ELSE COALESCE(buy.display_name,'') END AS remark
@@ -137,7 +177,8 @@ public class SubAgentReportController : TradingControllerBase
             LEFT JOIN core.contacts sup          ON sup.id = spp.contact_id
             LEFT JOIN trading.party_profiles bpp ON bpp.id = b.buyer_party_id
             LEFT JOIN core.contacts buy          ON buy.id = bpp.contact_id
-            WHERE b.firm_id=@f AND (b.party_id=@p OR b.buyer_party_id=@p)
+            WHERE b.firm_id=@f AND (b.party_id = ANY(@ps) OR b.buyer_party_id = ANY(@ps))
+              AND (@sup IS NULL OR b.party_id = @sup)
               AND b.bill_date BETWEEN @from AND @to AND b.status <> 'cancelled'
             UNION ALL
             SELECT pm.payment_date, UPPER(pm.payment_mode), pm.payment_no, pm.reference_no,
@@ -148,12 +189,17 @@ public class SubAgentReportController : TradingControllerBase
                              JOIN trading.bills bb ON bb.id = pa.bill_id
                              WHERE pa.payment_id = pm.id), COALESCE(pm.notes,''))
             FROM trading.payments pm
-            WHERE pm.firm_id=@f AND pm.party_id=@p
+            WHERE pm.firm_id=@f AND pm.party_id = ANY(@ps)
+              AND (@sup IS NULL OR EXISTS (
+                    SELECT 1 FROM trading.payment_allocations pa
+                    JOIN trading.bills bb ON bb.id = pa.bill_id
+                    WHERE pa.payment_id = pm.id AND bb.party_id = @sup))
               AND pm.payment_date BETWEEN @from AND @to AND pm.deleted_at IS NULL
             ORDER BY d", conn))
         {
             cmd.Parameters.AddWithValue("f", firmId);
-            cmd.Parameters.AddWithValue("p", partyId);
+            cmd.Parameters.AddWithValue("ps", partyIds);
+            cmd.Parameters.Add(new NpgsqlParameter("sup", NpgsqlTypes.NpgsqlDbType.Uuid) { Value = supVal });
             cmd.Parameters.AddWithValue("from", from);
             cmd.Parameters.AddWithValue("to", to);
             await using var r = await cmd.ExecuteReaderAsync();

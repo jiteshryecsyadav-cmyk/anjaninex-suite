@@ -1,7 +1,7 @@
 import { Component, inject, signal, computed } from '@angular/core';
 import { CommonModule, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RouterLink, RouterLinkActive } from '@angular/router';
+import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { TradingSubNavComponent } from '../components/trading-sub-nav.component';
 import { firstValueFrom } from 'rxjs';
 import { TradingService, BillListItem, Party } from '../services/trading.service';
@@ -328,7 +328,7 @@ import { amountInWords } from '../../../shared/amount-in-words.util';
                   </td>
                   <td class="text-center">
                     <button (click)="previewInvoice(inv)" class="action-btn action-preview">👁 Preview</button>
-                    <button (click)="waInvoice(inv)" class="action-btn action-wa">💬 WhatsApp</button>
+                    <button (click)="waInvoice(inv)" class="action-btn action-wa">💬 Party Chat</button>
                     <button (click)="deleteInvoice(inv)" class="action-btn action-reminder">🗑 Delete</button>
                   </td>
                 </tr>
@@ -527,6 +527,7 @@ import { amountInWords } from '../../../shared/amount-in-words.util';
 export class CommissionComponent {
   readonly inWords = amountInWords;   // card amount → words (Indian Lakh/Crore)
   private svc = inject(TradingService);
+  private router = inject(Router);   // Party Chat deep-link ke liye
   features = inject(FeatureService);
 
   parties = signal<Party[]>([]);
@@ -925,20 +926,19 @@ export class CommissionComponent {
     });
   }
 
-  /** Invoice party ko WhatsApp — message me invoice detail pre-filled */
+  /** Invoice party ko PARTY CHAT me bhejo — detail draft me pre-filled.
+   *  Pehle WhatsApp par jata tha: bheja hua app me kahin record nahi hota tha
+   *  aur party ka jawab bhi gum ho jata tha. Ab poori baat app me hi rehti hai. */
   waInvoice(inv: any) {
     const p = this.parties().find(x => x.displayName === inv.partyName);
-    const digits = (p?.phone || '').replace(/\D/g, '');
-    if (!digits) { alert(`"${inv.partyName}" ka phone number Party Master me save nahi hai`); return; }
-    const ten = digits.length > 10 ? digits.slice(-10) : digits;
-    const msg = encodeURIComponent(
+    if (!p?.id) { alert(`"${inv.partyName}" Party Master me nahi mili — Party Chat nahi ho sakti.`); return; }
+    const msg =
       `Commission Invoice ${inv.invoiceNo}\n` +
       `Date: ${inv.invoiceDate}\n` +
       `Bills: ${inv.billCount}\n` +
       `Total: ₹${(+inv.totalAmount).toFixed(2)}\n\n` +
-      `- ${this.features.firmName() || 'Anjaninex'}`
-    );
-    window.open(`https://wa.me/91${ten}?text=${msg}`, '_blank');
+      `- ${this.features.firmName() || 'Anjaninex'}`;
+    this.router.navigate(['/party-chat'], { queryParams: { partyId: p.id, msg } });
   }
 
   deleteInvoice(inv: any) {

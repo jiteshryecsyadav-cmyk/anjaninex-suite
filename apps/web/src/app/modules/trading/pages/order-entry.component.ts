@@ -67,7 +67,7 @@ interface LineRow {
           </button>
           <button type="button" (click)="preview()" class="oh-btn oh-btn-light">👁 Preview</button>
           <button type="button" (click)="downloadPdf()" class="oh-btn oh-btn-light">📄 PDF</button>
-          <button type="button" (click)="sendWhatsApp()" class="oh-btn oh-btn-wa">💬 WhatsApp</button>
+          <button type="button" (click)="sendWhatsApp()" class="oh-btn oh-btn-wa">💬 Party Chat</button>
           <a routerLink="/trading/orders" class="oh-btn oh-btn-close">✕ Close</a>
         </div>
       </div>
@@ -2080,22 +2080,25 @@ export class OrderEntryComponent {
   downloadPdf() {
     alert('📄 PDF download will be enabled after Submit. Save the order first to generate PDF.');
   }
+  /** Order ki detail PARTY CHAT me bhejo (pehle WhatsApp par jata tha).
+   *  Party Chat me poori baat-cheet party ke saath app me hi record rehti hai —
+   *  WhatsApp par bheja hua kahin nahi dikhta tha aur party ka jawab bhi gum ho jata tha.
+   *  Message draft me bharta hai; bhejta user khud hai. */
   sendWhatsApp() {
-    const phone = this.buyerWhatsapp || this.supplierWhatsapp;
-    if (!phone) {
-      alert('No WhatsApp number — select Supplier/Buyer first.');
+    const partyId = this.buyerId || this.supplierId;
+    if (!partyId) {
+      alert('Pehle Supplier/Buyer chuno — kis party ko bhejna hai wahi pata nahi.');
       return;
     }
     const sup = this.parties().find(p => p.id === this.supplierId)?.displayName ?? '';
     const buy = this.parties().find(p => p.id === this.buyerId)?.displayName ?? '';
-    const msg = encodeURIComponent(
+    const msg =
       `Order ${this.tempOrderNo || '(new)'}\n` +
       `Supplier: ${sup}\nBuyer: ${buy}\n` +
       `Items: ${this.lines().filter(l => l.itemName).length}\n` +
       `Net Total: ₹${this.netTotal().toFixed(2)}\n` +
-      `— ${this.features.firmName() || 'Anjaninex'}`);
-    const clean = phone.replace(/[^0-9]/g, '');
-    window.open(`https://wa.me/${clean}?text=${msg}`, '_blank');
+      `— ${this.features.firmName() || 'Anjaninex'}`;
+    this.router.navigate(['/party-chat'], { queryParams: { partyId, msg } });
   }
 
   // ============ SAVE ============

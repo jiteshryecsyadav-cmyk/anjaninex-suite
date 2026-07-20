@@ -27,13 +27,25 @@
        <div class="h-screen ... overflow-hidden">   <- 100vh par clip
          <div class="flex flex-1 min-h-0">          <- min-h-0 se sikud jata
            <main class="flex-1 overflow-y-auto">    <- scroll wala box
-     Print me 100vh = sirf ek page, baaki content clip hokar gayab — isliye
-     kagaz khali aata tha. Teeno layer ko khol dena zaroori hai. */
-  app-shell > div,
-  app-shell > div > div {
+     Print me 100vh = sirf ek page, baaki content clip hokar gayab.
+
+     Shell 4 level gehra hai (pichhli koshish me teesri level chhut gayi thi,
+     isliye print phir bhi khali aata tha):
+       div.h-screen.overflow-hidden
+         div.flex.flex-1.min-h-0
+           div.flex-1.flex.flex-col.min-w-0    <- ye chhut gaya tha
+             main.overflow-y-auto
+     Isliye ab NAAM se nahi, POORE shell ke andar sab par lagate hain — kitni
+     bhi level ho, koi dibba band na rahe. */
+  app-shell, app-shell div, app-shell main {
     height: auto !important; min-height: 0 !important; max-height: none !important;
-    overflow: visible !important; display: block !important;
+    overflow: visible !important;
   }
+  /* display:block sirf layout wrapper par — report ke andar ke flex/grid
+     (jaise summary cards) waise hi rehne dena hai. */
+  app-shell > div,
+  app-shell > div > div,
+  app-shell > div > div > div { display: block !important; }
   app-shell main {
     width: 100% !important; max-width: 100% !important;
     height: auto !important; max-height: none !important;

@@ -83,13 +83,24 @@ public class SubAgentReportController : TradingControllerBase
         var conn = (NpgsqlConnection)_db.Database.GetDbConnection();
         if (conn.State != ConnectionState.Open) await conn.OpenAsync();
 
-        // 1) Opening balance (period se pehle ka: sales − receipts)
+        // 1) Opening balance (period se pehle ka). Broker model me ek bill par DO party hoti
+        //    hain — party_id = SUPPLIER, buyer_party_id = BUYER. Isliye khata dono taraf banta hai:
+        //      party BUYER hai   → bill Dr (usse paisa aana hai),   receipt Cr
+        //      party SUPPLIER hai → bill Cr (use paisa dena hai),   payment Dr
+        //    LEGACY: purane sales bills me buyer party_id me tha aur buyer_party_id NULL —
+        //    isliye "buyer_party_id IS NULL AND bill_type='sales'" bhi buyer-side maana jata hai.
+        //    Sign: (+) = humein lena hai (receivable), (−) = humein dena hai (payable).
         decimal opening;
         await using (var ocmd = new NpgsqlCommand(@"
-            SELECT COALESCE((SELECT SUM(b.total) FROM trading.bills b
-                             WHERE b.firm_id=@f AND b.buyer_party_id=@p
+            SELECT COALESCE((SELECT SUM(CASE WHEN (b.buyer_party_id = @p
+                                                   OR (b.buyer_party_id IS NULL AND b.bill_type = 'sales'))
+                                             THEN b.total ELSE -b.total END)
+                             FROM trading.bills b
+                             WHERE b.firm_id=@f AND (b.party_id=@p OR b.buyer_party_id=@p)
                                AND b.bill_date < @from AND b.status <> 'cancelled'),0)
-                 - COALESCE((SELECT SUM(pm.amount) FROM trading.payments pm
+                 + COALESCE((SELECT SUM(CASE WHEN pm.payment_type = 'receipt'
+                                             THEN -pm.amount ELSE pm.amount END)
+                             FROM trading.payments pm
                              WHERE pm.firm_id=@f AND pm.party_id=@p
                                AND pm.payment_date < @from AND pm.deleted_at IS NULL),0)", conn))
         {
@@ -99,19 +110,39 @@ public class SubAgentReportController : TradingControllerBase
             opening = Convert.ToDecimal(await ocmd.ExecuteScalarAsync() ?? 0m);
         }
 
-        // 2) Period ki entries — bills (Dr) + receipts (Cr), date-wise
+        // 2) Period ki entries — bills + payments, date-wise (Dr/Cr upar wale rule se).
+        //    Buyer-side row ka remark = SUPPLIER ka naam, supplier-side row ka remark = BUYER ka
+        //    naam — taaki broker ko dikhe ki kis ke saath ka lena-dena hai.
         var rows = new List<LedgerRow>();
         var running = opening;
         await using (var cmd = new NpgsqlCommand(@"
-            SELECT b.bill_date AS d, 'SALES' AS kind,
+            SELECT b.bill_date AS d,
+                   CASE WHEN (b.buyer_party_id = @p
+                              OR (b.buyer_party_id IS NULL AND b.bill_type = 'sales'))
+                        THEN 'SALES' ELSE 'PURCHASE' END AS kind,
                    COALESCE(NULLIF(b.supplier_bill_no,''), b.bill_no) AS ref,
-                   b.bill_no AS vno, b.total AS debit, 0::numeric AS credit, ''::text AS remark
+                   b.bill_no AS vno,
+                   CASE WHEN (b.buyer_party_id = @p
+                              OR (b.buyer_party_id IS NULL AND b.bill_type = 'sales'))
+                        THEN b.total ELSE 0::numeric END AS debit,
+                   CASE WHEN (b.buyer_party_id = @p
+                              OR (b.buyer_party_id IS NULL AND b.bill_type = 'sales'))
+                        THEN 0::numeric ELSE b.total END AS credit,
+                   CASE WHEN (b.buyer_party_id = @p
+                              OR (b.buyer_party_id IS NULL AND b.bill_type = 'sales'))
+                        THEN COALESCE(sup.display_name,'')
+                        ELSE COALESCE(buy.display_name,'') END AS remark
             FROM trading.bills b
-            WHERE b.firm_id=@f AND b.buyer_party_id=@p
+            LEFT JOIN trading.party_profiles spp ON spp.id = b.party_id
+            LEFT JOIN core.contacts sup          ON sup.id = spp.contact_id
+            LEFT JOIN trading.party_profiles bpp ON bpp.id = b.buyer_party_id
+            LEFT JOIN core.contacts buy          ON buy.id = bpp.contact_id
+            WHERE b.firm_id=@f AND (b.party_id=@p OR b.buyer_party_id=@p)
               AND b.bill_date BETWEEN @from AND @to AND b.status <> 'cancelled'
             UNION ALL
             SELECT pm.payment_date, UPPER(pm.payment_mode), pm.payment_no, pm.reference_no,
-                   0::numeric, pm.amount,
+                   CASE WHEN pm.payment_type = 'receipt' THEN 0::numeric ELSE pm.amount END,
+                   CASE WHEN pm.payment_type = 'receipt' THEN pm.amount ELSE 0::numeric END,
                    COALESCE((SELECT 'BILL NOS. ' || string_agg(bb.bill_no, ', ')
                              FROM trading.payment_allocations pa
                              JOIN trading.bills bb ON bb.id = pa.bill_id

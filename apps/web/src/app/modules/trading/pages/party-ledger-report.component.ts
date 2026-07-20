@@ -66,7 +66,7 @@ import { BackButtonComponent } from '../../../shared/back-button.component';
         <tbody>
           <tr style="background:#FFF7E6;font-weight:700">
             <td style="padding:8px" colspan="6">OPENING BALANCE (bal. brought forward)</td>
-            <td style="padding:8px;text-align:right">{{ opening() | number:'1.2-2' }}</td>
+            <td style="padding:8px;text-align:right">{{ fmtBal(opening()) }}</td>
             <td></td>
           </tr>
           @for (r of rows(); track $index) {
@@ -77,7 +77,7 @@ import { BackButtonComponent } from '../../../shared/back-button.component';
               <td style="padding:8px">{{ r.voucherNo }}</td>
               <td style="padding:8px;text-align:right">{{ r.debit ? (r.debit | number:'1.2-2') : '' }}</td>
               <td style="padding:8px;text-align:right;color:#059669">{{ r.credit ? (r.credit | number:'1.2-2') : '' }}</td>
-              <td style="padding:8px;text-align:right;font-weight:700">{{ r.balance | number:'1.2-2' }}</td>
+              <td style="padding:8px;text-align:right;font-weight:700">{{ fmtBal(r.balance) }}</td>
               <td style="padding:8px;font-size:11px;color:#6B7280">{{ r.remark }}</td>
             </tr>
           }
@@ -90,7 +90,7 @@ import { BackButtonComponent } from '../../../shared/back-button.component';
             <td style="padding:9px" colspan="4">TRANSACTION TOTAL ({{ rows().length }})</td>
             <td style="padding:9px;text-align:right">{{ totalDebit() | number:'1.2-2' }}</td>
             <td style="padding:9px;text-align:right">{{ totalCredit() | number:'1.2-2' }}</td>
-            <td style="padding:9px;text-align:right">{{ closing() | number:'1.2-2' }}</td>
+            <td style="padding:9px;text-align:right">{{ fmtBal(closing()) }}</td>
             <td style="padding:9px;font-size:11px">CLOSING</td>
           </tr>
         </tfoot>
@@ -141,6 +141,15 @@ export class PartyLedgerReportComponent implements OnInit {
       this.closing.set(res.closing || 0);
     } catch { this.rows.set([]); }
     this.loading.set(false);
+  }
+
+  // Balance ko Indian accounting style me dikhao: (+) = humein lena hai → Dr,
+  // (−) = humein dena hai (supplier ka khata) → Cr. Minus sign ki jagah Dr/Cr saaf padhta hai.
+  fmtBal(n: number): string {
+    const v = Math.abs(n || 0);
+    const s = new Intl.NumberFormat('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v);
+    if (!n) return s;
+    return `${s} ${n > 0 ? 'Dr' : 'Cr'}`;
   }
 
   print() { window.print(); }

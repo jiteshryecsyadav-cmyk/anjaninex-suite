@@ -747,11 +747,21 @@ export class CommissionGenerateComponent {
         this.fetched.set(true);
         // 🎯 Group disc alert — jin bills ke buyer ko group me disc banta hai, unhe warn karo
         // (commission base = taxable; disc kam laga ho to base zyada hoga — user check kar le).
-        const discBills = rows.filter(r => +((r.bill as any).entitledDisc || 0) > 0);
+        const discBills = rows.filter(r => this.balDisc(r) > 0);
         if (discBills.length > 0) {
-          const totalRec = discBills.reduce((s, r) =>
-            s + (this.baseAmt(r.bill) * +((r.bill as any).entitledDisc || 0) / 100), 0);
-          this.discAlert.set(`${discBills.length} bill me supplier se discount lena BAAKI hai — kul ₹${totalRec.toFixed(2)}. Ye commission me claim karo.`);
+          const totalRec = discBills.reduce((s, r) => s + this.discAmt(r), 0);
+          const inr = (n: number) => new Intl.NumberFormat('en-IN',
+            { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
+          // Bill-wise "% = ₹amount" — sirf kul amount se pata nahi chalta ki kis bill par
+          // kitna % baaki hai. Table wale balDisc()/discAmt() se hi banate hain taaki
+          // popup aur table ke numbers hamesha match karein.
+          const MAX = 6;
+          const parts = discBills.slice(0, MAX).map(r =>
+            `${r.bill.billNo}: ${this.balDisc(r)}% = ₹${inr(this.discAmt(r))}`);
+          const more = discBills.length > MAX ? ` …aur ${discBills.length - MAX} bill` : '';
+          this.discAlert.set(discBills.length === 1
+            ? `1 bill me supplier se discount lena BAAKI hai — ${parts[0]}. Ye commission me claim karo.`
+            : `${discBills.length} bill me supplier se discount lena BAAKI hai — ${parts.join(' · ')}${more} · KUL ₹${inr(totalRec)}. Ye commission me claim karo.`);
         }
       },
       error: (e) => {

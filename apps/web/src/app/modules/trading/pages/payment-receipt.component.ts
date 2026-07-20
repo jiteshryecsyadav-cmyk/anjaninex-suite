@@ -1447,7 +1447,12 @@ export class PaymentReceiptComponent {
       if (b && (b.entitledDisc || 0) > 0) {
         // ⚠️ Buyer ko auto-fill NAHI karna — ye supplier se RECOVER karne wala disc hai,
         // jo commission bill me claim hota hai. Yaha sirf yaad-dilane wala alert.
-        this.discAlert.set(`${b.dispNo || b.billNo} — Supplier se ${b.entitledDisc}% discount lena BAAKI hai. Ye commission bill me claim karo.`);
+        // % ke saath ₹ bhi — sirf % se pata nahi chalta kitna paisa banta hai.
+        // Base wahi taxable (netAmt) jo commission screen bhi use karti hai.
+        const recAmt = (b.netAmt || 0) * (b.entitledDisc || 0) / 100;
+        const recStr = new Intl.NumberFormat('en-IN',
+          { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(recAmt);
+        this.discAlert.set(`${b.dispNo || b.billNo} — Supplier se ${b.entitledDisc}% discount lena BAAKI hai = ₹${recStr}. Ye commission bill me claim karo.`);
       }
     }
     // Bill select karte hi pehli payment txn me NET AMT (selected bills ka total) auto bhar do

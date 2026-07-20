@@ -178,7 +178,7 @@ import { BackButtonComponent } from '../../shared/back-button.component';
                     <input type="checkbox" class="w-5 h-5 accent-[#1B2E5C] mx-2 shrink-0"
                            [checked]="selected().has(m.id)" (click)="$event.stopPropagation(); toggleSel(m)">
                   }
-                  <div class="rounded-2xl px-3 py-2 max-w-[75%] text-sm relative"
+                  <div class="rounded-2xl py-2 pl-3 pr-7 max-w-[75%] text-sm relative"
                        [class]="m.sender === 'firm' ? 'bg-[#DCF8C6]' : 'bg-gray-100'"
                        (contextmenu)="openMsgMenu($event, m)">
                     <!-- WhatsApp jaisa: message par hover/right-click -> menu (Reply/Copy/Forward/Delete) -->
@@ -301,9 +301,13 @@ import { BackButtonComponent } from '../../shared/back-button.component';
   `,
   styles: [`
     /* ===== Message menu + Reply (WhatsApp jaisa) ===== */
-    .pc-menu-btn { position:absolute; top:2px; right:4px; border:none; background:none;
-      color:#6B7280; font-size:14px; line-height:1; cursor:pointer; opacity:0; transition:opacity .12s; }
-    .group:hover .pc-menu-btn { opacity:1; }
+    /* Hamesha dikhta hai (sirf hover par nahi) — mobile/tablet par na hover hota
+       hai na right-click, wahan menu milta hi nahi. Halka rakha hai taaki message
+       padhne me kharal na kare; hover par gehra ho jata hai. */
+    .pc-menu-btn { position:absolute; top:1px; right:4px; border:none; background:none;
+      color:#6B7280; font-size:15px; line-height:1; cursor:pointer;
+      opacity:.45; transition:opacity .12s; padding:2px 4px; }
+    .pc-menu-btn:hover, .group:hover .pc-menu-btn { opacity:1; }
     .pc-menu-back { position:fixed; inset:0; z-index:1290; }
     .pc-menu { position:fixed; z-index:1300; background:#fff; border-radius:10px;
       box-shadow:0 10px 30px rgba(0,0,0,.22); padding:5px; min-width:170px; }

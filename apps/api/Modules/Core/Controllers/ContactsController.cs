@@ -65,11 +65,21 @@ public class ContactsController : ControllerBase
         Guid.Parse(User.FindFirst("firm_id")?.Value
             ?? throw new InvalidOperationException("firm_id claim missing"));
 
+    // group diya ho to us GROUP ke saare members (bina 300 cap ke) — Groups screen ko
+    // poora sach chahiye. Warna 300 ki alphabetical limit ki wajah se 'V' waali firm
+    // kabhi dikhti hi nahi thi aur group ka count 0 aata tha.
     [HttpGet]
-    public async Task<IActionResult> List([FromQuery] string? search)
+    public async Task<IActionResult> List([FromQuery] string? search, [FromQuery] string? group)
     {
         var firmId = CurrentFirmId;
         var q = _db.Contacts.Where(c => c.FirmId == firmId && c.DeletedAt == null);
+        if (!string.IsNullOrWhiteSpace(group))
+        {
+            var g = group.Trim();
+            var rowsG = await q.Where(c => c.GroupName == g)
+                               .OrderBy(c => c.DisplayName).ToListAsync();
+            return Ok(rowsG.Select(ToDto).ToList());
+        }
         if (!string.IsNullOrWhiteSpace(search))
         {
             var s = search.Trim();
@@ -121,6 +131,27 @@ public class ContactsController : ControllerBase
             while (await r.ReadAsync()) groups.Add(r.GetString(0));
         }
         return Ok(groups);
+    }
+
+    // Har group me kitni firms hain — DB se seedha count. Frontend pehle apni loaded
+    // list par gin-ta tha, par wo list 300 par kati hui thi → count galat (aksar 0) aata tha.
+    [HttpGet("groups/counts")]
+    public async Task<IActionResult> GroupCounts()
+    {
+        var firmId = CurrentFirmId;
+        var conn = (NpgsqlConnection)_db.Database.GetDbConnection();
+        if (conn.State != ConnectionState.Open) await conn.OpenAsync();
+        var list = new List<object>();
+        await using var cmd = new NpgsqlCommand(@"
+            SELECT group_name, COUNT(*)::int
+            FROM core.contacts
+            WHERE firm_id = @f AND deleted_at IS NULL AND coalesce(group_name,'') <> ''
+            GROUP BY group_name", conn);
+        cmd.Parameters.AddWithValue("f", firmId);
+        await using var r = await cmd.ExecuteReaderAsync();
+        while (await r.ReadAsync())
+            list.Add(new { name = r.GetString(0), count = r.GetInt32(1) });
+        return Ok(list);
     }
 
     // GROUP MASTER — poori detail. Save par sab member (sister) firms me auto-sync.

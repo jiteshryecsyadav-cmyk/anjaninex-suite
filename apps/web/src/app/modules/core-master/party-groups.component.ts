@@ -133,7 +133,7 @@ import { BackButtonComponent } from '../../shared/back-button.component';
         </div>
         @if (msg()) { <p class="text-sm mb-2" [class]="msg().includes('Error') || msg().includes('daalein') ? 'text-red-600' : 'text-green-600'">{{ msg() }}</p> }
 
-        <input [ngModel]="search()" (ngModelChange)="search.set($event)"
+        <input [ngModel]="search()" (ngModelChange)="search.set($event); onSearch()"
                placeholder="Firm dhoondo (naam / GST)..." class="input mb-2">
         <p class="text-xs text-gray-500 mb-1">Ticked = is group me. Selected: <b>{{ picked().size }}</b></p>
         <div class="border border-[#eee] rounded max-h-[52vh] overflow-y-auto divide-y">
@@ -180,12 +180,38 @@ export class PartyGroupsComponent {
       || (c.gst || '').toLowerCase().includes(s));
   });
 
+  counts = signal<Record<string, number>>({});
+
   constructor() { this.load(); }
 
   load() {
     this.http.get<C[]>(this.base).subscribe({ next: r => this.all.set(r || []), error: () => {} });
     this.http.get<string[]>(`${this.base}/groups`).subscribe({ next: g => this.groups.set(g || []), error: () => {} });
     this.http.get<any[]>(`${this.base}/groups/detail`).subscribe({ next: d => this.details.set(d || []), error: () => {} });
+    this.loadCounts();
+  }
+
+  private loadCounts() {
+    this.http.get<{ name: string; count: number }[]>(`${this.base}/groups/counts`).subscribe({
+      next: (r) => this.counts.set(Object.fromEntries((r || []).map(x => [x.name, x.count]))),
+      error: () => {}
+    });
+  }
+
+  // SERVER-side search — default list sirf pehle 300 naam (A-Z) deti hai, isliye
+  // 'V' se shuru hone wali firm client-side filter me kabhi milti hi nahi thi.
+  // Ab har keystroke (debounced) par server se poori firm-list me dhoondte hain.
+  private searchTimer: any;
+  onSearch() {
+    clearTimeout(this.searchTimer);
+    const q = this.search().trim();
+    this.searchTimer = setTimeout(() => {
+      const url = q ? `${this.base}?search=${encodeURIComponent(q)}` : this.base;
+      this.http.get<C[]>(url).subscribe({
+        next: (r) => this.mergeIntoAll(r || []),
+        error: () => {}
+      });
+    }, 300);
   }
 
   // GROUP MASTER detail fields (sab sister firms me auto-sync hote hain)
@@ -268,13 +294,31 @@ export class PartyGroupsComponent {
     });
   }
 
-  countIn(g: string) { return this.all().filter(c => (c.groupName || '') === g).length; }
+  // Count DB se (groups/counts) — apni loaded list par ginna galat tha, wo 300 par kati hai.
+  countIn(g: string) { return this.counts()[g] ?? 0; }
 
   openGroup(name: string) {
     this.groupName = name;
-    this.picked.set(new Set<string>(this.all().filter(c => (c.groupName || '') === name).map(c => c.id)));
     this.fillDetail(name);   // Group Master detail form bharo
     this.msg.set('');
+    // Members SERVER se — poore group ke (chahe naam 'V' se shuru ho aur default
+    // 300-wali list me na aata ho). Inhe all() me merge bhi karo taaki ticked
+    // firms list me dikhein, warna tick to hai par row hi nahi milti.
+    this.http.get<C[]>(`${this.base}?group=${encodeURIComponent(name)}`).subscribe({
+      next: (mem) => {
+        this.picked.set(new Set<string>((mem || []).map(c => c.id)));
+        this.mergeIntoAll(mem || []);
+      },
+      error: () => this.picked.set(new Set<string>())
+    });
+  }
+
+  // Nayi rows ko all() me daalo (duplicate id skip) — search/group ke results add hote rahein.
+  private mergeIntoAll(rows: C[]) {
+    if (!rows.length) return;
+    const byId = new Map(this.all().map(c => [c.id, c]));
+    for (const r of rows) byId.set(r.id, r);
+    this.all.set([...byId.values()].sort((a, b) => a.displayName.localeCompare(b.displayName)));
   }
 
   toggle(id: string) {

@@ -7,55 +7,44 @@
    hata do. Invoice-preview modal apna khud ka print CSS use karta hai.
    ============================================================ */
 @media print {
-  /* Screen ka saara chrome hatao — kagaz par sirf report chahiye.
-     Pehle sirf aside/header chhupte the, isliye floating Help button, footer,
-     filter ke buttons sab chhap jate the aur print bekaar dikhti thi. */
-  app-shell aside,
-  app-shell header,
-  app-anji-help,
-  app-calculator,
-  app-toast-container,
-  app-update-banner,
-  app-trial-banner,
-  app-upgrade-nudge,
-  .page-top-bar,
-  footer,
-  button,
-  .no-print { display: none !important; }
+  /* ===== PRINT — jo tarika app me PEHLE SE chal raha hai wahi (invoice preview) =====
+     Shell ko 'khol kar' print karane ki 3 koshish fail hui: content 4 level
+     gehre overflow-hidden + 100vh me band hai, koi na koi layer clip kar hi
+     deti thi. Isliye ab layout se ladna hi band —
+       1. poore page ko visibility:hidden (layout waisa ka waisa, sirf dikhna band)
+       2. sirf <main> ko visible + position:absolute top:0
+     absolute hote hi wo scroll/clip wale dibbon se BAAHAR aa jata hai, isliye
+     upar ki koi bhi overflow-hidden use kaat nahi sakti. Yahi invoice-preview
+     me chal raha hai (#ipPrintArea). */
+  body * { visibility: hidden !important; }
 
-  /* BLANK PRINT KI ASLI WAJAH — shell 3 layer me band tha:
-       <div class="h-screen ... overflow-hidden">   <- 100vh par clip
-         <div class="flex flex-1 min-h-0">          <- min-h-0 se sikud jata
-           <main class="flex-1 overflow-y-auto">    <- scroll wala box
-     Print me 100vh = sirf ek page, baaki content clip hokar gayab.
+  /* :has() guard — Invoice/Preview modal khula ho to ye rule NAHI lagta,
+     uski apni print CSS sirf document chhapti hai (warna poora page chhap jata). */
+  app-shell main:not(:has(.ip-overlay)),
+  app-shell main:not(:has(.ip-overlay)) * { visibility: visible !important; }
 
-     Shell 4 level gehra hai (pichhli koshish me teesri level chhut gayi thi,
-     isliye print phir bhi khali aata tha):
-       div.h-screen.overflow-hidden
-         div.flex.flex-1.min-h-0
-           div.flex-1.flex.flex-col.min-w-0    <- ye chhut gaya tha
-             main.overflow-y-auto
-     Isliye ab NAAM se nahi, POORE shell ke andar sab par lagate hain — kitni
-     bhi level ho, koi dibba band na rahe. */
-  app-shell, app-shell div, app-shell main {
-    height: auto !important; min-height: 0 !important; max-height: none !important;
-    overflow: visible !important;
-  }
-  /* display:block sirf layout wrapper par — report ke andar ke flex/grid
-     (jaise summary cards) waise hi rehne dena hai. */
-  app-shell > div,
-  app-shell > div > div,
-  app-shell > div > div > div { display: block !important; }
-  app-shell main {
+  app-shell main:not(:has(.ip-overlay)) {
+    position: absolute !important;
+    left: 0 !important; top: 0 !important;
     width: 100% !important; max-width: 100% !important;
     height: auto !important; max-height: none !important;
-    overflow: visible !important; padding: 0 !important;
-    display: block !important;
+    overflow: visible !important;
+    margin: 0 !important; padding: 0 !important;
+    background: #fff !important;
   }
-  html, body { height: auto !important; overflow: visible !important; background: #fff !important; }
+
+  /* Report ke andar ka chrome — kagaz par inka koi matlab nahi */
+  app-shell main .page-top-bar,
+  app-shell main .no-print,
+  app-shell main button,
+  app-shell main input[type="date"],
+  app-shell main select { display: none !important; }
 
   /* Sirf print par dikhne wala header (report ka naam, party, period) */
-  .print-only { display: block !important; }
+  .print-only { display: block !important; visibility: visible !important; }
+  .print-only * { visibility: visible !important; }
+
+  html, body { height: auto !important; overflow: visible !important; background: #fff !important; }
 
   /* Lambi report kai page me jaye to har page par table ka header dobara aaye,
      aur ek row beech se na kate. */
@@ -63,16 +52,11 @@
   thead { display: table-header-group; }
   tr, tfoot { page-break-inside: avoid; }
 
-  /* Scroll wale box print me poore khul jaayein, warna content kat jata hai */
-  [style*="overflow-x"], [style*="overflow-y"], .overflow-x-auto, .overflow-y-auto {
-    overflow: visible !important;
-  }
+  /* Scroll wale box print me poore khul jaayein */
+  [style*="overflow"], .overflow-x-auto, .overflow-y-auto { overflow: visible !important; }
 
-  /* Date picker aur dropdown filter ke liye hote hain — kagaz par bekaar khali
-     dibbe dikhte the. Text/number input me DATA ho sakta hai (jaise har row ka
-     comm%), isliye unhe chhupate nahi — sirf border/background hata ke saaf
-     text jaisa bana dete hain. */
-  input[type="date"], select { display: none !important; }
+  /* Text/number input me DATA ho sakta hai (jaise har row ka comm%) — chhupate
+     nahi, sirf border/background hata ke saaf text jaisa bana dete hain. */
   input, textarea {
     border: none !important; background: transparent !important;
     padding: 0 !important; box-shadow: none !important; color: #000 !important;

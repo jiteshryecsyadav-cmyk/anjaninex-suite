@@ -458,8 +458,10 @@ public class BillExtractorService : IBillExtractorService
         }
 
         // 4. Call AI (real Gemini OR mock) — wallet already debited if real
-        ExtractedBillDto result;
-        string modelUsed;
+        // Fallback chain loop ke andar set hote hain — compiler ko definite-assignment
+        // dikhta nahi, isliye yahin initialize.
+        ExtractedBillDto result = new();
+        string modelUsed = "";
         bool geminiFailed = false;
 
         if (isMockMode)
@@ -470,43 +472,89 @@ public class BillExtractorService : IBillExtractorService
         }
         else
         {
+            // Ek provider ko call karne ka helper (fallback chain ke andar use hota hai).
+            async Task<ExtractedBillDto> CallOne(string prov, string mdl, string key) => prov switch
+            {
+                "claude" => await CallClaudeAsync(images, key, mdl, ct),
+                "openai" => await CallOpenAiAsync(images, key, mdl, ct),
+                "sarvam" => await CallSarvamHybridAsync(images, key, structuringGeminiKey, ct),
+                "sarvamocr" => await CallAnjaninexOcrFastAsync(images, key, structuringGeminiKey, ct),
+                "anjaninexflash" => await CallAnjaninexOcrBestAsync(images, key, ct),
+                "anjaninexsonnet" => await CallAnjaninexOcrMirrorAsync(images, key, ct),
+                "anjaninex" => await CallAnjaninexOcrAsync(images, structuringGeminiKey, ct),
+                _ => await CallGeminiAsync(images, key, mdl, ct)
+            };
+
+            // FALLBACK CHAIN — pehle user ka chuna hua, uske baad jo bhi doosri key set hai.
+            // Zaroorat kyun: ek provider ka quota/billing atak jaye (jaise Gemini ki identity
+            // verification pending) to poora scan band ho jata tha, jabki baaki keys chalu
+            // padi rehti thi. Ab apne aap agle par chala jata hai — user ko sirf result milta hai.
+            // Alias providers (OCR Best/Mirror/Accurate) andar se wahi 3 engines hain —
+            // isliye ENGINE ke hisaab se dedupe karo, warna jo abhi fail hua wahi engine
+            // dobara try hota (OCR Best = Gemini Flash -> phir se gemini).
+            static string EngineOf(string p) => p switch
+            {
+                "anjaninex" or "anjaninexflash" => "gemini",
+                "anjaninexsonnet" => "claude",
+                "sarvamocr" => "sarvam",
+                _ => p
+            };
+            var chain = new List<(string Provider, string Model, string Key)> { (provider, model, apiKey) };
+            void AddFallback(string prov, string mdl, string key)
+            {
+                if (!string.IsNullOrEmpty(key) && !chain.Any(c => EngineOf(c.Provider) == EngineOf(prov)))
+                    chain.Add((prov, mdl, key));
+            }
+            AddFallback("gemini", "gemini-2.5-flash", platformGeminiKey);
+            AddFallback("claude", "claude-sonnet-4-6", platformClaudeKey);
+            AddFallback("openai", "gpt-4o", platformOpenAiKey);
+
             try
             {
-                // Transient errors (503 overload / rate limit) par auto-retry — 3 attempts
-                var attempt = 0;
-                while (true)
+            Exception? lastError = null;
+            var used = false;
+            foreach (var step in chain)
+            {
+                try
                 {
-                    try
+                    // Transient errors (503 overload / rate limit) par auto-retry — 3 attempts
+                    var attempt = 0;
+                    while (true)
                     {
-                        result = provider switch
+                        try
                         {
-                            "claude" => await CallClaudeAsync(images, apiKey, model, ct),
-                            "openai" => await CallOpenAiAsync(images, apiKey, model, ct),
-                            "sarvam" => await CallSarvamHybridAsync(images, apiKey, structuringGeminiKey, ct),
-                            "sarvamocr" => await CallAnjaninexOcrFastAsync(images, apiKey, structuringGeminiKey, ct),
-                            "anjaninexflash" => await CallAnjaninexOcrBestAsync(images, apiKey, ct),
-                            "anjaninexsonnet" => await CallAnjaninexOcrMirrorAsync(images, apiKey, ct),
-                            "anjaninex" => await CallAnjaninexOcrAsync(images, structuringGeminiKey, ct),
-                            _ => await CallGeminiAsync(images, apiKey, model, ct)
-                        };
-                        break;
+                            result = await CallOne(step.Provider, step.Model, step.Key);
+                            break;
+                        }
+                        catch (Exception rex) when (++attempt < 4
+                            && (rex.Message.Contains("503")
+                                || rex.Message.Contains("500")                       // Google InternalServerError — transient
+                                || rex.Message.Contains("INTERNAL", StringComparison.OrdinalIgnoreCase)
+                                || rex.Message.Contains("internal error", StringComparison.OrdinalIgnoreCase)
+                                || rex.Message.Contains("Please retry", StringComparison.OrdinalIgnoreCase)
+                                || rex.Message.Contains("UNAVAILABLE")
+                                || rex.Message.Contains("overloaded", StringComparison.OrdinalIgnoreCase)
+                                || rex.Message.Contains("high demand", StringComparison.OrdinalIgnoreCase)
+                                || rex.Message.Contains("JSON parse fail")))
+                        {
+                            _log.LogWarning("AI transient fail (attempt {A}/4) — {S}s me retry: {Msg}", attempt, attempt * 2, rex.Message);
+                            await Task.Delay(attempt * 2000, ct);   // 2s, 4s, 6s — provider ko thoda time
+                        }
                     }
-                    catch (Exception rex) when (++attempt < 4
-                        && (rex.Message.Contains("503")
-                            || rex.Message.Contains("500")                       // Google InternalServerError — transient
-                            || rex.Message.Contains("INTERNAL", StringComparison.OrdinalIgnoreCase)
-                            || rex.Message.Contains("internal error", StringComparison.OrdinalIgnoreCase)
-                            || rex.Message.Contains("Please retry", StringComparison.OrdinalIgnoreCase)
-                            || rex.Message.Contains("UNAVAILABLE")
-                            || rex.Message.Contains("overloaded", StringComparison.OrdinalIgnoreCase)
-                            || rex.Message.Contains("high demand", StringComparison.OrdinalIgnoreCase)
-                            || rex.Message.Contains("JSON parse fail")))
-                    {
-                        _log.LogWarning("AI transient fail (attempt {A}/4) — {S}s me retry: {Msg}", attempt, attempt * 2, rex.Message);
-                        await Task.Delay(attempt * 2000, ct);   // 2s, 4s, 6s — Google ko thoda time
-                    }
+                    modelUsed = step.Model;
+                    used = true;
+                    if (step.Provider != provider)
+                        _log.LogWarning("AI fallback: {Chosen} fail hua, {Used} se scan hua", provider, step.Model);
+                    break;
                 }
-                modelUsed = model;
+                catch (Exception pex) when (IsProviderBlocked(pex))
+                {
+                    // Quota / billing / key ki dikkat — is provider par rukna bekaar, agla try karo.
+                    _log.LogWarning(pex, "Provider {P} blocked (quota/key) — agla provider try kar rahe hain", step.Provider);
+                    lastError = pex;
+                }
+            }
+            if (!used) throw lastError ?? new Exception("AI scan nahi ho paya.");
             }
             catch (Exception ex)
             {
@@ -1386,6 +1434,25 @@ Schema (extract ONLY these keys):
     // =================================================
     // Mock — realistic sample bill
     // =================================================
+    // Kya ye error "is provider par aage koshish bekaar hai" wala hai?
+    // Quota khatam / billing verify pending / key galat — inme retry se kuch nahi hoga,
+    // seedha agle provider par jaana chahiye. (503/500 jaise transient isme NAHI —
+    // unke liye upar wala retry loop hai.)
+    private static bool IsProviderBlocked(Exception ex)
+    {
+        var m = ex.Message;
+        return m.Contains("429")
+            || m.Contains("quota", StringComparison.OrdinalIgnoreCase)
+            || m.Contains("RESOURCE_EXHAUSTED", StringComparison.OrdinalIgnoreCase)
+            || m.Contains("rate limit", StringComparison.OrdinalIgnoreCase)
+            || m.Contains("insufficient_quota", StringComparison.OrdinalIgnoreCase)
+            || m.Contains("billing", StringComparison.OrdinalIgnoreCase)
+            || m.Contains("401") || m.Contains("403")
+            || m.Contains("API key", StringComparison.OrdinalIgnoreCase)
+            || m.Contains("API_KEY", StringComparison.OrdinalIgnoreCase)
+            || m.Contains("permission", StringComparison.OrdinalIgnoreCase);
+    }
+
     private ExtractedBillDto GenerateMockBill()
     {
         var random = new Random();

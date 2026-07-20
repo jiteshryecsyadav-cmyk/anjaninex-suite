@@ -290,6 +290,77 @@ public class PartyChatController : ControllerBase
         await PartyChatEvents.Notify(_hub, id, CurrentFirmId);   // live push — party ko turant dikhe
         return Ok(new { ok = true });
     }
+
+    // ---- BROADCAST — ek message, kai parties (WhatsApp broadcast jaisa) ----
+    // Har party ko uske APNE chat me milta hai; use pata nahi chalta ki aur
+    // kisko bheja gaya, aur uska jawab sirf hamein dikhta hai.
+    // Jinka mobile master me nahi hai unhe skip karke naam wapas bhejte hain —
+    // chup-chaap chhodna galat hoga (user samjhega sabko chala gaya).
+    public record PchatBroadcastDto(List<Guid> PartyIds, string Body);
+
+    [HttpPost("broadcast")]
+    public async Task<IActionResult> Broadcast([FromBody] PchatBroadcastDto dto)
+    {
+        if (string.IsNullOrWhiteSpace(dto.Body)) return BadRequest(new { error = "Message khali hai" });
+        if (dto.PartyIds is null || dto.PartyIds.Count == 0)
+            return BadRequest(new { error = "Koi party nahi chuni" });
+
+        var body = dto.Body.Trim();
+        var sent = 0;
+        var skipped = new List<string>();
+
+        foreach (var pid in dto.PartyIds.Distinct())
+        {
+            string? name = null, phone = null;
+            await using (var q = await CmdAsync(@"
+                SELECT c.display_name, COALESCE(c.phone_primary,'')
+                FROM trading.party_profiles p JOIN core.contacts c ON c.id = p.contact_id
+                WHERE p.id = @p AND p.firm_id = @f"))
+            {
+                q.Parameters.Add(new NpgsqlParameter("p", pid));
+                q.Parameters.Add(new NpgsqlParameter("f", CurrentFirmId));
+                await using var r = await q.ExecuteReaderAsync();
+                if (await r.ReadAsync()) { name = r.GetString(0); phone = r.GetString(1); }
+            }
+            if (name is null) continue;
+
+            var digits = new string((phone ?? "").Where(char.IsDigit).ToArray());
+            if (digits.Length < 10) { skipped.Add(name); continue; }   // mobile nahi → bhej hi nahi sakte
+
+            Guid threadId;
+            await using (var t = await CmdAsync(@"
+                INSERT INTO platform.party_chat_threads (firm_id, party_id, party_name, phone)
+                VALUES (@f, @p, @n, @ph)
+                ON CONFLICT (firm_id, party_id) DO UPDATE SET party_name = @n, phone = @ph
+                RETURNING id"))
+            {
+                t.Parameters.Add(new NpgsqlParameter("f", CurrentFirmId));
+                t.Parameters.Add(new NpgsqlParameter("p", pid));
+                t.Parameters.Add(new NpgsqlParameter("n", name));
+                t.Parameters.Add(new NpgsqlParameter("ph", digits));
+                threadId = (Guid)(await t.ExecuteScalarAsync())!;
+            }
+
+            await using (var m = await CmdAsync(@"
+                INSERT INTO platform.party_chat_messages (thread_id, sender, sender_name, body)
+                VALUES (@t, 'firm', @n, @b)"))
+            {
+                m.Parameters.Add(new NpgsqlParameter("t", threadId));
+                m.Parameters.Add(new NpgsqlParameter("n", CurrentName));
+                m.Parameters.Add(new NpgsqlParameter("b", body));
+                await m.ExecuteNonQueryAsync();
+            }
+            await using (var touch = await CmdAsync("UPDATE platform.party_chat_threads SET last_msg_at = now() WHERE id = @t"))
+            {
+                touch.Parameters.Add(new NpgsqlParameter("t", threadId));
+                await touch.ExecuteNonQueryAsync();
+            }
+            await PartyChatEvents.Notify(_hub, threadId, CurrentFirmId);
+            sent++;
+        }
+
+        return Ok(new { ok = true, sent, skipped });
+    }
 }
 
 // =============================================================================

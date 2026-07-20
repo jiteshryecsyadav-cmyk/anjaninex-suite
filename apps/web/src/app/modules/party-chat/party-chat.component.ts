@@ -1,4 +1,4 @@
-import { Component, ElementRef, ViewChild, inject, signal } from '@angular/core';
+import { Component, ElementRef, ViewChild, computed, inject, signal } from '@angular/core';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { CommonModule, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -38,8 +38,73 @@ import { BackButtonComponent } from '../../shared/back-button.component';
           <h2 class="font-display font-black text-2xl text-[#1B2E5C]">💬 Party Chat</h2>
           <p class="text-sm text-gray-500">Apni parties se seedha baat — unhe login nahi chahiye, mobile OTP se khulti hai</p>
         </div>
-        <button (click)="openNew.set(true)" class="btn-primary">➕ Nayi chat</button>
+        <div class="flex gap-2">
+          <button (click)="openBroadcast()" class="btn-secondary">📢 Broadcast</button>
+          <button (click)="openNew.set(true)" class="btn-primary">➕ Nayi chat</button>
+        </div>
       </div>
+
+      <!-- ===== BROADCAST — ek message, kai parties (WhatsApp broadcast jaisa) ===== -->
+      @if (bcOpen()) {
+        <div class="bc-overlay" (click)="bcOpen.set(false)">
+          <div class="bc-box" (click)="$event.stopPropagation()">
+            <div class="bc-head">
+              <div>
+                <div class="bc-title">📢 Broadcast</div>
+                <div class="bc-sub">Har party ko uske ALAG chat me milega — kisi ko pata nahi chalega ki aur kisko bheja</div>
+              </div>
+              <button (click)="bcOpen.set(false)" class="bc-x">×</button>
+            </div>
+
+            <!-- Quick select -->
+            <div class="bc-quick">
+              <button (click)="bcPickType('buyer')" class="bc-chip">Sab Buyers</button>
+              <button (click)="bcPickType('seller')" class="bc-chip">Sab Suppliers</button>
+              <select [ngModel]="bcGroup()" (ngModelChange)="bcPickGroup($event)" class="bc-sel">
+                <option value="">— Group se chuno —</option>
+                @for (g of bcGroups(); track g) { <option [value]="g">{{ g }}</option> }
+              </select>
+              <button (click)="bcClear()" class="bc-chip bc-chip-clear">Clear</button>
+            </div>
+
+            <input [ngModel]="bcSearch()" (ngModelChange)="bcSearch.set($event)"
+                   placeholder="🔍 Naam ya mobile no se dhoondo" class="input w-full mb-2">
+
+            <div class="bc-count">
+              Chuni hui: <b>{{ bcSelected().size }}</b> parties
+              @if (bcSkippedInfo(); as n) { <span class="bc-warn"> · {{ n }} ka mobile nahi — unhe nahi jayega</span> }
+            </div>
+
+            <div class="bc-list">
+              @for (p of bcShown(); track p.id) {
+                <label class="bc-item">
+                  <input type="checkbox" [checked]="bcSelected().has(p.id)" (change)="bcToggle(p.id)">
+                  <span class="bc-item-txt">
+                    <span class="bc-item-name">{{ p.displayName }}</span>
+                    <span class="bc-item-sub">{{ p.phone || '⚠️ mobile nahi' }}@if (p.city) { <span> · {{ p.city }}</span> }</span>
+                  </span>
+                </label>
+              }
+              @if (bcShown().length === 0) {
+                <div class="bc-empty">{{ bcSearch().trim() ? 'Koi party nahi mili' : 'Upar se chuno ya naam type karo' }}</div>
+              }
+            </div>
+
+            <textarea [(ngModel)]="bcBody" rows="3" class="input w-full mt-2"
+                      placeholder="Message likho — sabko yahi jayega"></textarea>
+
+            @if (bcMsg()) { <div class="bc-result">{{ bcMsg() }}</div> }
+
+            <div class="bc-foot">
+              <button (click)="bcOpen.set(false)" class="btn-secondary flex-1">Cancel</button>
+              <button (click)="sendBroadcast()" [disabled]="bcSending() || bcSelected().size === 0 || !bcBody.trim()"
+                      class="btn-primary flex-1">
+                {{ bcSending() ? 'Bhej rahe hain…' : '📤 ' + bcSelected().size + ' parties ko bhejo' }}
+              </button>
+            </div>
+          </div>
+        </div>
+      }
 
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
         <!-- Threads -->
@@ -196,6 +261,34 @@ import { BackButtonComponent } from '../../shared/back-button.component';
     </div>
   `,
   styles: [`
+    /* ===== Broadcast dialog ===== */
+    .bc-overlay { position:fixed; inset:0; background:rgba(27,46,92,.55); z-index:1200;
+      display:flex; align-items:center; justify-content:center; padding:16px; }
+    .bc-box { background:#fff; border-radius:14px; width:100%; max-width:560px;
+      padding:16px; box-shadow:0 20px 50px rgba(0,0,0,.25); max-height:90vh; overflow-y:auto; }
+    .bc-head { display:flex; justify-content:space-between; align-items:flex-start; gap:10px; margin-bottom:12px; }
+    .bc-title { font-weight:900; font-size:18px; color:#1B2E5C; }
+    .bc-sub { font-size:11px; color:#6B7280; margin-top:2px; }
+    .bc-x { border:none; background:none; font-size:26px; line-height:1; color:#9CA3AF; cursor:pointer; }
+    .bc-quick { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px; }
+    .bc-chip { border:1px solid #ddd6fe; background:#ede9fe; color:#6D28D9; border-radius:999px;
+      padding:5px 12px; font-size:12px; font-weight:700; cursor:pointer; font-family:inherit; }
+    .bc-chip:hover { background:#ddd6fe; }
+    .bc-chip-clear { border-color:#e5e7eb; background:#f9fafb; color:#6B7280; }
+    .bc-sel { border:1px solid #D6DDEA; border-radius:999px; padding:5px 10px; font-size:12px; font-family:inherit; }
+    .bc-count { font-size:12px; color:#374151; margin-bottom:6px; }
+    .bc-warn { color:#B45309; }
+    .bc-list { border:1px solid #eee; border-radius:10px; max-height:220px; overflow-y:auto; }
+    .bc-item { display:flex; align-items:center; gap:9px; padding:7px 10px; cursor:pointer; }
+    .bc-item:hover { background:#faf5ff; }
+    .bc-item-txt { display:flex; flex-direction:column; }
+    .bc-item-name { font-size:13px; font-weight:700; color:#1B2E5C; }
+    .bc-item-sub { font-size:11px; color:#6B7280; }
+    .bc-empty { padding:16px; text-align:center; color:#9CA3AF; font-size:12px; }
+    .bc-result { margin-top:8px; font-size:12px; font-weight:700; color:#166534;
+      background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; padding:8px 10px; }
+    .bc-foot { display:flex; gap:8px; margin-top:12px; }
+
     .cb-tick{font-weight:700;letter-spacing:-2px}
     .pc-att{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:11px;font-weight:700;color:#4A5878;background:none;border:0;cursor:pointer}
     .pc-att-ico{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;color:#fff}
@@ -266,6 +359,96 @@ export class PartyChatComponent {
     const q = this.searchQ.toLowerCase().trim();
     if (!q) return this.threads();
     return this.threads().filter(t => t.partyName.toLowerCase().includes(q) || t.phone.includes(q));
+  }
+
+  // ===== BROADCAST — ek message, kai parties =====
+  // Har party ko uske ALAG chat me jata hai (WhatsApp broadcast jaisa), group
+  // chat nahi — isliye ek party ko doosri ka pata nahi chalta.
+  bcOpen = signal(false);
+  bcSearch = signal('');          // SIGNAL — plain hoti to computed update hi na hota
+  bcSelected = signal<Set<string>>(new Set());
+  bcGroup = signal('');
+  bcBody = '';
+  bcSending = signal(false);
+  bcMsg = signal('');
+
+  /** Group dropdown — parties me se unique group naam. */
+  bcGroups = computed(() => [...new Set(
+    this.parties.map((p: any) => (p.groupName || '').trim()).filter((g: string) => g))].sort());
+
+  /** Search khali ho to chuni hui parties dikhao (taaki tick dikhe), warna match. */
+  bcShown = computed(() => {
+    const q = this.bcSearch().trim().toLowerCase();
+    const digits = q.replace(/\D/g, '');
+    if (!q) {
+      const sel = this.bcSelected();
+      return this.parties.filter((p: any) => sel.has(p.id)).slice(0, 200);
+    }
+    return this.parties.filter((p: any) =>
+      (p.displayName || '').toLowerCase().includes(q) ||
+      (digits && (p.phone || '').replace(/\D/g, '').includes(digits))
+    ).slice(0, 200);
+  });
+
+  /** Kitni chuni hui parties ka mobile nahi hai — inhe bhej nahi payenge. */
+  bcSkippedInfo = computed(() => {
+    const sel = this.bcSelected();
+    const n = this.parties.filter((p: any) => sel.has(p.id) &&
+      (p.phone || '').replace(/\D/g, '').length < 10).length;
+    return n > 0 ? n : null;
+  });
+
+  openBroadcast() {
+    this.bcOpen.set(true);
+    this.bcMsg.set('');
+  }
+  bcToggle(id: string) {
+    const s = new Set(this.bcSelected());
+    s.has(id) ? s.delete(id) : s.add(id);
+    this.bcSelected.set(s);
+  }
+  bcClear() { this.bcSelected.set(new Set()); this.bcGroup.set(''); }
+
+  /** Sab buyers / sab suppliers — 'both' wali dono me aati hain. */
+  bcPickType(type: 'buyer' | 'seller') {
+    const s = new Set(this.bcSelected());
+    this.parties
+      .filter((p: any) => p.partyType === type || p.partyType === 'both')
+      .forEach((p: any) => s.add(p.id));
+    this.bcSelected.set(s);
+  }
+
+  bcPickGroup(g: string) {
+    this.bcGroup.set(g);
+    if (!g) return;
+    const s = new Set(this.bcSelected());
+    this.parties.filter((p: any) => (p.groupName || '').trim() === g)
+      .forEach((p: any) => s.add(p.id));
+    this.bcSelected.set(s);
+  }
+
+  sendBroadcast() {
+    const ids = [...this.bcSelected()];
+    if (ids.length === 0 || !this.bcBody.trim()) return;
+    this.bcSending.set(true);
+    this.bcMsg.set('');
+    this.http.post<any>(`${this.base}/broadcast`, { partyIds: ids, body: this.bcBody.trim() }).subscribe({
+      next: (r) => {
+        this.bcSending.set(false);
+        // Jinka mobile nahi tha unke NAAM batate hain — chup-chaap chhodna galat
+        // hoga (user samjhega sabko chala gaya).
+        const skipped: string[] = r?.skipped || [];
+        this.bcMsg.set(`✓ ${r?.sent ?? 0} parties ko bhej diya` +
+          (skipped.length ? ` · ${skipped.length} chhoot gayi (mobile nahi): ${skipped.slice(0, 5).join(', ')}${skipped.length > 5 ? '…' : ''}` : ''));
+        this.bcBody = '';
+        this.bcSelected.set(new Set());
+        this.loadThreads();
+      },
+      error: (e) => {
+        this.bcSending.set(false);
+        this.bcMsg.set('⚠️ ' + (e?.error?.error ?? 'Broadcast nahi ho paya'));
+      }
+    });
   }
 
   // WhatsApp jaisa SELECTION delete — tick karo, fir everyone/me/cancel

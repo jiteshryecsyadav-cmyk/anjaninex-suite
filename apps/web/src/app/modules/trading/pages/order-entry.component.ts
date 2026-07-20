@@ -1466,6 +1466,18 @@ export class OrderEntryComponent {
       else if (dA > 0) { this.cdEnabled.set(true); this.cdPct.set(0); this.cdAmountOverride.set(dA); }
     }
 
+    // 🧾 BAAKI AMOUNT FIELDS — pehle scan hote hi nahi the. Order form me jo
+    // maujood hain wahi bharte hain (bill form me kuch aur bhi hain).
+    // Sirf bill par chhapa ho tabhi (>0) — warna form ka pehle se bhara value mit jata.
+    {
+      const t: any = data.totals ?? {};
+      if (+t.insurance > 0) this.insuranceAmt.set(+t.insurance);
+      if (+t.normalDiscPercent > 0)     this.onDiscNormalPct(+t.normalDiscPercent);
+      else if (+t.normalDiscAmount > 0) this.onDiscNormalAmt(+t.normalDiscAmount);
+      if (+t.exhibitionDiscPercent > 0)     this.onDiscExhPct(+t.exhibitionDiscPercent);
+      else if (+t.exhibitionDiscAmount > 0) this.onDiscExhAmt(+t.exhibitionDiscAmount);
+    }
+
     // Match supplier in master
     if (data.supplier?.name) {
       // SAFE match: GST exact (15-char) YA naam exact. Loose/khali-GST match nahi

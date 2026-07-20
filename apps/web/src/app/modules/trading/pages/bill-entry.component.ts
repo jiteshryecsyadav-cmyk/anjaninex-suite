@@ -2692,6 +2692,23 @@ export class BillEntryComponent {
     if (dP > 0) { this.cdEnabled.set(true); this.cdPct.set(dP); this.cdAmountOverride.set(null); }
     else if (dA > 0) { this.cdEnabled.set(true); this.cdPct.set(0); this.cdAmountOverride.set(dA); }
 
+    // 🧾 BAAKI AMOUNT FIELDS — pehle ye scan hote hi nahi the, user ko haath se
+    // bharne padte the (Insurance to lagbhag har textile bill par hota hai).
+    // Sirf tab set karte hain jab bill par chhapa ho (>0) — warna form ka
+    // pehle se bhara/calculated value mit jata.
+    const t: any = data.totals ?? {};
+    if (+t.insurance  > 0) this.insuranceAmt.set(+t.insurance);
+    if (+t.bankCharge > 0) this.bankCharge.set(+t.bankCharge);
+    if (+t.interest   > 0) this.interestAmt.set(+t.interest);
+    if (+t.sweetLs    > 0) this.sweetLs.set(+t.sweetLs);
+    if (+t.tcs        > 0) this.tcsAmt.set(+t.tcs);
+
+    // Supplier ke alag-alag discount (CD se alag) — % pehle, warna amount
+    if (+t.normalDiscPercent > 0)     this.onDiscNormalPct(+t.normalDiscPercent);
+    else if (+t.normalDiscAmount > 0) this.onDiscNormalAmt(+t.normalDiscAmount);
+    if (+t.exhibitionDiscPercent > 0)     this.onDiscExhPct(+t.exhibitionDiscPercent);
+    else if (+t.exhibitionDiscAmount > 0) this.onDiscExhAmt(+t.exhibitionDiscAmount);
+
     // ============ SUPPLIER smart match (5 levels — same as transporter) ============
     if (data.supplier?.name || data.supplier?.gst) {
       const sName = data.supplier?.name ?? '';

@@ -54,7 +54,7 @@ interface CommRow {
     <!-- STEP 1 — FILTER -->
     <div class="card p-4 mb-4">
       <div class="text-xs font-bold text-[#DC2626] uppercase tracking-wide mb-3">STEP 1 — SELECT PARTY &amp; DATE RANGE</div>
-      <div class="grid grid-cols-5 gap-3 items-end">
+      <div class="grid grid-cols-6 gap-3 items-end">
         <div>
           <label class="lbl">SUPPLIER <small style="color:#9CA3AF">({{ partyNames().length }})</small></label>
           <input [(ngModel)]="supplierSearch" (ngModelChange)="supplierId = ''"
@@ -73,6 +73,11 @@ interface CommRow {
         <div>
           <label class="lbl">TO DATE *</label>
           <input [(ngModel)]="toDate" type="date" class="ip">
+        </div>
+        <div>
+          <label class="lbl">COMMISSION % <small style="color:#9CA3AF">(sab bills par)</small></label>
+          <input [(ngModel)]="commPctAll" (ngModelChange)="applyCommPctAll()"
+                 type="number" step="0.01" min="0" class="ip" placeholder="0">
         </div>
         <div class="flex gap-2">
           <button (click)="fetchBills()" class="btn-fetch">
@@ -732,9 +737,14 @@ export class CommissionGenerateComponent {
       to: this.toDate
     }).subscribe({
       next: (res) => {
-        // Party Master ka commission rate auto — target (supplier > buyer) se
+        // Commission % — STEP 1 me bhara ho to WAHI (sab bills par), warna Party Master ka rate.
+        // (Party master me 0 ho to pehle har row me haath se bharna padta tha.)
         const party = this.buyers().find(p => p.id === this.targetId());
-        const defaultPct = +(party?.commissionRate ?? 0);
+        const partyPct = +(party?.commissionRate ?? 0);
+        const typedPct = +(this.commPctAll ?? 0);
+        const defaultPct = typedPct > 0 ? typedPct : partyPct;
+        // Field khali ho to party ka rate usme dikha do — user ko pata rahe kya lag raha hai.
+        if (typedPct <= 0 && partyPct > 0) this.commPctAll = partyPct;
         let items = res.items.filter(b => !b.isDeleted);
         if (buyFilter) items = items.filter(b => b.buyerPartyId === buyFilter);
         const rows: CommRow[] = items.map(b => ({
@@ -781,6 +791,20 @@ export class CommissionGenerateComponent {
   payableTotal = computed(() => +(this.grandTotal() + this.totalDiscRecovery()).toFixed(2));
   netPayable = computed(() => Math.round(this.payableTotal()));
   payRoundOff = computed(() => +(this.netPayable() - this.payableTotal()).toFixed(2));
+
+  // STEP 1 ka COMMISSION % — sab bills par ek saath lagta hai.
+  // Khali/0 rakho to Party Master ka rate chalega (fetch ke waqt).
+  commPctAll: number | null = null;
+
+  /** STEP 1 ka % badla → saare rows ka commission dobara. Row me alag % chahiye
+   *  to wahan bhi edit kar sakte ho (ye sirf sab par ek saath lagane ke liye hai). */
+  applyCommPctAll() {
+    const p = +(this.commPctAll ?? 0);
+    if (!(p >= 0) || this.rows().length === 0) return;
+    this.rows.set(this.rows().map(r => ({
+      ...r, commPct: p, commAmt: +(this.baseAmt(r.bill) * p / 100).toFixed(2)
+    })));
+  }
 
   recomputeRow(r: CommRow) {
     r.commAmt = +(this.baseAmt(r.bill) * r.commPct / 100).toFixed(2);

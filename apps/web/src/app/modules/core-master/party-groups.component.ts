@@ -128,8 +128,45 @@ import { BackButtonComponent } from '../../shared/back-button.component';
               <input [(ngModel)]="gExhFrom" type="date" class="input"></div>
             <div><label class="text-[10px] text-gray-500 block">EXHIBITION TO</label>
               <input [(ngModel)]="gExhTo" type="date" class="input"></div>
+
+            <!-- Party Master jaise baaki fields — group me bharo, sab sister firms me sync -->
+            <div><label class="text-[10px] text-gray-500 block">CREDIT LIMIT (₹)</label>
+              <input [(ngModel)]="gCreditLimit" type="number" step="1" min="0" class="input" placeholder="0"></div>
+            <div><label class="text-[10px] text-gray-500 block">CREDIT DAYS</label>
+              <input [(ngModel)]="gCreditDays" type="number" step="1" min="0" class="input" placeholder="Payment terms se"></div>
+            <div><label class="text-[10px] text-gray-500 block">SUPPLIER TYPE</label>
+              <select [(ngModel)]="gSupplierType" class="input">
+                <option value="">Select...</option>
+                <option value="Wholesaler">Wholesaler</option>
+                <option value="Manufacturer">Manufacturer</option>
+                <option value="Trader">Trader</option>
+                <option value="Agent">Agent</option>
+              </select></div>
+            <div><label class="text-[10px] text-gray-500 block">EMAIL</label>
+              <input [(ngModel)]="gEmail" type="email" class="input" placeholder="firm@example.com"></div>
+            <div><label class="text-[10px] text-gray-500 block">WHATSAPP – BUYER</label>
+              <input [(ngModel)]="gWaBuyer" class="input" placeholder="Khareedne wala no."></div>
+            <div><label class="text-[10px] text-gray-500 block">WHATSAPP – EXTRA</label>
+              <input [(ngModel)]="gWaExtra" class="input" placeholder="9825828256"></div>
+            <div><label class="text-[10px] text-gray-500 block">EXTRA WA – ROLE</label>
+              <select [(ngModel)]="gWaExtraRole" class="input">
+                <option value="">Select...</option>
+                <option value="Manager">Manager</option>
+                <option value="Accountant">Accountant</option>
+                <option value="Owner">Owner</option>
+                <option value="Other">Other</option>
+              </select></div>
+            <div><label class="text-[10px] text-gray-500 block">SUB AGENT</label>
+              <input [(ngModel)]="gSubAgent" class="input" placeholder="Naam"></div>
+            <div><label class="text-[10px] text-gray-500 block">SUB AGENT %</label>
+              <input [(ngModel)]="gSubAgentPct" type="number" step="0.1" min="0" class="input" placeholder="0"></div>
+            <div><label class="text-[10px] text-gray-500 block">INCENTIVE %</label>
+              <input [(ngModel)]="gIncentivePct" type="number" step="0.1" min="0" class="input" placeholder="0"></div>
+            <div><label class="text-[10px] text-gray-500 block">AGENT SHARE %</label>
+              <input [(ngModel)]="gAgentSharePct" type="number" step="0.1" min="0" class="input" placeholder="0"></div>
           </div>
           <p class="text-[10px] text-gray-400 mt-1">Exhibition Disc sirf FROM–TO date ke beech ke bill par lagta hai. Warna Normal/Special disc.</p>
+          <p class="text-[10px] text-gray-400">Jo field yahan bharoge wahi sab sister firms me jaayegi — khali chhodi field kisi firm ka apna data nahi mitati. GSTIN / PAN / Udyam / Opening Balance jaan-boojh kar yahan nahi hain (har firm ki apni pehchan).</p>
         </div>
         @if (msg()) { <p class="text-sm mb-2" [class]="msg().includes('Error') || msg().includes('daalein') ? 'text-red-600' : 'text-green-600'">{{ msg() }}</p> }
 
@@ -220,6 +257,11 @@ export class PartyGroupsComponent {
   gCity = ''; gPincode = ''; gState = ''; gPartyType = 'supplier'; gBuyerType = '';
   gCommission = 0; gDiscN = 0; gDiscE = 0; gDiscS = 0; gTerms = '';
   gExhFrom = ''; gExhTo = ''; gPurchDisc = 0;
+  // Party Master jaise baaki fields (group -> sister firms sync)
+  gCreditLimit = 0; gCreditDays: number | null = null;
+  gSupplierType = ''; gEmail = ''; gWaBuyer = ''; gWaExtra = ''; gWaExtraRole = '';
+  gSubAgent = ''; gSubAgentPct: number | null = null;
+  gIncentivePct: number | null = null; gAgentSharePct: number | null = null;
   pinLoading = signal(false);
 
   // Pincode 6 digit hote hi city + state auto-fill (India Post free API).
@@ -252,6 +294,20 @@ export class PartyGroupsComponent {
     this.gDiscS = +(d?.discountSpecial ?? 0);
     this.gExhFrom = d?.exhibitionFrom || ''; this.gExhTo = d?.exhibitionTo || '';
     this.gPurchDisc = +(d?.purchaseDiscPct ?? 0);
+    this.gCreditLimit = +(d?.creditLimit ?? 0);
+    this.gCreditDays = d?.creditDays ?? null;
+    this.gSupplierType = d?.supplierType || ''; this.gEmail = d?.email || '';
+    this.gWaBuyer = d?.waBuyer || ''; this.gWaExtra = d?.waExtra || '';
+    this.gWaExtraRole = d?.waExtraRole || '';
+    this.gSubAgent = d?.subAgent || '';
+    this.gSubAgentPct = d?.subAgentPct ?? null;
+    this.gIncentivePct = d?.incentivePct ?? null;
+    this.gAgentSharePct = d?.agentSharePct ?? null;
+  }
+
+  // Khali/0 ko null bhejo — taaki backend COALESCE member ka apna value bacha le
+  private numOrNull(v: number | null): number | null {
+    return (v === null || v === undefined || (v as any) === '' || +v === 0) ? null : +v;
   }
 
   private detailPayload(name: string) {
@@ -266,7 +322,18 @@ export class PartyGroupsComponent {
       discountSpecial: +this.gDiscS || 0,
       exhibitionFrom: this.gExhFrom || null, exhibitionTo: this.gExhTo || null,
       purchaseDiscPct: +this.gPurchDisc || 0,
-      paymentTerms: this.gTerms || null
+      paymentTerms: this.gTerms || null,
+      creditLimit: +this.gCreditLimit || 0,
+      creditDays: this.numOrNull(this.gCreditDays),
+      supplierType: this.gSupplierType || null,
+      email: this.gEmail || null,
+      waBuyer: this.gWaBuyer || null,
+      waExtra: this.gWaExtra || null,
+      waExtraRole: this.gWaExtraRole || null,
+      subAgent: this.gSubAgent || null,
+      subAgentPct: this.numOrNull(this.gSubAgentPct),
+      incentivePct: this.numOrNull(this.gIncentivePct),
+      agentSharePct: this.numOrNull(this.gAgentSharePct)
     };
   }
 

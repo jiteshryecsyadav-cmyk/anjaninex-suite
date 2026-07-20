@@ -162,7 +162,14 @@ public class ContactsController : ControllerBase
         decimal DiscountSpecial = 0, string? PaymentTerms = null,
         string? Address2 = null, string? PartyType = null, string? BuyerType = null,
         string? ExhibitionFrom = null, string? ExhibitionTo = null,
-        decimal PurchaseDiscPct = 0);
+        decimal PurchaseDiscPct = 0,
+        // Party Master jaise baaki fields — group me bharo, sab sister firms me sync.
+        // (gstin/pan/udyam/msme/opening balance JAAN-BOOJH KAR nahi — wo har firm ki apni.)
+        decimal CreditLimit = 0, int? CreditDays = null,
+        string? SupplierType = null, string? Email = null,
+        string? WaBuyer = null, string? WaExtra = null, string? WaExtraRole = null,
+        string? SubAgent = null, decimal? SubAgentPct = null,
+        decimal? IncentivePct = null, decimal? AgentSharePct = null);
 
     [HttpGet("groups/detail")]
     public async Task<IActionResult> GroupDetails()
@@ -175,7 +182,10 @@ public class ContactsController : ControllerBase
             SELECT name, owner_name, address, mobile, whatsapp, city, pincode, state,
                    commission, discount_normal, discount_exhibition, discount_special, payment_terms,
                    address2, party_type, buyer_type, exhibition_from, exhibition_to,
-                   COALESCE(purchase_disc_pct,0)
+                   COALESCE(purchase_disc_pct,0),
+                   COALESCE(credit_limit,0), credit_days, supplier_type, email,
+                   wa_buyer, wa_extra, wa_extra_role,
+                   sub_agent, sub_agent_pct, incentive_pct, agent_share_pct
             FROM core.party_groups WHERE firm_id = @f ORDER BY name", conn);
         cmd.Parameters.AddWithValue("f", firmId);
         await using var r = await cmd.ExecuteReaderAsync();
@@ -192,7 +202,16 @@ public class ContactsController : ControllerBase
                 r.IsDBNull(15) ? null : r.GetString(15),
                 r.IsDBNull(16) ? null : r.GetDateTime(16).ToString("yyyy-MM-dd"),
                 r.IsDBNull(17) ? null : r.GetDateTime(17).ToString("yyyy-MM-dd"),
-                r.GetDecimal(18)));
+                r.GetDecimal(18),
+                r.GetDecimal(19),
+                r.IsDBNull(20) ? null : r.GetInt32(20),
+                r.IsDBNull(21) ? null : r.GetString(21), r.IsDBNull(22) ? null : r.GetString(22),
+                r.IsDBNull(23) ? null : r.GetString(23), r.IsDBNull(24) ? null : r.GetString(24),
+                r.IsDBNull(25) ? null : r.GetString(25),
+                r.IsDBNull(26) ? null : r.GetString(26),
+                r.IsDBNull(27) ? null : r.GetDecimal(27),
+                r.IsDBNull(28) ? null : r.GetDecimal(28),
+                r.IsDBNull(29) ? null : r.GetDecimal(29)));
         return Ok(list);
     }
 
@@ -208,9 +227,14 @@ public class ContactsController : ControllerBase
             INSERT INTO core.party_groups
                 (firm_id, name, owner_name, address, mobile, whatsapp, city, pincode, state,
                  commission, discount_normal, discount_exhibition, discount_special, payment_terms,
-                 address2, party_type, buyer_type, exhibition_from, exhibition_to, purchase_disc_pct)
+                 address2, party_type, buyer_type, exhibition_from, exhibition_to, purchase_disc_pct,
+                 credit_limit, credit_days, supplier_type, email,
+                 wa_buyer, wa_extra, wa_extra_role,
+                 sub_agent, sub_agent_pct, incentive_pct, agent_share_pct)
             VALUES (@f, @n, @own, @adr, @mob, @wa, @city, @pin, @st, @com, @dn, @de, @ds, @pt,
-                 @adr2, @ptype, @btype, @exf, @ext, @pdisc)
+                 @adr2, @ptype, @btype, @exf, @ext, @pdisc,
+                 @clim, @cdays, @stype, @mail, @wab, @wax, @waxr,
+                 @sagent, @sapct, @ipct, @ashare)
             ON CONFLICT (firm_id, name) DO UPDATE SET
                 owner_name = EXCLUDED.owner_name, address = EXCLUDED.address,
                 mobile = EXCLUDED.mobile, whatsapp = EXCLUDED.whatsapp,
@@ -224,7 +248,13 @@ public class ContactsController : ControllerBase
                 buyer_type = EXCLUDED.buyer_type,
                 exhibition_from = EXCLUDED.exhibition_from,
                 exhibition_to = EXCLUDED.exhibition_to,
-                purchase_disc_pct = EXCLUDED.purchase_disc_pct", conn))
+                purchase_disc_pct = EXCLUDED.purchase_disc_pct,
+                credit_limit = EXCLUDED.credit_limit, credit_days = EXCLUDED.credit_days,
+                supplier_type = EXCLUDED.supplier_type, email = EXCLUDED.email,
+                wa_buyer = EXCLUDED.wa_buyer, wa_extra = EXCLUDED.wa_extra,
+                wa_extra_role = EXCLUDED.wa_extra_role,
+                sub_agent = EXCLUDED.sub_agent, sub_agent_pct = EXCLUDED.sub_agent_pct,
+                incentive_pct = EXCLUDED.incentive_pct, agent_share_pct = EXCLUDED.agent_share_pct", conn))
         {
             cmd.Parameters.AddWithValue("f", firmId);
             cmd.Parameters.AddWithValue("n", name);
@@ -246,6 +276,17 @@ public class ContactsController : ControllerBase
             cmd.Parameters.AddWithValue("exf", string.IsNullOrWhiteSpace(dto.ExhibitionFrom) ? DBNull.Value : (object)DateOnly.Parse(dto.ExhibitionFrom));
             cmd.Parameters.AddWithValue("ext", string.IsNullOrWhiteSpace(dto.ExhibitionTo) ? DBNull.Value : (object)DateOnly.Parse(dto.ExhibitionTo));
             cmd.Parameters.AddWithValue("pdisc", dto.PurchaseDiscPct);
+            cmd.Parameters.AddWithValue("clim", dto.CreditLimit);
+            cmd.Parameters.AddWithValue("cdays", (object?)dto.CreditDays ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("stype", (object?)dto.SupplierType ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("mail", (object?)dto.Email ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("wab", (object?)dto.WaBuyer ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("wax", (object?)dto.WaExtra ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("waxr", (object?)dto.WaExtraRole ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("sagent", (object?)dto.SubAgent ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("sapct", (object?)dto.SubAgentPct ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("ipct", (object?)dto.IncentivePct ?? DBNull.Value);
+            cmd.Parameters.AddWithValue("ashare", (object?)dto.AgentSharePct ?? DBNull.Value);
             await cmd.ExecuteNonQueryAsync();
         }
         await SyncGroupToMembersAsync(conn, firmId, name);
@@ -255,11 +296,25 @@ public class ContactsController : ControllerBase
     // Group ka data uski SAB member firms me utaro — jo field group me bhari hai wahi sync hoti hai
     private static async Task SyncGroupToMembersAsync(NpgsqlConnection conn, Guid firmId, string name)
     {
-        // Contacts: mobile + whatsapp (khali ho to member ka apna hi rahe)
+        // Contacts: mobile + whatsapp + baaki master fields.
+        // Har field COALESCE/NULLIF se — group me khali chhoda ho to member ka apna
+        // value bacha rahe (group save karne se kisi firm ka data mite nahi).
         await using (var c1 = new NpgsqlCommand(@"
             UPDATE core.contacts c SET
-                phone_primary = COALESCE(NULLIF(g.mobile, ''), c.phone_primary),
-                wa_supplier   = COALESCE(NULLIF(g.whatsapp, ''), c.wa_supplier),
+                phone_primary  = COALESCE(NULLIF(g.mobile, ''), c.phone_primary),
+                wa_supplier    = COALESCE(NULLIF(g.whatsapp, ''), c.wa_supplier),
+                wa_buyer       = COALESCE(NULLIF(g.wa_buyer, ''), c.wa_buyer),
+                wa_extra       = COALESCE(NULLIF(g.wa_extra, ''), c.wa_extra),
+                wa_extra_role  = COALESCE(NULLIF(g.wa_extra_role, ''), c.wa_extra_role),
+                email_primary  = COALESCE(NULLIF(g.email, ''), c.email_primary),
+                supplier_type  = COALESCE(NULLIF(g.supplier_type, ''), c.supplier_type),
+                buyer_type     = COALESCE(NULLIF(g.buyer_type, ''), c.buyer_type),
+                sub_agent      = COALESCE(NULLIF(g.sub_agent, ''), c.sub_agent),
+                sub_agent_pct  = COALESCE(g.sub_agent_pct, c.sub_agent_pct),
+                incentive_pct  = COALESCE(g.incentive_pct, c.incentive_pct),
+                buyer_agent_share_pct = COALESCE(g.agent_share_pct, c.buyer_agent_share_pct),
+                purchase_disc_pct     = CASE WHEN COALESCE(g.purchase_disc_pct,0) > 0
+                                             THEN g.purchase_disc_pct ELSE c.purchase_disc_pct END,
                 updated_at = now()
             FROM core.party_groups g
             WHERE g.firm_id = @f AND g.name = @n
@@ -297,7 +352,11 @@ public class ContactsController : ControllerBase
                 discount_normal     = CASE WHEN g.discount_normal     > 0 THEN g.discount_normal     ELSE p.discount_normal     END,
                 discount_exhibition = CASE WHEN g.discount_exhibition > 0 THEN g.discount_exhibition ELSE p.discount_exhibition END,
                 discount_special    = CASE WHEN g.discount_special    > 0 THEN g.discount_special    ELSE p.discount_special    END,
-                credit_days         = CASE WHEN COALESCE(g.payment_terms,'') ~ '^net[0-9]+$'
+                credit_limit        = CASE WHEN COALESCE(g.credit_limit,0) > 0 THEN g.credit_limit ELSE p.credit_limit END,
+                -- Credit days: pehle group ka apna credit_days, warna payment_terms (netXX) se,
+                -- warna member ka apna. (Do jagah se aa sakta hai isliye priority saaf rakhi.)
+                credit_days         = CASE WHEN COALESCE(g.credit_days,0) > 0 THEN g.credit_days
+                                           WHEN COALESCE(g.payment_terms,'') ~ '^net[0-9]+$'
                                            THEN substring(g.payment_terms from 4)::int
                                            ELSE p.credit_days END,
                 updated_at = now()

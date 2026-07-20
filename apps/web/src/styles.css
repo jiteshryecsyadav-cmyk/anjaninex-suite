@@ -23,9 +23,22 @@
   button,
   .no-print { display: none !important; }
 
+  /* BLANK PRINT KI ASLI WAJAH — shell 3 layer me band tha:
+       <div class="h-screen ... overflow-hidden">   <- 100vh par clip
+         <div class="flex flex-1 min-h-0">          <- min-h-0 se sikud jata
+           <main class="flex-1 overflow-y-auto">    <- scroll wala box
+     Print me 100vh = sirf ek page, baaki content clip hokar gayab — isliye
+     kagaz khali aata tha. Teeno layer ko khol dena zaroori hai. */
+  app-shell > div,
+  app-shell > div > div {
+    height: auto !important; min-height: 0 !important; max-height: none !important;
+    overflow: visible !important; display: block !important;
+  }
   app-shell main {
     width: 100% !important; max-width: 100% !important;
+    height: auto !important; max-height: none !important;
     overflow: visible !important; padding: 0 !important;
+    display: block !important;
   }
   html, body { height: auto !important; overflow: visible !important; background: #fff !important; }
 
@@ -41,6 +54,16 @@
   /* Scroll wale box print me poore khul jaayein, warna content kat jata hai */
   [style*="overflow-x"], [style*="overflow-y"], .overflow-x-auto, .overflow-y-auto {
     overflow: visible !important;
+  }
+
+  /* Date picker aur dropdown filter ke liye hote hain — kagaz par bekaar khali
+     dibbe dikhte the. Text/number input me DATA ho sakta hai (jaise har row ka
+     comm%), isliye unhe chhupate nahi — sirf border/background hata ke saaf
+     text jaisa bana dete hain. */
+  input[type="date"], select { display: none !important; }
+  input, textarea {
+    border: none !important; background: transparent !important;
+    padding: 0 !important; box-shadow: none !important; color: #000 !important;
   }
 }
 

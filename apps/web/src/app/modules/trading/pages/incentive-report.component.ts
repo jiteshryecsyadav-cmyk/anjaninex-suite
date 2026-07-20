@@ -22,7 +22,13 @@ import { BackButtonComponent } from '../../../shared/back-button.component';
     <p style="color:#6B7280;font-size:13px;margin-bottom:14px">Buyer ke saal ke total taxable amt par incentive% ka hissa. Date range chuno (default: FY).<br>
       <span style="color:#B45309;font-weight:600">Cap: Sales Disc + Incentive ≤ Purchase Disc</span> — incentive bache hue disc (purchase − sales) se zyada nahi diya jata.</p>
 
-    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:end;margin-bottom:14px">
+    <!-- Print par sirf ye header — filter box nahi (no-print) -->
+    <div class="print-only" style="margin-bottom:10px;border-bottom:2px solid #1B2E5C;padding-bottom:6px">
+      <div style="font-weight:800;font-size:16px;color:#1B2E5C">Incentive Report</div>
+      <div style="font-size:12px;color:#374151">{{ from }} → {{ to }}</div>
+    </div>
+
+    <div class="no-print" style="display:flex;gap:10px;flex-wrap:wrap;align-items:end;margin-bottom:14px">
       <div><label style="font-size:11px;color:#6B7280;display:block">FROM</label>
         <input type="date" [(ngModel)]="from" class="ip"></div>
       <div><label style="font-size:11px;color:#6B7280;display:block">TO</label>

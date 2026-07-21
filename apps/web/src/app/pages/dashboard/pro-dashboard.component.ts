@@ -71,7 +71,7 @@ interface DonutSeg { label: string; color: string; value: number; pct: number; d
         <div class="kpi-card kpi-1">
           <div class="kpi-top">
             <span class="kpi-ico">📦</span>
-            <span class="kpi-delta delta-up">{{ deltaTxt(kpiSales().delta) }}</span>
+            <span class="kpi-delta delta-up">↑ {{ kpiSales().delta }}%</span>
           </div>
           <div class="kpi-value">₹{{ kpiSales().value }}L</div>
           <div class="kpi-label">TOTAL SALES</div>
@@ -84,7 +84,7 @@ interface DonutSeg { label: string; color: string; value: number; pct: number; d
         <div class="kpi-card kpi-2">
           <div class="kpi-top">
             <span class="kpi-ico">💎</span>
-            <span class="kpi-delta delta-up">{{ deltaTxt(kpiComm().delta) }}</span>
+            <span class="kpi-delta delta-up">↑ {{ kpiComm().delta }}%</span>
           </div>
           <div class="kpi-value">{{ kpiComm().value }}</div>
           <div class="kpi-label">COMMISSION</div>
@@ -1207,14 +1207,6 @@ export class ProDashboardComponent {
     const k = this.dash()?.kpis;
     return { value: this.L(k?.sales), delta: k?.salesDelta ?? 0 };
   });
-
-  /** Growth % ka text. Pichhli avadhi na ke barabar ho to % ka koi matlab nahi
-   *  ("↑26160%" se user ko kuch samajh nahi aata) — tab seedha 'bahut zyada'. */
-  deltaTxt(d: number): string {
-    if (d >= 999) return '↑ bahut zyada';
-    if (d <= -999) return '↓ bahut kam';
-    return (d >= 0 ? '↑ ' : '↓ ') + Math.abs(d) + '%';
-  }
   kpiComm = computed(() => {
     const k = this.dash()?.kpis;
     // Commission chhota hota hai — smart format (₹11.7K / ₹1.2L), na ki forced "L"

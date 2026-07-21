@@ -51,13 +51,8 @@ public class DashboardController : ControllerBase
         var prevEnd = start.AddDays(-1);
 
         // ---- KPI totals (selected period + optional branch) ----
-        // ⚠️ DeletedAt == null HAR jagah zaroori hai — pehle ye check kahin nahi tha,
-        // isliye DELETE kiye hue bill/payment bhi dashboard ke totals me gin rahe the.
-        // (Segment Mix me ye filter tha, isliye Total Sales aur Segment Mix ka
-        //  aankda alag-alag aa raha tha — 103.4L vs 104.9L.)
         async Task<decimal> SalesSum(DateOnly f, DateOnly t) => await _db.Bills
-            .Where(b => b.FirmId == firmId && b.DeletedAt == null
-                     && b.BillType == "sales" && b.BillDate >= f && b.BillDate <= t
+            .Where(b => b.FirmId == firmId && b.BillType == "sales" && b.BillDate >= f && b.BillDate <= t
                      && (branchId == null || b.BranchId == branchId.Value))
             .SumAsync(b => (decimal?)b.Total) ?? 0;
         // Commission ACCRUED from sales bills (Party Master rate) — broker income.
@@ -76,7 +71,7 @@ public class DashboardController : ControllerBase
         var commLoadFrom = prevStart < fyStart ? prevStart : fyStart;
         var commLoadTo = end > fyEnd ? end : fyEnd;
         var commBills = await _db.Bills
-            .Where(b => b.FirmId == firmId && b.DeletedAt == null && b.BillType == "sales"
+            .Where(b => b.FirmId == firmId && b.BillType == "sales"
                      && b.BillDate >= commLoadFrom && b.BillDate <= commLoadTo
                      && (branchId == null || b.BranchId == branchId.Value))
             .Select(b => new { b.BillDate, b.Total, b.PartyId, b.BuyerPartyId })
@@ -85,12 +80,11 @@ public class DashboardController : ControllerBase
             commBills.Where(b => b.BillDate >= f && b.BillDate <= t)
                      .Sum(b => b.Total * RateFor(b.PartyId, b.BuyerPartyId) / 100m);
         async Task<decimal> RecvSum(DateOnly f, DateOnly t) => await _db.Payments
-            .Where(p => p.FirmId == firmId && p.DeletedAt == null
-                     && p.PaymentType == "receipt" && p.PaymentDate >= f && p.PaymentDate <= t
+            .Where(p => p.FirmId == firmId && p.PaymentType == "receipt" && p.PaymentDate >= f && p.PaymentDate <= t
                      && (branchId == null || p.BranchId == branchId.Value))
             .SumAsync(p => (decimal?)p.Amount) ?? 0;
         async Task<decimal> GrSum(DateOnly f, DateOnly t) => await _db.GoodsReturns
-            .Where(g => g.FirmId == firmId && g.DeletedAt == null && g.GrDate >= f && g.GrDate <= t
+            .Where(g => g.FirmId == firmId && g.GrDate >= f && g.GrDate <= t
                      && (branchId == null || g.BranchId == branchId.Value))
             .SumAsync(g => (decimal?)g.TotalReturnAmount) ?? 0;
 
@@ -171,16 +165,8 @@ public class DashboardController : ControllerBase
             .OrderByDescending(x => x.sales)
             .ToList();
 
-        // Growth % — pichhli avadhi bahut chhoti ho to % bemaani ho jata hai.
-        // (Pichhle saal ₹39,000 aur is saal ₹1.03 crore -> "↑26160%" — screen par
-        //  aisa aankda dikhne se user ko kuch samajh nahi aata, sirf shak hota hai.)
-        // Isliye 999% par cap: usse zyada ho to frontend "bahut zyada" dikha de.
-        static decimal Pct(decimal cur, decimal prev)
-        {
-            if (prev <= 0) return cur > 0 ? 100 : 0;
-            var p = Math.Round((cur - prev) / prev * 100, 0);
-            return p > 999 ? 999 : p < -999 ? -999 : p;
-        }
+        static decimal Pct(decimal cur, decimal prev) =>
+            prev <= 0 ? (cur > 0 ? 100 : 0) : Math.Round((cur - prev) / prev * 100, 0);
 
         // ================= EXTRA WIDGETS — sab REAL data =================
 

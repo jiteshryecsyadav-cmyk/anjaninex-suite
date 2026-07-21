@@ -116,6 +116,7 @@ import { UppercaseDirective } from '../../../shared/uppercase.directive';
               <th class="px-3 py-2 w-10 text-center">✓</th>
               <th class="px-3 py-2 text-left">S.NO</th>
               <th class="px-3 py-2 text-left">Bill No</th>
+              <th class="px-3 py-2 text-left" title="Supplier ka apna invoice number">Supp. Bill No</th>
               <th class="px-3 py-2 text-left">Date</th>
               <th class="px-3 py-2 text-right">Bill Amt (₹)</th>
               <th class="px-3 py-2 text-center w-24">Comm %</th>
@@ -134,6 +135,10 @@ import { UppercaseDirective } from '../../../shared/uppercase.directive';
                 </td>
                 <td class="px-3 py-2 font-mono text-xs">{{ i + 1 }}</td>
                 <td class="px-3 py-2 font-mono text-xs font-bold">{{ r.bill.billNo }}</td>
+                <!-- Supplier ka apna bill no — uske invoice se milaan ke liye -->
+                <td class="px-3 py-2 font-mono text-xs">
+                  {{ r.bill.supplierBillNo || '—' }}
+                </td>
                 <td class="px-3 py-2 text-xs">{{ r.bill.billDate | inDate }}</td>
                 <td class="px-3 py-2 text-right font-mono">{{ r.bill.total | number:'1.2-2' }}</td>
                 <td class="px-3 py-2 text-center">
@@ -158,7 +163,8 @@ import { UppercaseDirective } from '../../../shared/uppercase.directive';
           </tbody>
           <tfoot class="bg-anjaninex-navy text-white">
             <tr>
-              <td colspan="4" class="px-3 py-3 text-right font-bold text-xs uppercase">Selected Totals →</td>
+              <!-- colspan 4 -> 5: 'Supp. Bill No' column jodne se ek column badh gaya -->
+              <td colspan="5" class="px-3 py-3 text-right font-bold text-xs uppercase">Selected Totals →</td>
               <td class="px-3 py-3 text-right font-mono font-bold">{{ selectedBillTotal() | number:'1.2-2' }}</td>
               <td></td>
               <td class="px-3 py-3 text-right font-mono font-bold text-yellow-300">{{ selectedCommTotal() | number:'1.2-2' }}</td>
@@ -168,7 +174,7 @@ import { UppercaseDirective } from '../../../shared/uppercase.directive';
               <td></td>
             </tr>
             <tr class="border-t border-white/25 text-xs">
-              <td colspan="6" class="px-3 py-2 text-right font-bold uppercase opacity-80">Supplier se lena hai →</td>
+              <td colspan="7" class="px-3 py-2 text-right font-bold uppercase opacity-80">Supplier se lena hai →</td>
               <td colspan="2" class="px-3 py-2 text-right">
                 <span class="opacity-75">Total Commission</span><br>
                 <strong class="font-mono text-yellow-300 text-sm">₹{{ selectedCommTotal() | number:'1.2-2' }}</strong>

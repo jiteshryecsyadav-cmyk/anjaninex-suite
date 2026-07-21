@@ -431,6 +431,12 @@ export class TradingService {
   /** Jin bills ka commission pehle se ban chuka hai — unki id list.
    *  Naya commission banate waqt inhe hata dete hain, warna wahi bill dobara
    *  aakar duplicate invoice ban jati hai. */
+  /** Receipt ko JAGAH PAR update — delete+recreate ki jagah.
+   *  Us purane tarike me delete chal jata aur banana atak jata to payment hi
+   *  gayab ho jati thi. Ye sab kuch ek transaction me karta hai. */
+  updatePayment(id: string, data: any) {
+    return this.http.put<any>(`${this.base}/payments/${id}`, data);
+  }
   billedBillIds() {
     return this.http.get<string[]>(`${this.base}/commission-invoices/billed-bill-ids`);
   }

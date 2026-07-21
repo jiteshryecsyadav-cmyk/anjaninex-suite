@@ -1706,7 +1706,7 @@ export class PaymentReceiptComponent {
         .map(t => `TXN:${t.mode}|${t.bankName || ''}|${t.refNo || ''}|${t.date || ''}|${t.amount}`)
     ].filter(Boolean);
 
-    const doCreate = () => this.svc.createPayment({
+    const payload = {
       paymentType: 'receipt',
       paymentDate: this.receiptDate,
       partyId,
@@ -1717,9 +1717,18 @@ export class PaymentReceiptComponent {
       bankLedgerId,
       notes: notesPieces.join(' | ') || undefined,
       allocations: allocations.length > 0 ? allocations : undefined,
-      reuseNo: (this.editMode && this.editPaymentNo) ? this.editPaymentNo : undefined,   // edit me same number
       moneyToAgency: this.moneyToAgency
-    }).subscribe({
+    };
+
+    // EDIT me ASLI UPDATE (ek transaction), warna nayi receipt.
+    // Pehle edit me 'delete karo phir nayi banao' hota tha — delete chal jata aur
+    // banana atak jata to PAYMENT HI GAYAB ho jati thi, aur dobara try par
+    // "ye number pehle se maujood hai" aata tha.
+    const doCreate = () => (
+      this.editMode && this.editId
+        ? this.svc.updatePayment(this.editId, payload)
+        : this.svc.createPayment(payload as any)
+    ).subscribe({
       next: (p: any) => {
         // Cheque txns -> Cheque Handover Register (pending: taken_by khaali)
         const supName = this.supplier()?.displayName || '';
@@ -1730,7 +1739,9 @@ export class PaymentReceiptComponent {
             amount: t.amount, chequeDate: t.date || '', takenBy: '', handedDate: '', commissionPaid: false, commissionAmount: 0
           }).subscribe({ next: () => {}, error: () => {} });
         });
-        this.toast.success(`Receipt ${p.paymentNo} successfully save ho gaya — ₹${this.totalReceived().toFixed(2)} received, ${allocations.length} bill clear.`);
+        this.toast.success(
+          `Receipt ${p.paymentNo} ${this.editMode ? 'update ho gaya' : 'save ho gaya'} — ` +
+          `₹${this.totalReceived().toFixed(2)} received, ${allocations.length} bill clear.`);
         this.router.navigate(['/trading/payments']);
       },
       error: (e) => {
@@ -1741,17 +1752,9 @@ export class PaymentReceiptComponent {
       }
     });
 
-    // EDIT MODE: purani receipt delete (voucher + allocation reverse), phir same number par nayi
-    if (this.editMode && this.editId) {
-      this.svc.deletePayment(this.editId).subscribe({
-        next: () => doCreate(),
-        error: (e) => {
-          alert('⚠️ Purani receipt delete nahi hui: ' + (e?.error?.error ?? 'unknown'));
-          this.saving.set(false);
-        }
-      });
-    } else {
-      doCreate();
-    }
+    // Edit ho ya nayi — dono ab ek hi call me (upar doCreate me tay ho chuka hai).
+    // Purana 'pehle delete phir create' wala do-step hata diya: usme beech me
+    // kuch bigadne par receipt gayab ho jati thi.
+    doCreate();
   }
 }

@@ -55,6 +55,8 @@ public interface IPaymentService
     Task<(List<PaymentListItemDto> items, int total)> List(string? type, DateOnly? from, DateOnly? to, Guid? partyId, int page, int size);
     Task<PaymentDetailDto?> Get(Guid id);
     Task<PaymentDetailDto> Create(CreatePaymentDto dto, Guid firmId, Guid branchId, Guid userId);
+    /// Jagah par update — delete+recreate ki jagah (us tarike me data gayab ho jata tha)
+    Task<PaymentDetailDto> Update(Guid id, CreatePaymentDto dto, Guid firmId, Guid branchId, Guid userId);
     Task Delete(Guid id);
     Task<List<BillListItemDto>> GetOutstandingBills(Guid partyId, Guid? supplierId = null);
 }
@@ -570,6 +572,91 @@ public class PaymentService : IPaymentService
             b.SupplierBillNo,
             null, null,
             EntitledFor(b))).ToList();
+    }
+
+    /// <summary>
+    /// Receipt/payment ko JAGAH PAR update karta hai — EK hi transaction me.
+    ///
+    /// Pehle "delete karo phir nayi banao" hota tha. Us tarike me delete chal jata
+    /// aur banana atak jata to PAYMENT HI GAYAB ho jati thi (asli paise ka record),
+    /// aur dobara try karne par "ye number pehle se maujood hai" aa jata tha.
+    /// Ab: purani allocations ulti karo -> nayi values bharo -> naya voucher.
+    /// Beech me kuch bhi bigda to poora rollback — na aadha update, na data gayab.
+    /// Payment NUMBER wahi rehta hai (badalta nahi).
+    /// </summary>
+    public async Task<PaymentDetailDto> Update(Guid id, CreatePaymentDto dto, Guid firmId, Guid branchId, Guid userId)
+    {
+        if (dto.Amount <= 0) throw new ArgumentException("Amount must be positive");
+
+        var p = await _db.Payments.Include(x => x.Allocations)
+                    .SingleOrDefaultAsync(x => x.Id == id && x.FirmId == firmId)
+                ?? throw new InvalidOperationException("Ye receipt nahi mili (shayad delete ho chuki hai).");
+
+        using var tx = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+        try
+        {
+            // 1) PURANI allocations ulti karo — bill ka paid_amount wapas ghatao
+            foreach (var a in p.Allocations)
+            {
+                var b = await _db.Bills.SingleOrDefaultAsync(x => x.Id == a.BillId);
+                if (b is null) continue;   // bill ja chuka — ulta karne ko kuch nahi
+                b.PaidAmount = Math.Max(0, b.PaidAmount - a.Allocated);
+                b.Status = b.PaidAmount >= b.Total ? "paid" : b.PaidAmount > 0 ? "partial" : "pending";
+            }
+            _db.PaymentAllocations.RemoveRange(p.Allocations);
+            p.Allocations.Clear();
+
+            // 2) PURANA voucher hatao — naya banega (hisaab do baar na chadhe)
+            if (p.VoucherId.HasValue)
+            {
+                var oldV = await _db.Vouchers.SingleOrDefaultAsync(x => x.Id == p.VoucherId.Value);
+                if (oldV is not null) oldV.DeletedAt = DateTimeOffset.UtcNow;
+                p.VoucherId = null;
+            }
+
+            // 3) NAYI values (payment_no JAAN-BOOJH KAR nahi badalte)
+            p.PaymentDate = dto.PaymentDate;
+            p.PartyId = dto.PartyId;
+            p.PaymentMode = dto.PaymentMode;
+            p.Amount = dto.Amount;
+            p.ReferenceNo = dto.ReferenceNo;
+            p.BankName = dto.BankName;
+            p.BankLedgerId = dto.BankLedgerId == Guid.Empty ? null : dto.BankLedgerId;
+            p.MoneyToAgency = dto.MoneyToAgency;
+            p.Notes = dto.Notes;
+            p.UpdatedAt = DateTimeOffset.UtcNow;
+
+            // 4) NAYI allocations + bill ka paid_amount badhao
+            if (dto.Allocations != null)
+            {
+                foreach (var a in dto.Allocations.Where(x => x.Allocated > 0))
+                {
+                    var b = await _db.Bills.SingleOrDefaultAsync(x => x.Id == a.BillId);
+                    if (b is null) continue;
+                    p.Allocations.Add(new PaymentAllocation
+                    {
+                        PaymentId = p.Id, BillId = a.BillId, Allocated = a.Allocated
+                    });
+                    b.PaidAmount += a.Allocated;
+                    b.Status = b.PaidAmount >= b.Total ? "paid" : b.PaidAmount > 0 ? "partial" : "pending";
+                }
+            }
+
+            await _db.SaveChangesAsync();
+
+            // 5) Naya voucher
+            p.VoucherId = await PostVoucherForPayment(p, firmId, branchId, userId);
+            await _db.SaveChangesAsync();
+
+            await tx.CommitAsync();
+            _log.LogInformation("Payment {No} updated ₹{Amount}", p.PaymentNo, p.Amount);
+            return (await Get(p.Id))!;
+        }
+        catch
+        {
+            await tx.RollbackAsync();
+            throw;   // kuch nahi badla — purani receipt jaisi thi waisi hi rahegi
+        }
     }
 
     public async Task Delete(Guid id)

@@ -430,6 +430,27 @@ public class PaymentsController : TradingControllerBase
         }
     }
 
+    // ASLI UPDATE — pehle 'delete karo phir nayi banao' hota tha. Us tarike me
+    // delete chal jata aur banana atak jata to PAYMENT HI GAYAB ho jati thi
+    // (aur dobara try karne par "ye number pehle se maujood hai" aata tha).
+    // Ab sab kuch EK transaction me: kuch bhi bigde to poora wapas apni jagah.
+    [HttpPut("{id}")]
+    [HasPermission("trading.payment.create.branch")]
+    public async Task<IActionResult> Update(Guid id, [FromBody] CreatePaymentDto dto)
+    {
+        try
+        {
+            var result = await _svc.Update(id, dto, CurrentFirmId, CurrentBranchId, CurrentUserId);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            var root = ex; while (root.InnerException != null) root = root.InnerException;
+            Console.WriteLine($"[Trading.PaymentUpdate] {root.GetType().Name}: {root.Message}");
+            return BadRequest(new { error = Namokara.Api.Common.Errors.FriendlyError.From(ex) });
+        }
+    }
+
     [HttpDelete("{id}")]
     [HasPermission("trading.payment.create.branch")]
     public async Task<IActionResult> Delete(Guid id)

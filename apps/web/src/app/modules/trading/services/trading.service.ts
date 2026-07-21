@@ -428,6 +428,12 @@ export class TradingService {
   deletePayment(id: string) { return this.http.delete(`${this.base}/payments/${id}`); }
 
   // Commission Invoices (consolidated commission e-invoices generated from bills)
+  /** Jin bills ka commission pehle se ban chuka hai — unki id list.
+   *  Naya commission banate waqt inhe hata dete hain, warna wahi bill dobara
+   *  aakar duplicate invoice ban jati hai. */
+  billedBillIds() {
+    return this.http.get<string[]>(`${this.base}/commission-invoices/billed-bill-ids`);
+  }
   listCommissionInvoices() {
     return this.http.get<any[]>(`${this.base}/commission-invoices`);
   }

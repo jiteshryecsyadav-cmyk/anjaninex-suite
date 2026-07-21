@@ -59,6 +59,22 @@ public class CommissionInvoicesController : ControllerBase
         }
     }
 
+    // Jin bills ka commission PEHLE SE ban chuka hai — unki id list.
+    // Screen par likha hai "auto-pulls UNBILLED commissions", par ye check kahin
+    // tha hi nahi: wahi bill dobara aa jate the aur do-do same invoice ban jati thi
+    // (C24 aur C25 bilkul ek jaise — wahi 5 bill, wahi ₹2,830.28).
+    [HttpGet("billed-bill-ids")]
+    public async Task<IActionResult> BilledBillIds()
+    {
+        var firmId = CurrentFirmId;
+        var ids = await _db.CommissionInvoiceLines.AsNoTracking()
+            .Join(_db.CommissionInvoices.AsNoTracking().Where(c => c.FirmId == firmId),
+                  l => l.CommissionInvoiceId, c => c.Id, (l, c) => l.BillId)
+            .Distinct()
+            .ToListAsync();
+        return Ok(ids);
+    }
+
     [HttpGet]
     public async Task<IActionResult> List()
     {

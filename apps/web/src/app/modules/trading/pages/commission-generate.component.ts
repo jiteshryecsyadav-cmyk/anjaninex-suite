@@ -99,7 +99,12 @@ import { UppercaseDirective } from '../../../shared/uppercase.directive';
     @if (rows().length > 0) {
       <div class="card p-0 mb-4 overflow-hidden">
         <div class="px-4 py-3 bg-anjaninex-navy text-white text-xs font-bold uppercase tracking-wide flex justify-between items-center">
-          <span>STEP 2 — REVIEW &amp; SELECT BILLS ({{ selectedCount() }} of {{ rows().length }} selected)</span>
+          <span>
+            STEP 2 — REVIEW &amp; SELECT BILLS ({{ selectedCount() }} of {{ rows().length }} selected)
+            @if (alreadyBilled() > 0) {
+              <span class="font-normal opacity-90"> · {{ alreadyBilled() }} bill ka commission pehle ho chuka, wo hata diye</span>
+            }
+          </span>
           <div class="flex gap-2">
             <button (click)="selectAll(true)" class="text-xs px-2 py-1 bg-white text-[#1B2E5C] rounded font-bold">Select All</button>
             <button (click)="selectAll(false)" class="text-xs px-2 py-1 bg-white text-[#1B2E5C] rounded font-bold">Clear</button>
@@ -260,6 +265,12 @@ import { UppercaseDirective } from '../../../shared/uppercase.directive';
       <div class="card p-8 text-center text-gray-500">
         <div class="text-4xl mb-2">📭</div>
         <div class="font-semibold">Is date range me koi bill nahi mila.</div>
+        @if (alreadyBilled() > 0) {
+          <div class="text-xs text-green-700 mt-2">
+            ✓ <b>{{ alreadyBilled() }}</b> bill ka commission pehle hi ban chuka hai —
+            isliye wo yahan nahi dikhaye (dobara invoice na bane).
+          </div>
+        }
         @if (lastFetchInfo(); as f) {
           <div class="text-xs text-gray-500 mt-2">
             Supplier ke <b>{{ f.total }}</b> bill mile {{ fromDate }} → {{ toDate }} me.
@@ -690,6 +701,7 @@ export class CommissionGenerateComponent {
   canFetch = computed(() => !!(this.supplierId || this.buyerId) && !!this.fromDate && !!this.toDate);
 
   ngOnInit() {
+    this.loadBilled();   // pehle se commission ho chuke bills — inhe hatana hai
     this.svc.listParties().subscribe(ps => {
       this.buyers.set(ps || []);
     });
@@ -764,6 +776,12 @@ export class CommissionGenerateComponent {
         if (typedPct <= 0 && partyPct > 0) this.commPctAll = partyPct;
         let items = res.items.filter(b => !b.isDeleted);
         const supplierBillCount = items.length;
+        // Jin bills ka commission PEHLE SE ban chuka hai unhe hata do — warna wahi
+        // bill dobara aa jate the aur bilkul same duplicate invoice ban jati thi.
+        const done = this.billedIds();
+        const beforeBilled = items.length;
+        if (done.size > 0) items = items.filter(b => !done.has(b.id));
+        this.alreadyBilled.set(beforeBilled - items.length);
         if (buyFilter) items = items.filter(b => b.buyerPartyId === buyFilter);
         // Khali nateeje par user ko batane ke liye: supplier ke kitne bill mile the,
         // aur buyer filter ne kitne bachaye — taaki pata chale kahan chhanta gaya.
@@ -827,6 +845,18 @@ export class CommissionGenerateComponent {
 
   // Khali nateeja aane par diagnostic: supplier ke kitne bill mile, buyer filter ke baad kitne bache.
   lastFetchInfo = signal<{ total: number; afterBuyer: number } | null>(null);
+
+  /** Jin bills ka commission pehle se ban chuka — dobara nahi dikhane hain. */
+  billedIds = signal<Set<string>>(new Set());
+  /** Is fetch me kitne bill 'pehle se ho chuke' kehkar hataye — user ko batana hai. */
+  alreadyBilled = signal(0);
+
+  private loadBilled() {
+    this.svc.billedBillIds().subscribe({
+      next: (ids) => this.billedIds.set(new Set(ids || [])),
+      error: () => { /* na mile to purana behaviour — sab bill dikhenge */ }
+    });
+  }
 
   // STEP 1 ka COMMISSION % — sab bills par ek saath lagta hai.
   // Khali/0 rakho to Party Master ka rate chalega (fetch ke waqt).
@@ -897,6 +927,9 @@ export class CommissionGenerateComponent {
         this.savedId.set(res.id);
         this.invoiceNo = res.invoiceNo;
         this.showPreview.set(true);
+        // Ab in bills ka commission ban chuka — list turant refresh, taaki agli
+        // baar Fetch karne par wahi bill dobara na aayein.
+        this.loadBilled();
         this.toast.success(`✓ Commission invoice ${res.invoiceNo} save ho gaya!`);
       },
       error: (e) => {

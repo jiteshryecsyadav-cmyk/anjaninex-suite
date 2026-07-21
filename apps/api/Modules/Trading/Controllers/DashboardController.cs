@@ -165,8 +165,16 @@ public class DashboardController : ControllerBase
             .OrderByDescending(x => x.sales)
             .ToList();
 
-        static decimal Pct(decimal cur, decimal prev) =>
-            prev <= 0 ? (cur > 0 ? 100 : 0) : Math.Round((cur - prev) / prev * 100, 0);
+        // Growth % — pichhli avadhi bahut chhoti ho to % bemaani ho jata hai.
+        // (Pichhle saal ₹39,000 aur is saal ₹1.03 crore -> "↑26160%" — aisa aankda
+        //  dekh kar user ko kuch samajh nahi aata, sirf shak hota hai.)
+        // Isliye 999% par cap; frontend usse upar "bahut zyada" dikhata hai.
+        static decimal Pct(decimal cur, decimal prev)
+        {
+            if (prev <= 0) return cur > 0 ? 100 : 0;
+            var p = Math.Round((cur - prev) / prev * 100, 0);
+            return p > 999 ? 999 : p < -999 ? -999 : p;
+        }
 
         // ================= EXTRA WIDGETS — sab REAL data =================
 

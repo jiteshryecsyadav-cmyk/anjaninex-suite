@@ -71,26 +71,30 @@ interface DonutSeg { label: string; color: string; value: number; pct: number; d
         <div class="kpi-card kpi-1">
           <div class="kpi-top">
             <span class="kpi-ico">📦</span>
-            <span class="kpi-delta delta-up">↑ {{ kpiSales().delta }}%</span>
+            <span class="kpi-delta delta-up">{{ deltaTxt(kpiSales().delta) }}</span>
           </div>
           <div class="kpi-value">₹{{ kpiSales().value }}L</div>
           <div class="kpi-label">TOTAL SALES</div>
-          <svg class="kpi-spark" viewBox="0 0 100 30">
-            <polyline [attr.points]="sparkPoints(sparkSales)" fill="none" stroke="#1B2E5C" stroke-width="2"/>
-            <polygon [attr.points]="sparkPoints(sparkSales) + ' 100,30 0,30'" fill="#1B2E5C" opacity="0.1"/>
+          <svg class="kpi-spark" viewBox="0 0 100 30" preserveAspectRatio="none">
+            @for (b of sparkBars(sparkSales); track $index) {
+              <rect [attr.x]="b.x" [attr.y]="b.y" [attr.width]="b.w" [attr.height]="b.h"
+                    rx="1" fill="#1B2E5C" opacity="0.75"/>
+            }
           </svg>
         </div>
 
         <div class="kpi-card kpi-2">
           <div class="kpi-top">
             <span class="kpi-ico">💎</span>
-            <span class="kpi-delta delta-up">↑ {{ kpiComm().delta }}%</span>
+            <span class="kpi-delta delta-up">{{ deltaTxt(kpiComm().delta) }}</span>
           </div>
           <div class="kpi-value">{{ kpiComm().value }}</div>
           <div class="kpi-label">COMMISSION</div>
-          <svg class="kpi-spark" viewBox="0 0 100 30">
-            <polyline [attr.points]="sparkPoints(sparkComm)" fill="none" stroke="#F97316" stroke-width="2"/>
-            <polygon [attr.points]="sparkPoints(sparkComm) + ' 100,30 0,30'" fill="#F97316" opacity="0.1"/>
+          <svg class="kpi-spark" viewBox="0 0 100 30" preserveAspectRatio="none">
+            @for (b of sparkBars(sparkComm); track $index) {
+              <rect [attr.x]="b.x" [attr.y]="b.y" [attr.width]="b.w" [attr.height]="b.h"
+                    rx="1" fill="#F97316" opacity="0.8"/>
+            }
           </svg>
         </div>
 
@@ -101,9 +105,11 @@ interface DonutSeg { label: string; color: string; value: number; pct: number; d
           </div>
           <div class="kpi-value">₹{{ kpiReceived().value }}L</div>
           <div class="kpi-label">RECEIVED</div>
-          <svg class="kpi-spark" viewBox="0 0 100 30">
-            <polyline [attr.points]="sparkPoints(sparkReceived)" fill="none" stroke="#10B981" stroke-width="2"/>
-            <polygon [attr.points]="sparkPoints(sparkReceived) + ' 100,30 0,30'" fill="#10B981" opacity="0.1"/>
+          <svg class="kpi-spark" viewBox="0 0 100 30" preserveAspectRatio="none">
+            @for (b of sparkBars(sparkReceived); track $index) {
+              <rect [attr.x]="b.x" [attr.y]="b.y" [attr.width]="b.w" [attr.height]="b.h"
+                    rx="1" fill="#10B981" opacity="0.8"/>
+            }
           </svg>
         </div>
 
@@ -114,9 +120,11 @@ interface DonutSeg { label: string; color: string; value: number; pct: number; d
           </div>
           <div class="kpi-value">₹{{ kpiGr().value }}L</div>
           <div class="kpi-label">GR RETURNS</div>
-          <svg class="kpi-spark" viewBox="0 0 100 30">
-            <polyline [attr.points]="sparkPoints(sparkGr)" fill="none" stroke="#DC2626" stroke-width="2"/>
-            <polygon [attr.points]="sparkPoints(sparkGr) + ' 100,30 0,30'" fill="#DC2626" opacity="0.1"/>
+          <svg class="kpi-spark" viewBox="0 0 100 30" preserveAspectRatio="none">
+            @for (b of sparkBars(sparkGr); track $index) {
+              <rect [attr.x]="b.x" [attr.y]="b.y" [attr.width]="b.w" [attr.height]="b.h"
+                    rx="1" fill="#DC2626" opacity="0.8"/>
+            }
           </svg>
         </div>
       </div>
@@ -1224,6 +1232,31 @@ export class ProDashboardComponent {
   sparkPoints(arr: number[]): string {
     const max = Math.max(...arr, 1);
     return arr.map((v, i) => `${(i / (arr.length - 1)) * 100},${30 - (v / max) * 25}`).join(' ');
+  }
+
+  /** Mini BAR chart — line ki jagah.
+   *  Line tab hi acchi lagti hai jab har mahine kuch na kuch ho. Yahan aksar
+   *  ek hi mahine me sab hota hai aur baaki 0 — line ek tez choti banakar
+   *  'tooti hui' lagti thi. Bars me khali mahine ka bar bas nahi hota,
+   *  isliye saaf aur jaan-boojh kar banaya hua lagta hai. */
+  sparkBars(arr: number[]): { x: number; y: number; w: number; h: number }[] {
+    const n = arr.length || 1;
+    const max = Math.max(...arr, 1);
+    const gap = 1.5;
+    const w = Math.max(1, (100 - gap * (n - 1)) / n);
+    return arr.map((v, i) => {
+      // 0 wale mahine ka bar bilkul nahi; chhoti value bhi kam se kam dikhe
+      const h = v > 0 ? Math.max(2.5, (v / max) * 26) : 0;
+      return { x: i * (w + gap), y: 30 - h, w, h };
+    });
+  }
+
+  /** Growth % ka text. Pichhli avadhi na ke barabar ho to % ka koi matlab nahi
+   *  ("↑26160%" se kuch samajh nahi aata) — tab seedha 'bahut zyada'. */
+  deltaTxt(d: number): string {
+    if (d >= 999) return '↑ bahut zyada';
+    if (d <= -999) return '↓ bahut kam';
+    return (d >= 0 ? '↑ ' : '↓ ') + Math.abs(d) + '%';
   }
 
   // ===== Alerts (REAL — backend se derive) =====

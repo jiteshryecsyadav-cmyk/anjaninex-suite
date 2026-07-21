@@ -574,7 +574,10 @@ public class PaymentService : IPaymentService
 
     public async Task Delete(Guid id)
     {
-        var p = await _db.Payments.Include(x => x.Allocations).SingleAsync(x => x.Id == id);
+        // SingleOrDefault + saaf message — warna "Sequence contains no elements" jaisa
+        // error aata tha jisse user ko kuch pata hi nahi chalta tha.
+        var p = await _db.Payments.Include(x => x.Allocations).SingleOrDefaultAsync(x => x.Id == id);
+        if (p is null) return;   // pehle se ja chuki — kuch karne ko nahi
 
         // IDEMPOTENCY GUARD: if already soft-deleted, do nothing. Without this, a second
         // Delete call would subtract the allocations again and drive bill.PaidAmount
@@ -585,9 +588,17 @@ public class PaymentService : IPaymentService
         try
         {
             // Reverse allocations on bills (clamped at 0 to guard against prior drift)
+            //
+            // SingleAsync ki jagah SingleOrDefaultAsync: agar us allocation ka bill
+            // ab maujood hi nahi (delete ho chuka), to SingleAsync "Sequence contains
+            // no elements" phenk deta tha aur POORI delete ruk jati thi. Receipt EDIT
+            // andar se delete+recreate hai — isliye edit hi save nahi hoti thi.
+            // Bill na mile to us allocation ko chhod kar aage badho; baaki bills ka
+            // hisaab phir bhi sahi ulta ho jayega.
             foreach (var a in p.Allocations)
             {
-                var bill = await _db.Bills.SingleAsync(b => b.Id == a.BillId);
+                var bill = await _db.Bills.SingleOrDefaultAsync(b => b.Id == a.BillId);
+                if (bill is null) continue;   // bill ja chuka — ulta karne ko kuch nahi
                 bill.PaidAmount = Math.Max(0, bill.PaidAmount - a.Allocated);
                 bill.Status = bill.PaidAmount >= bill.Total ? "paid"
                               : bill.PaidAmount > 0 ? "partial" : "pending";
@@ -597,8 +608,10 @@ public class PaymentService : IPaymentService
 
             if (p.VoucherId.HasValue)
             {
-                var v = await _db.Vouchers.SingleAsync(x => x.Id == p.VoucherId.Value);
-                v.DeletedAt = DateTimeOffset.UtcNow;
+                // Wahi baat voucher ke liye — pehle se hata/soft-delete ho chuka ho
+                // to delete atakni nahi chahiye.
+                var v = await _db.Vouchers.SingleOrDefaultAsync(x => x.Id == p.VoucherId.Value);
+                if (v is not null) v.DeletedAt = DateTimeOffset.UtcNow;
             }
 
             await _db.SaveChangesAsync();

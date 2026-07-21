@@ -1202,7 +1202,31 @@ export class PaymentReceiptComponent {
         }
       }
 
-      this.toast.info(`Receipt ${d.paymentNo} edit mode me hai — save par purani delete hokar nayi banegi`);
+      // HAR BILL ki kat-kut wapas bharo (DED: lines se) — DIS%/PACKING/OTHER
+      // waghairah. Ye pehle hota hi nahi tha: edit kholne par sab 0 dikhta tha
+      // aur user ko lagta tha "save nahi hua", jabki rakam sahi save hui thi.
+      for (const s of pieces.filter(x => x.startsWith('DED:'))) {
+        const [billId, rateDiff, disPct, disAmt, interest, adjAmt, packing, other, gstMode]
+          = s.slice(4).split('|');
+        const i = this.bills().findIndex(b => b.billId === billId);
+        if (i < 0) continue;
+        this.bills.update(arr => arr.map((b, k) => k === i ? {
+          ...b,
+          rateDiff: +rateDiff || 0,
+          disPct:   +disPct   || 0,
+          disAmt:   +disAmt   || 0,
+          interest: +interest || 0,
+          adjAmt:   +adjAmt   || 0,
+          packing:  +packing  || 0,
+          other:    +other    || 0,
+          gstMode:  (gstMode === 'before' ? 'before' : 'after') as 'before' | 'after'
+        } : b));
+      }
+      // Sab DED bhar jaane ke BAAD ek hi baar dobara hisaab — har bill par
+      // alag-alag karne se beech ke totals galat dikh sakte the.
+      this.recalcAllBills();
+
+      this.toast.info(`Receipt ${d.paymentNo} edit mode me hai — Save karne par yahi receipt update hogi`);
     } catch {
       alert('Receipt load nahi hui — list se dobara try karo');
       this.router.navigate(['/trading/payments']);
@@ -1697,10 +1721,21 @@ export class PaymentReceiptComponent {
       ? `CALC:${sum(b => b.netAmt)}|${sum(b => b.taxAmt)}|${sum(b => b.grAmt)}|${sum(b => b.rateDiff)}|${sum(b => b.disAmt)}|${sum(b => b.interest)}|${sum(b => b.adjAmt)}|${sum(b => b.toPay)}`
       : '';
 
+    // HAR BILL ki kat-kut alag se — taaki EDIT kholne par wapas bhar sakein.
+    // Pehle sirf upar wali CALC line thi: usme sab bills ka JOD tha, packing/other
+    // the hi nahi, aur wo kabhi PADHI bhi nahi jati thi. Isliye edit kholne par
+    // DIS%/PACKING/OTHER khali dikhte the aur lagta tha "save nahi hua" —
+    // jabki rakam (Balance Pending) sahi hoti thi.
+    const dedPieces = sel.map(b =>
+      `DED:${b.billId}|${b.rateDiff || 0}|${b.disPct || 0}|${b.disAmt || 0}|` +
+      `${b.interest || 0}|${b.adjAmt || 0}|${b.packing || 0}|${b.other || 0}|${b.gstMode || 'after'}`
+    );
+
     const notesPieces = [
       this.remark,
       this.supplier() ? `Supplier: ${this.supplier()!.displayName}` : '',
       calcPiece,
+      ...dedPieces,   // har bill ki kat-kut — edit me wapas bharne ke liye
       // HAR txn structured save — preview me "kaise-kaise received hua" table isi se banti hai
       ...this.txns().filter(t => t.amount > 0)
         .map(t => `TXN:${t.mode}|${t.bankName || ''}|${t.refNo || ''}|${t.date || ''}|${t.amount}`)

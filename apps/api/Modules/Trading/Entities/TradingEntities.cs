@@ -219,6 +219,12 @@ public class PaymentAllocation
 
     [Column(TypeName = "numeric(14,2)")]
     public decimal Allocated { get; set; }
+
+    /// Discount + packing + rate diff + other jo bill se KATA — cash nahi aaya par
+    /// bill utna settle ho gaya. bill.PaidAmount me Allocated ke saath ye bhi judta hai,
+    /// warna bill par kata hua amount hamesha "pending" dikhta rehta hai.
+    [Column(TypeName = "numeric(14,2)")]
+    public decimal Deduction { get; set; }
 }
 
 public class Order

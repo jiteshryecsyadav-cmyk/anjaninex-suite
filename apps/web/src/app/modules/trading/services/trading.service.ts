@@ -291,6 +291,8 @@ export interface PaymentAllocation {
   billId: string;
   billNo: string;
   allocated: number;
+  /** Discount + packing + rate diff jo bill se KATA — cash nahi aaya par bill utna settle hua. */
+  deduction?: number;
 }
 
 export interface Transporter {

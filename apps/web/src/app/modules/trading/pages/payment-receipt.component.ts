@@ -1196,8 +1196,13 @@ export class PaymentReceiptComponent {
       for (const a of (d.allocations || [])) {
         const idx = this.bills().findIndex(b => b.billId === a.billId);
         if (idx >= 0) {
+          // Is receipt ne bill par jitna chadhaya tha (cash + kata hua) wo wapas
+          // pending me jodo — warna edit me bill kam bakaya dikhata hai aur save
+          // karte hi kat-kut dobara nahi kat pati.
           this.bills.update(arr => arr.map((b, i) =>
-            i === idx ? { ...b, pending: b.pending + (a.allocated || 0) } : b));
+            i === idx
+              ? { ...b, pending: b.pending + (a.allocated || 0) + (a.deduction || 0) }
+              : b));
           this.toggleBill(idx, true);
         }
       }
@@ -1704,11 +1709,20 @@ export class PaymentReceiptComponent {
     const allocations = this.bills()
       .filter(b => b.selected)
       .map(b => {
-        // Received se bill ka pending bharo — NET se zyada mila to bill pura PAID
-        // ho jayega (extra party ke khate me advance rahta hai)
-        const a = Math.min(b.pending, Math.max(0, remaining));
+        // Party ko is bill par DENA kitna hai = kat-kut ke baad ka NET (toPay).
+        const owed = Math.min(b.pending, b.toPay || b.pending);
+        // Received se wahi bharo — zyada mila to extra party ke khate me advance rahega.
+        const a = Math.min(owed, Math.max(0, remaining));
         remaining -= a;
-        return { billId: b.billId, billNo: b.billNo, allocated: +a.toFixed(2) };
+        // Pura NET bhar gaya? To bacha hua (discount + packing + rate diff) bhi bill se
+        // nikal do — wo paisa kabhi aayega nahi. Ye na bhejein to bill par utna amount
+        // HAMESHA pending dikhta rahta hai (Payments list, Dashboard, party ledger).
+        // Aadha paisa aaya ho to abhi kuch mat kaato — pura settle hone par katega.
+        const ded = a >= owed - 0.01 ? Math.max(0, b.pending - owed) : 0;
+        return {
+          billId: b.billId, billNo: b.billNo,
+          allocated: +a.toFixed(2), deduction: +ded.toFixed(2)
+        };
       })
       .filter(a => a.allocated > 0);
 

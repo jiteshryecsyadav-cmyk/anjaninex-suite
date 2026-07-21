@@ -10,7 +10,9 @@ namespace Namokara.Api.Modules.Trading.Services;
 // =============================================================================
 // DTOs
 // =============================================================================
-public record PaymentAllocationDto(Guid BillId, string BillNo, decimal Allocated);
+// Deduction = discount/packing/rate-diff jo is bill se kata (cash nahi aaya, par
+// bill utna settle hua). Bill se nikalta hai: paid_amount += Allocated + Deduction.
+public record PaymentAllocationDto(Guid BillId, string BillNo, decimal Allocated, decimal Deduction = 0);
 
 public record PaymentListItemDto(
     Guid Id, string PaymentType, string PaymentNo, DateOnly PaymentDate,
@@ -181,7 +183,8 @@ public class PaymentService : IPaymentService
             .ToListAsync())
             .ToDictionary(b => b.Id, b => string.IsNullOrWhiteSpace(b.SupplierBillNo) ? b.BillNo : b.SupplierBillNo!);
         foreach (var a in p.Allocations)
-            allocations.Add(new PaymentAllocationDto(a.BillId, billNos.GetValueOrDefault(a.BillId, "—"), a.Allocated));
+            allocations.Add(new PaymentAllocationDto(
+                a.BillId, billNos.GetValueOrDefault(a.BillId, "—"), a.Allocated, a.Deduction));
 
         return new PaymentDetailDto(
             p.Id, p.PaymentType, p.PaymentNo, p.PaymentDate,
@@ -260,16 +263,22 @@ public class PaymentService : IPaymentService
                 foreach (var a in dto.Allocations)
                 {
                     if (a.Allocated <= 0) continue;
-                    if (billDues.TryGetValue(a.BillId, out var info) && a.Allocated > info.Due + eps)
+                    // Cash + kata hua (discount/packing) — dono milkar bill se nikalte hain,
+                    // is liye guard bhi dono ke JOD par lagta hai.
+                    var ded = Math.Max(0, a.Deduction);
+                    if (billDues.TryGetValue(a.BillId, out var info) && a.Allocated + ded > info.Due + eps)
                         throw new ArgumentException(
-                            $"Bill {info.BillNo} par allocate ₹{a.Allocated} hai par baaki sirf ₹{info.Due} hai. " +
+                            $"Bill {info.BillNo} par allocate ₹{a.Allocated}" +
+                            (ded > 0 ? $" + kaata hua ₹{ded}" : "") +
+                            $" hai par baaki sirf ₹{info.Due} hai. " +
                             "Allocation bill ke outstanding se zyada nahi ho sakta.");
 
                     payment.Allocations.Add(new PaymentAllocation
                     {
                         PaymentId = payment.Id,
                         BillId = a.BillId,
-                        Allocated = a.Allocated
+                        Allocated = a.Allocated,
+                        Deduction = ded
                     });
                     totalAllocated += a.Allocated;
                 }
@@ -319,11 +328,14 @@ public class PaymentService : IPaymentService
             _db.Payments.Add(payment);
             await _db.SaveChangesAsync();
 
-            // Update bills paid_amount + status
+            // Update bills paid_amount + status.
+            // Deduction bhi jodo — kata hua paisa kabhi aayega nahi, wo bill se
+            // "settle" hi maana jata hai (GR ke saath bhi yahi hota hai). Warna
+            // bill par discount jitna amount hamesha pending dikhta rehta hai.
             foreach (var a in payment.Allocations)
             {
                 var bill = await _db.Bills.SingleAsync(b => b.Id == a.BillId);
-                bill.PaidAmount += a.Allocated;
+                bill.PaidAmount += a.Allocated + a.Deduction;
                 bill.Status = bill.PaidAmount >= bill.Total ? "paid"
                               : bill.PaidAmount > 0 ? "partial" : "pending";
             }
@@ -479,9 +491,94 @@ public class PaymentService : IPaymentService
             });
         }
 
+        // ---------- KAATA HUA (discount / packing / rate diff) ----------
+        // Cash sirf NET aaya, par bill se poora amount nikla. Kate hue hisse ki ledger
+        // entry na ho to party ke khate me wahi amount hamesha udhaar dikhta rahega
+        // (aur Payments list "pending" bolti rahegi, chahe bill pura settle ho).
+        var dedByBill = payment.Allocations
+            .Where(a => a.Deduction > 0)
+            .GroupBy(a => a.BillId)
+            .ToDictionary(g => g.Key, g => g.Sum(x => x.Deduction));
+
+        foreach (var b in allocBills)
+        {
+            var ded = dedByBill.GetValueOrDefault(b.Id, 0m);
+            if (ded <= 0) continue;
+
+            var partyLedgerId = await ResolvePartyLedgerId(b.PartyId, firmId)
+                ?? throw new InvalidOperationException(
+                    "Bill ki party ka ledger nahi mila — kata hua amount post nahi ho saka.");
+
+            Guid drLedger, crLedger;
+            if (b.BillType == "sales")
+            {
+                // AADHAT model: discount supplier ne diya, buyer ne kam paisa diya.
+                // Firm (dalal) beech me hai — uska P&L isme nahi aata. Wahi jodi jo
+                // upar cash settlement me lagti hai: Dr SUPPLIER, Cr BUYER.
+                var buyerLedgerId = (b.BuyerPartyId.HasValue
+                        ? await ResolvePartyLedgerId(b.BuyerPartyId.Value, firmId)
+                        : null)
+                    ?? partyLedgerId;   // legacy sales bina buyer ke
+                drLedger = partyLedgerId;   // supplier ka receivable ghata
+                crLedger = buyerLedgerId;   // buyer ka payable ghata
+            }
+            else
+            {
+                // PURCHASE: firm ne apna paisa diya aur kam diya → firm ki aamdani.
+                // Dr SUPPLIER (uska payable pura ghata), Cr Discount Received.
+                drLedger = partyLedgerId;
+                crLedger = await FindOrCreateLedger(firmId, "Discount Received", "Discount Received");
+            }
+
+            voucher.Lines.Add(new VoucherLine
+            {
+                Id = Guid.NewGuid(), VoucherId = voucher.Id,
+                LedgerId = drLedger, DebitCredit = "Dr",
+                Amount = ded,
+                Narration = "Discount / kat-kut — bill se kata", SortOrder = order++
+            });
+            voucher.Lines.Add(new VoucherLine
+            {
+                Id = Guid.NewGuid(), VoucherId = voucher.Id,
+                LedgerId = crLedger, DebitCredit = "Cr",
+                Amount = ded,
+                Narration = "Discount / kat-kut — bill se kata", SortOrder = order++
+            });
+        }
+
         _db.Vouchers.Add(voucher);
         await _db.SaveChangesAsync();
         return voucher.Id;
+    }
+
+    /// Ledger dhundo, na mile to bana do (PayrollService jaisa hi tarika).
+    private async Task<Guid> FindOrCreateLedger(Guid firmId, string ledgerName, string subGroupName)
+    {
+        var existing = await _db.Ledgers
+            .Where(l => l.FirmId == firmId && l.Name == ledgerName)
+            .Select(l => l.Id).FirstOrDefaultAsync();
+        if (existing != Guid.Empty) return existing;
+
+        var subGroup = await _db.SubGroups
+            .FirstOrDefaultAsync(s => s.FirmId == firmId && s.Name == subGroupName)
+            ?? throw new InvalidOperationException(
+                $"'{subGroupName}' sub-group nahi mila — Accounting me ye group banao, phir dobara try karein.");
+
+        var ledger = new Ledger
+        {
+            Id = Guid.NewGuid(),
+            FirmId = firmId,
+            SubGroupId = subGroup.Id,
+            Name = ledgerName,
+            OpeningBalance = 0,
+            OpeningType = "Cr",
+            IsActive = true,
+            CreatedAt = DateTimeOffset.UtcNow,
+            UpdatedAt = DateTimeOffset.UtcNow
+        };
+        _db.Ledgers.Add(ledger);
+        await _db.SaveChangesAsync();
+        return ledger.Id;
     }
 
     // party.LedgerId resolve karo (bill ne isi ledger ko Dr/Cr kiya tha).
@@ -600,7 +697,8 @@ public class PaymentService : IPaymentService
             {
                 var b = await _db.Bills.SingleOrDefaultAsync(x => x.Id == a.BillId);
                 if (b is null) continue;   // bill ja chuka — ulta karne ko kuch nahi
-                b.PaidAmount = Math.Max(0, b.PaidAmount - a.Allocated);
+                // Jitna chadhaya tha utna hi utaro — cash + kata hua, dono.
+                b.PaidAmount = Math.Max(0, b.PaidAmount - a.Allocated - a.Deduction);
                 b.Status = b.PaidAmount >= b.Total ? "paid" : b.PaidAmount > 0 ? "partial" : "pending";
             }
             _db.PaymentAllocations.RemoveRange(p.Allocations);
@@ -633,11 +731,12 @@ public class PaymentService : IPaymentService
                 {
                     var b = await _db.Bills.SingleOrDefaultAsync(x => x.Id == a.BillId);
                     if (b is null) continue;
+                    var ded = Math.Max(0, a.Deduction);
                     p.Allocations.Add(new PaymentAllocation
                     {
-                        PaymentId = p.Id, BillId = a.BillId, Allocated = a.Allocated
+                        PaymentId = p.Id, BillId = a.BillId, Allocated = a.Allocated, Deduction = ded
                     });
-                    b.PaidAmount += a.Allocated;
+                    b.PaidAmount += a.Allocated + ded;
                     b.Status = b.PaidAmount >= b.Total ? "paid" : b.PaidAmount > 0 ? "partial" : "pending";
                 }
             }
@@ -686,7 +785,7 @@ public class PaymentService : IPaymentService
             {
                 var bill = await _db.Bills.SingleOrDefaultAsync(b => b.Id == a.BillId);
                 if (bill is null) continue;   // bill ja chuka — ulta karne ko kuch nahi
-                bill.PaidAmount = Math.Max(0, bill.PaidAmount - a.Allocated);
+                bill.PaidAmount = Math.Max(0, bill.PaidAmount - a.Allocated - a.Deduction);
                 bill.Status = bill.PaidAmount >= bill.Total ? "paid"
                               : bill.PaidAmount > 0 ? "partial" : "pending";
             }

@@ -75,10 +75,15 @@ interface DonutSeg { label: string; color: string; value: number; pct: number; d
           </div>
           <div class="kpi-value">₹{{ kpiSales().value }}L</div>
           <div class="kpi-label">TOTAL SALES</div>
-          <svg class="kpi-spark" viewBox="0 0 100 30" preserveAspectRatio="none">
-            @for (b of sparkBars(sparkSales); track $index) {
-              <rect [attr.x]="b.x" [attr.y]="b.y" [attr.width]="b.w" [attr.height]="b.h"
-                    rx="1" fill="#1B2E5C" opacity="0.75"/>
+          <svg class="kpi-spark" viewBox="0 0 100 30">
+            <!-- halka grid — point kitna upar hai wo aankh se pata chale -->
+            <line x1="0" y1="5" x2="100" y2="5" class="spark-grid"/>
+            <line x1="0" y1="16" x2="100" y2="16" class="spark-grid"/>
+            <line x1="0" y1="27" x2="100" y2="27" class="spark-grid"/>
+            <polyline [attr.points]="sparkLine(sparkSales)" fill="none" stroke="#1B2E5C"
+                      stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>
+            @for (p of sparkDots(sparkSales); track $index) {
+              <circle [attr.cx]="p.x" [attr.cy]="p.y" r="1.9" fill="#1B2E5C"/>
             }
           </svg>
         </div>
@@ -90,10 +95,14 @@ interface DonutSeg { label: string; color: string; value: number; pct: number; d
           </div>
           <div class="kpi-value">{{ kpiComm().value }}</div>
           <div class="kpi-label">COMMISSION</div>
-          <svg class="kpi-spark" viewBox="0 0 100 30" preserveAspectRatio="none">
-            @for (b of sparkBars(sparkComm); track $index) {
-              <rect [attr.x]="b.x" [attr.y]="b.y" [attr.width]="b.w" [attr.height]="b.h"
-                    rx="1" fill="#F97316" opacity="0.8"/>
+          <svg class="kpi-spark" viewBox="0 0 100 30">
+            <line x1="0" y1="5" x2="100" y2="5" class="spark-grid"/>
+            <line x1="0" y1="16" x2="100" y2="16" class="spark-grid"/>
+            <line x1="0" y1="27" x2="100" y2="27" class="spark-grid"/>
+            <polyline [attr.points]="sparkLine(sparkComm)" fill="none" stroke="#F97316"
+                      stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>
+            @for (p of sparkDots(sparkComm); track $index) {
+              <circle [attr.cx]="p.x" [attr.cy]="p.y" r="1.9" fill="#F97316"/>
             }
           </svg>
         </div>
@@ -105,10 +114,14 @@ interface DonutSeg { label: string; color: string; value: number; pct: number; d
           </div>
           <div class="kpi-value">₹{{ kpiReceived().value }}L</div>
           <div class="kpi-label">RECEIVED</div>
-          <svg class="kpi-spark" viewBox="0 0 100 30" preserveAspectRatio="none">
-            @for (b of sparkBars(sparkReceived); track $index) {
-              <rect [attr.x]="b.x" [attr.y]="b.y" [attr.width]="b.w" [attr.height]="b.h"
-                    rx="1" fill="#10B981" opacity="0.8"/>
+          <svg class="kpi-spark" viewBox="0 0 100 30">
+            <line x1="0" y1="5" x2="100" y2="5" class="spark-grid"/>
+            <line x1="0" y1="16" x2="100" y2="16" class="spark-grid"/>
+            <line x1="0" y1="27" x2="100" y2="27" class="spark-grid"/>
+            <polyline [attr.points]="sparkLine(sparkReceived)" fill="none" stroke="#10B981"
+                      stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>
+            @for (p of sparkDots(sparkReceived); track $index) {
+              <circle [attr.cx]="p.x" [attr.cy]="p.y" r="1.9" fill="#10B981"/>
             }
           </svg>
         </div>
@@ -120,10 +133,14 @@ interface DonutSeg { label: string; color: string; value: number; pct: number; d
           </div>
           <div class="kpi-value">₹{{ kpiGr().value }}L</div>
           <div class="kpi-label">GR RETURNS</div>
-          <svg class="kpi-spark" viewBox="0 0 100 30" preserveAspectRatio="none">
-            @for (b of sparkBars(sparkGr); track $index) {
-              <rect [attr.x]="b.x" [attr.y]="b.y" [attr.width]="b.w" [attr.height]="b.h"
-                    rx="1" fill="#DC2626" opacity="0.8"/>
+          <svg class="kpi-spark" viewBox="0 0 100 30">
+            <line x1="0" y1="5" x2="100" y2="5" class="spark-grid"/>
+            <line x1="0" y1="16" x2="100" y2="16" class="spark-grid"/>
+            <line x1="0" y1="27" x2="100" y2="27" class="spark-grid"/>
+            <polyline [attr.points]="sparkLine(sparkGr)" fill="none" stroke="#DC2626"
+                      stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>
+            @for (p of sparkDots(sparkGr); track $index) {
+              <circle [attr.cx]="p.x" [attr.cy]="p.y" r="1.9" fill="#DC2626"/>
             }
           </svg>
         </div>
@@ -868,7 +885,10 @@ interface DonutSeg { label: string; color: string; value: number; pct: number; d
     .delta-warn { background: #FEE2E2; color: #DC2626; }
     .kpi-value { font-size: 28px; font-weight: 900; color: #1B2E5C; font-family: 'JetBrains Mono', monospace; line-height: 1.1; }
     .kpi-label { font-size: 10px; font-weight: 800; color: #4A5878; letter-spacing: 0.5px; text-transform: uppercase; margin-top: 4px; }
-    .kpi-spark { width: 100%; height: 30px; margin-top: 8px; }
+    .kpi-spark { width: 100%; height: 30px; margin-top: 8px; overflow: visible; }
+    /* Halki dotted grid — point kitna upar hai wo aankh se pata chale,
+       par line/dots se dhyan na hate isliye bahut halki rakhi hai. */
+    .spark-grid { stroke: #D6DDEA; stroke-width: 0.5; stroke-dasharray: 2 2; }
 
     /* AI BANNER */
     .ai-banner {
@@ -1234,21 +1254,23 @@ export class ProDashboardComponent {
     return arr.map((v, i) => `${(i / (arr.length - 1)) * 100},${30 - (v / max) * 25}`).join(' ');
   }
 
-  /** Mini BAR chart — line ki jagah.
-   *  Line tab hi acchi lagti hai jab har mahine kuch na kuch ho. Yahan aksar
-   *  ek hi mahine me sab hota hai aur baaki 0 — line ek tez choti banakar
-   *  'tooti hui' lagti thi. Bars me khali mahine ka bar bas nahi hota,
-   *  isliye saaf aur jaan-boojh kar banaya hua lagta hai. */
-  sparkBars(arr: number[]): { x: number; y: number; w: number; h: number }[] {
-    const n = arr.length || 1;
+  /** Line chart ke points (x,y) — har point par gol nishan (dot) lagane ke liye.
+   *  Sirf polyline se line 'tooti hui' lagti thi; dots se saaf pata chalta hai
+   *  ki har mahine ka ek point hai, aur khali mahina bhi neeche dikhta hai. */
+  sparkDots(arr: number[]): { x: number; y: number }[] {
+    const n = arr.length;
+    if (n === 0) return [];
     const max = Math.max(...arr, 1);
-    const gap = 1.5;
-    const w = Math.max(1, (100 - gap * (n - 1)) / n);
-    return arr.map((v, i) => {
-      // 0 wale mahine ka bar bilkul nahi; chhoti value bhi kam se kam dikhe
-      const h = v > 0 ? Math.max(2.5, (v / max) * 26) : 0;
-      return { x: i * (w + gap), y: 30 - h, w, h };
-    });
+    // Kinare par dot aadha kat na jaye isliye 4..96 ke beech rakhte hain
+    return arr.map((v, i) => ({
+      x: n === 1 ? 50 : 4 + (i / (n - 1)) * 92,
+      y: 27 - (v / max) * 22
+    }));
+  }
+
+  /** Wahi points polyline ke liye "x,y x,y ..." me. */
+  sparkLine(arr: number[]): string {
+    return this.sparkDots(arr).map(p => `${p.x},${p.y}`).join(' ');
   }
 
   /** Growth % ka text. Pichhli avadhi na ke barabar ho to % ka koi matlab nahi

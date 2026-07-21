@@ -1206,25 +1206,23 @@ export class PaymentReceiptComponent {
       // waghairah. Ye pehle hota hi nahi tha: edit kholne par sab 0 dikhta tha
       // aur user ko lagta tha "save nahi hua", jabki rakam sahi save hui thi.
       for (const s of pieces.filter(x => x.startsWith('DED:'))) {
-        const [billId, rateDiff, disPct, disAmt, interest, adjAmt, packing, other, gstMode]
+        const [billId, rateDiff, disPct, , interest, adjAmt, packing, other, gstMode]
           = s.slice(4).split('|');
         const i = this.bills().findIndex(b => b.billId === billId);
         if (i < 0) continue;
-        this.bills.update(arr => arr.map((b, k) => k === i ? {
-          ...b,
-          rateDiff: +rateDiff || 0,
-          disPct:   +disPct   || 0,
-          disAmt:   +disAmt   || 0,
-          interest: +interest || 0,
-          adjAmt:   +adjAmt   || 0,
-          packing:  +packing  || 0,
-          other:    +other    || 0,
-          gstMode:  (gstMode === 'before' ? 'before' : 'after') as 'before' | 'after'
-        } : b));
+        // updateBill() se hi set karte hain — SEEDHE bills.update() karne par
+        // toPay dobara nahi ginta (recalcAllBills sirf DATE/status dekhta hai,
+        // rakam ko chhoota hi nahi). Isliye kat-kut dikhti thi par NET AMT
+        // purana hi rehta tha aur Balance Pending galat aata tha.
+        // disAmt jaan-boojh kar chhoda — wo disPct se khud ban jata hai.
+        this.updateBill(i, 'gstMode', (gstMode === 'before' ? 'before' : 'after'));
+        this.updateBill(i, 'rateDiff', +rateDiff || 0);
+        this.updateBill(i, 'interest', +interest || 0);
+        this.updateBill(i, 'adjAmt', +adjAmt || 0);
+        this.updateBill(i, 'packing', +packing || 0);
+        this.updateBill(i, 'other', +other || 0);
+        this.updateBill(i, 'disPct', +disPct || 0);   // aakhir me — disAmt yahin banta hai
       }
-      // Sab DED bhar jaane ke BAAD ek hi baar dobara hisaab — har bill par
-      // alag-alag karne se beech ke totals galat dikh sakte the.
-      this.recalcAllBills();
 
       this.toast.info(`Receipt ${d.paymentNo} edit mode me hai — Save karne par yahi receipt update hogi`);
     } catch {

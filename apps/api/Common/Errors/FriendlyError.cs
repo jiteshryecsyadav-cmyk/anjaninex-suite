@@ -68,7 +68,11 @@ public static class FriendlyError
                 if (c.Contains("order_no") || c.Contains("orders"))
                     return "Ye order number pehle se maujood hai. Dobara try karein.";
                 if (c.Contains("payment") || c.Contains("receipt"))
-                    return "Ye payment/receipt number pehle se maujood hai. Dobara try karein.";
+                    // "Dobara try karein" nahi likhte — dobara karne se bhi wahi hoga.
+                    // User ko batao ki receipt SAVE HO CHUKI hai, nayi banane ki zaroorat nahi.
+                    return "Is number ki receipt pehle se maujood hai — dobara nahi banegi. " +
+                           "Receipt List me dekhein: shayad wo save ho chuki hai. " +
+                           "Badalna ho to usi ko kholkar Edit karein.";
                 if (c.Contains("email"))
                     return "Ye email pehle se registered hai.";
                 if (c.Contains("phone") || c.Contains("mobile"))

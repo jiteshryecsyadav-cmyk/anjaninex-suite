@@ -525,8 +525,15 @@ public class DashboardController : ControllerBase
             var avgDispatch = dispatchKnown > 0 ? Math.Round(dispatchDaysSum / dispatchKnown) : 0;
 
             // 2) BINA BOLE MAAL — bill bina kisi order ke (na link, na PO no)
+            //
+            // ⚠️ Ye maap TABHI matlab rakhti hai jab us supplier ko order dete BHI hain.
+            // Aksar bill seedhe entry hote hain (order banta hi nahi) — tab HAR supplier
+            // ka 100% "bina bole" nikalta tha aur ye tag SAB par lag jata tha, jabki
+            // wo unki koi galti nahi thi. Ab jis supplier ka koi order hi nahi hai,
+            // uska ye maap 0 (yaani "pata nahi") — na tag lagega, na score katega.
             var binaBole = pBills.Count(b => b.OrderId == null && string.IsNullOrWhiteSpace(b.PoNumber));
-            var binaBolePct = pBills.Count > 0 ? Math.Round(binaBole * 100m / pBills.Count) : 0;
+            var binaBolePct = (pBills.Count > 0 && pOrders.Count > 0)
+                ? Math.Round(binaBole * 100m / pBills.Count) : 0;
 
             // 3) QUALITY — GR return rate (amount basis)
             var grAmt = grs.Where(g => g.SupplierPartyId == p.Id).Sum(g => g.TotalReturnAmount);

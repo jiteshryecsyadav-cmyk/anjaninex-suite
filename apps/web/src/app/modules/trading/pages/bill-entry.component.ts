@@ -374,10 +374,15 @@ interface LineRow {
                 <tr>
                   <td class="text-center sno-cell" data-label="#">{{ $index + 1 }}</td>
                   <td data-label="Item Name">
+                    <!-- Item name KHALI free-text hai. Pehle yahan 'items-list'
+                         datalist lagi thi, par wo wahi CATEGORY master (Saree /
+                         Fabric / Ready Made) hai jo Category dropdown me aata hai.
+                         Isliye item name me category ke naam suggestion me aate the,
+                         jabki asli item name (jaise 'Design 3030') har bill me alag
+                         hota hai. Category alag column me chun li jaati hai. -->
                     <input [ngModel]="line.itemName"
                            (ngModelChange)="updateLine($index, 'itemName', $event)"
-                           list="items-list" class="tip" placeholder="Item name"
-                           (change)="autoFillFromItem($index, $event)">
+                           class="tip" placeholder="Item name">
                   </td>
                   <td data-label="Category">
                     <select [ngModel]="line.description"

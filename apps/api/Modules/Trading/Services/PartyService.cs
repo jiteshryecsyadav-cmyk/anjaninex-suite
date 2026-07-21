@@ -254,6 +254,12 @@ public class PartyService : IPartyService
                 $"GST number ka format galat hai: \"{gstClean}\" ({gstClean.Length} characters). " +
                 "Sahi 15-char GSTIN daalein (jaise 24ABCDE1234F1Z5). GST nahi hai to khaali chhod kar URP party banayein.");
 
+        // Format sahi ho kar bhi GST galat ho sakta hai — ek letter idhar-udhar ho jaye to
+        // "dikhne me theek" number ban jata hai aur UNIQUE constraint bhi nahi pakadta
+        // (DB ke liye wo naya number hai) → ek hi party do baar ban jati hai.
+        // Isliye checksum bhi jaanchte hain.
+        if (gstClean != null) ValidateGstChecksum(gstClean);
+
         var panCheck = string.IsNullOrWhiteSpace(dto.Pan) ? null : dto.Pan.Trim().ToUpperInvariant();
         if (panCheck != null && !System.Text.RegularExpressions.Regex.IsMatch(
                 panCheck, "^[A-Z]{5}[0-9]{4}[A-Z]$"))
@@ -415,10 +421,59 @@ public class PartyService : IPartyService
         return (await Get(createdPartyId))!;
     }
 
+    /// GSTIN ka 15th character ek CHECK DIGIT hai — pehle 14 se ganit se banta hai.
+    /// Ek bhi letter/ank galat type ho to ye match nahi karta. Iske bina "format to sahi
+    /// hai" wale typo andar ghus jate the aur wahi party dobara ban jati thi.
+    private static void ValidateGstChecksum(string gst)
+    {
+        const string SET = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+        int sum = 0;
+        for (int i = 0; i < 14; i++)
+        {
+            int v = SET.IndexOf(gst[i]);
+            if (v < 0) return;              // format check pehle ho chuka — yahan kuch na karo
+            int p = v * ((i % 2 == 0) ? 1 : 2);
+            sum += (p / 36) + (p % 36);
+        }
+        char expected = SET[(36 - (sum % 36)) % 36];
+        if (expected != gst[14])
+            throw new ArgumentException(
+                $"Ye GST number galat hai: \"{gst}\". Aisa GST number hota hi nahi — " +
+                $"aakhri character \"{expected}\" hona chahiye tha, \"{gst[14]}\" pada hai. " +
+                "Party ke bill se GST dobara mila kar daalein (ek letter ya ank galat lagta hai).");
+    }
+
     public async Task<PartyDto> Update(Guid id, CreatePartyDto dto)
     {
         var party = await _db.PartyProfiles.SingleAsync(p => p.Id == id);
         var contact = await _db.Contacts.SingleAsync(c => c.Id == party.ContactId);
+
+        // ===== GST badla ja raha hai? Tabhi jaanch =====
+        // Jaan-boojh kar SIRF badalne par check karte hain: purani parties me pehle se
+        // galat GST pada ho sakta hai, aur har edit par rok lagayi to user ka baaki kaam
+        // (phone, rating, address) bhi atak jayega.
+        var newGst = string.IsNullOrWhiteSpace(dto.Gst) ? null : dto.Gst.Trim().ToUpperInvariant();
+        if (newGst != null && newGst != contact.GstNumber)
+        {
+            if (!System.Text.RegularExpressions.Regex.IsMatch(
+                    newGst, "^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$"))
+                throw new ArgumentException(
+                    $"GST number ka format galat hai: \"{newGst}\" ({newGst.Length} characters). " +
+                    "Sahi 15-char GSTIN daalein (jaise 24ABCDE1234F1Z5).");
+
+            ValidateGstChecksum(newGst);
+
+            // Create par ye rok pehle se thi, edit par nahi — isliye party bina GST ke bana kar
+            // baad me kisi aur ka GST daal dena mumkin tha. Ab dono taraf rok hai.
+            var clash = await _db.Contacts
+                .Where(c => c.FirmId == contact.FirmId && c.GstNumber == newGst && c.Id != contact.Id)
+                .Select(c => c.DisplayName)
+                .FirstOrDefaultAsync();
+            if (clash != null)
+                throw new ArgumentException(
+                    $"Ye GST number pehle se \"{clash}\" par laga hua hai. " +
+                    "Ek GST par do party nahi ban sakti — us party ko hi kholein, ya GST theek karein.");
+        }
 
         contact.DisplayName = Namokara.Api.Common.Text.NameCase.TitleCase(dto.DisplayName);
         contact.LegalName = Namokara.Api.Common.Text.NameCase.TitleCaseOrNull(dto.LegalName);

@@ -12,10 +12,12 @@ interface Handover {
 
 // Cheque Handover Register: supplier ka staff kaunsa cheque le gaya, kab, commission paid/unpaid.
 import { BackButtonComponent } from '../../../shared/back-button.component';
+import { FldDirective } from '../../../shared/fld.directive';
+import { FieldConfigService } from '../../../shared/field-config.service';
 @Component({
   selector: 'app-cheque-register',
   standalone: true,
-  imports: [BackButtonComponent, CommonModule, FormsModule],
+  imports: [BackButtonComponent, CommonModule, FormsModule, FldDirective],
   template: `
     <div class="page-top-bar"><app-back-button></app-back-button></div>
   <div class="p-6 max-w-7xl mx-auto">
@@ -98,21 +100,21 @@ import { BackButtonComponent } from '../../../shared/back-button.component';
           <h3 class="font-black text-xl text-[#5c1a8b] mb-3">Cheque Handover</h3>
           <div class="grid grid-cols-2 gap-3">
             <div><label class="text-xs text-gray-500">Supplier</label><input [(ngModel)]="f.supplierName" class="input" placeholder="Supplier naam"></div>
-            <div><label class="text-xs text-gray-500">Payment/Receipt No</label><input [(ngModel)]="f.paymentRef" class="input" placeholder="e.g. Surat Ho-R36"></div>
+            <div *fld="'cheque_register.payment_ref'"><label class="text-xs text-gray-500">{{ fl('payment_ref') }}</label><input [(ngModel)]="f.paymentRef" class="input" placeholder="e.g. Surat Ho-R36"></div>
             <div><label class="text-xs text-gray-500">Cheque / UTR No</label><input [(ngModel)]="f.chequeNo" class="input"></div>
-            <div><label class="text-xs text-gray-500">Bank</label><input [(ngModel)]="f.bankName" class="input"></div>
+            <div *fld="'cheque_register.bank'"><label class="text-xs text-gray-500">{{ fl('bank') }}</label><input [(ngModel)]="f.bankName" class="input"></div>
             <div><label class="text-xs text-gray-500">Amount</label><input type="number" [(ngModel)]="f.amount" class="input"></div>
-            <div><label class="text-xs text-gray-500">Cheque Date</label><input type="date" [(ngModel)]="f.chequeDate" class="input"></div>
+            <div *fld="'cheque_register.cheque_date'"><label class="text-xs text-gray-500">{{ fl('cheque_date') }}</label><input type="date" [(ngModel)]="f.chequeDate" class="input"></div>
             <div><label class="text-xs text-gray-500">Kis ne liya (staff) *</label><input [(ngModel)]="f.takenBy" class="input" placeholder="Supplier ka aadmi"></div>
             <div><label class="text-xs text-gray-500">Kab liya *</label><input type="date" [(ngModel)]="f.handedDate" class="input"></div>
           </div>
-          <div class="mt-3 p-3 rounded-lg bg-purple-50 border border-[#ddc8f5]">
+          <div *fld="'cheque_register.commission'" class="mt-3 p-3 rounded-lg bg-purple-50 border border-[#ddc8f5]">
             <label class="flex items-center gap-2 font-bold text-[#5c1a8b]"><input type="checkbox" [(ngModel)]="f.commissionPaid" class="w-4 h-4"> Commission liya?</label>
             @if (f.commissionPaid) {
               <div class="mt-2"><label class="text-xs text-gray-500">Commission amount</label><input type="number" [(ngModel)]="f.commissionAmount" class="input w-48"></div>
             }
           </div>
-          <div class="mt-3"><label class="text-xs text-gray-500">Remark</label><input [(ngModel)]="f.remark" class="input" placeholder="Optional"></div>
+          <div *fld="'cheque_register.remark'" class="mt-3"><label class="text-xs text-gray-500">{{ fl('remark') }}</label><input [(ngModel)]="f.remark" class="input" placeholder="Optional"></div>
           @if (err()) { <p class="text-red-600 text-sm mt-2">{{ err() }}</p> }
           <div class="flex justify-end gap-2 mt-4">
             <button (click)="showAdd.set(false)" class="px-4 py-2 border border-gray-300 rounded">Cancel</button>
@@ -126,6 +128,9 @@ import { BackButtonComponent } from '../../../shared/back-button.component';
 })
 export class ChequeRegisterComponent {
   private http = inject(HttpClient);
+  private fieldCfg = inject(FieldConfigService);
+  /** Field ka naam — firm ne Screen & Fields me badla ho to wahi dikhega. */
+  fl(key: string): string { return this.fieldCfg.label('cheque_register', key); }
   base = `${environment.apiUrl}/api/trading/cheque-handovers`;
   rows = signal<Handover[]>([]);
   loading = signal(false);

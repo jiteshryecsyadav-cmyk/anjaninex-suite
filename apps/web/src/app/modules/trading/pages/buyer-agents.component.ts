@@ -8,10 +8,12 @@ import { ToastService } from '../../../shared/toast.service';
 // Buyer Agent (del-credere): buyer ka agent jo payment guarantee leta hai aur
 // hamari commission ka X% leta hai. Ye screen: master + earned/paid/balance + payout + ledger.
 import { BackButtonComponent } from '../../../shared/back-button.component';
+import { FldDirective } from '../../../shared/fld.directive';
+import { FieldConfigService } from '../../../shared/field-config.service';
 @Component({
   selector: 'app-buyer-agents',
   standalone: true,
-  imports: [BackButtonComponent, CommonModule, FormsModule],
+  imports: [BackButtonComponent, CommonModule, FormsModule, FldDirective],
   template: `
     <div class="page-top-bar"><app-back-button></app-back-button></div>
     <div class="wrap">
@@ -79,13 +81,17 @@ import { BackButtonComponent } from '../../../shared/back-button.component';
           <label>Name *</label>
           <input [(ngModel)]="f.name" class="ip" placeholder="Agent ka naam">
           <div class="row2">
-            <div><label>Phone</label><input [(ngModel)]="f.phone" class="ip" placeholder="98765..."></div>
-            <div><label>City</label><input [(ngModel)]="f.city" class="ip" placeholder="Surat"></div>
+            <div *fld="'buyer_agents.phone'"><label>{{ fl('phone') }}</label><input [(ngModel)]="f.phone" class="ip" placeholder="98765..."></div>
+            <div *fld="'buyer_agents.city'"><label>{{ fl('city') }}</label><input [(ngModel)]="f.city" class="ip" placeholder="Surat"></div>
           </div>
-          <label>Default Share % <small>(hamari commission ka)</small></label>
-          <input [(ngModel)]="f.defaultSharePct" type="number" step="0.01" class="ip" placeholder="e.g. 25">
-          <label>Notes</label>
-          <input [(ngModel)]="f.notes" class="ip">
+          <ng-container *fld="'buyer_agents.share_pct'">
+            <label>{{ fl('share_pct') }} <small>(hamari commission ka)</small></label>
+            <input [(ngModel)]="f.defaultSharePct" type="number" step="0.01" class="ip" placeholder="e.g. 25">
+          </ng-container>
+          <ng-container *fld="'buyer_agents.notes'">
+            <label>{{ fl('notes') }}</label>
+            <input [(ngModel)]="f.notes" class="ip">
+          </ng-container>
           <label class="chk"><input type="checkbox" [(ngModel)]="f.isActive"> Active</label>
           <div class="dlg-act">
             <button class="btn-ghost" (click)="showForm.set(false)">Cancel</button>
@@ -112,8 +118,8 @@ import { BackButtonComponent } from '../../../shared/back-button.component';
               </select>
             </div>
           </div>
-          <label>Ref No</label><input [(ngModel)]="pf.refNo" class="ip">
-          <label>Notes</label><input [(ngModel)]="pf.notes" class="ip">
+          <ng-container *fld="'buyer_agents.payout_ref'"><label>{{ fl('payout_ref') }}</label><input [(ngModel)]="pf.refNo" class="ip"></ng-container>
+          <ng-container *fld="'buyer_agents.payout_notes'"><label>{{ fl('payout_notes') }}</label><input [(ngModel)]="pf.notes" class="ip"></ng-container>
           <div class="dlg-act">
             <button class="btn-ghost" (click)="showPay.set(false)">Cancel</button>
             <button class="btn-primary" (click)="savePay()" [disabled]="saving()">{{ saving() ? '...' : 'Save Payout' }}</button>
@@ -197,6 +203,9 @@ import { BackButtonComponent } from '../../../shared/back-button.component';
   `]
 })
 export class BuyerAgentsComponent implements OnInit {
+  private fieldCfg = inject(FieldConfigService);
+  /** Field ka naam — firm ne Screen & Fields me badla ho to wahi dikhega. */
+  fl(key: string): string { return this.fieldCfg.label('buyer_agents', key); }
   private http = inject(HttpClient);
   private toast = inject(ToastService);
   private base = `${environment.apiUrl}/api/trading/buyer-agents`;

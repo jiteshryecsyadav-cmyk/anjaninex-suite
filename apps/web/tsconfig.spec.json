@@ -1,0 +1,9 @@
+/* Test (karma/jasmine) ke liye — ng test isi se compile karta hai */
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "outDir": "./out-tsc/spec",
+    "types": ["jasmine"]
+  },
+  "include": ["src/**/*.spec.ts", "src/**/*.d.ts"]
+}

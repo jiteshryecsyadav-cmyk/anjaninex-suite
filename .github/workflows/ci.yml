@@ -43,5 +43,7 @@ jobs:
           cache-dependency-path: apps/web/package-lock.json
       - name: Install
         run: npm ci
+      - name: Tests (receipt allocation — ₹407 wala hisaab)
+        run: npx ng test --watch=false --browsers=ChromeHeadless
       - name: Build
         run: npm run build

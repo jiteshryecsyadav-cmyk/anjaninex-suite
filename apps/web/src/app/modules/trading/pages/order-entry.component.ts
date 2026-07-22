@@ -1234,7 +1234,7 @@ interface LineRow {
 export class OrderEntryComponent {
   private svc = inject(TradingService);
   features = inject(FeatureService);
-  private fieldCfg = inject(FieldConfigService);
+  fieldCfg = inject(FieldConfigService);
   /** Field ka naam — firm ne Screen & Fields me badla ho to wahi dikhega. */
   fl(key: string): string { return this.fieldCfg.label('order_entry', key); }
   private router = inject(Router);
@@ -2148,6 +2148,12 @@ export class OrderEntryComponent {
     if (!this.lines().some(l => l.itemName && l.qty > 0 && l.rate > 0)) {
       missing.push('AT LEAST ONE ITEM (with name, qty > 0, rate > 0)');
     }
+    // ZAROORI wali rok — Screen & Fields me firm ne jo fields zaroori tick kiye hain
+    missing.push(...this.fieldCfg.missingRequired('order_entry', {
+      supplier_order_no: this.supplierOrderNo, supplier_group: this.supplierGroupName,
+      transporter: this.transporterId, remark: this.remark, insurance: this.insuranceAmt(),
+      cd: this.cdAmount(), normal_disc: this.discNormalAmt(), exhibition_disc: this.discExhAmt()
+    }));
     if (missing.length > 0) {
       const msg = '⚠️ Please fill the following:\n\n• ' + missing.join('\n• ');
       this.error.set(msg);

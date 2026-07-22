@@ -15,6 +15,7 @@ import { InvoicePreviewComponent, PreviewData } from '../../../shared/invoice-pr
 import { FeatureService } from '../../../shared/feature.service';
 import { FldDirective } from '../../../shared/fld.directive';
 import { FieldConfigService } from '../../../shared/field-config.service';
+import { computeAllocations } from '../../../shared/receipt-alloc.util';
 
 interface PayTxn {
   mode: 'Cheque' | 'NEFT' | 'RTGS' | 'UPI' | 'Cash';
@@ -1716,26 +1717,11 @@ export class PaymentReceiptComponent {
 
     // Allocation kabhi RECEIVED amount se zyada nahi — warna backend reject karta tha
     // (42,487 ke bill par 42,000 aaye to 42,000 hi allocate hoga, 487 pending rahega)
-    let remaining = this.totalReceived();
-    const allocations = this.bills()
-      .filter(b => b.selected)
-      .map(b => {
-        // Party ko is bill par DENA kitna hai = kat-kut ke baad ka NET (toPay).
-        const owed = Math.min(b.pending, b.toPay || b.pending);
-        // Received se wahi bharo — zyada mila to extra party ke khate me advance rahega.
-        const a = Math.min(owed, Math.max(0, remaining));
-        remaining -= a;
-        // Pura NET bhar gaya? To bacha hua (discount + packing + rate diff) bhi bill se
-        // nikal do — wo paisa kabhi aayega nahi. Ye na bhejein to bill par utna amount
-        // HAMESHA pending dikhta rahta hai (Payments list, Dashboard, party ledger).
-        // Aadha paisa aaya ho to abhi kuch mat kaato — pura settle hone par katega.
-        const ded = a >= owed - 0.01 ? Math.max(0, b.pending - owed) : 0;
-        return {
-          billId: b.billId, billNo: b.billNo,
-          allocated: +a.toFixed(2), deduction: +ded.toFixed(2)
-        };
-      })
-      .filter(a => a.allocated > 0);
+    // Hisaab shared util me hai (receipt-alloc.util.ts) — uske tests is logic ke
+    // pehredaar hain. Rule: pura NET bhar gaya to kata hua (DIS/PACKING) deduction
+    // ban kar bill se nikal jata hai; aadha paisa aaya to deduction 0.
+    const allocations = computeAllocations(
+      this.bills().filter(b => b.selected), this.totalReceived());
 
     // Kat-kut totals (selected bills) — saved preview me NET AMT ka hisaab dikhane ke liye
     const sel = this.bills().filter(b => b.selected);

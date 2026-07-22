@@ -138,6 +138,35 @@ export const FIELD_REGISTRY: ScreenDef[] = [
     ]
   },
   // ---------------------------------------------------------------------------
+  // CHEQUE REGISTER — Trading › Cheque Register (handover form)
+  // ---------------------------------------------------------------------------
+  {
+    key: 'cheque_register',
+    name: 'Cheque Register',
+    fields: [
+      { key: 'payment_ref', label: 'Payment/Receipt No' },
+      { key: 'bank',        label: 'Bank' },
+      { key: 'cheque_date', label: 'Cheque Date' },
+      { key: 'commission',  label: 'Commission liya? section' },
+      { key: 'remark',      label: 'Remark' }
+    ]
+  },
+  // ---------------------------------------------------------------------------
+  // BUYER AGENTS — Trading › Master › Buyer Agents
+  // ---------------------------------------------------------------------------
+  {
+    key: 'buyer_agents',
+    name: 'Buyer Agents',
+    fields: [
+      { key: 'phone',     label: 'Phone' },
+      { key: 'city',      label: 'City' },
+      { key: 'share_pct', label: 'Default Share %' },
+      { key: 'notes',     label: 'Notes' },
+      { key: 'payout_ref',   label: 'Payout — Ref No' },
+      { key: 'payout_notes', label: 'Payout — Notes' }
+    ]
+  },
+  // ---------------------------------------------------------------------------
   // ITEM / CATEGORY MASTER — Trading › Master › Items
   // ---------------------------------------------------------------------------
   {

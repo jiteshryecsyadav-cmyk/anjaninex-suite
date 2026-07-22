@@ -17,6 +17,7 @@ import { InDatePipe } from '../../../shared/in-date.pipe';
 import { FeatureService } from '../../../shared/feature.service';
 import { FldDirective } from '../../../shared/fld.directive';
 import { FieldConfigService } from '../../../shared/field-config.service';
+import { autoCorrectGstin } from '../../../shared/gst.util';
 import { firstValueFrom } from 'rxjs';
 
 interface RateOpt { qty: number; unit: string; rate: number; }
@@ -2777,7 +2778,11 @@ export class BillEntryComponent {
     // ============ SUPPLIER smart match (5 levels — same as transporter) ============
     if (data.supplier?.name || data.supplier?.gst) {
       const sName = data.supplier?.name ?? '';
-      const sGst  = data.supplier?.gst  ?? '';
+      // Scan ka GST checksum se khud sudharo (Q↔O, I↔1 jaise OCR jhagde) —
+      // ek hi sahi jawab nikle to wahi lo, warna jaisa padha waisa.
+      const sGstRaw = data.supplier?.gst ?? '';
+      const sGst = autoCorrectGstin(sGstRaw) ?? sGstRaw;
+      if (sGst !== sGstRaw && sGstRaw) this.toast.info(`Supplier GST auto-theek: ${sGst} (scan ne ek akshar galat padha tha)`);
       const m = this.matchParty(sName, sGst);
       if (m.id) {
         // 🥇 / 🥉 / 🤖 — found in master
@@ -2809,7 +2814,9 @@ export class BillEntryComponent {
     // ============ BUYER smart match ============
     if (data.buyer?.name || data.buyer?.gst) {
       const bName = data.buyer?.name ?? '';
-      const bGst  = data.buyer?.gst  ?? '';
+      const bGstRaw = data.buyer?.gst ?? '';
+      const bGst = autoCorrectGstin(bGstRaw) ?? bGstRaw;
+      if (bGst !== bGstRaw && bGstRaw) this.toast.info(`Buyer GST auto-theek: ${bGst} (scan ne ek akshar galat padha tha)`);
       const m = this.matchParty(bName, bGst);
       if (m.id) {
         this.buyerId = m.id;

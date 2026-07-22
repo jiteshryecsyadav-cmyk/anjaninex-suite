@@ -14,6 +14,7 @@ import { todayLocal } from '../../../shared/date.util';
 import { ToastService } from '../../../shared/toast.service';
 import { AuthService } from '../../../core/auth/auth.service';
 import { FeatureService } from '../../../shared/feature.service';
+import { autoCorrectGstin } from '../../../shared/gst.util';
 import { FldDirective } from '../../../shared/fld.directive';
 import { FieldConfigService } from '../../../shared/field-config.service';
 
@@ -1522,7 +1523,13 @@ export class OrderEntryComponent {
     if (data.supplier?.name) {
       // SAFE match: GST exact (15-char) YA naam exact. Loose/khali-GST match nahi
       // (warna "Sagar Lace" galti se "Sagar Cloth Store" utha leta tha).
-      const sGst = (data.supplier.gst || '').trim().toUpperCase().replace(/\s/g, '');
+      // Scan ka GST checksum se khud sudharo (Q↔O, I↔1 jaise OCR jhagde)
+      const sGstScan = (data.supplier.gst || '').trim().toUpperCase().replace(/\s/g, '');
+      const sGst = autoCorrectGstin(sGstScan) ?? sGstScan;
+      if (sGst !== sGstScan && sGstScan) {
+        data.supplier.gst = sGst;
+        this.toast.info(`Supplier GST auto-theek: ${sGst} (scan ne ek akshar galat padha tha)`);
+      }
       const sNm  = (data.supplier.name || '').trim().toLowerCase().replace(/\s+/g, ' ');
       const match = this.parties().find(p => {
         const pGst = (p.gst || '').trim().toUpperCase().replace(/\s/g, '');
@@ -1554,7 +1561,12 @@ export class OrderEntryComponent {
 
     // Match buyer
     if (data.buyer?.name) {
-      const bGst = (data.buyer.gst || '').trim().toUpperCase().replace(/\s/g, '');
+      const bGstScan = (data.buyer.gst || '').trim().toUpperCase().replace(/\s/g, '');
+      const bGst = autoCorrectGstin(bGstScan) ?? bGstScan;
+      if (bGst !== bGstScan && bGstScan) {
+        data.buyer.gst = bGst;
+        this.toast.info(`Buyer GST auto-theek: ${bGst} (scan ne ek akshar galat padha tha)`);
+      }
       const bNm  = (data.buyer.name || '').trim().toLowerCase().replace(/\s+/g, ' ');
       const match = this.parties().find(p => {
         const pGst = (p.gst || '').trim().toUpperCase().replace(/\s/g, '');

@@ -807,7 +807,7 @@ public class BillExtractorService : IBillExtractorService
 IMPORTANT — read these fields very carefully, they matter most:
 - supplier = the SELLER / manufacturer printed at the TOP of the bill (with its GSTIN).
 - buyer = the party the bill is billed TO (Name & Address of Buyer / Bill To).
-- GSTIN = exactly 15 characters (e.g. 24AYXP38534B1Z7). Read each char carefully (0 vs O, 1 vs I). Capture BOTH supplier and buyer GSTIN if printed.
+- GSTIN = exactly 15 characters (e.g. 24AYXP38534B1Z7). Read each char VERY carefully — the classic OCR traps: 0 vs O vs Q vs D, 1 vs I vs L, 5 vs S, 8 vs B, 2 vs Z, 6 vs G, F vs P. Zoom mentally into each character. Structure check: chars 1-2 are DIGITS (state code), 3-7 are LETTERS, 8-11 are DIGITS, 12 is a LETTER, 14 is always 'Z'. If what you read violates this structure, re-read that character. Capture BOTH supplier and buyer GSTIN if printed.
 - Each item row: name (Description of Goods), hsnSac, qty, unit, rate, taxRate %, taxableAmount, totalAmount.
   * COMPLETENESS — read EVERY item row from top to bottom. Do NOT skip the first or last row. If rows are numbered (Sr/S.No 1,2,3,4...) your items array length MUST equal the highest serial number. CROSS-CHECK: sum of all line amounts MUST equal the bill's Sub Total / Taxable Value. If your sum is less, you missed a row (often the first one) — re-read and add it.
   * Read each column carefully. taxableAmount/totalAmount = the row's Amount as printed (source of truth).

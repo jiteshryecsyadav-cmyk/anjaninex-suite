@@ -156,6 +156,29 @@ public class CommissionInvoicesController : ControllerBase
             var firmId = CurrentFirmId;
             var branchId = CurrentBranchId;
 
+            // DOUBLE-SAVE ROK: jis bill ka commission pehle se kisi invoice me hai,
+            // wo dobara nahi banega (Generate do baar dabane par same invoice ki
+            // jodi ban jati thi — Ho-C26/C27). DB par unique index (migration 98)
+            // aakhri deewar hai; ye check user ko SAAF batata hai kaunsa invoice hai.
+            var reqBillIds = dto.Lines.Select(l => l.BillId).Distinct().ToList();
+            var alreadyBilled = await _db.CommissionInvoiceLines
+                .Where(l => reqBillIds.Contains(l.BillId))
+                .Join(_db.CommissionInvoices, l => l.CommissionInvoiceId, i => i.Id,
+                      (l, i) => new { l.BillNo, i.InvoiceNo })
+                .ToListAsync();
+            if (alreadyBilled.Count > 0)
+            {
+                var detail = string.Join(", ",
+                    alreadyBilled.Take(5).Select(x => $"{x.BillNo} → {x.InvoiceNo}"));
+                return BadRequest(new
+                {
+                    error = $"In bills ka commission PEHLE SE bana hua hai: {detail}" +
+                            (alreadyBilled.Count > 5 ? $" (+{alreadyBilled.Count - 5} aur)" : "") +
+                            ". Dobara nahi banega — purana invoice Commission list me dekho, " +
+                            "galat laga ho to use Delete karke phir banao."
+                });
+            }
+
             // Branch resilience: agar header/claim wali branch is firm me valid nahi hai
             // (stale localStorage etc.) to firm ki pehli real branch use karo — FK fail na ho.
             var branchValid = await _db.Branches.AnyAsync(b => b.Id == branchId && b.FirmId == firmId);

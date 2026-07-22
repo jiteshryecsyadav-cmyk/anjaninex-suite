@@ -55,6 +55,11 @@ public static class FriendlyError
         {
             // ── 23505: unique_violation (duplicate) ──
             case "23505":
+                if (c.Contains("comm_inv_lines_bill"))
+                    // Migration 98 — ek bill ka commission sirf ek baar. Dobara try
+                    // karne se bhi wahi hoga, isliye user ko purane invoice ki taraf bhejo.
+                    return "Is bill ka commission PEHLE SE ban chuka hai — dobara nahi banega. " +
+                           "Commission list me purana invoice dekhein; galat laga ho to use Delete karke phir banayein.";
                 if (c.Contains("bills_no") || c.Contains("bill_no"))
                     return "Ye bill number pehle se maujood hai. Page refresh karke dobara save karein.";
                 if (c.Contains("voucher"))

@@ -978,8 +978,12 @@ export class CommissionGenerateComponent {
         this.savedId.set(res.id);
         this.invoiceNo = res.invoiceNo;
         this.showPreview.set(true);
-        // Ab in bills ka commission ban chuka — list turant refresh, taaki agli
-        // baar Fetch karne par wahi bill dobara na aayein.
+        // DOUBLE-SAVE ROK: jin bills ka invoice ABHI bana, unhe list se TURANT
+        // hatao — pehle wo pade rehte the aur dobara Generate dabate hi wahi
+        // bills phir submit ho jate the (Ho-C26/C27 jaisi jodi ban jati thi).
+        const doneIds = new Set(rows.map(r => r.bill.id));
+        this.rows.update(list => list.filter(r => !doneIds.has(r.bill.id)));
+        // Agli baar Fetch par bhi ye bills na aayein
         this.loadBilled();
         this.toast.success(`✓ Commission invoice ${res.invoiceNo} save ho gaya!`);
       },

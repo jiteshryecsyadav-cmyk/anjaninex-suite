@@ -21,7 +21,10 @@ public record OrderLineDto(
     decimal CgstPct,
     decimal TaxableAmount,
     decimal TaxAmount,
-    decimal TotalAmount);
+    decimal TotalAmount,
+    decimal? Pcs = null,        // textile: pieces (record — Qty billing wali hai)
+    decimal? Meters = null,     // textile: meters
+    string? RateBasis = null);  // 'PCS' | 'MTR'
 
 public record OrderListItemDto(
     Guid Id,
@@ -202,7 +205,8 @@ public class OrderService : IOrderService
             o.Lines.OrderBy(l => l.SortOrder).Select(l => new OrderLineDto(
                 l.Id, l.ItemId, l.ItemName, l.Description, l.HsnSac,
                 l.Qty, l.Unit, l.Rate, l.Rd, l.SgstPct, l.CgstPct,
-                l.TaxableAmount, l.TaxAmount, l.TotalAmount)).ToList(),
+                l.TaxableAmount, l.TaxAmount, l.TotalAmount,
+                l.Pcs, l.Meters, l.RateBasis)).ToList(),
             SupplierGroupName: o.SupplierGroupName, PreparedBy: preparedBy);
     }
 
@@ -274,6 +278,7 @@ public class OrderService : IOrderService
                 HsnSac = l.HsnSac,
                 Qty = l.Qty,
                 Unit = l.Unit,
+                Pcs = l.Pcs, Meters = l.Meters, RateBasis = l.RateBasis,
                 Rate = l.Rate,
                 Rd = l.Rd,
                 SgstPct = l.SgstPct,
@@ -348,6 +353,7 @@ public class OrderService : IOrderService
             HsnSac = l.HsnSac,
             Qty = l.Qty,
             Unit = l.Unit,
+            Pcs = l.Pcs, Meters = l.Meters, RateBasis = l.RateBasis,
             Rate = l.Rate,
             Rd = l.Rd,
             SgstPct = l.SgstPct,

@@ -23,7 +23,10 @@ public record BillLineDto(
     decimal TaxRate,
     decimal TaxableAmount,
     decimal TotalAmount,
-    string? Description = null);
+    string? Description = null,
+    decimal? Pcs = null,        // textile: pieces (record — Qty billing wali hai)
+    decimal? Meters = null,     // textile: meters
+    string? RateBasis = null);  // 'PCS' | 'MTR' — kis par rate laga
 
 public record BillListItemDto(
     Guid Id,
@@ -347,7 +350,8 @@ public class BillService : IBillService
             bill.Lines.OrderBy(l => l.SortOrder).Select(l => new BillLineDto(
                 l.Id, l.ItemId, l.ItemName, l.HsnSac,
                 l.Qty, l.Unit, l.Rate, l.DiscountPct, l.TaxRate,
-                l.TaxableAmount, l.TotalAmount, l.Description)).ToList(),
+                l.TaxableAmount, l.TotalAmount, l.Description,
+                l.Pcs, l.Meters, l.RateBasis)).ToList(),
             preparedBy,
             bill.BuyerPartyId,
             buyer?.Name,
@@ -486,6 +490,7 @@ public class BillService : IBillService
                     HsnSac = line.HsnSac,
                     Qty = line.Qty,
                     Unit = line.Unit,
+                    Pcs = line.Pcs, Meters = line.Meters, RateBasis = line.RateBasis,
                     Rate = line.Rate,
                     DiscountPct = line.DiscountPct,
                     TaxRate = line.TaxRate,
@@ -661,6 +666,7 @@ public class BillService : IBillService
                 Id = Guid.NewGuid(), BillId = bill.Id, ItemId = line.ItemId, ItemName = line.ItemName,
                 Description = line.Description,
                 HsnSac = line.HsnSac, Qty = line.Qty, Unit = line.Unit, Rate = line.Rate,
+                Pcs = line.Pcs, Meters = line.Meters, RateBasis = line.RateBasis,
                 DiscountPct = line.DiscountPct, TaxRate = line.TaxRate,
                 TaxableAmount = line.TaxableAmount, TotalAmount = line.TotalAmount, SortOrder = order++
             }).ToList();

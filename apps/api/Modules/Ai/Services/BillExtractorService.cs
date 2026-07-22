@@ -63,6 +63,10 @@ public class BillItem
     public string HsnSac { get; set; } = "";
     public decimal Qty { get; set; }
     public string Unit { get; set; } = "PCS";
+    // Textile row par DONO ginti chhapi hoti hain (Pcs 32 · Meters 224) — dono lao,
+    // Qty wahi jo rate se milkar Amount banati hai (unit usi ki).
+    public decimal Pcs { get; set; }
+    public decimal Meters { get; set; }
     public decimal Rate { get; set; }
     public decimal DiscountPercent { get; set; }
     public decimal TaxRate { get; set; }
@@ -809,7 +813,8 @@ IMPORTANT — read these fields very carefully, they matter most:
   * Read each column carefully. taxableAmount/totalAmount = the row's Amount as printed (source of truth).
   * rate = MOST IMPORTANT, most reliable field. Read it EXACTLY from the Rate / Price / Rate Rs column (e.g. 315.00). Never alter, round, or compute it. If genuinely no Rate column exists, set rate=0.
   * qty = the number that makes qty × rate = the row Amount (so the line amount comes out correct). A textile row may show a piece count AND meters — pick whichever quantity makes qty × rate = the printed Amount.
-  * unit = just ""PCS"" or ""MTR"" (your best guess). DON'T over-think the unit — the USER will choose PCS or MTR from a dropdown. Only these two values: ""PCS"" or ""MTR"".
+  * unit = just ""PCS"" or ""MTR"" — whichever quantity you picked for qty. Only these two values.
+  * pcs = the PIECE count printed on the row (Pcs / Pc / Than column), meters = the METERS printed (Mtr / Meters / Qty-in-metre column). Capture BOTH when both are printed (textile rows usually have both, e.g. Pcs 32 and Meters 224.00). If only one is printed, set the other to 0. These are separate from qty — qty is the billing one.
   * SELF-CHECK every row: qty × rate MUST ≈ the row Amount/taxableAmount. If not, fix qty so the product matches the printed amount.
   * ONLY if there is genuinely NO Rate/Price column anywhere on the bill (just quantity + amount): set rate=0 — do NOT invent or compute a rate (the app will ask the user).
 - invoice number + invoice date (top right of bill).
@@ -844,7 +849,7 @@ Schema (extract ONLY these keys):
   ""supplier"": {""name"":"""", ""gst"":"""", ""pan"":"""", ""phone"":"""", ""address"":"""", ""city"":"""", ""state"":""""},
   ""buyer"": {""name"":"""", ""gst"":"""", ""pan"":"""", ""phone"":"""", ""address"":"""", ""city"":"""", ""state"":""""},
   ""invoice"": {""number"":"""", ""date"":"""", ""poNumber"":"""", ""cases"":0},
-  ""items"": [{""name"":"""", ""hsnSac"":"""", ""qty"":0, ""unit"":""PCS"", ""rate"":0, ""taxRate"":5, ""taxableAmount"":0, ""totalAmount"":0}],
+  ""items"": [{""name"":"""", ""hsnSac"":"""", ""qty"":0, ""unit"":""PCS"", ""pcs"":0, ""meters"":0, ""rate"":0, ""taxRate"":5, ""taxableAmount"":0, ""totalAmount"":0}],
   ""totals"": {""taxableTotal"":0, ""cgst"":0, ""sgst"":0, ""igst"":0, ""roundOff"":0, ""grandTotal"":0, ""foldLessPercent"":0, ""foldLessAmount"":0, ""discountPercent"":0, ""discountAmount"":0, ""insurance"":0, ""bankCharge"":0, ""interest"":0, ""sweetLs"":0, ""tcs"":0, ""normalDiscPercent"":0, ""normalDiscAmount"":0, ""exhibitionDiscPercent"":0, ""exhibitionDiscAmount"":0},
   ""transport"": {""name"":"""", ""gst"":"""", ""lrNo"":"""", ""ewayBillNo"":"""", ""ewayBillDate"":""""}
 }

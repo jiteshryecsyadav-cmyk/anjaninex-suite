@@ -161,6 +161,12 @@ public class BillLine
 
     public string? Unit { get; set; }
 
+    // Textile: har item par DO ginti (Pcs + Meters). Qty = billing wali (RateBasis
+    // chuni hui) — purane reports/hisaab Qty par hi chalte rehte hain.
+    [Column(TypeName = "numeric(12,3)")] public decimal? Pcs { get; set; }
+    [Column(TypeName = "numeric(12,3)")] public decimal? Meters { get; set; }
+    public string? RateBasis { get; set; }   // 'PCS' | 'MTR' — kis par rate laga
+
     [Column(TypeName = "numeric(12,2)")] public decimal Rate { get; set; }
     [Column(TypeName = "numeric(5,2)")]  public decimal DiscountPct { get; set; }
     [Column(TypeName = "numeric(5,2)")]  public decimal TaxRate { get; set; }
@@ -366,6 +372,11 @@ public class OrderLine
 
     [Column(TypeName = "numeric(12,3)")] public decimal Qty { get; set; }
     public string? Unit { get; set; }
+
+    // Bill lines jaisa hi — Pcs + Meters dono, Qty = billing wali (RateBasis chuni hui)
+    [Column(TypeName = "numeric(12,3)")] public decimal? Pcs { get; set; }
+    [Column(TypeName = "numeric(12,3)")] public decimal? Meters { get; set; }
+    public string? RateBasis { get; set; }   // 'PCS' | 'MTR'
 
     [Column(TypeName = "numeric(12,2)")] public decimal Rate { get; set; }
     [Column(TypeName = "numeric(12,2)")] public decimal Rd { get; set; }         // Rate Discount per unit

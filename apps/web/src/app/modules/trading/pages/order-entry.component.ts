@@ -28,8 +28,14 @@ interface LineRow {
   itemName: string;
   description: string;
   hsnSac: string;
+  /** billing wali ginti — pcs/meters me se jo rateBasis chuna hai, apne aap sync */
   qty: number;
   unit: string;
+  /** textile: bill par dono ginti (Pcs 32 · Meters 224) */
+  pcs: number;
+  meters: number;
+  /** 'PCS' | 'MTR' — kis par rate lagega */
+  rateBasis: 'PCS' | 'MTR';
   rate: number;
   rd: number;
   sgstPct: number;
@@ -299,8 +305,9 @@ interface LineRow {
                 <th class="w-10">SNO.</th>
                 <th>ITEM NAME</th>
                 <th>CATEGORY</th>
-                <th class="w-16">QTY.</th>
-                <th class="w-20">UNIT</th>
+                <th class="w-16">PCS</th>
+                <th class="w-20">METERS</th>
+                <th class="w-24">RATE KIS PAR</th>
                 <th class="w-28">PRICE</th>
                 <th class="w-16">RD</th>
                 <th class="w-20">HSN</th>
@@ -340,22 +347,31 @@ interface LineRow {
                       <option value="Other">Other</option>
                     </select>
                   </td>
-                  <td data-label="Qty">
-                    <input [ngModel]="line.qty"
-                           (ngModelChange)="updateLine($index, 'qty', +$event)"
-                           type="number" step="0.01" class="tip text-right">
+                  <td data-label="Pcs">
+                    <input [ngModel]="line.pcs"
+                           (ngModelChange)="updateLine($index, 'pcs', +$event)"
+                           type="number" step="0.01" class="tip text-right"
+                           [style.border]="line.rateBasis === 'PCS' ? '1.5px solid #5c1a8b' : ''"
+                           [title]="line.rateBasis === 'PCS' ? 'Rate ISI par lag raha hai' : ''">
                   </td>
-                  <td data-label="Unit">
-                    <select [ngModel]="line.unit"
-                            (ngModelChange)="updateLine($index, 'unit', $event)"
-                            class="tip">
-                      <option value="MTR">MTR × Rate</option>
-                      <option value="PCS">PCS × Rate</option>
-                      <option value="KG">KG</option>
-                      <option value="DOZ">DOZ</option>
-                      <option value="BOX">BOX</option>
-                      <option value="LTR">LTR</option>
-                    </select>
+                  <td data-label="Meters">
+                    <input [ngModel]="line.meters"
+                           (ngModelChange)="updateLine($index, 'meters', +$event)"
+                           type="number" step="0.01" class="tip text-right"
+                           [style.border]="line.rateBasis === 'MTR' ? '1.5px solid #5c1a8b' : ''"
+                           [title]="line.rateBasis === 'MTR' ? 'Rate ISI par lag raha hai' : ''">
+                  </td>
+                  <td data-label="Rate kis par" class="text-center">
+                    <div style="display:inline-flex; border:1px solid #d1d5db; border-radius:999px; overflow:hidden;">
+                      <button type="button" (click)="updateLine($index, 'rateBasis', 'PCS')"
+                              [style.background]="line.rateBasis === 'PCS' ? '#5c1a8b' : 'transparent'"
+                              [style.color]="line.rateBasis === 'PCS' ? '#fff' : '#6b7280'"
+                              style="border:none; padding:3px 10px; font-size:11px; font-weight:700; cursor:pointer;">PCS</button>
+                      <button type="button" (click)="updateLine($index, 'rateBasis', 'MTR')"
+                              [style.background]="line.rateBasis === 'MTR' ? '#5c1a8b' : 'transparent'"
+                              [style.color]="line.rateBasis === 'MTR' ? '#fff' : '#6b7280'"
+                              style="border:none; padding:3px 10px; font-size:11px; font-weight:700; cursor:pointer;">MTR</button>
+                    </div>
                   </td>
                   <td data-label="Price">
                     <input [ngModel]="line.rate"
@@ -415,7 +431,8 @@ interface LineRow {
             <tfoot>
               <tr>
                 <td colspan="3" class="text-right ft-label">TOTALS →</td>
-                <td class="text-center font-mono font-bold" data-label="Total Qty">{{ totalQty() | number:'1.0-3' }}</td>
+                <td class="text-center font-mono font-bold" data-label="Pcs">{{ totalPcs() | number:'1.0-2' }}</td>
+                <td class="text-center font-mono font-bold" data-label="Meters">{{ totalMeters() | number:'1.0-2' }}</td>
                 <td colspan="7" class="ft-blank"></td>
                 <td class="text-right font-mono" data-label="Taxable">{{ totalTaxable() | number:'1.2-2' }}</td>
                 <td class="text-right font-mono" data-label="Tax">{{ totalTax() | number:'1.2-2' }}</td>
@@ -1583,12 +1600,25 @@ export class OrderEntryComponent {
             raw:  { qty, unit, rate }
           });
         }
+        // PCS/METERS + rate-basis auto-detect (bill-entry jaisa): Amount jis ginti
+        // × rate se banta hai, wahi basis — user se poochhna nahi padta.
+        let pcs = +(item.pcs || 0);
+        let meters = +(item.meters || 0);
+        let basis: 'PCS' | 'MTR' = unit === 'PCS' ? 'PCS' : 'MTR';
+        if (rate > 0 && tx > 0) {
+          if (pcs > 0 && Math.abs(pcs * rate - tx) <= 1) basis = 'PCS';
+          else if (meters > 0 && Math.abs(meters * rate - tx) <= 1) basis = 'MTR';
+        }
+        if (basis === 'PCS' && pcs <= 0) pcs = qty;
+        if (basis === 'MTR' && meters <= 0) meters = qty;
+        const billingQty = basis === 'MTR' ? meters : pcs;
         return {
           itemId: null,
           itemName: item.name,
           description: '',
           hsnSac: item.hsnSac,
-          qty, unit, rate, rd,
+          qty: billingQty || qty, unit: basis, pcs, meters, rateBasis: basis,
+          rate, rd,
           sgstPct: half,
           cgstPct: half,
           igstPct: 0,
@@ -1745,7 +1775,8 @@ export class OrderEntryComponent {
   newLine(): LineRow {
     return {
       itemId: null, itemName: '', description: '',
-      hsnSac: '', qty: 0, unit: 'MTR', rate: 0, rd: 0,
+      hsnSac: '', qty: 0, unit: 'MTR', pcs: 0, meters: 0, rateBasis: 'MTR',
+      rate: 0, rd: 0,
       sgstPct: 2.5, cgstPct: 2.5, igstPct: 0,
       photoFile: null, photoPreview: null
     };
@@ -1768,6 +1799,8 @@ export class OrderEntryComponent {
   }
 
   totalQty = computed(() => this.lines().reduce((s, l) => s + (+l.qty || 0), 0));
+  totalPcs = computed(() => this.lines().reduce((s, l) => s + (+l.pcs || 0), 0));
+  totalMeters = computed(() => this.lines().reduce((s, l) => s + (+l.meters || 0), 0));
   totalTaxable = computed(() => this.lines().reduce((s, _, i) => s + this.lineTaxable(i), 0));
   sgstTotal = computed(() => this.lines().reduce((s, _, i) => {
     const l = this.lines()[i];
@@ -1959,6 +1992,9 @@ export class OrderEntryComponent {
             hsnSac: l.hsnSac || '',
             qty: l.qty,
             unit: l.unit || 'MTR',
+            rateBasis: (l.rateBasis === 'PCS' || (!l.rateBasis && l.unit === 'PCS') ? 'PCS' : 'MTR') as 'PCS' | 'MTR',
+            pcs: +(l.pcs ?? ((l.rateBasis ?? l.unit ?? 'MTR') === 'MTR' ? 0 : l.qty)) || 0,
+            meters: +(l.meters ?? ((l.rateBasis ?? l.unit ?? 'MTR') === 'MTR' ? l.qty : 0)) || 0,
             rate: l.rate,
             rd: l.rd || 0,
             sgstPct: l.sgstPct || 2.5,
@@ -1991,7 +2027,16 @@ export class OrderEntryComponent {
 
   // ============ LINE OPERATIONS ============
   updateLine(idx: number, field: keyof LineRow, value: any) {
-    this.lines.update(arr => arr.map((l, i) => i === idx ? { ...l, [field]: value } : l));
+    this.lines.update(arr => arr.map((l, i) => {
+      if (i !== idx) return l;
+      const u: LineRow = { ...l, [field]: value };
+      // PCS/METERS/toggle badla to billing qty apne aap sync — aage ka hisaab qty par hi hai
+      if (field === 'pcs' || field === 'meters' || field === 'rateBasis') {
+        u.qty = u.rateBasis === 'MTR' ? (u.meters || 0) : (u.pcs || 0);
+        u.unit = u.rateBasis;
+      }
+      return u;
+    }));
   }
   addLine() { this.lines.update(arr => [...arr, this.newLine()]); }
   removeLine(idx: number) { this.lines.update(arr => arr.filter((_, i) => i !== idx)); }
@@ -2001,7 +2046,7 @@ export class OrderEntryComponent {
     if (item) {
       this.updateLine(idx, 'itemId', item.id);
       this.updateLine(idx, 'hsnSac', item.hsnSac ?? '');
-      this.updateLine(idx, 'unit', item.unit);
+      this.updateLine(idx, 'rateBasis', item.unit === 'PCS' ? 'PCS' : 'MTR');
       this.updateLine(idx, 'rate', item.defaultRate);
       const half = (item.taxRate || 5) / 2;
       this.updateLine(idx, 'sgstPct', half);
@@ -2017,7 +2062,7 @@ export class OrderEntryComponent {
     if (item) {
       this.updateLine(idx, 'itemId', item.id);
       if (item.hsnSac) this.updateLine(idx, 'hsnSac', item.hsnSac);
-      if (item.unit) this.updateLine(idx, 'unit', item.unit);
+      if (item.unit) this.updateLine(idx, 'rateBasis', item.unit === 'PCS' ? 'PCS' : 'MTR');
     }
   }
   onItemPhoto(idx: number, event: any) {
@@ -2071,8 +2116,10 @@ export class OrderEntryComponent {
   rateChoiceOpen = signal(false);
   rateChoiceItems = signal<RateChoice[]>([]);
   applyRateChoice(idx: number, opt: RateOpt) {
-    this.updateLine(idx, 'qty', opt.qty);
-    this.updateLine(idx, 'unit', opt.unit);
+    // Basis pehle, phir chuni hui ginti usi field me — qty apne aap sync ho jati hai
+    const basis: 'PCS' | 'MTR' = opt.unit === 'PCS' ? 'PCS' : 'MTR';
+    this.updateLine(idx, 'rateBasis', basis);
+    this.updateLine(idx, basis === 'PCS' ? 'pcs' : 'meters', opt.qty);
     this.updateLine(idx, 'rd', 0);
     this.updateLine(idx, 'rate', opt.rate);
     this.rateChoiceItems.update(arr => arr.filter(r => r.idx !== idx));
@@ -2172,6 +2219,9 @@ export class OrderEntryComponent {
         hsnSac: l.hsnSac || null,
         qty: l.qty,
         unit: l.unit,
+        pcs: l.pcs || null,
+        meters: l.meters || null,
+        rateBasis: l.rateBasis,
         rate: l.rate,
         rd: l.rd || 0,
         // Backend re-splits by state — send TOTAL rate (sgst+cgst+igst) as half/half.

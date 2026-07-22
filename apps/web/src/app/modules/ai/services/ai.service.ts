@@ -28,6 +28,10 @@ export interface ExtractedItem {
   hsnSac: string;
   qty: number;
   unit: string;
+  /** bill par chhapi piece count (Pcs column) — qty se alag, record ke liye */
+  pcs?: number;
+  /** bill par chhape meters (Mtr column) */
+  meters?: number;
   rate: number;
   discountPercent: number;
   taxRate: number;

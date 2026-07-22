@@ -10,10 +10,12 @@ import { INDIAN_STATES, citiesForState, matchIndiaState } from '../../../shared/
 import { IndiaPincodeService } from '../../../shared/india-pincode.service';
 
 import { UppercaseDirective } from '../../../shared/uppercase.directive';
+import { FldDirective } from '../../../shared/fld.directive';
+import { FieldConfigService } from '../../../shared/field-config.service';
 @Component({
   selector: 'app-transporters',
   standalone: true,
-  imports: [UppercaseDirective, CommonModule, FormsModule, ReactiveFormsModule, RouterLink, BackButtonComponent, PaginatorComponent],
+  imports: [UppercaseDirective, CommonModule, FormsModule, ReactiveFormsModule, RouterLink, BackButtonComponent, PaginatorComponent, FldDirective],
   template: `
     <div class="max-w-7xl mx-auto">
       <div class="page-top-bar"><app-back-button></app-back-button></div>
@@ -114,31 +116,31 @@ import { UppercaseDirective } from '../../../shared/uppercase.directive';
                   <label class="lbl">FIRM NAME *</label>
                   <input formControlName="firmName" placeholder="ADINATH TRANSPORT" class="ip ip-req">
                 </div>
-                <div>
-                  <label class="lbl">CONTACT PERSON</label>
+                <div *fld="'transporter_master.contact_person'">
+                  <label class="lbl">{{ fl('contact_person') }}</label>
                   <input formControlName="contactPerson" placeholder="Responsible person" class="ip">
                 </div>
                 <div>
                   <label class="lbl">MOBILE *</label>
                   <input formControlName="mobile" placeholder="9876543210" class="ip">
                 </div>
-                <div>
-                  <label class="lbl">WHATSAPP</label>
+                <div *fld="'transporter_master.whatsapp'">
+                  <label class="lbl">{{ fl('whatsapp') }}</label>
                   <input formControlName="whatsapp" placeholder="Same as mobile if blank" class="ip">
                 </div>
-                <div>
-                  <label class="lbl">GST NO.</label>
+                <div *fld="'transporter_master.gst_no'">
+                  <label class="lbl">{{ fl('gst_no') }}</label>
                   <div class="flex gap-1">
                     <input appUpper formControlName="gstNo" placeholder="24XXXXX0000X1ZX" class="ip">
                     <button type="button" (click)="fetchGst()" class="btn-fetch">🔍 Get GST</button>
                   </div>
                 </div>
-                <div>
-                  <label class="lbl">PAN</label>
+                <div *fld="'transporter_master.pan'">
+                  <label class="lbl">{{ fl('pan') }}</label>
                   <input appUpper formControlName="pan" placeholder="XXXXX0000X" class="ip">
                 </div>
-                <div>
-                  <label class="lbl">PIN CODE <small style="color:#9CA3AF">(dalte hi city/state auto)</small></label>
+                <div *fld="'transporter_master.pincode'">
+                  <label class="lbl">{{ fl('pincode') }} <small style="color:#9CA3AF">(dalte hi city/state auto)</small></label>
                   <input formControlName="pincode" placeholder="395002" class="ip" maxlength="6"
                          (input)="onPincodeInput()">
                 </div>
@@ -159,36 +161,36 @@ import { UppercaseDirective } from '../../../shared/uppercase.directive';
                     @for (c of cityOptions(); track c) { <option [value]="c"></option> }
                   </datalist>
                 </div>
-                <div>
-                  <label class="lbl">EMAIL</label>
+                <div *fld="'transporter_master.email'">
+                  <label class="lbl">{{ fl('email') }}</label>
                   <input formControlName="email" placeholder="email@example.com" class="ip">
                 </div>
-                <div class="col-span-2">
-                  <label class="lbl">ADDRESS</label>
+                <div *fld="'transporter_master.address'" class="col-span-2">
+                  <label class="lbl">{{ fl('address') }}</label>
                   <textarea formControlName="address" placeholder="Office address" rows="2" class="ip"></textarea>
                 </div>
-                <div>
-                  <label class="lbl">CONTACT MOBILE</label>
+                <div *fld="'transporter_master.contact_mobile'">
+                  <label class="lbl">{{ fl('contact_mobile') }}</label>
                   <input formControlName="contactMobile" placeholder="9876543210" class="ip">
                 </div>
-                <div>
-                  <label class="lbl">OFFICE / LANDLINE</label>
+                <div *fld="'transporter_master.landline'">
+                  <label class="lbl">{{ fl('landline') }}</label>
                   <input formControlName="landline" placeholder="0261-XXXXXXX" class="ip">
                 </div>
               </form>
 
               <div class="step-head mt-4">📊 PERFORMANCE METRICS</div>
               <form [formGroup]="form" class="grid grid-cols-4 gap-3 mt-3">
-                <div>
-                  <label class="lbl">AVG DELIVERY DAYS</label>
+                <div *fld="'transporter_master.avg_delivery_days'">
+                  <label class="lbl">{{ fl('avg_delivery_days') }}</label>
                   <input formControlName="avgDeliveryDays" type="number" placeholder="3" class="ip">
                 </div>
-                <div>
-                  <label class="lbl">DAMAGE RATE %</label>
+                <div *fld="'transporter_master.damage_rate'">
+                  <label class="lbl">{{ fl('damage_rate') }}</label>
                   <input formControlName="damageRate" type="number" step="0.1" placeholder="0.5" class="ip">
                 </div>
-                <div>
-                  <label class="lbl">RATING</label>
+                <div *fld="'transporter_master.rating'">
+                  <label class="lbl">{{ fl('rating') }}</label>
                   <select formControlName="rating" class="ip">
                     <option value="A+">A+ (Excellent)</option>
                     <option value="A">A (Good)</option>
@@ -196,8 +198,8 @@ import { UppercaseDirective } from '../../../shared/uppercase.directive';
                     <option value="C">C (Risky)</option>
                   </select>
                 </div>
-                <div>
-                  <label class="lbl">STARS</label>
+                <div *fld="'transporter_master.stars'">
+                  <label class="lbl">{{ fl('stars') }}</label>
                   <select formControlName="stars" class="ip">
                     <option [ngValue]="5">★★★★★</option>
                     <option [ngValue]="4">★★★★☆</option>
@@ -206,8 +208,8 @@ import { UppercaseDirective } from '../../../shared/uppercase.directive';
                     <option [ngValue]="1">★☆☆☆☆</option>
                   </select>
                 </div>
-                <div class="col-span-4">
-                  <label class="lbl">REMARK / NOTE</label>
+                <div *fld="'transporter_master.remark'" class="col-span-4">
+                  <label class="lbl">{{ fl('remark') }}</label>
                   <input formControlName="remark" placeholder="Internal note" class="ip">
                 </div>
               </form>
@@ -314,6 +316,10 @@ export class TransportersComponent {
   private svc = inject(MastersService);
   private fb = inject(FormBuilder);
   private pin = inject(IndiaPincodeService);
+  private fieldCfg = inject(FieldConfigService);
+
+  /** Field ka naam — firm ne Screen & Fields me badla ho to wahi dikhega. */
+  fl(key: string): string { return this.fieldCfg.label('transporter_master', key); }
 
   // ===== India location helpers =====
   indiaStates = INDIAN_STATES;

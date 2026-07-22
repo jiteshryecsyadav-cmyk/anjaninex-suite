@@ -6,11 +6,13 @@ import { TradingSubNavComponent } from '../components/trading-sub-nav.component'
 import { TradingService, Item } from '../services/trading.service';
 import { BackButtonComponent } from '../../../shared/back-button.component';
 import { ToastService } from '../../../shared/toast.service';
+import { FldDirective } from '../../../shared/fld.directive';
+import { FieldConfigService } from '../../../shared/field-config.service';
 
 @Component({
   selector: 'app-items',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterLink, RouterLinkActive, DecimalPipe, TradingSubNavComponent, BackButtonComponent],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterLink, RouterLinkActive, DecimalPipe, TradingSubNavComponent, BackButtonComponent, FldDirective],
   template: `
     <div class="max-w-6xl mx-auto">
       <div class="page-top-bar"><app-back-button></app-back-button></div>
@@ -67,8 +69,8 @@ import { ToastService } from '../../../shared/toast.service';
             <h3 class="font-display font-bold text-lg text-[#5c1a8b] mb-4">{{ editId() ? 'Edit Category' : 'New Category' }}</h3>
             <form [formGroup]="form" (ngSubmit)="save()" class="grid grid-cols-2 gap-3">
               <div class="col-span-2"><label class="text-xs font-bold uppercase">Category *</label><input formControlName="name" class="input" placeholder="e.g. Saree, Fabric, Suit Material"></div>
-              <div><label class="text-xs font-bold uppercase">HSN / SAC Code</label><input formControlName="hsnSac" class="input" placeholder="e.g. 5208"></div>
-              <div><label class="text-xs font-bold uppercase">Unit</label><select formControlName="unit" class="input"><option>PCS</option><option>MTR</option><option>KG</option></select></div>
+              <div *fld="'item_master.hsn'"><label class="text-xs font-bold uppercase">{{ fl('hsn') }}</label><input formControlName="hsnSac" class="input" placeholder="e.g. 5208"></div>
+              <div *fld="'item_master.unit'"><label class="text-xs font-bold uppercase">{{ fl('unit') }}</label><select formControlName="unit" class="input"><option>PCS</option><option>MTR</option><option>KG</option></select></div>
               <div class="col-span-2 flex justify-end gap-2">
                 <button type="button" (click)="closeForm()" class="px-4 py-2 border rounded">Cancel</button>
                 <button type="submit" class="btn-primary" [disabled]="form.invalid || saving()">{{ saving() ? 'Saving...' : 'Create' }}</button>
@@ -83,6 +85,9 @@ import { ToastService } from '../../../shared/toast.service';
 export class ItemsComponent {
   private svc = inject(TradingService);
   private fb = inject(FormBuilder);
+  private fieldCfg = inject(FieldConfigService);
+  /** Field ka naam — firm ne Screen & Fields me badla ho to wahi dikhega. */
+  fl(key: string): string { return this.fieldCfg.label('item_master', key); }
   private route = inject(ActivatedRoute);
   private toast = inject(ToastService);
 

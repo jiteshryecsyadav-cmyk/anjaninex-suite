@@ -138,6 +138,40 @@ export const FIELD_REGISTRY: ScreenDef[] = [
     ]
   },
   // ---------------------------------------------------------------------------
+  // ITEM / CATEGORY MASTER — Trading › Master › Items
+  // ---------------------------------------------------------------------------
+  {
+    key: 'item_master',
+    name: 'Item / Category Master',
+    fields: [
+      { key: 'hsn',  label: 'HSN / SAC Code' },
+      { key: 'unit', label: 'Unit' }
+    ]
+  },
+  // ---------------------------------------------------------------------------
+  // TRANSPORTER MASTER — Masters › Transporters
+  // ---------------------------------------------------------------------------
+  {
+    key: 'transporter_master',
+    name: 'Transporter Master',
+    fields: [
+      { key: 'contact_person',    label: 'Contact Person' },
+      { key: 'whatsapp',          label: 'WhatsApp' },
+      { key: 'gst_no',            label: 'GST No.' },
+      { key: 'pan',               label: 'PAN',               defaultOff: true },
+      { key: 'pincode',           label: 'Pin Code' },
+      { key: 'email',             label: 'Email',             defaultOff: true },
+      { key: 'address',           label: 'Address' },
+      { key: 'contact_mobile',    label: 'Contact Mobile',    defaultOff: true },
+      { key: 'landline',          label: 'Office / Landline', defaultOff: true },
+      { key: 'avg_delivery_days', label: 'Avg Delivery Days', defaultOff: true },
+      { key: 'damage_rate',       label: 'Damage Rate %',     defaultOff: true },
+      { key: 'rating',            label: 'Rating',            defaultOff: true },
+      { key: 'stars',             label: 'Stars',             defaultOff: true },
+      { key: 'remark',            label: 'Remark / Note' }
+    ]
+  },
+  // ---------------------------------------------------------------------------
   // PARTY MASTER — Trading › Master › Parties (new/edit form)
   // Naam/GST/Mobile/City jaise pehchan wale field locked hain — inke bina party
   // ka record hi adhoora hai. Baaki sab firm apni marzi se on/off kare.

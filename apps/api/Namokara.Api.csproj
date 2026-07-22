@@ -14,6 +14,11 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- Tests internal methods (GST checksum, counters...) seedha jaanch sakein -->
+    <InternalsVisibleTo Include="Namokara.Api.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- Web + API -->
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.10" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="8.0.10" />

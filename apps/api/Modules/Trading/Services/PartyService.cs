@@ -424,7 +424,8 @@ public class PartyService : IPartyService
     /// GSTIN ka 15th character ek CHECK DIGIT hai — pehle 14 se ganit se banta hai.
     /// Ek bhi letter/ank galat type ho to ye match nahi karta. Iske bina "format to sahi
     /// hai" wale typo andar ghus jate the aur wahi party dobara ban jati thi.
-    private static void ValidateGstChecksum(string gst)
+    // internal — taaki tests isko seedha jaanch sakein (InternalsVisibleTo csproj me)
+    internal static void ValidateGstChecksum(string gst)
     {
         const string SET = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
         int sum = 0;

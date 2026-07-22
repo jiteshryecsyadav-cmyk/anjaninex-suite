@@ -597,3 +597,41 @@ button:active::after, [class*="btn"]:active::after { height: 38%; opacity: .8; }
   h1 { font-size: 20px !important; }
   main { padding: 8px !important; }
 }
+
+/* ============================================================
+   PRINT — invoice/receipt preview ka SAAF print
+   Ye GLOBAL isliye hai: component ke andar likha print-CSS Angular
+   scope kar deta tha (body * match hi nahi hota) — modal position:fixed
+   me phansa rehta tha aur print me KHALI page nikalta tha.
+   print() body par .printing-doc lagata hai; [data-print-root] wala
+   element (invoice paper) hi chhapta hai, baaki sab chhupta hai.
+   ============================================================ */
+@media print {
+  body.printing-doc * { visibility: hidden !important; }
+  body.printing-doc [data-print-root],
+  body.printing-doc [data-print-root] * { visibility: visible !important; }
+  body.printing-doc [data-print-root] {
+    position: absolute !important;
+    left: 0 !important; top: 0 !important;
+    width: 100% !important;
+    max-height: none !important;
+    overflow: visible !important;
+    box-shadow: none !important;
+    padding: 16px !important;
+  }
+  /* fixed/scroll wale modal ancestors ko print ke liye khol do —
+     warna paper pehle page ke viewport me kat jata hai */
+  body.printing-doc .ip-overlay,
+  body.printing-doc .modal-overlay {
+    position: static !important;
+    overflow: visible !important;
+    background: #fff !important;
+    padding: 0 !important;
+  }
+  body.printing-doc .ip-paper,
+  body.printing-doc .modal-paper {
+    max-height: none !important;
+    overflow: visible !important;
+    box-shadow: none !important;
+  }
+}

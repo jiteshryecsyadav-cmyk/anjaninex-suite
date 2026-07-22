@@ -91,7 +91,7 @@ export interface PreviewData {
       </div>
 
       <!-- Invoice paper -->
-      <div class="invoice" id="ipPrintArea">
+      <div class="invoice" id="ipPrintArea" data-print-root>
         <div class="wm">{{ wmText() }}</div>
 
         <!-- Premium header band -->
@@ -462,12 +462,21 @@ export class InvoicePreviewComponent {
   totalQty(): number {
     return this.data.lines.reduce((s, l) => s + (l.qty || 0), 0);
   }
-  print() {
-    window.print();
+  /**
+   * Print/PDF — body par .printing-doc laga kar chhapte hain (global print CSS
+   * styles.css me). Pehle component-scoped CSS thi jo body par lagti hi nahi
+   * thi — modal fixed me phansa rehta tha aur print KHALI aata tha.
+   */
+  private printDoc() {
+    document.body.classList.add('printing-doc');
+    const cleanup = () => document.body.classList.remove('printing-doc');
+    window.addEventListener('afterprint', cleanup, { once: true });
+    setTimeout(() => { window.print(); setTimeout(cleanup, 1000); }, 50);
   }
+  print() { this.printDoc(); }
   savePdf() {
     // Browser's print dialog → user picks "Save as PDF" destination
-    window.print();
+    this.printDoc();
   }
   /** Kis party se baat karni hai — buyer pehle, warna supplier. */
   chatPartyId(): string | null {

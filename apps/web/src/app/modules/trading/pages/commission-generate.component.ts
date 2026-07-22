@@ -317,7 +317,7 @@ import { FieldConfigService } from '../../../shared/field-config.service';
     @if (showPreview()) {
       <div class="modal-overlay" (click)="showPreview.set(false)">
         <div class="modal-paper" (click)="$event.stopPropagation()">
-          <div class="invoice-paper" id="invoicePaper">
+          <div class="invoice-paper" id="invoicePaper" data-print-root>
             <div class="wm">NAMOKARA</div>
 
             <!-- Premium header band -->
@@ -1003,7 +1003,12 @@ export class CommissionGenerateComponent {
   }
 
   printInvoice() {
-    window.print();
+    // Global print CSS (styles.css) — .printing-doc + data-print-root; component-scoped
+    // print CSS body par lagti nahi thi, isliye print kabhi-kabhi khali aata tha.
+    document.body.classList.add('printing-doc');
+    const cleanup = () => document.body.classList.remove('printing-doc');
+    window.addEventListener('afterprint', cleanup, { once: true });
+    setTimeout(() => { window.print(); setTimeout(cleanup, 1000); }, 50);
   }
 
   goToList() {

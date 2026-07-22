@@ -1,7 +1,7 @@
 import { Component, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
 
@@ -18,6 +18,19 @@ import { FieldConfigService } from '../../shared/field-config.service';
   template: `
     <div class="page-top-bar"><app-back-button></app-back-button></div>
   <div class="p-6 max-w-6xl mx-auto">
+    <!-- Receipt/Commission se aaye ho? Kaam khatam karke isi button se WAPAS —
+         purana tab waisa ka waisa khula hai, ye sirf ye wala band karta hai. -->
+    @if (cameFrom()) {
+      <div class="mb-4 p-3 rounded-xl border-2 border-[#5c1a8b] bg-purple-50 flex items-center justify-between flex-wrap gap-2">
+        <span class="text-sm text-[#5c1a8b] font-semibold">
+          Disc % set karke Save karo, phir wapas jaakar <b>Fetch Bills</b> dobara dabana — tabhi naya disc% lagega.
+        </span>
+        <button (click)="goBack()"
+                class="px-4 py-2 rounded-lg bg-[#5c1a8b] text-white text-sm font-bold hover:bg-[#6b3fa0]">
+          ✓ Ho gaya — Wapas {{ cameFrom() === 'receipt' ? 'Receipt' : 'Commission' }} par
+        </button>
+      </div>
+    }
     <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
       <div>
         <h2 class="font-display font-black text-2xl text-[#5c1a8b]">Party Groups (Sister Firms)</h2>
@@ -202,9 +215,27 @@ import { FieldConfigService } from '../../shared/field-config.service';
 export class PartyGroupsComponent {
   private http = inject(HttpClient);
   private fieldCfg = inject(FieldConfigService);
+  private route = inject(ActivatedRoute);
+  private router = inject(Router);
+
+  /** Receipt/Commission ke button se aaye to ?from=receipt|commission — wapas ka raasta */
+  cameFrom = signal<'receipt' | 'commission' | ''>('');
 
   /** Field ka naam — firm ne Settings me badla ho to wahi dikhega. */
   fl(key: string): string { return this.fieldCfg.label('group_master', key); }
+
+  /**
+   * Wapas us page par jahan se aaye the. Naya tab tha to use band karo — purana
+   * tab (bhari hui receipt samet) waisa ka waisa neeche khula hai. Tab band na
+   * ho paye (seedha link se aaye ho) to usi page par navigate kar do.
+   */
+  goBack() {
+    const target = this.cameFrom() === 'commission'
+      ? '/trading/commission/new'
+      : '/trading/payments/new';
+    window.close();
+    setTimeout(() => { if (!window.closed) this.router.navigateByUrl(target); }, 250);
+  }
 
   base = `${environment.apiUrl}/api/core/contacts`;
   all = signal<C[]>([]);
@@ -226,7 +257,11 @@ export class PartyGroupsComponent {
 
   counts = signal<Record<string, number>>({});
 
-  constructor() { this.load(); }
+  constructor() {
+    this.load();
+    const from = this.route.snapshot.queryParamMap.get('from');
+    if (from === 'receipt' || from === 'commission') this.cameFrom.set(from);
+  }
 
   load() {
     this.http.get<C[]>(this.base).subscribe({ next: r => this.all.set(r || []), error: () => {} });

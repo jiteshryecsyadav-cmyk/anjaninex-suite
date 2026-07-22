@@ -75,6 +75,11 @@ export const adminRoutes: Routes = [
     loadComponent: () => import('./pages/admin-feature-flags.component').then(m => m.AdminFeatureFlagsComponent)
   },
   {
+    // Firm Fields — kisi bhi firm ki Screen & Fields sadmin se set/copy karo
+    path: 'firm-fields',
+    loadComponent: () => import('./pages/admin-firm-fields.component').then(m => m.AdminFirmFieldsComponent)
+  },
+  {
     path: 'changelog',
     loadComponent: () => import('./pages/admin-pages.components').then(m => m.AdminChangelogComponent)
   }

@@ -5,6 +5,8 @@ import { ActivatedRoute, RouterLink, RouterLinkActive } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { AdminService, FirmListItem, FirmDetail, WalletTxn, Plan, AgentCost, SavePlan, CreateFirmReq, AgentListItem } from '../services/admin.service';
 import { BackButtonComponent } from '../../../shared/back-button.component';
+import { HttpClient } from '@angular/common/http';
+import { environment } from '../../../../environments/environment';
 
 const subNav = `
   <div class="flex gap-1 mb-6 border-b border-[#ddc8f5] flex-wrap">
@@ -565,6 +567,24 @@ export class AdminFirmsComponent {
           </div>
         </div>
 
+        <!-- Subdomain — firm ka apna pata -->
+        <div class="card p-4 mb-4">
+          <h3 class="font-display font-bold text-[#5c1a8b] mb-1">🌐 Subdomain</h3>
+          <p class="text-xs text-gray-500 mb-2">
+            Naam likho, Save karo — firm ka apna pata ban jayega (jaise <b>riddhi</b> →
+            <span class="font-mono">riddhi.vyaparsetu.anjaninex.com</span>). Login page par firm ka naam/theme dikhega.
+          </p>
+          <div class="flex flex-wrap items-center gap-2">
+            <input [(ngModel)]="subdomain" class="input w-56" placeholder="sirf chhote akshar, ank, -">
+            <span class="text-sm text-gray-400 font-mono">.vyaparsetu.anjaninex.com</span>
+            <button (click)="saveSubdomain()" [disabled]="savingSub()" class="btn-primary text-sm">
+              {{ savingSub() ? '...' : 'Save' }}
+            </button>
+            @if (subMsg()) { <span class="text-xs" [class.text-green-700]="!subMsg().startsWith('⚠')"
+                                   [class.text-red-600]="subMsg().startsWith('⚠')">{{ subMsg() }}</span> }
+          </div>
+        </div>
+
         <!-- Wallet history -->
         <div class="card p-0 overflow-hidden">
           <div class="px-4 py-3 border-b bg-[#f0e6ff]">
@@ -658,6 +678,12 @@ export class AdminFirmDetailComponent {
   rechargeSource = 'manual';
   rechargeRef = '';
 
+  // Subdomain card
+  private http = inject(HttpClient);
+  subdomain = '';
+  savingSub = signal(false);
+  subMsg = signal('');
+
   ngOnInit() {
     const id = this.route.snapshot.paramMap.get('id');
     if (id) this.reload(id);
@@ -666,8 +692,29 @@ export class AdminFirmDetailComponent {
   async reload(id: string) {
     this.loading.set(true);
     this.firm.set(await firstValueFrom(this.svc.getFirm(id)));
+    this.subdomain = (this.firm() as any)?.subdomain || '';
     this.wallet.set(await firstValueFrom(this.svc.firmWalletHistory(id)));
     this.loading.set(false);
+  }
+
+  saveSubdomain() {
+    const f = this.firm();
+    if (!f) return;
+    this.savingSub.set(true); this.subMsg.set('');
+    this.http.put<{ subdomain: string | null }>(
+      `${environment.apiUrl}/api/admin/firms/${f.id}/subdomain`,
+      { subdomain: this.subdomain }).subscribe({
+      next: r => {
+        this.savingSub.set(false);
+        this.subMsg.set(r.subdomain
+          ? `✓ Ban gaya — https://${r.subdomain}.vyaparsetu.anjaninex.com`
+          : '✓ Subdomain hata diya');
+      },
+      error: e => {
+        this.savingSub.set(false);
+        this.subMsg.set('⚠ ' + (e?.error?.error || 'Save nahi hua'));
+      }
+    });
   }
 
   async doRecharge() {

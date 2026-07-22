@@ -113,6 +113,45 @@ public class AnjaninexAdminController : ControllerBase
         return Ok(new { ok = true, deactivatedUsers = users.Count });
     }
 
+    public record SubdomainDto(string? Subdomain);
+
+    /// <summary>
+    /// Firm ka subdomain set karo — sadmin Firms page se. Khaali bhejo to hat jata hai.
+    /// Wildcard DNS+nginx sab subdomains isi app par laate hain, isliye "banana" = bas save.
+    /// </summary>
+    [HttpPut("firms/{id}/subdomain")]
+    [HasPermission("platform.firm.edit.platform")]
+    public async Task<IActionResult> SetSubdomain(Guid id, [FromBody] SubdomainDto dto)
+    {
+        var sub = (dto.Subdomain ?? "").Trim().ToLowerInvariant();
+        if (sub == "")
+        {
+            await _db.Database.ExecuteSqlRawAsync(
+                "UPDATE platform.firms SET subdomain = NULL, updated_at = now() WHERE id = {0}", id);
+            return Ok(new { ok = true, subdomain = (string?)null });
+        }
+
+        if (!System.Text.RegularExpressions.Regex.IsMatch(sub, "^[a-z0-9]([a-z0-9-]{1,28}[a-z0-9])$"))
+            throw new ArgumentException(
+                $"Subdomain \"{sub}\" galat hai. Sirf chhote akshar/ank/hyphen, 3-30 characters " +
+                "(jaise: riddhi, samabhav-ent). Space aur . nahi chalte.");
+
+        // Kuch naam system ke hain — firm ko nahi de sakte
+        var reserved = new[] { "www", "api", "admin", "app", "mail", "minio", "vyaparsetu" };
+        if (reserved.Contains(sub))
+            throw new ArgumentException($"\"{sub}\" system ka naam hai — koi aur chunein.");
+
+        var taken = await _db.Set<Namokara.Api.Modules.Platform.Entities.Firm>()
+            .Where(f => f.Id != id && f.Subdomain != null && f.Subdomain.ToLower() == sub)
+            .Select(f => f.Name).FirstOrDefaultAsync();
+        if (taken != null)
+            throw new ArgumentException($"\"{sub}\" pehle se \"{taken}\" ke paas hai — koi aur chunein.");
+
+        var n = await _db.Database.ExecuteSqlRawAsync(
+            "UPDATE platform.firms SET subdomain = {0}, updated_at = now() WHERE id = {1}", sub, id);
+        return n == 0 ? NotFound() : Ok(new { ok = true, subdomain = sub });
+    }
+
     public record ComplaintBoxToggleDto(bool Enabled);
 
     /// <summary>Complaint Box per-firm on/off (CREDIL pattern — instant save).</summary>

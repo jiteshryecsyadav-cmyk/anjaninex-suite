@@ -105,6 +105,10 @@ public class Firm
     [MaxLength(40)]
     public string? Theme { get; set; }
 
+    /// riddhi.vyaparsetu... jaisa apna pata — sadmin Firms page se set hota hai.
+    /// Wildcard DNS+nginx sabko isi app par laate hain; Host se firm pehchani jati hai.
+    [MaxLength(30)] public string? Subdomain { get; set; }
+
     public string Timezone { get; set; } = "Asia/Kolkata";
     public string Locale { get; set; } = "en-IN";
     public string Currency { get; set; } = "INR";

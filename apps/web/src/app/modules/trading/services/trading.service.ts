@@ -333,6 +333,8 @@ export interface PaymentListItem {
   billNos: string | null;
   createdAt?: string;        // entry kab punch hui (time ke saath)
   balancePending?: number;   // is payment ke bills par abhi kitna baki
+  /** In bills ka commission kis invoice me ban chuka (jaise "Surat Ho-C22") — dobara na bane */
+  commissionInvoiceNos?: string | null;
   supplierName?: string | null;  // notes ke "Supplier: X" se
 }
 

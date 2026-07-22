@@ -22,7 +22,8 @@ public record PaymentListItemDto(
     string? BillNos,
     DateTimeOffset? CreatedAt = null,   // entry kab punch hui
     decimal BalancePending = 0,         // is payment ke bills par ABHI kitna baki
-    string? SupplierName = null);       // notes ke "Supplier: X" se
+    string? SupplierName = null,        // notes ke "Supplier: X" se
+    string? CommissionInvoiceNos = null); // in bills ka commission kis invoice me bana (dobara na bane)
 
 public record PaymentDetailDto(
     Guid Id, string PaymentType, string PaymentNo, DateOnly PaymentDate,
@@ -132,6 +133,22 @@ public class PaymentService : IPaymentService
             .ToDictionary(g => g.Key, g => g.Sum(x =>
                 Math.Max(0, x.Total - x.PaidAmount - grByBill.GetValueOrDefault(x.BillId, 0m))));
 
+        // In bills ka COMMISSION kis invoice me ban chuka — list me dikhta hai taaki
+        // operator dobara banane ki sochein hi nahi (duplicate ka pehla bachav aankh hai).
+        var commByBill = await (from cl in _db.CommissionInvoiceLines
+                                join ci in _db.CommissionInvoices on cl.CommissionInvoiceId equals ci.Id
+                                where allocBillIds.Contains(cl.BillId)
+                                select new { cl.BillId, ci.InvoiceNo })
+                               .ToListAsync();
+        var commNoByBill = commByBill
+            .GroupBy(x => x.BillId)
+            .ToDictionary(g => g.Key, g => g.First().InvoiceNo);
+        var commMap = allocs
+            .GroupBy(x => x.PaymentId)
+            .ToDictionary(g => g.Key, g => string.Join(", ",
+                g.Select(x => commNoByBill.GetValueOrDefault(x.BillId))
+                 .Where(n => n != null).Distinct()));
+
         var items = raw.Select(p =>
         {
             var party = parties.GetValueOrDefault(p.PartyId);
@@ -147,7 +164,8 @@ public class PaymentService : IPaymentService
                 billNosMap.GetValueOrDefault(p.Id),
                 p.CreatedAt,
                 pendingMap.GetValueOrDefault(p.Id, 0m),
-                supName);
+                supName,
+                string.IsNullOrEmpty(commMap.GetValueOrDefault(p.Id)) ? null : commMap[p.Id]);
         }).ToList();
 
         return (items, total);

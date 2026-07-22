@@ -111,6 +111,17 @@ import { ToastService } from '../../../shared/toast.service';
                       [class.text-red-600]="(p.balancePending || 0) > 0"
                       [class.text-gray-400]="!(p.balancePending || 0)">
                     {{ (p.balancePending || 0) > 0 ? ('₹ ' + ((p.balancePending || 0) | number:'1.2-2')) : '✓ Clear' }}
+                    <!-- Commission ban chuka? Yahi dikhna operator ko dobara banane se rokta hai -->
+                    @if (p.paymentType === 'receipt') {
+                      @if (p.commissionInvoiceNos) {
+                        <div class="text-[10px] font-sans font-bold text-[#5c1a8b] mt-0.5"
+                             [title]="'Commission ban chuka: ' + p.commissionInvoiceNos">
+                          💰 {{ p.commissionInvoiceNos }}
+                        </div>
+                      } @else if (p.billNos) {
+                        <div class="text-[10px] font-sans text-amber-600 mt-0.5">Comm. baki</div>
+                      }
+                    }
                   </td>
                   <td class="px-3 py-3 text-center">
                     <button (click)="preview(p)" class="ai-btn" title="Preview & Print">👁</button>

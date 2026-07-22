@@ -20,10 +20,12 @@ interface CommRow {
 }
 
 import { UppercaseDirective } from '../../../shared/uppercase.directive';
+import { FldDirective } from '../../../shared/fld.directive';
+import { FieldConfigService } from '../../../shared/field-config.service';
 @Component({
   selector: 'app-commission-generate',
   standalone: true,
-  imports: [UppercaseDirective, CommonModule, FormsModule, RouterLink, DecimalPipe, TradingSubNavComponent, BackButtonComponent, InDatePipe],
+  imports: [UppercaseDirective, CommonModule, FormsModule, RouterLink, DecimalPipe, TradingSubNavComponent, BackButtonComponent, InDatePipe, FldDirective],
   template: `
   @if (discAlert()) {
     <div class="disc-alert-overlay" (click)="discAlert.set('')">
@@ -61,8 +63,8 @@ import { UppercaseDirective } from '../../../shared/uppercase.directive';
           <input [(ngModel)]="supplierSearch" (ngModelChange)="supplierId = ''"
                  list="cgPartyList" placeholder="🔍 Supplier naam / GST..." class="ip" autocomplete="off">
         </div>
-        <div>
-          <label class="lbl">BUYER</label>
+        <div *fld="'commission_generate.buyer_filter'">
+          <label class="lbl">{{ fl('buyer_filter') }}</label>
           <input [(ngModel)]="buyerSearch" (ngModelChange)="buyerId = ''"
                  list="cgPartyList" placeholder="🔍 Buyer naam / GST..." class="ip" autocomplete="off">
         </div>
@@ -214,12 +216,12 @@ import { UppercaseDirective } from '../../../shared/uppercase.directive';
             <label class="lbl">INVOICE NO</label>
             <input [(ngModel)]="invoiceNo" class="ip" placeholder="Auto">
           </div>
-          <div>
-            <label class="lbl">INVOICE DATE</label>
+          <div *fld="'commission_generate.invoice_date'">
+            <label class="lbl">{{ fl('invoice_date') }}</label>
             <input [(ngModel)]="invoiceDate" type="date" class="ip">
           </div>
-          <div>
-            <label class="lbl">GST %</label>
+          <div *fld="'commission_generate.gst_pct'">
+            <label class="lbl">{{ fl('gst_pct') }}</label>
             <input appUpper [(ngModel)]="gstPct" type="number" step="0.01" class="ip">
           </div>
           <div class="flex gap-2">
@@ -594,8 +596,12 @@ import { UppercaseDirective } from '../../../shared/uppercase.directive';
 export class CommissionGenerateComponent {
   private svc = inject(TradingService);
   features = inject(FeatureService);
+  private fieldCfg = inject(FieldConfigService);
   private router = inject(Router);
   private toast = inject(ToastService);
+
+  /** Field ka naam — firm ne Screen & Fields me badla ho to wahi dikhega. */
+  fl(key: string): string { return this.fieldCfg.label('commission_generate', key); }
 
   buyers = signal<Party[]>([]);
   // Datalist options: naam + GST dono (report jaisa proven pattern).

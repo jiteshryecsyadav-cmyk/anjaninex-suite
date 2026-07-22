@@ -11,6 +11,8 @@ import { todayLocal } from '../../../shared/date.util';
 import { InDatePipe } from '../../../shared/in-date.pipe';
 import { FeatureService } from '../../../shared/feature.service';
 import { ToastService } from '../../../shared/toast.service';
+import { FldDirective } from '../../../shared/fld.directive';
+import { FieldConfigService } from '../../../shared/field-config.service';
 
 interface ReturnRow {
   selected: boolean;
@@ -29,7 +31,7 @@ interface ReturnRow {
 @Component({
   selector: 'app-gr-entry',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, RouterLinkActive, DecimalPipe, BackButtonComponent, InDatePipe, InvoicePreviewComponent],
+  imports: [CommonModule, FormsModule, RouterLink, RouterLinkActive, DecimalPipe, BackButtonComponent, InDatePipe, InvoicePreviewComponent, FldDirective],
   template: `
     <div class="max-w-7xl mx-auto">
       <div class="page-top-bar"><app-back-button></app-back-button></div>
@@ -142,12 +144,12 @@ interface ReturnRow {
               }
             </div>
           </div>
-          <div>
-            <label class="lbl">TRANSPORT NAME</label>
+          <div *fld="'gr_entry.transport'">
+            <label class="lbl">{{ fl('transport') }}</label>
             <input [(ngModel)]="transport" type="text" placeholder="Transporter / Courier name" class="ip">
           </div>
-          <div>
-            <label class="lbl">TRANSPORT / LR NO.</label>
+          <div *fld="'gr_entry.lr_no'">
+            <label class="lbl">{{ fl('lr_no') }}</label>
             <input [(ngModel)]="lrNo" type="text" placeholder="LR/Courier No." class="ip">
           </div>
 
@@ -165,12 +167,12 @@ interface ReturnRow {
               <option value="other">Other</option>
             </select>
           </div>
-          <div class="col-span-2">
-            <label class="lbl">REMARK / NOTE</label>
+          <div *fld="'gr_entry.remark'" class="col-span-2">
+            <label class="lbl">{{ fl('remark') }}</label>
             <input [(ngModel)]="remark" type="text" placeholder="Additional details..." class="ip">
           </div>
-          <div>
-            <label class="lbl">GR EFFECT ON BILL</label>
+          <div *fld="'gr_entry.effect_mode'">
+            <label class="lbl">{{ fl('effect_mode') }}</label>
             <select [(ngModel)]="effectMode" class="ip">
               <option value="direct_adjustment">📉 Direct Bill Adjustment (amount minus)</option>
               <option value="credit_note">📝 Credit Note (for future bills)</option>
@@ -781,6 +783,9 @@ interface ReturnRow {
 export class GrEntryComponent {
   private svc = inject(TradingService);
   features = inject(FeatureService);
+  private fieldCfg = inject(FieldConfigService);
+  /** Field ka naam — firm ne Screen & Fields me badla ho to wahi dikhega. */
+  fl(key: string): string { return this.fieldCfg.label('gr_entry', key); }
   private router = inject(Router);
   private route = inject(ActivatedRoute);
   private toast = inject(ToastService);

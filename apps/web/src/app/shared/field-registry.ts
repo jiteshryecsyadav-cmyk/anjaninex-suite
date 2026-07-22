@@ -92,6 +92,31 @@ export const FIELD_REGISTRY: ScreenDef[] = [
     ]
   },
   // ---------------------------------------------------------------------------
+  // GR ENTRY — Trading › GR › New (goods return)
+  // ---------------------------------------------------------------------------
+  {
+    key: 'gr_entry',
+    name: 'GR Entry (Goods Return)',
+    fields: [
+      { key: 'transport',   label: 'Transport Name' },
+      { key: 'lr_no',       label: 'Transport / LR No.' },
+      { key: 'remark',      label: 'Remark / Note' },
+      { key: 'effect_mode', label: 'GR Effect on Bill', hint: 'Direct adjustment ya credit note' }
+    ]
+  },
+  // ---------------------------------------------------------------------------
+  // COMMISSION GENERATE — Trading › Commission › Generate
+  // ---------------------------------------------------------------------------
+  {
+    key: 'commission_generate',
+    name: 'Commission Generate',
+    fields: [
+      { key: 'buyer_filter', label: 'Buyer filter', hint: 'Sirf ek buyer ke bills par commission' },
+      { key: 'gst_pct',      label: 'GST %' },
+      { key: 'invoice_date', label: 'Invoice Date' }
+    ]
+  },
+  // ---------------------------------------------------------------------------
   // PARTY MASTER — Trading › Master › Parties (new/edit form)
   // Naam/GST/Mobile/City jaise pehchan wale field locked hain — inke bina party
   // ka record hi adhoora hai. Baaki sab firm apni marzi se on/off kare.

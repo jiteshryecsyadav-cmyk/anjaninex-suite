@@ -18,11 +18,13 @@ import { amountInWords } from '../../../shared/amount-in-words.util';
 import { AccountingService } from '../../accounting/services/accounting.service';
 import { LedgerStatementComponent } from '../../accounting/components/ledger-statement.component';
 import { ToastService } from '../../../shared/toast.service';
+import { FldDirective } from '../../../shared/fld.directive';
+import { FieldConfigService } from '../../../shared/field-config.service';
 
 @Component({
   selector: 'app-parties',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterLink, RouterLinkActive, DecimalPipe, TradingSubNavComponent, BackButtonComponent, PaginatorComponent, LedgerStatementComponent, UppercaseDirective],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterLink, RouterLinkActive, DecimalPipe, TradingSubNavComponent, BackButtonComponent, PaginatorComponent, LedgerStatementComponent, UppercaseDirective, FldDirective],
   template: `
     <div class="max-w-7xl mx-auto">
       <div class="page-top-bar"><app-back-button></app-back-button></div>
@@ -275,43 +277,43 @@ import { ToastService } from '../../../shared/toast.service';
                   <label class="lbl">PARTY / FIRM NAME *</label>
                   <input formControlName="displayName" placeholder="Full firm name" class="ip">
                 </div>
-                <div>
-                  <label class="lbl">GSTIN</label>
+                <div *fld="'party_master.gstin'">
+                  <label class="lbl">{{ fl('gstin') }}</label>
                   <div class="flex gap-1">
                     <input appUpper formControlName="gst" placeholder="24XXXXX0000X1ZX" class="ip">
                     <button type="button" (click)="fetchGst()" class="btn-fetch">🔍 Fetch</button>
                   </div>
                 </div>
-                <div>
-                  <label class="lbl">PAN NUMBER <small>10 chars · ABCDE1234F</small></label>
+                <div *fld="'party_master.pan'">
+                  <label class="lbl">{{ fl('pan') }} <small>10 chars · ABCDE1234F</small></label>
                   <input appUpper formControlName="pan" placeholder="ABCDE1234F" class="ip">
                 </div>
                 <div>
                   <label class="lbl">MOBILE *</label>
                   <input formControlName="phone" placeholder="9876543210" class="ip">
                 </div>
-                <div>
-                  <label class="lbl">WHATSAPP – SUPPLIER</label>
+                <div *fld="'party_master.wa_supplier'">
+                  <label class="lbl">{{ fl('wa_supplier') }}</label>
                   <input formControlName="waSupplier" placeholder="Bechne wala no." class="ip">
                 </div>
-                <div>
-                  <label class="lbl">WHATSAPP – BUYER</label>
+                <div *fld="'party_master.wa_buyer'">
+                  <label class="lbl">{{ fl('wa_buyer') }}</label>
                   <input formControlName="waBuyer" placeholder="Khareedne wala no." class="ip">
                 </div>
-                <div>
-                  <label class="lbl">GROUP (SISTER FIRMS)</label>
+                <div *fld="'party_master.group'">
+                  <label class="lbl">{{ fl('group') }}</label>
                   <input formControlName="groupName" list="partyGroupsList" placeholder="Group choose ya naya" class="ip">
                   <datalist id="partyGroupsList">
                     @for (g of partyGroups(); track g) { <option [value]="g"></option> }
                   </datalist>
                 </div>
                 @if (newType() === 'supplier' || newType() === 'both') {
-                <div>
-                  <label class="lbl">PURCHASE DISC % <small style="color:#9CA3AF">(supplier ka committed, e.g. 6)</small></label>
+                <div *fld="'party_master.purchase_disc'">
+                  <label class="lbl">{{ fl('purchase_disc') }} <small style="color:#9CA3AF">(supplier ka committed, e.g. 6)</small></label>
                   <input formControlName="purchaseDiscPct" type="number" step="0.01" placeholder="e.g. 6" class="ip">
                 </div>
-                <div>
-                  <label class="lbl">SUPPLIER TYPE</label>
+                <div *fld="'party_master.supplier_type'">
+                  <label class="lbl">{{ fl('supplier_type') }}</label>
                   <select formControlName="supplierType" class="ip">
                     <option value="">Select...</option>
                     <option value="manufacturer">Manufacturer</option>
@@ -325,8 +327,8 @@ import { ToastService } from '../../../shared/toast.service';
                 </div>
                 }
                 @if (newType() === 'buyer' || newType() === 'both') {
-                <div>
-                  <label class="lbl">BUYER TYPE</label>
+                <div *fld="'party_master.buyer_type'">
+                  <label class="lbl">{{ fl('buyer_type') }}</label>
                   <select formControlName="buyerType" class="ip">
                     <option value="">Select...</option>
                     <option value="wholesale">Wholesale</option>
@@ -337,8 +339,8 @@ import { ToastService } from '../../../shared/toast.service';
                   </select>
                 </div>
                 }
-                <div>
-                  <label class="lbl">EXTRA WA – ROLE</label>
+                <div *fld="'party_master.wa_extra_role'">
+                  <label class="lbl">{{ fl('wa_extra_role') }}</label>
                   <select formControlName="waExtraRole" class="ip">
                     <option value="">Select...</option>
                     <option value="accountant">Accountant</option>
@@ -346,16 +348,16 @@ import { ToastService } from '../../../shared/toast.service';
                     <option value="staff">Staff</option>
                   </select>
                 </div>
-                <div>
-                  <label class="lbl">WHATSAPP – EXTRA</label>
+                <div *fld="'party_master.wa_extra'">
+                  <label class="lbl">{{ fl('wa_extra') }}</label>
                   <input formControlName="waExtra" placeholder="Accountant/Manager no." class="ip">
                 </div>
-                <div>
-                  <label class="lbl">UDYAM AADHAAR NO</label>
+                <div *fld="'party_master.udyam'">
+                  <label class="lbl">{{ fl('udyam') }}</label>
                   <input formControlName="udyamNo" placeholder="UDYAM-XX-00-0000000" class="ip">
                 </div>
-                <div>
-                  <label class="lbl">MSME TYPE</label>
+                <div *fld="'party_master.msme_type'">
+                  <label class="lbl">{{ fl('msme_type') }}</label>
                   <select formControlName="msmeType" class="ip">
                     <option value="">Select...</option>
                     <option value="micro">Micro</option>
@@ -368,8 +370,8 @@ import { ToastService } from '../../../shared/toast.service';
                   </select>
                 </div>
                 @if (newType() === 'buyer' || newType() === 'both') {
-                <div>
-                  <label class="lbl">🤝 BUYER AGENT (payment guarantee)</label>
+                <div *fld="'party_master.buyer_agent'">
+                  <label class="lbl">🤝 {{ fl('buyer_agent') }} (payment guarantee)</label>
                   <select formControlName="buyerAgentId" class="ip" (change)="onAgentChange()">
                     <option value="">- None -</option>
                     @for (a of agents(); track a.id) {
@@ -377,29 +379,29 @@ import { ToastService } from '../../../shared/toast.service';
                     }
                   </select>
                 </div>
-                <div>
-                  <label class="lbl">AGENT SHARE % <small style="color:#9CA3AF">(hamari commission ka)</small></label>
+                <div *fld="'party_master.agent_share_pct'">
+                  <label class="lbl">{{ fl('agent_share_pct') }} <small style="color:#9CA3AF">(hamari commission ka)</small></label>
                   <input formControlName="buyerAgentSharePct" type="number" step="0.01" placeholder="e.g. 25" class="ip">
                 </div>
-                <div>
-                  <label class="lbl">SUB AGENT <small style="color:#9CA3AF">(buyer ka)</small></label>
+                <div *fld="'party_master.sub_agent'">
+                  <label class="lbl">{{ fl('sub_agent') }} <small style="color:#9CA3AF">(buyer ka)</small></label>
                   <input formControlName="subAgent" placeholder="Sub-agent ka naam" class="ip">
                 </div>
-                <div>
-                  <label class="lbl">SUB AGENT % <small style="color:#9CA3AF">(sirf report — koi effect nahi)</small></label>
+                <div *fld="'party_master.sub_agent_pct'">
+                  <label class="lbl">{{ fl('sub_agent_pct') }} <small style="color:#9CA3AF">(sirf report — koi effect nahi)</small></label>
                   <input formControlName="subAgentPct" type="number" step="0.01" placeholder="e.g. 1" class="ip">
                 </div>
-                <div>
-                  <label class="lbl">INCENTIVE % <small style="color:#9CA3AF">(yearly, taxable par — sirf report)</small></label>
+                <div *fld="'party_master.incentive_pct'">
+                  <label class="lbl">{{ fl('incentive_pct') }} <small style="color:#9CA3AF">(yearly, taxable par — sirf report)</small></label>
                   <input formControlName="incentivePct" type="number" step="0.01" placeholder="e.g. 0.5" class="ip">
                 </div>
                 }
-                <div class="col-span-3">
-                  <label class="lbl">ADDRESS</label>
+                <div *fld="'party_master.address'" class="col-span-3">
+                  <label class="lbl">{{ fl('address') }}</label>
                   <textarea formControlName="address" placeholder="Shop / office address" rows="2" class="ip"></textarea>
                 </div>
-                <div>
-                  <label class="lbl">PIN CODE <small style="color:#9CA3AF">(city/state auto)</small></label>
+                <div *fld="'party_master.pincode'">
+                  <label class="lbl">{{ fl('pincode') }} <small style="color:#9CA3AF">(city/state auto)</small></label>
                   <input formControlName="pincode" placeholder="395002" class="ip" maxlength="6"
                          (input)="onPincodeInput()">
                 </div>
@@ -441,12 +443,12 @@ import { ToastService } from '../../../shared/toast.service';
                     ➕ Add Address
                   </button>
                 </div>
-                <div class="col-span-2">
-                  <label class="lbl">EMAIL</label>
+                <div *fld="'party_master.email'" class="col-span-2">
+                  <label class="lbl">{{ fl('email') }}</label>
                   <input formControlName="email" placeholder="email@example.com" class="ip">
                 </div>
-                <div>
-                  <label class="lbl">BRANCH</label>
+                <div *fld="'party_master.branch'">
+                  <label class="lbl">{{ fl('branch') }}</label>
                   <select formControlName="branch" class="ip">
                     <option value="">— None —</option>
                     <option value="jaipur">Jaipur HQ</option>
@@ -463,16 +465,16 @@ import { ToastService } from '../../../shared/toast.service';
                 <span class="step-title">CONTACT PERSON</span>
               </div>
               <form [formGroup]="form" class="grid grid-cols-3 gap-3 mt-3">
-                <div>
-                  <label class="lbl">CONTACT PERSON</label>
+                <div *fld="'party_master.contact_person'">
+                  <label class="lbl">{{ fl('contact_person') }}</label>
                   <input formControlName="contactPerson" placeholder="Name" class="ip">
                 </div>
-                <div>
-                  <label class="lbl">CONTACT MOBILE</label>
+                <div *fld="'party_master.contact_mobile'">
+                  <label class="lbl">{{ fl('contact_mobile') }}</label>
                   <input formControlName="contactMobile" placeholder="9876543210" class="ip">
                 </div>
-                <div>
-                  <label class="lbl">OFFICE / LANDLINE</label>
+                <div *fld="'party_master.landline'">
+                  <label class="lbl">{{ fl('landline') }}</label>
                   <input formControlName="landline" placeholder="0261-XXXXXXX" class="ip">
                 </div>
               </form>
@@ -483,8 +485,8 @@ import { ToastService } from '../../../shared/toast.service';
                 <span class="step-title">RATING & PERFORMANCE</span>
               </div>
               <form [formGroup]="form" class="grid grid-cols-5 gap-3 mt-3">
-                <div>
-                  <label class="lbl">RATING</label>
+                <div *fld="'party_master.rating'">
+                  <label class="lbl">{{ fl('rating') }}</label>
                   <select formControlName="rating" class="ip">
                     <option value="A+">A+ (Excellent)</option>
                     <option value="A">A (Good)</option>
@@ -492,8 +494,8 @@ import { ToastService } from '../../../shared/toast.service';
                     <option value="C">C (Risky)</option>
                   </select>
                 </div>
-                <div>
-                  <label class="lbl">STARS (1-5)</label>
+                <div *fld="'party_master.stars'">
+                  <label class="lbl">{{ fl('stars') }}</label>
                   <select formControlName="stars" class="ip">
                     <option value="5">★★★★★</option>
                     <option value="4">★★★★☆</option>
@@ -502,24 +504,24 @@ import { ToastService } from '../../../shared/toast.service';
                     <option value="1">★☆☆☆☆</option>
                   </select>
                 </div>
-                <div>
-                  <label class="lbl">AVG PAY DAYS (BUYER)</label>
+                <div *fld="'party_master.avg_pay_days'">
+                  <label class="lbl">{{ fl('avg_pay_days') }}</label>
                   <input formControlName="avgPayDays" type="number" placeholder="45" class="ip">
                 </div>
-                <div>
-                  <label class="lbl">RETURN RATE %</label>
+                <div *fld="'party_master.return_rate'">
+                  <label class="lbl">{{ fl('return_rate') }}</label>
                   <input formControlName="returnRate" type="number" step="0.1" placeholder="2.5" class="ip">
                 </div>
-                <div>
-                  <label class="lbl">COMMISSION % <small style="color:#9CA3AF">(optional)</small></label>
+                <div *fld="'party_master.commission_pct'">
+                  <label class="lbl">{{ fl('commission_pct') }} <small style="color:#9CA3AF">(optional)</small></label>
                   <input formControlName="commission" type="number" step="0.1" placeholder="0" class="ip">
                 </div>
-                <div class="col-span-5">
-                  <label class="lbl">FLAG / SPECIAL NOTE</label>
+                <div *fld="'party_master.flag_note'" class="col-span-5">
+                  <label class="lbl">{{ fl('flag_note') }}</label>
                   <input formControlName="note" placeholder="e.g. ⚠️ Late payer — extra follow up needed" class="ip">
                 </div>
-                <div class="col-span-5">
-                  <label class="lbl">💸 DISCOUNTS % <small style="color:#9CA3AF">(supplier deta hai — Order/Bill me 1-click apply)</small></label>
+                <div *fld="'party_master.discounts'" class="col-span-5">
+                  <label class="lbl">💸 {{ fl('discounts') }} <small style="color:#9CA3AF">(supplier deta hai — Order/Bill me 1-click apply)</small></label>
                   <div class="grid grid-cols-3 gap-3">
                     <div>
                       <input formControlName="discountNormal" type="number" step="0.1" min="0" placeholder="0" class="ip">
@@ -544,19 +546,19 @@ import { ToastService } from '../../../shared/toast.service';
                   <span class="step-title">OPENING OUTSTANDING</span>
                 </div>
                 <form [formGroup]="form" class="grid grid-cols-3 gap-3 mt-3">
-                  <div>
-                    <label class="lbl">CREDIT LIMIT (₹)</label>
+                  <div *fld="'party_master.credit_limit'">
+                    <label class="lbl">{{ fl('credit_limit') }}</label>
                     <input formControlName="creditLimit" type="number" placeholder="50000" class="ip">
                     @if (form.value.creditLimit && inWords(form.value.creditLimit)) {
                       <div class="amt-words">{{ inWords(form.value.creditLimit) }}</div>
                     }
                   </div>
-                  <div>
-                    <label class="lbl">CREDIT DAYS</label>
+                  <div *fld="'party_master.credit_days'">
+                    <label class="lbl">{{ fl('credit_days') }}</label>
                     <input formControlName="creditDays" type="number" placeholder="30" class="ip">
                   </div>
-                  <div>
-                    <label class="lbl">OPENING BALANCE</label>
+                  <div *fld="'party_master.opening_balance'">
+                    <label class="lbl">{{ fl('opening_balance') }}</label>
                     <input formControlName="openingBalance" type="number" placeholder="0" class="ip">
                   </div>
                 </form>
@@ -825,6 +827,9 @@ import { ToastService } from '../../../shared/toast.service';
 })
 export class PartiesComponent {
   readonly inWords = amountInWords;   // card amount → words (Indian Lakh/Crore)
+  private fieldCfg = inject(FieldConfigService);
+  /** Field ka naam — firm ne Screen & Fields me badla ho to wahi dikhega. */
+  fl(key: string): string { return this.fieldCfg.label('party_master', key); }
   private svc = inject(TradingService);
   private fb = inject(FormBuilder);
   private pinSvc = inject(IndiaPincodeService);

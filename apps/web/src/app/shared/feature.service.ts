@@ -2,6 +2,7 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../environments/environment';
 import { AuthService } from '../core/auth/auth.service';
+import { FieldConfigService } from './field-config.service';
 
 export type ModuleKey =
   | 'trading'
@@ -64,6 +65,7 @@ export interface MeModulesResponse {
 export class FeatureService {
   private http = inject(HttpClient);
   private auth = inject(AuthService);
+  private fieldCfg = inject(FieldConfigService);
   private base = `${environment.apiUrl}/api/me`;
 
   /** Set of enabled module keys for the current firm. */
@@ -122,6 +124,9 @@ export class FeatureService {
     // Super admin (firm-less user) ke liye firm-modules call mat karo — error hi aayega.
     const u = this.auth.user();
     if (u && !u.firmId) { this.loaded.set(true); return; }
+
+    // Screen fields ki settings bhi saath hi — kaunsa field dikhega, uska naam kya hai.
+    this.fieldCfg.load();
 
     this.http.get<MeModulesResponse>(`${this.base}/modules`).subscribe({
       next: (r) => {

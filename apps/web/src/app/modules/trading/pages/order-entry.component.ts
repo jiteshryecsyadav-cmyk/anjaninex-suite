@@ -14,6 +14,8 @@ import { todayLocal } from '../../../shared/date.util';
 import { ToastService } from '../../../shared/toast.service';
 import { AuthService } from '../../../core/auth/auth.service';
 import { FeatureService } from '../../../shared/feature.service';
+import { FldDirective } from '../../../shared/fld.directive';
+import { FieldConfigService } from '../../../shared/field-config.service';
 
 interface RateOpt { qty: number; unit: string; rate: number; }
 interface RateChoice {
@@ -40,7 +42,7 @@ interface LineRow {
 @Component({
   selector: 'app-order-entry',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, RouterLinkActive, DecimalPipe, BackButtonComponent, PartyQuickAddComponent, BillScanModalComponent, TransporterQuickAddComponent],
+  imports: [CommonModule, FormsModule, RouterLink, RouterLinkActive, DecimalPipe, BackButtonComponent, PartyQuickAddComponent, BillScanModalComponent, TransporterQuickAddComponent, FldDirective],
   template: `
     <div class="max-w-7xl mx-auto">
       <div class="page-top-bar"><app-back-button></app-back-button></div>
@@ -153,6 +155,7 @@ interface LineRow {
               }
             </div>
           </div>
+          <ng-container *fld="'order_entry.supplier_info'">
           <div>
             <label class="lbl">GSTIN *</label>
             <input type="text" [value]="supplierGstin" disabled placeholder="GSTIN" class="ip ip-auto">
@@ -165,7 +168,9 @@ interface LineRow {
             <label class="lbl">ADDRESS</label>
             <input type="text" [value]="supplierAddress" disabled placeholder="Auto fill" class="ip ip-auto">
           </div>
+          </ng-container>
           <div class="grid grid-cols-3 gap-3">
+            <ng-container *fld="'order_entry.supplier_info'">
             <div>
               <label class="lbl">MOBILE</label>
               <input type="text" [value]="supplierMobile" disabled placeholder="Auto fill" class="ip ip-auto">
@@ -178,6 +183,7 @@ interface LineRow {
                         (click)="openWhatsApp(supplierWhatsapp || supplierMobile)" title="WhatsApp karo">💬</button>
               </div>
             </div>
+            </ng-container>
             <div>
               <label class="lbl">PARTY MASTER</label>
               @if (supplierInMaster) {
@@ -228,6 +234,7 @@ interface LineRow {
               }
             </div>
           </div>
+          <ng-container *fld="'order_entry.buyer_info'">
           <div>
             <label class="lbl">BUYER GSTIN</label>
             <input type="text" [value]="buyerGstin" disabled placeholder="Buyer GSTIN" class="ip ip-auto">
@@ -240,7 +247,9 @@ interface LineRow {
             <label class="lbl">BUYER ADDRESS</label>
             <input type="text" [value]="buyerAddress" disabled placeholder="Auto fill" class="ip ip-auto">
           </div>
+          </ng-container>
           <div class="grid grid-cols-3 gap-3">
+            <ng-container *fld="'order_entry.buyer_info'">
             <div>
               <label class="lbl">BUYER MOBILE</label>
               <input type="text" [value]="buyerMobile" disabled placeholder="Auto fill" class="ip ip-auto">
@@ -253,6 +262,7 @@ interface LineRow {
                         (click)="openWhatsApp(buyerWhatsapp || buyerMobile)" title="WhatsApp karo">💬</button>
               </div>
             </div>
+            </ng-container>
             <div>
               <label class="lbl">PARTY MASTER</label>
               @if (buyerInMaster) {
@@ -433,7 +443,7 @@ interface LineRow {
           </div>
 
           <!-- CD Toggle -->
-          <div class="cd-block mt-3">
+          <div *fld="'order_entry.cd'" class="cd-block mt-3">
             <div class="cd-head">
               <span>$ CD (Cash Discount)</span>
               <button type="button" class="toggle" [class.on]="cdEnabled()" (click)="toggleCd()">
@@ -484,6 +494,7 @@ interface LineRow {
               </span>
             </div>
             <div class="grid grid-cols-2 gap-3 mt-2">
+              <ng-container *fld="'order_entry.normal_disc'">
               <div>
                 <label class="lbl">NORMAL DISC %</label>
                 <input [ngModel]="discNormalPct()" (ngModelChange)="onDiscNormalPct($event)"
@@ -494,6 +505,8 @@ interface LineRow {
                 <input [ngModel]="discNormalAmt()" (ngModelChange)="onDiscNormalAmt($event)"
                        type="number" step="0.01" min="0" class="ip">
               </div>
+              </ng-container>
+              <ng-container *fld="'order_entry.exhibition_disc'">
               <div>
                 <label class="lbl">EXHIBITION DISC %</label>
                 <input [ngModel]="discExhPct()" (ngModelChange)="onDiscExhPct($event)"
@@ -504,20 +517,21 @@ interface LineRow {
                 <input [ngModel]="discExhAmt()" (ngModelChange)="onDiscExhAmt($event)"
                        type="number" step="0.01" min="0" class="ip">
               </div>
+              </ng-container>
             </div>
           </div>
 
           <div class="grid grid-cols-2 gap-4 mt-4">
-            <div>
-              <label class="lbl">SUPPLIER ORDER NO.</label>
+            <div *fld="'order_entry.supplier_order_no'">
+              <label class="lbl">{{ fl('supplier_order_no') }}</label>
               <input [(ngModel)]="supplierOrderNo" type="text" placeholder="Supplier's order ref" class="ip">
             </div>
-            <div>
-              <label class="lbl">SUPPLIER GROUP (firm abhi pakki nahi to)</label>
+            <div *fld="'order_entry.supplier_group'">
+              <label class="lbl">{{ fl('supplier_group') }} (firm abhi pakki nahi to)</label>
               <input [(ngModel)]="supplierGroupName" type="text" placeholder="e.g. Gupta Group" class="ip">
             </div>
-            <div>
-              <label class="lbl">TRANSPORTER</label>
+            <div *fld="'order_entry.transporter'">
+              <label class="lbl">{{ fl('transporter') }}</label>
               <div class="combo-wrap">
                 <div class="flex gap-2">
                   <input type="text" [ngModel]="transporterFilter()"
@@ -548,6 +562,7 @@ interface LineRow {
                 }
               </div>
             </div>
+            <ng-container *fld="'order_entry.transporter_info'">
             <div>
               <label class="lbl">TRANSPORTER GST</label>
               <input type="text" [value]="selTransporter()?.gstNo || ''" disabled placeholder="Auto fill" class="ip ip-auto">
@@ -556,6 +571,7 @@ interface LineRow {
               <label class="lbl">TRANSPORTER MOBILE</label>
               <input type="text" [value]="selTransporter()?.mobile || ''" disabled placeholder="Auto fill" class="ip ip-auto">
             </div>
+            </ng-container>
             <div>
               <label class="lbl">PAYMENT TERMS *</label>
               <select [(ngModel)]="paymentTerms" class="ip">
@@ -570,8 +586,8 @@ interface LineRow {
                 <option value="loa">LOA (Letter of Authorization)</option>
               </select>
             </div>
-            <div>
-              <label class="lbl">ORDER STATUS</label>
+            <div *fld="'order_entry.order_status'">
+              <label class="lbl">{{ fl('order_status') }}</label>
               <select [(ngModel)]="orderStatus" class="ip">
                 <option value="pending">Pending</option>
                 <option value="confirmed">Confirmed</option>
@@ -581,12 +597,12 @@ interface LineRow {
                 <option value="cancelled">Cancelled</option>
               </select>
             </div>
-            <div>
-              <label class="lbl">REMARK</label>
+            <div *fld="'order_entry.remark'">
+              <label class="lbl">{{ fl('remark') }}</label>
               <input [(ngModel)]="remark" type="text" placeholder="Optional remark" class="ip">
             </div>
-            <div>
-              <label class="lbl">INSURANCE</label>
+            <div *fld="'order_entry.insurance'">
+              <label class="lbl">{{ fl('insurance') }}</label>
               <input [ngModel]="insuranceAmt()" (ngModelChange)="insuranceAmt.set(+$event || 0)" type="number" step="0.01" class="ip">
             </div>
           </div>
@@ -1218,6 +1234,9 @@ interface LineRow {
 export class OrderEntryComponent {
   private svc = inject(TradingService);
   features = inject(FeatureService);
+  private fieldCfg = inject(FieldConfigService);
+  /** Field ka naam — firm ne Screen & Fields me badla ho to wahi dikhega. */
+  fl(key: string): string { return this.fieldCfg.label('order_entry', key); }
   private router = inject(Router);
   private toast = inject(ToastService);
   private route = inject(ActivatedRoute);

@@ -130,7 +130,9 @@ INSERT INTO core.permissions (code, module, resource, action, scope, description
 -- Settings › Wallet
 ('settings.wallet.create.firm', 'settings', 'wallet', 'create', 'firm', 'Create wallet request'),
 ('settings.wallet.edit.firm',   'settings', 'wallet', 'edit',   'firm', 'Manage wallet'),
-('settings.wallet.delete.firm', 'settings', 'wallet', 'delete', 'firm', 'Cancel wallet request')
+('settings.wallet.delete.firm', 'settings', 'wallet', 'delete', 'firm', 'Cancel wallet request'),
+-- Settings › Screen Fields (migration 95) — firm apni screen ke fields khud tay kare
+('settings.fields.edit.firm',   'settings', 'fields', 'edit',   'firm', 'Screen ke fields on/off karna')
 ON CONFLICT (code) DO NOTHING;
 
 -- Verify

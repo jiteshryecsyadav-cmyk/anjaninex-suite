@@ -9,10 +9,12 @@ interface C { id: string; displayName: string; gst?: string | null; groupName?: 
 
 // Party Groups (sister firms) - ek jagah se group bana ke member firms tick karo.
 import { BackButtonComponent } from '../../shared/back-button.component';
+import { FldDirective } from '../../shared/fld.directive';
+import { FieldConfigService } from '../../shared/field-config.service';
 @Component({
   selector: 'app-party-groups',
   standalone: true,
-  imports: [BackButtonComponent, CommonModule, FormsModule, RouterLink],
+  imports: [BackButtonComponent, CommonModule, FormsModule, RouterLink, FldDirective],
   template: `
     <div class="page-top-bar"><app-back-button></app-back-button></div>
   <div class="p-6 max-w-6xl mx-auto">
@@ -69,20 +71,20 @@ import { BackButtonComponent } from '../../shared/back-button.component';
             👤 Group Master detail <small class="normal-case font-normal text-gray-400">(save par sab sister firms me auto-sync)</small>
           </div>
           <div class="grid grid-cols-2 md:grid-cols-3 gap-2">
-            <div><label class="text-[10px] text-gray-500 block">OWNER NAME</label>
+            <div *fld="'group_master.owner_name'"><label class="text-[10px] text-gray-500 block">{{ fl('owner_name') }}</label>
               <input [(ngModel)]="gOwner" class="input" placeholder="Malik ka naam"></div>
-            <div><label class="text-[10px] text-gray-500 block">MOBILE NO</label>
+            <div *fld="'group_master.mobile'"><label class="text-[10px] text-gray-500 block">{{ fl('mobile') }}</label>
               <input [(ngModel)]="gMobile" class="input" placeholder="9876543210"></div>
-            <div><label class="text-[10px] text-gray-500 block">WHATSAPP NO</label>
+            <div *fld="'group_master.whatsapp'"><label class="text-[10px] text-gray-500 block">{{ fl('whatsapp') }}</label>
               <input [(ngModel)]="gWhatsapp" class="input" placeholder="9876543210"></div>
-            <div><label class="text-[10px] text-gray-500 block">PARTY TYPE</label>
+            <div *fld="'group_master.party_type'"><label class="text-[10px] text-gray-500 block">{{ fl('party_type') }}</label>
               <select [(ngModel)]="gPartyType" class="input">
                 <option value="supplier">Supplier</option>
                 <option value="buyer">Buyer</option>
                 <option value="both">Both (Supplier + Buyer)</option>
               </select></div>
             @if (gPartyType === 'buyer' || gPartyType === 'both') {
-              <div><label class="text-[10px] text-gray-500 block">BUYER TYPE</label>
+              <div *fld="'group_master.buyer_type'"><label class="text-[10px] text-gray-500 block">{{ fl('buyer_type') }}</label>
                 <select [(ngModel)]="gBuyerType" class="input">
                   <option value="">Select...</option>
                   <option value="wholesale">Wholesale</option>
@@ -92,19 +94,19 @@ import { BackButtonComponent } from '../../shared/back-button.component';
                   <option value="other">Other</option>
                 </select></div>
             }
-            <div class="col-span-2 md:col-span-3"><label class="text-[10px] text-gray-500 block">ADDRESS 1</label>
+            <div *fld="'group_master.address1'" class="col-span-2 md:col-span-3"><label class="text-[10px] text-gray-500 block">{{ fl('address1') }}</label>
               <input [(ngModel)]="gAddress" class="input" placeholder="Shop / office address"></div>
-            <div class="col-span-2 md:col-span-3"><label class="text-[10px] text-gray-500 block">ADDRESS 2</label>
+            <div *fld="'group_master.address2'" class="col-span-2 md:col-span-3"><label class="text-[10px] text-gray-500 block">{{ fl('address2') }}</label>
               <input [(ngModel)]="gAddress2" class="input" placeholder="Godown / branch address (optional)"></div>
-            <div><label class="text-[10px] text-gray-500 block">PINCODE <span class="text-[#9333ea]">(→ auto city/state)</span></label>
+            <div *fld="'group_master.pincode'"><label class="text-[10px] text-gray-500 block">{{ fl('pincode') }} <span class="text-[#9333ea]">(→ auto city/state)</span></label>
               <input [(ngModel)]="gPincode" (ngModelChange)="onPincode($event)" class="input" placeholder="395002" maxlength="6" inputmode="numeric"></div>
-            <div><label class="text-[10px] text-gray-500 block">CITY {{ pinLoading() ? '⏳' : '' }}</label>
+            <div *fld="'group_master.city'"><label class="text-[10px] text-gray-500 block">{{ fl('city') }} {{ pinLoading() ? '⏳' : '' }}</label>
               <input [(ngModel)]="gCity" class="input" placeholder="Surat"></div>
-            <div><label class="text-[10px] text-gray-500 block">STATE</label>
+            <div *fld="'group_master.state'"><label class="text-[10px] text-gray-500 block">{{ fl('state') }}</label>
               <input [(ngModel)]="gState" class="input" placeholder="Gujarat"></div>
-            <div><label class="text-[10px] text-gray-500 block">COMMISSION %</label>
+            <div *fld="'group_master.commission_pct'"><label class="text-[10px] text-gray-500 block">{{ fl('commission_pct') }}</label>
               <input [(ngModel)]="gCommission" type="number" step="0.1" min="0" class="input" placeholder="0"></div>
-            <div><label class="text-[10px] text-gray-500 block">PAYMENT TERMS</label>
+            <div *fld="'group_master.payment_terms'"><label class="text-[10px] text-gray-500 block">{{ fl('payment_terms') }}</label>
               <select [(ngModel)]="gTerms" class="input">
                 <option value="">Select...</option>
                 <option value="advance">Advance Payment</option>
@@ -116,25 +118,25 @@ import { BackButtonComponent } from '../../shared/back-button.component';
                 <option value="cod">COD (Cash on Delivery)</option>
                 <option value="loa">LOA (Letter of Authorization)</option>
               </select></div>
-            <div><label class="text-[10px] text-gray-500 block">PURCHASE DISC % <span class="text-[9px] text-purple-600">(supplier ka committed)</span></label>
+            <div *fld="'group_master.purchase_disc'"><label class="text-[10px] text-gray-500 block">{{ fl('purchase_disc') }} <span class="text-[9px] text-purple-600">(supplier ka committed)</span></label>
               <input [(ngModel)]="gPurchDisc" type="number" step="0.1" min="0" class="input" placeholder="e.g. 6"></div>
-            <div><label class="text-[10px] text-gray-500 block">NORMAL DISC %</label>
+            <div *fld="'group_master.normal_disc'"><label class="text-[10px] text-gray-500 block">{{ fl('normal_disc') }}</label>
               <input [(ngModel)]="gDiscN" type="number" step="0.1" min="0" class="input" placeholder="0"></div>
-            <div><label class="text-[10px] text-gray-500 block">SPECIAL DISC %</label>
+            <div *fld="'group_master.special_disc'"><label class="text-[10px] text-gray-500 block">{{ fl('special_disc') }}</label>
               <input [(ngModel)]="gDiscS" type="number" step="0.1" min="0" class="input" placeholder="0"></div>
-            <div><label class="text-[10px] text-gray-500 block">EXHIBITION DISC %</label>
+            <div *fld="'group_master.exhibition_disc'"><label class="text-[10px] text-gray-500 block">{{ fl('exhibition_disc') }}</label>
               <input [(ngModel)]="gDiscE" type="number" step="0.1" min="0" class="input" placeholder="0"></div>
-            <div><label class="text-[10px] text-gray-500 block">EXHIBITION FROM</label>
+            <div *fld="'group_master.exhibition_from'"><label class="text-[10px] text-gray-500 block">{{ fl('exhibition_from') }}</label>
               <input [(ngModel)]="gExhFrom" type="date" class="input"></div>
-            <div><label class="text-[10px] text-gray-500 block">EXHIBITION TO</label>
+            <div *fld="'group_master.exhibition_to'"><label class="text-[10px] text-gray-500 block">{{ fl('exhibition_to') }}</label>
               <input [(ngModel)]="gExhTo" type="date" class="input"></div>
 
             <!-- Party Master jaise baaki fields — group me bharo, sab sister firms me sync -->
-            <div><label class="text-[10px] text-gray-500 block">CREDIT LIMIT (₹)</label>
+            <div *fld="'group_master.credit_limit'"><label class="text-[10px] text-gray-500 block">{{ fl('credit_limit') }}</label>
               <input [(ngModel)]="gCreditLimit" type="number" step="1" min="0" class="input" placeholder="0"></div>
-            <div><label class="text-[10px] text-gray-500 block">CREDIT DAYS</label>
+            <div *fld="'group_master.credit_days'"><label class="text-[10px] text-gray-500 block">{{ fl('credit_days') }}</label>
               <input [(ngModel)]="gCreditDays" type="number" step="1" min="0" class="input" placeholder="Payment terms se"></div>
-            <div><label class="text-[10px] text-gray-500 block">SUPPLIER TYPE</label>
+            <div *fld="'group_master.supplier_type'"><label class="text-[10px] text-gray-500 block">{{ fl('supplier_type') }}</label>
               <select [(ngModel)]="gSupplierType" class="input">
                 <option value="">Select...</option>
                 <option value="Wholesaler">Wholesaler</option>
@@ -142,13 +144,13 @@ import { BackButtonComponent } from '../../shared/back-button.component';
                 <option value="Trader">Trader</option>
                 <option value="Agent">Agent</option>
               </select></div>
-            <div><label class="text-[10px] text-gray-500 block">EMAIL</label>
+            <div *fld="'group_master.email'"><label class="text-[10px] text-gray-500 block">{{ fl('email') }}</label>
               <input [(ngModel)]="gEmail" type="email" class="input" placeholder="firm@example.com"></div>
-            <div><label class="text-[10px] text-gray-500 block">WHATSAPP – BUYER</label>
+            <div *fld="'group_master.wa_buyer'"><label class="text-[10px] text-gray-500 block">{{ fl('wa_buyer') }}</label>
               <input [(ngModel)]="gWaBuyer" class="input" placeholder="Khareedne wala no."></div>
-            <div><label class="text-[10px] text-gray-500 block">WHATSAPP – EXTRA</label>
+            <div *fld="'group_master.wa_extra'"><label class="text-[10px] text-gray-500 block">{{ fl('wa_extra') }}</label>
               <input [(ngModel)]="gWaExtra" class="input" placeholder="9825828256"></div>
-            <div><label class="text-[10px] text-gray-500 block">EXTRA WA – ROLE</label>
+            <div *fld="'group_master.wa_extra_role'"><label class="text-[10px] text-gray-500 block">{{ fl('wa_extra_role') }}</label>
               <select [(ngModel)]="gWaExtraRole" class="input">
                 <option value="">Select...</option>
                 <option value="Manager">Manager</option>
@@ -156,13 +158,13 @@ import { BackButtonComponent } from '../../shared/back-button.component';
                 <option value="Owner">Owner</option>
                 <option value="Other">Other</option>
               </select></div>
-            <div><label class="text-[10px] text-gray-500 block">SUB AGENT</label>
+            <div *fld="'group_master.sub_agent'"><label class="text-[10px] text-gray-500 block">{{ fl('sub_agent') }}</label>
               <input [(ngModel)]="gSubAgent" class="input" placeholder="Naam"></div>
-            <div><label class="text-[10px] text-gray-500 block">SUB AGENT %</label>
+            <div *fld="'group_master.sub_agent_pct'"><label class="text-[10px] text-gray-500 block">{{ fl('sub_agent_pct') }}</label>
               <input [(ngModel)]="gSubAgentPct" type="number" step="0.1" min="0" class="input" placeholder="0"></div>
-            <div><label class="text-[10px] text-gray-500 block">INCENTIVE %</label>
+            <div *fld="'group_master.incentive_pct'"><label class="text-[10px] text-gray-500 block">{{ fl('incentive_pct') }}</label>
               <input [(ngModel)]="gIncentivePct" type="number" step="0.1" min="0" class="input" placeholder="0"></div>
-            <div><label class="text-[10px] text-gray-500 block">AGENT SHARE %</label>
+            <div *fld="'group_master.agent_share_pct'"><label class="text-[10px] text-gray-500 block">{{ fl('agent_share_pct') }}</label>
               <input [(ngModel)]="gAgentSharePct" type="number" step="0.1" min="0" class="input" placeholder="0"></div>
           </div>
           <p class="text-[10px] text-gray-400 mt-1">Exhibition Disc sirf FROM–TO date ke beech ke bill par lagta hai. Warna Normal/Special disc.</p>
@@ -199,6 +201,11 @@ import { BackButtonComponent } from '../../shared/back-button.component';
 })
 export class PartyGroupsComponent {
   private http = inject(HttpClient);
+  private fieldCfg = inject(FieldConfigService);
+
+  /** Field ka naam — firm ne Settings me badla ho to wahi dikhega. */
+  fl(key: string): string { return this.fieldCfg.label('group_master', key); }
+
   base = `${environment.apiUrl}/api/core/contacts`;
   all = signal<C[]>([]);
   groups = signal<string[]>([]);

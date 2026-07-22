@@ -15,6 +15,8 @@ import { todayLocal } from '../../../shared/date.util';
 import { ToastService } from '../../../shared/toast.service';
 import { InDatePipe } from '../../../shared/in-date.pipe';
 import { FeatureService } from '../../../shared/feature.service';
+import { FldDirective } from '../../../shared/fld.directive';
+import { FieldConfigService } from '../../../shared/field-config.service';
 import { firstValueFrom } from 'rxjs';
 
 interface RateOpt { qty: number; unit: string; rate: number; }
@@ -44,7 +46,7 @@ interface LineRow {
 @Component({
   selector: 'app-bill-entry',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, RouterLinkActive, DecimalPipe, BillScanModalComponent, BackButtonComponent, PartyQuickAddComponent, TransporterQuickAddComponent, InDatePipe],
+  imports: [CommonModule, FormsModule, RouterLink, RouterLinkActive, DecimalPipe, BillScanModalComponent, BackButtonComponent, PartyQuickAddComponent, TransporterQuickAddComponent, InDatePipe, FldDirective],
   template: `
     <div class="max-w-7xl mx-auto">
       <div class="page-top-bar"><app-back-button></app-back-button></div>
@@ -141,8 +143,8 @@ interface LineRow {
             <label class="lbl">SUPPLIER BILL DATE * <small style="color:#9CA3AF">(bill par chhapi date — due isi se)</small></label>
             <input [(ngModel)]="billDate" type="date" class="ip">
           </div>
-          <div class="col-span-2">
-            <label class="lbl">ENTRY DATE <small style="color:#9CA3AF">(auto — aaj ki date, jab entry hui)</small></label>
+          <div *fld="'bill_entry.entry_date'" class="col-span-2">
+            <label class="lbl">{{ fl('entry_date') }} <small style="color:#9CA3AF">(auto — aaj ki date, jab entry hui)</small></label>
             <input [(ngModel)]="recDate" type="date" class="ip ip-auto" disabled title="System date — apne aap aaj ki date">
           </div>
         </div>
@@ -205,6 +207,7 @@ interface LineRow {
               }
             </div>
           </div>
+          <ng-container *fld="'bill_entry.supplier_info'">
           <div>
             <label class="lbl">GSTIN</label>
             <input type="text" [value]="supplierGstin" disabled placeholder="Auto fill" class="ip ip-auto">
@@ -217,8 +220,9 @@ interface LineRow {
             <label class="lbl">ADDRESS</label>
             <input type="text" [value]="supplierAddress" disabled placeholder="Auto fill" class="ip ip-auto">
           </div>
+          </ng-container>
           <div class="grid grid-cols-2 gap-3">
-            <div>
+            <div *fld="'bill_entry.supplier_info'">
               <label class="lbl">MOBILE / WHATSAPP / PHONE NO</label>
               <div class="flex gap-1">
                 <input type="text" [value]="supplierPhone" disabled placeholder="Auto fill" class="ip ip-auto flex-1">
@@ -291,6 +295,7 @@ interface LineRow {
             <label class="lbl">CITY</label>
             <input [(ngModel)]="buyerCity" type="text" placeholder="City" class="ip">
           </div>
+          <ng-container *fld="'bill_entry.buyer_info'">
           <div>
             <label class="lbl">BUYER GSTIN</label>
             <input type="text" [value]="buyerGstin" disabled placeholder="Auto fill" class="ip ip-auto">
@@ -303,8 +308,9 @@ interface LineRow {
             <label class="lbl">BUYER ADDRESS</label>
             <input type="text" [value]="buyerAddress" disabled placeholder="Auto fill" class="ip ip-auto">
           </div>
+          </ng-container>
           <div class="grid grid-cols-2 gap-3">
-            <div>
+            <div *fld="'bill_entry.buyer_info'">
               <label class="lbl">MOBILE / WHATSAPP / PHONE NO</label>
               <div class="flex gap-1">
                 <input type="text" [value]="buyerPhone" disabled placeholder="Auto fill" class="ip ip-auto flex-1">
@@ -335,8 +341,10 @@ interface LineRow {
             <span class="sec-ico">📦</span> ITEM DETAILS
           </div>
           <div class="flex items-center gap-2">
-            <label class="lbl" style="margin:0;white-space:nowrap">📦 CASE/PARCEL/BALE</label>
-            <input [(ngModel)]="caseParcel" type="number" min="0" placeholder="0" class="ip" style="width:90px">
+            <ng-container *fld="'bill_entry.case_parcel'">
+              <label class="lbl" style="margin:0;white-space:nowrap">📦 {{ fl('case_parcel') }}</label>
+              <input [(ngModel)]="caseParcel" type="number" min="0" placeholder="0" class="ip" style="width:90px">
+            </ng-container>
             <button type="button" (click)="addLine()" class="btn-add-item">+ Add Item</button>
           </div>
         </div>
@@ -505,7 +513,7 @@ interface LineRow {
             </div>
 
             <!-- CD Toggle -->
-            <div class="col-span-2 cd-block">
+            <div *fld="'bill_entry.cd'" class="col-span-2 cd-block">
               <div class="cd-head">
                 <span>$ CD (Cash Discount)</span>
                 <button type="button" class="toggle" [class.on]="cdEnabled()" (click)="toggleCd()">
@@ -555,6 +563,7 @@ interface LineRow {
                 </span>
               </div>
               <div class="grid grid-cols-2 gap-3 mt-2">
+                <ng-container *fld="'bill_entry.normal_disc'">
                 <div>
                   <label class="lbl">NORMAL DISC %</label>
                   <input [ngModel]="discNormalPct()" (ngModelChange)="onDiscNormalPct($event)"
@@ -565,6 +574,8 @@ interface LineRow {
                   <input [ngModel]="discNormalAmt()" (ngModelChange)="onDiscNormalAmt($event)"
                          type="number" step="0.01" min="0" class="ip">
                 </div>
+                </ng-container>
+                <ng-container *fld="'bill_entry.exhibition_disc'">
                 <div>
                   <label class="lbl">EXHIBITION DISC %</label>
                   <input [ngModel]="discExhPct()" (ngModelChange)="onDiscExhPct($event)"
@@ -575,14 +586,16 @@ interface LineRow {
                   <input [ngModel]="discExhAmt()" (ngModelChange)="onDiscExhAmt($event)"
                          type="number" step="0.01" min="0" class="ip">
                 </div>
+                </ng-container>
               </div>
             </div>
 
-            <div>
-              <label class="lbl">SWEET / L.S</label>
+            <div *fld="'bill_entry.sweet_ls'">
+              <label class="lbl">{{ fl('sweet_ls') }}</label>
               <input [ngModel]="sweetLs()" (ngModelChange)="sweetLs.set(+$event || 0)" type="number" step="0.01" class="ip">
             </div>
             <!-- 🧵 FOLD LESS — GROSS me se PEHLE katta hai, bache balance par discount -->
+            <ng-container *fld="'bill_entry.fold'">
             <div>
               <label class="lbl">🧵 FOLD LESS %</label>
               <input [ngModel]="foldPct()" (ngModelChange)="onFoldPct($event)"
@@ -593,16 +606,17 @@ interface LineRow {
               <input [ngModel]="foldAmt()" (ngModelChange)="onFoldAmt($event)"
                      type="number" step="0.01" min="0" class="ip">
             </div>
-            <div>
-              <label class="lbl">BANK CHARGE <small style="color:#9CA3AF">(minus hota hai)</small></label>
+            </ng-container>
+            <div *fld="'bill_entry.bank_charge'">
+              <label class="lbl">{{ fl('bank_charge') }} <small style="color:#9CA3AF">(minus hota hai)</small></label>
               <input [ngModel]="bankCharge()" (ngModelChange)="bankCharge.set(+$event || 0)" type="number" step="0.01" min="0" class="ip">
             </div>
-            <div>
-              <label class="lbl">INTEREST AMT</label>
+            <div *fld="'bill_entry.interest'">
+              <label class="lbl">{{ fl('interest') }}</label>
               <input [ngModel]="interestAmt()" (ngModelChange)="interestAmt.set(+$event || 0)" type="number" step="0.01" class="ip">
             </div>
-            <div>
-              <label class="lbl">INSURANCE</label>
+            <div *fld="'bill_entry.insurance'">
+              <label class="lbl">{{ fl('insurance') }}</label>
               <input [ngModel]="insuranceAmt()" (ngModelChange)="insuranceAmt.set(+$event || 0)" type="number" step="0.01" class="ip">
             </div>
             <div>
@@ -618,8 +632,8 @@ interface LineRow {
               <label class="lbl">CGST AMT <small style="color:#9CA3AF">(discount ke baad)</small></label>
               <input type="text" disabled [value]="'₹ ' + (effCgst() | number:'1.2-2')" class="ip ip-auto">
             </div>
-            <div>
-              <label class="lbl">PAYMENT TERMS</label>
+            <div *fld="'bill_entry.payment_terms'">
+              <label class="lbl">{{ fl('payment_terms') }}</label>
               <select [(ngModel)]="paymentTerms" (ngModelChange)="onTermsChange()" class="ip">
                 <option value="">Select...</option>
                 <option value="advance">Advance Payment</option>
@@ -633,8 +647,8 @@ interface LineRow {
               </select>
             </div>
 
-            <div>
-              <label class="lbl">TCS AMT</label>
+            <div *fld="'bill_entry.tcs'">
+              <label class="lbl">{{ fl('tcs') }}</label>
               <input [ngModel]="tcsAmt()" (ngModelChange)="tcsAmt.set(+$event || 0)" type="number" step="0.01" class="ip">
             </div>
             <div>
@@ -654,8 +668,8 @@ interface LineRow {
                      class="ip ip-auto"
                      style="font-weight:800; color:#1B2E5C; background:#FEF3C7; border-color:#F59E0B">
             </div>
-            <div>
-              <label class="lbl">ORDER STATUS</label>
+            <div *fld="'bill_entry.order_status'">
+              <label class="lbl">{{ fl('order_status') }}</label>
               <select [(ngModel)]="orderStatus" class="ip">
                 <option value="billed">Billed</option>
                 <option value="pending">Pending</option>
@@ -710,6 +724,7 @@ interface LineRow {
                 </div>
               }
             </div>
+            <ng-container *fld="'bill_entry.transporter_info'">
             <div>
               <label class="lbl">TRANSPORTER GST</label>
               <input type="text" [value]="selTransporter()?.gstNo || ''" disabled placeholder="Auto fill" class="ip ip-auto">
@@ -718,14 +733,16 @@ interface LineRow {
               <label class="lbl">TRANSPORTER MOBILE</label>
               <input type="text" [value]="selTransporter()?.mobile || ''" disabled placeholder="Auto fill" class="ip ip-auto">
             </div>
+            </ng-container>
             <div>
               <label class="lbl">LR NO. *</label>
               <input [(ngModel)]="lrNo" type="text" placeholder="LR Number" class="ip">
             </div>
-            <div>
-              <label class="lbl">LR DATE</label>
+            <div *fld="'bill_entry.lr_date'">
+              <label class="lbl">{{ fl('lr_date') }}</label>
               <input [(ngModel)]="lrDate" type="date" class="ip">
             </div>
+            <ng-container *fld="'bill_entry.eway'">
             <div>
               <label class="lbl">E-WAY BILL NO</label>
               <input [(ngModel)]="ewayBillNo" (blur)="syncEwayDate()" type="text" placeholder="12-digit eWay No" maxlength="20" class="ip">
@@ -734,9 +751,10 @@ interface LineRow {
               <label class="lbl">E-WAY BILL DATE</label>
               <input [(ngModel)]="ewayBillDate" type="date" class="ip">
             </div>
+            </ng-container>
 
-            <div class="col-span-3">
-              <label class="lbl">REMARK</label>
+            <div *fld="'bill_entry.remark'" class="col-span-3">
+              <label class="lbl">{{ fl('remark') }}</label>
               <textarea [(ngModel)]="remark" rows="2" placeholder="Optional remark..." class="ip"></textarea>
             </div>
           </div>
@@ -1679,6 +1697,9 @@ interface LineRow {
 export class BillEntryComponent {
   private svc = inject(TradingService);
   features = inject(FeatureService);
+  private fieldCfg = inject(FieldConfigService);
+  /** Field ka naam — firm ne Screen & Fields me badla ho to wahi dikhega. */
+  fl(key: string): string { return this.fieldCfg.label('bill_entry', key); }
   private router = inject(Router);
   private route = inject(ActivatedRoute);
   auth = inject(AuthService);

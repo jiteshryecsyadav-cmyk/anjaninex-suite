@@ -211,6 +211,11 @@ import { environment } from '../../../environments/environment';
                  class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-semibold text-white/75 hover:text-white hover:bg-white/10">
                 <span class="w-5 text-center">🛡️</span> Team
               </a>
+              <!-- Screen & Fields — firm apni screens ke fields on/off kare -->
+              <a routerLink="/settings/screen-fields" routerLinkActive="!bg-anjaninex-red !text-white"
+                 class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-semibold text-white/75 hover:text-white hover:bg-white/10">
+                <span class="w-5 text-center">🎛️</span> Screen &amp; Fields
+              </a>
             }
             <a routerLink="/core-master" routerLinkActive="!bg-anjaninex-red !text-white"
                class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-semibold text-white/75 hover:text-white hover:bg-white/10">

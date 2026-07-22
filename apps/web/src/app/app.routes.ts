@@ -104,6 +104,12 @@ export const routes: Routes = [
         loadComponent: () => import('./modules/migration/migration.component').then(m => m.MigrationComponent)
       },
       {
+        // Screen & Fields — firm apni screen ke fields khud on/off kare (registry se chalta hai)
+        path: 'settings/screen-fields',
+        canActivate: [requirePermission('settings.fields.edit.firm')],
+        loadComponent: () => import('./modules/settings/screen-fields.component').then(m => m.ScreenFieldsComponent)
+      },
+      {
         // Complaint Box — user Anjaninex ko complaint bheje (WhatsApp jaisi chat + blue ticks).
         path: 'complaints',
         loadComponent: () => import('./modules/complaints/complaint-box.component').then(m => m.ComplaintBoxComponent)

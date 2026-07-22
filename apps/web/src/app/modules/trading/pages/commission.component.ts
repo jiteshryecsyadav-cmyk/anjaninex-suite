@@ -308,7 +308,14 @@ import { amountInWords } from '../../../shared/amount-in-words.util';
               }
               @for (inv of generatedInvoices(); track inv.id; let i = $index) {
                 <tr>
-                  <td>{{ i + 1 }}</td>
+                  <td>
+                    <!-- Expand: andar ke bills (supplier bill no samet) yahin dikh jayein -->
+                    <button (click)="toggleExpand(inv)"
+                            class="mr-1 text-[#9333ea] font-bold"
+                            [title]="expandedId() === inv.id ? 'Band karo' : 'Andar ke bills dekho'">
+                      {{ expandedId() === inv.id ? '▾' : '▸' }}
+                    </button>{{ i + 1 }}
+                  </td>
                   <td class="font-mono text-xs font-bold text-[#1B2E5C]">{{ inv.invoiceNo }}</td>
                   <td class="text-xs">{{ inv.invoiceDate | inDate }}
                     <div class="text-[10px] text-gray-400 whitespace-nowrap">🕐 {{ inv.createdAt ? (inv.createdAt | date:'dd/MM/yy, hh:mm a') : '' }}</div>
@@ -332,6 +339,44 @@ import { amountInWords } from '../../../shared/amount-in-words.util';
                     <button (click)="deleteInvoice(inv)" class="action-btn action-reminder">🗑 Delete</button>
                   </td>
                 </tr>
+                @if (expandedId() === inv.id) {
+                  <tr>
+                    <td colspan="13" style="background:#faf5ff; padding:8px 16px;">
+                      @if (expandedLoading()) {
+                        <span class="text-xs text-gray-500">⏳ Bills aa rahe hain...</span>
+                      } @else {
+                        <table class="w-full text-xs" style="max-width:820px;">
+                          <thead>
+                            <tr class="text-left text-[10px] text-[#6b3fa0] border-b border-[#ddc8f5]">
+                              <th class="py-1 pr-3">#</th>
+                              <th class="py-1 pr-3">SUPP. BILL NO</th>
+                              <th class="py-1 pr-3">BILL NO</th>
+                              <th class="py-1 pr-3">DATE</th>
+                              <th class="py-1 pr-3 text-right">BILL AMT</th>
+                              <th class="py-1 pr-3 text-right">COMM%</th>
+                              <th class="py-1 pr-3 text-right">COMM AMT</th>
+                              <th class="py-1 text-right">DISC RECOVERY</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            @for (l of expandedLines(); track l.billId; let j = $index) {
+                              <tr class="border-b border-[#f0e6ff] last:border-0">
+                                <td class="py-1 pr-3 text-gray-500">{{ j + 1 }}</td>
+                                <td class="py-1 pr-3 font-mono font-bold text-[#1B2E5C]">{{ l.supplierBillNo || '—' }}</td>
+                                <td class="py-1 pr-3 font-mono text-gray-600">{{ l.billNo }}</td>
+                                <td class="py-1 pr-3">{{ l.billDate | inDate }}</td>
+                                <td class="py-1 pr-3 text-right font-mono">{{ l.billAmount | number:'1.2-2' }}</td>
+                                <td class="py-1 pr-3 text-right">{{ l.commissionPct }}%</td>
+                                <td class="py-1 pr-3 text-right font-mono">{{ l.commissionAmount | number:'1.2-2' }}</td>
+                                <td class="py-1 text-right font-mono text-[#7C3AED]">{{ l.discAmount | number:'1.2-2' }}</td>
+                              </tr>
+                            }
+                          </tbody>
+                        </table>
+                      }
+                    </td>
+                  </tr>
+                }
               }
             </tbody>
             @if (generatedInvoices().length > 0) {
@@ -853,6 +898,21 @@ export class CommissionComponent {
 
   // Generated commission invoices list (saved from bulk)
   generatedInvoices = signal<any[]>([]);
+
+  // Expand: kis invoice ke andar ke bills khule hain + unki lines
+  expandedId = signal<string | null>(null);
+  expandedLines = signal<any[]>([]);
+  expandedLoading = signal(false);
+
+  toggleExpand(inv: any) {
+    if (this.expandedId() === inv.id) { this.expandedId.set(null); return; }
+    this.expandedId.set(inv.id);
+    this.expandedLoading.set(true);
+    this.svc.getCommissionInvoice(inv.id).subscribe({
+      next: (full: any) => { this.expandedLines.set(full.lines || []); this.expandedLoading.set(false); },
+      error: () => { this.expandedLines.set([]); this.expandedLoading.set(false); }
+    });
+  }
   loadInvoices() {
     this.svc.listCommissionInvoices().subscribe({
       next: (list) => {

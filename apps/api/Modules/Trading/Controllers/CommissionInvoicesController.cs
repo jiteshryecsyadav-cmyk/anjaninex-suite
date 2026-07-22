@@ -11,7 +11,8 @@ public record CommissionInvoiceLineDto(
     Guid BillId, string BillNo, DateOnly BillDate,
     decimal BillAmount, decimal CommissionPct, decimal CommissionAmount,
     // Supplier se recover karne wala bacha hua discount (purchase % − sales %)
-    decimal BalDiscPct = 0, decimal DiscAmount = 0);
+    decimal BalDiscPct = 0, decimal DiscAmount = 0,
+    string? SupplierBillNo = null);   // supplier ke bill par chhapa number (list expand me dikhta hai)
 
 public record CreateCommissionInvoiceDto(
     Guid PartyId,
@@ -125,14 +126,25 @@ public class CommissionInvoicesController : ControllerBase
             .Join(_db.Contacts.AsNoTracking(), p => p.ContactId, c => c.Id, (p, c) => c.DisplayName)
             .FirstOrDefaultAsync() ?? "—";
 
-        var lines = await _db.CommissionInvoiceLines.AsNoTracking()
+        var rawLines = await _db.CommissionInvoiceLines.AsNoTracking()
             .Where(l => l.CommissionInvoiceId == id)
             .OrderBy(l => l.SortOrder)
-            .Select(l => new CommissionInvoiceLineDto(
+            .ToListAsync();
+
+        // Supplier ka apna bill number (jaise 2885/GST) — line me sirf internal no
+        // save hota hai, isliye bills se jod kar laate hain.
+        var lineBillIds = rawLines.Select(l => l.BillId).Distinct().ToList();
+        var supNos = await _db.Bills.AsNoTracking()
+            .Where(b => lineBillIds.Contains(b.Id))
+            .Select(b => new { b.Id, b.SupplierBillNo })
+            .ToDictionaryAsync(x => x.Id, x => x.SupplierBillNo);
+
+        var lines = rawLines.Select(l => new CommissionInvoiceLineDto(
                 l.BillId, l.BillNo, l.BillDate,
                 l.BillAmount, l.CommissionPct, l.CommissionAmount,
-                l.BalDiscPct, l.DiscAmount))
-            .ToListAsync();
+                l.BalDiscPct, l.DiscAmount,
+                supNos.GetValueOrDefault(l.BillId)))
+            .ToList();
 
         return Ok(new CommissionInvoiceDetailDto(
             inv.Id, inv.InvoiceNo, inv.InvoiceDate,

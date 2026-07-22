@@ -306,7 +306,7 @@ import { amountInWords } from '../../../shared/amount-in-words.util';
               @if (generatedInvoices().length === 0) {
                 <tr><td colspan="13" class="empty-row">No commission invoices generated yet. Select bills above and click "Bulk Invoice".</td></tr>
               }
-              @for (inv of generatedInvoices(); track inv.id; let i = $index) {
+              @for (inv of pagedInvoices(); track inv.id; let i = $index) {
                 <tr>
                   <td>
                     <!-- Expand: andar ke bills (supplier bill no samet) yahin dikh jayein -->
@@ -314,7 +314,7 @@ import { amountInWords } from '../../../shared/amount-in-words.util';
                             class="mr-1 text-[#9333ea] font-bold"
                             [title]="expandedId() === inv.id ? 'Band karo' : 'Andar ke bills dekho'">
                       {{ expandedId() === inv.id ? '▾' : '▸' }}
-                    </button>{{ i + 1 }}
+                    </button>{{ (invPage() - 1) * invPageSize() + i + 1 }}
                   </td>
                   <td class="font-mono text-xs font-bold text-[#1B2E5C]">{{ inv.invoiceNo }}</td>
                   <td class="text-xs">{{ inv.invoiceDate | inDate }}
@@ -395,6 +395,11 @@ import { amountInWords } from '../../../shared/amount-in-words.util';
             }
           </table>
         </div>
+        @if (generatedInvoices().length > 0) {
+          <app-paginator [total]="generatedInvoices().length" [page]="invPage()" [pageSize]="invPageSize()"
+                         (pageChange)="invPage.set($event)"
+                         (pageSizeChange)="invPageSize.set($event); invPage.set(1)"></app-paginator>
+        }
       </div>
 
       @if (previewData()) {
@@ -899,6 +904,14 @@ export class CommissionComponent {
   // Generated commission invoices list (saved from bulk)
   generatedInvoices = signal<any[]>([]);
 
+  // Pagination — upar wali bills list jaisa hi (10/25/50/100 + next/prev)
+  invPage = signal(1);
+  invPageSize = signal(10);
+  pagedInvoices = computed(() => {
+    const start = (this.invPage() - 1) * this.invPageSize();
+    return this.generatedInvoices().slice(start, start + this.invPageSize());
+  });
+
   // Expand: kis invoice ke andar ke bills khule hain + unki lines
   expandedId = signal<string | null>(null);
   expandedLines = signal<any[]>([]);
@@ -919,6 +932,7 @@ export class CommissionComponent {
         // NEWEST upar (descending) — invoice no ke trailing number se
         const num = (s: any) => { const m = String(s ?? '').match(/(\d+)\s*$/); return m ? +m[1] : 0; };
         this.generatedInvoices.set([...list].sort((a: any, b: any) => num(b.invoiceNo) - num(a.invoiceNo)));
+        this.invPage.set(1);   // refresh par pehle page se — khali page par na atkein
       },
       error: () => {}
     });

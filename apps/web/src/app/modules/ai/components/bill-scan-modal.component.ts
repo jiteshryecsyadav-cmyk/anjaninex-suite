@@ -34,7 +34,7 @@ interface ScanPage {
         @if (state() === 'idle') {
           <div class="p-8">
             <div class="grid grid-cols-2 gap-4 mb-4">
-              <button (click)="openCamera()"
+              <button (click)="openCamera(cameraPicker)"
                       class="border-2 border-dashed border-[#5c1a8b] rounded-xl p-8 text-center hover:bg-[#f0e6ff] transition cursor-pointer">
                 <div class="text-5xl mb-2">📸</div>
                 <div class="font-bold text-[#5c1a8b]">Use Camera</div>
@@ -47,6 +47,11 @@ interface ScanPage {
                 <div class="text-xs text-gray-500 mt-1">JPG, PNG, PDF · Max 5 MB each</div>
               </button>
               <input #filePicker type="file" hidden multiple accept="image/*,application/pdf"
+                     (change)="onFileSelected($event)">
+              <!-- Mobile: capture="environment" phone ka ASLI camera app kholta hai —
+                   12MP focused photo (upload jaisi quality). Browser ka video-stream
+                   camera dhundhli photo deta tha jisse GSTIN galat padha jata tha. -->
+              <input #cameraPicker type="file" hidden accept="image/*" capture="environment"
                      (change)="onFileSelected($event)">
             </div>
 
@@ -413,7 +418,20 @@ export class BillScanModalComponent implements OnDestroy {
   dataReady = output<ExtractedBill>();
   source = input<'bill' | 'order'>('bill');   // scan report me Bill vs Order alag dikhane ke liye
 
-  async openCamera() {
+  /** Phone/tablet? To in-app video camera ki jagah NATIVE camera app kholo. */
+  private isMobile(): boolean {
+    return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
+        || (navigator.maxTouchPoints > 1 && /Macintosh/i.test(navigator.userAgent));
+  }
+
+  async openCamera(cameraPicker?: HTMLInputElement) {
+    // MOBILE: native camera app (12MP, autofocus, HDR) — wahi quality jo upload me
+    // aati hai. Browser ka video-stream 4K maangne par bhi document ke chhote
+    // akshar (GSTIN) soft padhta tha → galat extraction.
+    if (cameraPicker && this.isMobile()) {
+      cameraPicker.click();
+      return;
+    }
     try {
       this.stream = await navigator.mediaDevices.getUserMedia({
         video: {
@@ -438,7 +456,22 @@ export class BillScanModalComponent implements OnDestroy {
     }
   }
 
-  capturePhoto() {
+  async capturePhoto() {
+    // Pehle ImageCapture.takePhoto() — jahan supported hai wahan video-frame ki
+    // jagah camera ki ASLI still photo milti hai (zyada resolution + focus).
+    const track = this.stream?.getVideoTracks()[0];
+    if (track && 'ImageCapture' in window) {
+      try {
+        const blob: Blob = await new (window as any).ImageCapture(track).takePhoto();
+        this.file = new File([blob], `capture-${Date.now()}.jpg`, { type: blob.type || 'image/jpeg' });
+        this.previewUrl.set(URL.createObjectURL(blob));
+        this.stopCamera();
+        this.resetZoom();
+        this.state.set('preview');
+        return;
+      } catch { /* takePhoto fail — neeche canvas wala fallback chalega */ }
+    }
+
     const video = document.querySelector('video') as HTMLVideoElement;
     if (!video) return;
 

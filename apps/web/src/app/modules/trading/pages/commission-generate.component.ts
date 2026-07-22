@@ -287,6 +287,17 @@ import { FieldConfigService } from '../../../shared/field-config.service';
             }
           </div>
         }
+        @if (outOfRange(); as o) {
+          <div class="mt-3 p-3 rounded-lg bg-amber-50 border border-amber-300 inline-block text-left">
+            <div class="text-sm text-amber-900">
+              💡 Is supplier ke <b>{{ o.count }}</b> bill hain — par aapki date range ke <b>bahar</b>:
+              sabse purana <b>{{ o.oldest | inDate }}</b>, sabse naya <b>{{ o.newest | inDate }}</b>.
+            </div>
+            <button (click)="widenRange()" class="btn-primary mt-2 text-sm">
+              📅 Poora range dekho ({{ o.oldest | inDate }} se)
+            </button>
+          </div>
+        }
         <div class="text-xs text-gray-400 mt-2">
           ⚠️ Yaad rakho: yahan <b>BILL ki date</b> se dhoonda jata hai, payment ki date se nahi.
           Purane bill ki payment aaj hui ho to bill ki apni date wala range chuno.
@@ -798,6 +809,21 @@ export class CommissionGenerateComponent {
         // Khali nateeje par user ko batane ke liye: supplier ke kitne bill mile the,
         // aur buyer filter ne kitne bachaye — taaki pata chale kahan chhanta gaya.
         this.lastFetchInfo.set({ total: supplierBillCount, afterBuyer: items.length });
+
+        // Range me 0 mile? To bina date-filter ke dekho — bills HAIN par range ke
+        // bahar, ya sach me hain hi nahi. Dono ka message alag hai.
+        this.outOfRange.set(null);
+        if (supplierBillCount === 0 && this.supplierId) {
+          this.svc.listBills({ partyId: this.supplierId, size: 99999 }).subscribe({
+            next: (all) => {
+              const alive = all.items.filter((b: any) => !b.isDeleted && b.billDate);
+              if (!alive.length) return;   // sach me koi bill nahi — purana message theek hai
+              const dates = alive.map((b: any) => String(b.billDate)).sort();
+              this.outOfRange.set({ count: alive.length, oldest: dates[0], newest: dates[dates.length - 1] });
+            },
+            error: () => { /* diagnostic hi hai — fail ho to chup rehna theek */ }
+          });
+        }
         const rows: CommRow[] = items.map(b => ({
           selected: true,
           bill: b,
@@ -857,6 +883,19 @@ export class CommissionGenerateComponent {
 
   // Khali nateeja aane par diagnostic: supplier ke kitne bill mile, buyer filter ke baad kitne bache.
   lastFetchInfo = signal<{ total: number; afterBuyer: number } | null>(null);
+
+  // Range ke BAHAR wale bills — "0 mila" par user ko wajah + 1-click ilaaj dikhane ke liye.
+  // (Asli case: bill 13/01/24 ka tha, default range 01/04/24 se — user ko lagta tha
+  //  bill hai hi nahi, jabki wo bas purana tha.)
+  outOfRange = signal<{ count: number; oldest: string; newest: string } | null>(null);
+
+  /** "Poora range dekho" — FROM ko supplier ke sabse purane bill par le jao aur dobara fetch. */
+  widenRange() {
+    const o = this.outOfRange();
+    if (!o) return;
+    this.fromDate = o.oldest;
+    this.fetchBills();
+  }
 
   /** Jin bills ka commission pehle se ban chuka — dobara nahi dikhane hain. */
   billedIds = signal<Set<string>>(new Set());

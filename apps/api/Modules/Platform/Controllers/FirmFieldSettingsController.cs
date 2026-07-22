@@ -45,6 +45,21 @@ public class FirmFieldSettingsController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> Mine() => Ok(await ReadMergedAsync(_db, FirmId));
 
+    /// ↺ Firm ke SAARE apne badlaav hatao — wapas platform DEFAULT par.
+    /// (Default sadmin ne ⭐ se set kiya hota hai; wo na ho to registry chalti hai.)
+    [HttpDelete]
+    [HasPermission("settings.fields.edit.firm")]
+    public async Task<IActionResult> ResetMine()
+    {
+        var conn = (NpgsqlConnection)_db.Database.GetDbConnection();
+        if (conn.State != ConnectionState.Open) await conn.OpenAsync();
+        await using var cmd = conn.CreateCommand();
+        cmd.CommandText = "DELETE FROM platform.firm_field_settings WHERE firm_id = @f";
+        cmd.Parameters.Add(new NpgsqlParameter("f", FirmId));
+        var n = await cmd.ExecuteNonQueryAsync();
+        return Ok(new { removed = n });
+    }
+
     /// Firm owner apni screen set kare. Poori screen ki settings ek saath aati hain —
     /// jo bheja wo rakha jata hai, baaki (us screen ke) hata diye jaate hain.
     [HttpPut("{screen}")]

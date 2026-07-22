@@ -41,9 +41,16 @@ interface RowVm {
             screen se gayab ho jayega. Data kahin nahi jata, sirf chhupta hai.
           </p>
         </div>
-        <button (click)="save()" [disabled]="saving()" class="btn-primary">
-          {{ saving() ? 'Save ho raha...' : 'Save' }}
-        </button>
+        <div class="flex gap-2">
+          <button (click)="resetToDefault()" [disabled]="saving()"
+                  class="px-4 py-2 rounded-lg border-2 border-amber-500 text-amber-700 font-bold text-sm hover:bg-amber-50"
+                  title="Aapke saare badlaav hatakar wapas DEFAULT setting par le aata hai">
+            ↺ DEFAULT par wapas
+          </button>
+          <button (click)="save()" [disabled]="saving()" class="btn-primary">
+            {{ saving() ? 'Save ho raha...' : 'Save' }}
+          </button>
+        </div>
       </div>
 
       <input [ngModel]="search()" (ngModelChange)="search.set($event)"
@@ -156,6 +163,29 @@ export class ScreenFieldsComponent implements OnInit {
     const rows = this.rowsMap().get(key);
     if (rows) return rows.filter(r => r.visible).length;
     return this.cfg.rowsForScreen(key).filter(r => r.visible).length;
+  }
+
+  /** ↺ Firm ke saare apne badlaav hatao — wapas platform default par, EK button me. */
+  resetToDefault() {
+    if (!confirm('Aapke SAARE badlaav hat jayenge aur DEFAULT setting wapas aa jayegi.\n' +
+                 '(Data kahin nahi jata — sirf screen ka dikhna badalta hai.)\n\nPakka?')) return;
+    this.saving.set(true);
+    this.http.delete(`${environment.apiUrl}/api/firm-fields`).subscribe({
+      next: () => {
+        // Server se taaza (default wali) settings lao, phir khule sections dobara bharo
+        this.cfg.load(() => {
+          const m = new Map<string, RowVm[]>();
+          for (const key of this.rowsMap().keys()) m.set(key, this.cfg.rowsForScreen(key));
+          this.rowsMap.set(m);
+          this.saving.set(false);
+          this.toast.success('↺ DEFAULT setting wapas aa gayi — screens turant badal gayi.');
+        });
+      },
+      error: e => {
+        this.saving.set(false);
+        this.toast.error(e?.error?.error || 'Reset nahi ho paya. Dobara try karein.');
+      }
+    });
   }
 
   save() {

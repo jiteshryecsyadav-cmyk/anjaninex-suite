@@ -31,8 +31,8 @@ export class FieldConfigService {
 
   private static k(screen: string, field: string) { return screen + '|' + field; }
 
-  /** App startup par ek baar — FeatureService ke saath. */
-  load() {
+  /** App startup par ek baar — FeatureService ke saath. Reset/reload ke baad bhi. */
+  load(done?: () => void) {
     this.http.get<FieldSettingRow[]>(this.base).subscribe({
       next: rows => {
         const m = new Map<string, FieldSettingRow>();
@@ -40,9 +40,10 @@ export class FieldConfigService {
         this.rows.set(m);
         this.loaded.set(true);
         this.revision.update(v => v + 1);
+        done?.();
       },
       // Settings na aayen to app rukna nahi chahiye — sab default par chalega.
-      error: () => this.loaded.set(true)
+      error: () => { this.loaded.set(true); done?.(); }
     });
   }
 

@@ -37,7 +37,15 @@ import { FieldConfigService } from '../../../shared/field-config.service';
     </div>
   }
   <div class="max-w-7xl mx-auto">
-    <div class="page-top-bar"><app-back-button></app-back-button></div>
+    <div class="page-top-bar flex items-center justify-between">
+      <app-back-button></app-back-button>
+      <!-- BAL DISC % Group Master ke PURCHASE DISC se aata hai — wahi set karne ka raasta -->
+      <a href="/core-master/groups" target="_blank"
+         class="text-xs font-bold text-[#5c1a8b] border border-[#ddc8f5] rounded-lg px-3 py-1.5 hover:bg-purple-50 no-underline"
+         title="Supplier ka discount % yahan set hota hai (naya tab khulega)">
+        👥 Group Master — Supplier Disc %
+      </a>
+    </div>
 
 
     <!-- HEADER -->

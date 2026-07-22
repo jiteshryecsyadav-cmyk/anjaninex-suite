@@ -83,7 +83,16 @@ interface PartyBehavior {
       </div>
     }
     <div class="max-w-7xl mx-auto">
-      <div class="page-top-bar"><app-back-button></app-back-button></div>
+      <div class="page-top-bar flex items-center justify-between">
+        <app-back-button></app-back-button>
+        <!-- Supplier discount Group Master me set hota hai — naye tab me khulta hai
+             taaki bhari hui receipt kharab na ho. Wapas aakar bills dobara Fetch karo. -->
+        <a href="/core-master/groups" target="_blank"
+           class="text-xs font-bold text-[#5c1a8b] border border-[#ddc8f5] rounded-lg px-3 py-1.5 hover:bg-purple-50 no-underline"
+           title="Supplier ka discount % yahan set hota hai (naya tab khulega)">
+          👥 Group Master — Supplier Disc %
+        </a>
+      </div>
 
       <!-- ============ HEADER ============ -->
       <div class="rcpt-header">

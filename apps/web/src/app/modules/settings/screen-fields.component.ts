@@ -171,21 +171,16 @@ export class ScreenFieldsComponent implements OnInit {
         return;
       }
       const [screen, rows] = changed[i];
-      const payload: FieldSettingRow[] = rows
-        .map(r => {
-          const visChanged = r.visible !== !r.def.defaultOff;
-          const reqChanged = r.required !== !!r.def.defaultRequired;
-          const lblChanged = (r.label || '').trim() !== r.def.label && (r.label || '').trim() !== '';
-          if (!visChanged && !reqChanged && !lblChanged) return null;
-          return {
-            screen,
-            fieldKey: r.def.key,
-            visible: visChanged ? r.visible : null,
-            required: reqChanged ? r.required : null,
-            label: lblChanged ? (r.label || '').trim() : null
-          } as FieldSettingRow;
-        })
-        .filter((x): x is FieldSettingRow => x !== null);
+      // POORE rows bhejte hain (sirf badle hue nahi) — kyunki neeche platform
+      // DEFAULT layer hai. Adhoora bhejo to firm ki "wapas on ki hui" field
+      // default ke off me dab jati thi.
+      const payload: FieldSettingRow[] = rows.map(r => ({
+        screen,
+        fieldKey: r.def.key,
+        visible: r.def.locked ? true : r.visible,
+        required: r.required,
+        label: (r.label || '').trim() || r.def.label
+      } as FieldSettingRow));
 
       this.http.put(`${environment.apiUrl}/api/firm-fields/${screen}`, payload).subscribe({
         next: () => {

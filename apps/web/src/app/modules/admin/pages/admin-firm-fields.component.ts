@@ -33,9 +33,16 @@ interface SettingRow { screen: string; fieldKey: string; visible?: boolean | nul
           <h2 class="font-display font-black text-2xl text-[#5c1a8b]">Firm Fields</h2>
           <p class="text-sm text-[#6b3fa0]">Kisi bhi firm ki screens yahan se set karo — field on/off, zaroori, naam.</p>
         </div>
-        <button (click)="save()" [disabled]="saving() || !firmId()" class="btn-primary">
-          {{ saving() ? 'Save ho raha...' : 'Save' }}
-        </button>
+        <div class="flex gap-2">
+          <button (click)="makeDefault()" [disabled]="saving() || !firmId()"
+                  class="px-4 py-2 rounded-lg border-2 border-amber-500 text-amber-700 font-bold text-sm hover:bg-amber-50"
+                  title="Is firm ka poora setup SAB firms ka default ban jayega — nayi firm ko bhi pehle din se yahi milega">
+            ⭐ Sab ka DEFAULT banao
+          </button>
+          <button (click)="save()" [disabled]="saving() || !firmId()" class="btn-primary">
+            {{ saving() ? 'Save ho raha...' : 'Save' }}
+          </button>
+        </div>
       </div>
 
       <div class="flex flex-wrap items-end gap-3 mb-4">
@@ -200,26 +207,37 @@ export class AdminFirmFieldsComponent implements OnInit {
         return;
       }
       const [screen, rows] = entries[i];
-      const payload = rows
-        .map(r => {
-          const vis = r.visible !== !r.def.defaultOff;
-          const req = r.required !== !!r.def.defaultRequired;
-          const lbl = (r.label || '').trim() !== r.def.label && (r.label || '').trim() !== '';
-          if (!vis && !req && !lbl) return null;
-          return {
-            screen, fieldKey: r.def.key,
-            visible: vis ? r.visible : null,
-            required: req ? r.required : null,
-            label: lbl ? (r.label || '').trim() : null
-          };
-        })
-        .filter(x => x !== null);
+      // Poore rows — default layer ke upar firm ki setting poori tarah shadow kare
+      const payload = rows.map(r => ({
+        screen, fieldKey: r.def.key,
+        visible: r.def.locked ? true : r.visible,
+        required: r.required,
+        label: (r.label || '').trim() || r.def.label
+      }));
       this.http.put(`${this.base}/${firmId}/${screen}`, payload).subscribe({
         next: () => next(i + 1),
         error: e => { this.saving.set(false); this.toast.error(e?.error?.error || `${screen} save fail.`); }
       });
     };
     next(0);
+  }
+
+  /** ⭐ Chuni hui firm ka setup PLATFORM DEFAULT bana do — sab firms + nayi firms ke liye. */
+  makeDefault() {
+    const from = this.firmId();
+    if (!from) return;
+    const name = this.firms().find(f => f.id === from)?.name || 'is firm';
+    if (!confirm(`"${name}" ka POORA Screen & Fields setup SAB firms ka DEFAULT ban jayega.\n\n` +
+                 `• Jin firms ne apni setting khud badli hai, unki apni hi rahegi\n` +
+                 `• Baaki sab + har NAYI firm ko yahi setup milega\n\nPakka?`)) return;
+    this.saving.set(true);
+    this.http.post<{ saved: number }>(`${this.base}/make-default?fromFirmId=${from}`, {}).subscribe({
+      next: r => {
+        this.saving.set(false);
+        this.toast.success(`⭐ Default set ho gaya (${r.saved} fields) — ab har firm ko yahi milega.`);
+      },
+      error: e => { this.saving.set(false); this.toast.error(e?.error?.error || 'Default set nahi hua.'); }
+    });
   }
 
   copyFrom() {

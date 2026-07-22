@@ -417,6 +417,24 @@ export class PartyGroupsComponent {
   save() {
     const name = this.groupName.trim();
     if (!name) { this.msg.set('Group naam daalein.'); return; }
+
+    // ZAROORI wali rok — Screen & Fields me tick kiye hue khali fields yahin pakdo.
+    const missing = this.fieldCfg.missingRequired('group_master', {
+      owner_name: this.gOwner, mobile: this.gMobile, whatsapp: this.gWhatsapp,
+      buyer_type: this.gBuyerType, address1: this.gAddress, address2: this.gAddress2,
+      pincode: this.gPincode, city: this.gCity, state: this.gState,
+      commission_pct: this.gCommission, payment_terms: this.gTerms,
+      purchase_disc: this.gPurchDisc, normal_disc: this.gDiscN, special_disc: this.gDiscS,
+      exhibition_disc: this.gDiscE, credit_limit: this.gCreditLimit, credit_days: this.gCreditDays,
+      supplier_type: this.gSupplierType, email: this.gEmail, wa_buyer: this.gWaBuyer,
+      wa_extra: this.gWaExtra, sub_agent: this.gSubAgent, sub_agent_pct: this.gSubAgentPct,
+      incentive_pct: this.gIncentivePct, agent_share_pct: this.gAgentSharePct
+    });
+    if (missing.length > 0) {
+      this.msg.set('Ye fields bharna zaroori hai: ' + missing.join(', ') + ' — ya Screen & Fields me zaroori ka tick hatayein.');
+      return;
+    }
+
     this.saving.set(true); this.msg.set('');
     // 1) Group Master detail save (+ members me auto-sync) → 2) members set (+ sync)
     this.http.post(`${this.base}/groups`, this.detailPayload(name)).subscribe({

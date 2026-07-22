@@ -1245,8 +1245,26 @@ export class PartiesComponent {
 
   save() {
     if (this.form.invalid || !this.newType()) return;
-    this.saving.set(true);
     const v: any = this.form.value;
+
+    // ZAROORI wali rok — jo fields firm ne Screen & Fields me "zaroori" tick kiye
+    // hain, wo khali ho to yahin rok do (saaf Hinglish message ke saath).
+    const missing = this.fieldCfg.missingRequired('party_master', {
+      gstin: v.gst, pan: v.pan, wa_supplier: v.waSupplier, wa_buyer: v.waBuyer,
+      group: v.groupName, purchase_disc: v.purchaseDiscPct, supplier_type: v.supplierType,
+      buyer_type: v.buyerType, wa_extra: v.waExtra, udyam: v.udyamNo, msme_type: v.msmeType,
+      sub_agent: v.subAgent, incentive_pct: v.incentivePct, address: v.address,
+      pincode: v.pincode, email: v.email, branch: v.branch, contact_person: v.contactPerson,
+      contact_mobile: v.contactMobile, landline: v.landline, commission_pct: v.commission,
+      flag_note: v.note, credit_limit: v.creditLimit, credit_days: v.creditDays,
+      opening_balance: v.openingBalance
+    });
+    if (missing.length > 0) {
+      alert('⚠️ Ye fields bharna zaroori hai (Screen & Fields me set kiya gaya hai):\n\n• ' + missing.join('\n• '));
+      return;
+    }
+
+    this.saving.set(true);
     const partyType = this.newType() === 'supplier' ? 'seller' : this.newType() === 'buyer' ? 'buyer' : 'both';
     const data: any = {
       displayName: v.displayName, phone: v.phone, email: v.email, gst: v.gst, pan: v.pan,

@@ -13,6 +13,8 @@ import { ToastService } from '../../../shared/toast.service';
 import { InDatePipe } from '../../../shared/in-date.pipe';
 import { InvoicePreviewComponent, PreviewData } from '../../../shared/invoice-preview.component';
 import { FeatureService } from '../../../shared/feature.service';
+import { FldDirective } from '../../../shared/fld.directive';
+import { FieldConfigService } from '../../../shared/field-config.service';
 
 interface PayTxn {
   mode: 'Cheque' | 'NEFT' | 'RTGS' | 'UPI' | 'Cash';
@@ -67,7 +69,7 @@ interface PartyBehavior {
 @Component({
   selector: 'app-payment-receipt',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, RouterLinkActive, DecimalPipe, BackButtonComponent, InDatePipe, InvoicePreviewComponent],
+  imports: [CommonModule, FormsModule, RouterLink, RouterLinkActive, DecimalPipe, BackButtonComponent, InDatePipe, InvoicePreviewComponent, FldDirective],
   template: `
     <!-- 🚨 Group-disc blinking alert -->
     @if (discAlert()) {
@@ -461,22 +463,26 @@ interface PartyBehavior {
                 <th class="text-right">GROSS AMT</th>
                 <th class="text-right">TAX AMT</th>
                 <th class="text-right">GR AMT</th>
-                <th class="text-right">RATE DIFF</th>
-                <th class="text-right">DIS%</th>
-                <th class="text-right">DIS AMT</th>
-                <th class="text-right">INTEREST</th>
-                <th class="text-right">ADJ AMT</th>
-                <th class="text-right">PACKING</th>
-                <th class="text-right">OTHER</th>
-                <th class="text-center">GST</th>
+                <th *fld="'payment_receipt.rate_diff'" class="text-right">RATE DIFF</th>
+                <ng-container *fld="'payment_receipt.dis'">
+                  <th class="text-right">DIS%</th>
+                  <th class="text-right">DIS AMT</th>
+                </ng-container>
+                <th *fld="'payment_receipt.interest'" class="text-right">INTEREST</th>
+                <th *fld="'payment_receipt.adj_amt'" class="text-right">ADJ AMT</th>
+                <th *fld="'payment_receipt.packing'" class="text-right">PACKING</th>
+                <th *fld="'payment_receipt.other'" class="text-right">OTHER</th>
+                <th *fld="'payment_receipt.gst_mode'" class="text-center">GST</th>
                 <th class="text-right">NET AMT</th>
                 <th class="text-right">PENDING</th>
-                <th class="text-right">COMM AMT</th>
-                <th class="w-20 text-center">PAY TERMS<br><small>(DAYS)</small></th>
-                <th>DUE DATE</th>
-                <th class="text-right">ACTUAL DAYS</th>
-                <th class="text-center">⌛ EARLY / LATE</th>
-                <th>STATUS</th>
+                <th *fld="'payment_receipt.comm_amt'" class="text-right">COMM AMT</th>
+                <ng-container *fld="'payment_receipt.timing'">
+                  <th class="w-20 text-center">PAY TERMS<br><small>(DAYS)</small></th>
+                  <th>DUE DATE</th>
+                  <th class="text-right">ACTUAL DAYS</th>
+                  <th class="text-center">⌛ EARLY / LATE</th>
+                  <th>STATUS</th>
+                </ng-container>
               </tr>
             </thead>
             <tbody>
@@ -507,32 +513,34 @@ interface PartyBehavior {
                     <td class="text-right font-mono">{{ b.netAmt | number:'1.2-2' }}</td>
                     <td class="text-right font-mono">{{ b.taxAmt | number:'1.2-2' }}</td>
                     <td class="text-right font-mono">{{ b.grAmt | number:'1.2-2' }}</td>
-                    <td>
+                    <td *fld="'payment_receipt.rate_diff'">
                       <input [ngModel]="b.rateDiff" (ngModelChange)="updateBill(i, 'rateDiff', +$event)"
                              type="number" step="0.01" class="tip text-right">
                     </td>
+                    <ng-container *fld="'payment_receipt.dis'">
                     <td>
                       <input [ngModel]="b.disPct" (ngModelChange)="updateBill(i, 'disPct', +$event)"
                              type="number" step="0.01" class="tip text-right">
                     </td>
                     <td class="text-right font-mono">{{ b.disAmt | number:'1.2-2' }}</td>
-                    <td>
+                    </ng-container>
+                    <td *fld="'payment_receipt.interest'">
                       <input [ngModel]="b.interest" (ngModelChange)="updateBill(i, 'interest', +$event)"
                              type="number" step="0.01" class="tip text-right">
                     </td>
-                    <td>
+                    <td *fld="'payment_receipt.adj_amt'">
                       <input [ngModel]="b.adjAmt" (ngModelChange)="updateBill(i, 'adjAmt', +$event)"
                              type="number" step="0.01" class="tip text-right">
                     </td>
-                    <td>
+                    <td *fld="'payment_receipt.packing'">
                       <input [ngModel]="b.packing" (ngModelChange)="updateBill(i, 'packing', +$event)"
                              type="number" step="0.01" class="tip text-right">
                     </td>
-                    <td>
+                    <td *fld="'payment_receipt.other'">
                       <input [ngModel]="b.other" (ngModelChange)="updateBill(i, 'other', +$event)"
                              type="number" step="0.01" class="tip text-right">
                     </td>
-                    <td class="text-center">
+                    <td *fld="'payment_receipt.gst_mode'" class="text-center">
                       <button type="button" class="gst-toggle" [class.before]="b.gstMode === 'before'"
                               (click)="updateBill(i, 'gstMode', b.gstMode === 'before' ? 'after' : 'before')"
                               title="Deductions GST se pehle (taxable par) ya baad me (total par)">
@@ -541,7 +549,8 @@ interface PartyBehavior {
                     </td>
                     <td class="text-right font-mono total-cell">{{ b.toPay | number:'1.2-2' }}</td>
                     <td class="text-right font-mono">{{ b.pending | number:'1.2-2' }}</td>
-                    <td class="text-right font-mono">{{ b.commAmt | number:'1.2-2' }}</td>
+                    <td *fld="'payment_receipt.comm_amt'" class="text-right font-mono">{{ b.commAmt | number:'1.2-2' }}</td>
+                    <ng-container *fld="'payment_receipt.timing'">
                     <td>
                       <input [ngModel]="b.payTermsDays" (ngModelChange)="updateBill(i, 'payTermsDays', +$event)"
                              type="number" min="0" class="tip text-center">
@@ -564,6 +573,7 @@ interface PartyBehavior {
                     <td>
                       <span class="status-tag" [class]="'st-' + b.status">{{ b.status }}</span>
                     </td>
+                    </ng-container>
                   </tr>
                 }
               }
@@ -1032,6 +1042,7 @@ interface PartyBehavior {
 export class PaymentReceiptComponent {
   private svc = inject(TradingService);
   features = inject(FeatureService);
+  private fieldCfg = inject(FieldConfigService);
   private http = inject(HttpClient);
   private router = inject(Router);
   private toast = inject(ToastService);

@@ -92,6 +92,27 @@ export const FIELD_REGISTRY: ScreenDef[] = [
     ]
   },
   // ---------------------------------------------------------------------------
+  // PAYMENT / RECEIPT — Trading › Payment › New Receipt (bills wali table ke columns)
+  // Column chhupane par uski value 0 rehti hai — NET AMT ka hisaab sahi banta hai,
+  // bas wo kat-kut lagti nahi. GROSS/TAX/NET/PENDING jaise core columns lock hain
+  // (registry me hain hi nahi, isliye kabhi nahi chhupenge).
+  // ---------------------------------------------------------------------------
+  {
+    key: 'payment_receipt',
+    name: 'Payment / Receipt',
+    fields: [
+      { key: 'rate_diff', label: 'Rate Diff column' },
+      { key: 'dis',       label: 'DIS% + DIS AMT columns' },
+      { key: 'interest',  label: 'Interest column',  defaultOff: true },
+      { key: 'adj_amt',   label: 'ADJ AMT column',   defaultOff: true },
+      { key: 'packing',   label: 'Packing column' },
+      { key: 'other',     label: 'Other column',     defaultOff: true },
+      { key: 'gst_mode',  label: 'Before/After GST toggle', hint: 'Kat-kut GST se pehle ya baad' },
+      { key: 'comm_amt',  label: 'Comm Amt column' },
+      { key: 'timing',    label: 'Pay Terms / Due Date / Early-Late columns', hint: 'Payment LATE aayi ya JALDI wala hisaab' }
+    ]
+  },
+  // ---------------------------------------------------------------------------
   // GR ENTRY — Trading › GR › New (goods return)
   // ---------------------------------------------------------------------------
   {

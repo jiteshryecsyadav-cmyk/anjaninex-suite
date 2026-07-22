@@ -105,6 +105,25 @@ export class FieldConfigService {
     }));
   }
 
+  /**
+   * ZAROORI ki rok — save se pehle bulao. Jo fields firm ne "zaroori" tick kiye
+   * hain aur khali hain, unke NAAM wapas milte hain (Hinglish error ke liye).
+   * Chhupa hua field kabhi zaroori nahi maana jata — jo dikh hi nahi raha use
+   * bharne ko kehna bemaani hai.
+   */
+  missingRequired(screen: string, values: Record<string, unknown>): string[] {
+    const missing: string[] = [];
+    for (const [key, val] of Object.entries(values)) {
+      if (!this.show(screen, key)) continue;
+      if (!this.required(screen, key)) continue;
+      const empty = val === null || val === undefined
+        || (typeof val === 'string' && val.trim() === '')
+        || (typeof val === 'number' && val === 0);
+      if (empty) missing.push(this.label(screen, key));
+    }
+    return missing;
+  }
+
   private resolve(path: string, field?: string) {
     const screen = field ? path : splitFieldPath(path).screen;
     const fieldKey = field ?? splitFieldPath(path).field;

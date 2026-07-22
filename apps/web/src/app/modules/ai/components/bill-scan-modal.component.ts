@@ -416,7 +416,16 @@ export class BillScanModalComponent implements OnDestroy {
   async openCamera() {
     try {
       this.stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment' }
+        video: {
+          facingMode: 'environment',
+          // Bina width/height maange mobile browser 640×480 ka stream deta hai —
+          // us dhundhli photo me GSTIN/HSN jaise chhote akshar Gemini galat padhta
+          // tha (upload sahi chalta tha kyunki wahan 12MP photo aati hai).
+          // ideal = camera jitna best de sake (4K tak); compress() baad me 1600px
+          // kar deta hai, to upload bhaari nahi hota.
+          width: { ideal: 4096 },
+          height: { ideal: 4096 }
+        }
       });
       this.state.set('camera');
       setTimeout(() => {
@@ -595,14 +604,16 @@ export class BillScanModalComponent implements OnDestroy {
   }
 
   // Camera preview confirmed → append captured photo as a page, back to idle.
-  confirmPage() {
+  async confirmPage() {
     if (this.file) {
       if (this.pages().length >= this.MAX_PAGES) {
         this.errorMsg.set(`Max ${this.MAX_PAGES} pages allowed per bill.`);
         this.state.set('error');
         return;
       }
-      this.addPage(this.file);
+      // Ab camera 4K tak capture karta hai — upload wale raste ki tarah 1600px
+      // par compress karo, warna har page 3-5MB ka jayega (slow + AI quota).
+      this.addPage(await this.compress(this.file));
     }
     this.file = null;
     this.previewUrl.set(null);

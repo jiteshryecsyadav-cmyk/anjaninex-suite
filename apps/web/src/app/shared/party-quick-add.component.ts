@@ -5,6 +5,7 @@ import { TradingService, Party, CreateParty } from '../modules/trading/services/
 import { INDIA_STATES, STATES_ALPHA, findStateByName, findStateByGstCode, suggestPincode } from './india-states';
 
 import { UppercaseDirective } from '../shared/uppercase.directive';
+import { looksLikeTypo } from './gst.util';
 @Component({
   selector: 'app-party-quick-add',
   standalone: true,
@@ -72,6 +73,12 @@ import { UppercaseDirective } from '../shared/uppercase.directive';
                        class="qa-ip" [class.qa-ip-err]="submitted() && !isValidGst()">
                 @if (gst && gst.length > 0 && gst.length < 15) {
                   <div class="qa-hint">⚠️ GSTIN must be exactly 15 characters (currently {{ gst.length }})</div>
+                }
+                @if (gstTypo()) {
+                  <div class="qa-hint" style="color:#dc2626;font-weight:700">
+                    🚫 Ye GST number galat hai — koi EK akshar galat lagta hai (scan ki aam galti:
+                    F↔P, 0↔O, 1↔I). Asli bill se milaan karke theek karo, warna save nahi hoga.
+                  </div>
                 }
               }
             </div>
@@ -413,6 +420,9 @@ export class PartyQuickAddComponent {
   saving = signal(false);
   error = signal('');
   submitted = signal(false);   // becomes true after first save attempt — triggers red borders
+
+  /** 15 char sahi dikhta hai par checksum fail — scan/typing me ek akshar galat. */
+  gstTypo(): boolean { return looksLikeTypo(this.gst); }
 
   /** GSTIN basic format: 15 chars uppercase alphanumeric. */
   isValidGst(): boolean {

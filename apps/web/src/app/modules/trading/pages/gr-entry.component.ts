@@ -268,8 +268,8 @@ interface ReturnRow {
                 <th class="w-10">SNO.</th>
                 <th>ITEM NAME</th>
                 <th>DESCRIPTION</th>
-                <th class="w-12">PCS</th>
-                <th class="w-14">METERS</th>
+                <th class="w-16">PCS</th>
+                <th class="w-20">METERS</th>
                 <th class="w-20">RATE KIS PAR</th>
                 <th class="w-28">PRICE</th>
                 <th class="w-24">RD</th>
@@ -676,7 +676,15 @@ interface ReturnRow {
     .btn-add-item:hover { background: #142347; }
 
     .item-table-wrap { overflow-x: auto; border: 1px solid #D6DDEA; border-radius: 8px; }
-    .item-table { width: 100%; font-size: 11.5px; border-collapse: collapse; background: #fff; }
+    /* min-width se table chaudi rehti hai aur left-right scroll aata hai (Bill jaisa) */
+    .item-table { width: 100%; min-width: 1200px; font-size: 11.5px; border-collapse: collapse; background: #fff; }
+    /* PCS/METERS ki input thodi badi + baaki % columns khule (auto-layout me pakki) */
+    .item-table th:nth-child(5),  .item-table td:nth-child(5)  { min-width: 62px; }   /* PCS */
+    .item-table th:nth-child(6),  .item-table td:nth-child(6)  { min-width: 72px; }   /* METERS */
+    .item-table th:nth-child(8),  .item-table td:nth-child(8)  { min-width: 92px; }   /* PRICE */
+    .item-table th:nth-child(9),  .item-table td:nth-child(9)  { min-width: 70px; }   /* RD */
+    .item-table th:nth-child(10), .item-table td:nth-child(10) { min-width: 92px; }   /* HSN */
+    .item-table th:nth-child(11), .item-table td:nth-child(11) { min-width: 70px; }   /* IGST% */
     .item-table thead { background: var(--anjaninex-navy, #1B2E5C); color: #fff; }
     .item-table th { padding: 8px 6px; text-align: left; font-weight: 700; font-size: 10px; letter-spacing: 0.3px; text-transform: uppercase; white-space: nowrap; }
     .item-table th.text-right { text-align: right; }

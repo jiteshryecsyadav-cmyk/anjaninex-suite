@@ -347,6 +347,11 @@ public class GoodsReturnLine
     [Column(TypeName = "numeric(12,3)")] public decimal Qty { get; set; }
     public string? Unit { get; set; }
 
+    // Bill lines jaisa — Pcs + Meters dono, Qty = billing wali (RateBasis chuni hui)
+    [Column(TypeName = "numeric(12,3)")] public decimal? Pcs { get; set; }
+    [Column(TypeName = "numeric(12,3)")] public decimal? Meters { get; set; }
+    public string? RateBasis { get; set; }   // 'PCS' | 'MTR'
+
     [Column(TypeName = "numeric(12,2)")] public decimal Rate { get; set; }
     [Column(TypeName = "numeric(12,2)")] public decimal Rd { get; set; }
     [Column(TypeName = "numeric(5,2)")]  public decimal IgstPct { get; set; }

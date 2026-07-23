@@ -21,8 +21,14 @@ interface ReturnRow {
   itemName: string;
   description: string;
   hsnSac: string;
+  /** billing wali ginti — pcs/meters me se jo rateBasis chuna hai, apne aap sync */
   qty: number;
   unit: string;
+  /** textile: bill jaisa hi — dono ginti (Pcs 32 · Meters 224) */
+  pcs: number;
+  meters: number;
+  /** 'PCS' | 'MTR' — kis par rate lagega */
+  rateBasis: 'PCS' | 'MTR';
   rate: number;
   rd: number;
   igstPct: number;
@@ -262,12 +268,13 @@ interface ReturnRow {
                 <th class="w-10">SNO.</th>
                 <th>ITEM NAME</th>
                 <th>DESCRIPTION</th>
-                <th class="w-16">QTY.</th>
-                <th class="w-20">UNIT</th>
-                <th class="w-20">PRICE</th>
-                <th class="w-16">RD</th>
-                <th class="w-20">HSN</th>
-                <th class="w-16">IGST %</th>
+                <th class="w-12">PCS</th>
+                <th class="w-14">METERS</th>
+                <th class="w-20">RATE KIS PAR</th>
+                <th class="w-28">PRICE</th>
+                <th class="w-24">RD</th>
+                <th class="w-28">HSN</th>
+                <th class="w-24">IGST %</th>
                 <th class="w-24">TAXABLE AMT</th>
                 <th class="w-20">TAX AMT</th>
                 <th class="w-24">TOTAL AMT</th>
@@ -292,18 +299,30 @@ interface ReturnRow {
                            class="tip" placeholder="Description / Design">
                   </td>
                   <td>
-                    <input [ngModel]="line.qty"
-                           (ngModelChange)="updateLine($index, 'qty', +$event)"
-                           type="number" step="0.01" class="tip text-right">
+                    <input [ngModel]="line.pcs"
+                           (ngModelChange)="updateLine($index, 'pcs', +$event)"
+                           type="number" step="0.01" class="tip text-right"
+                           [style.border]="line.rateBasis === 'PCS' ? '1.5px solid #5c1a8b' : ''"
+                           [title]="line.rateBasis === 'PCS' ? 'Rate ISI par lag raha hai' : ''">
                   </td>
                   <td>
-                    <select [ngModel]="line.unit" (ngModelChange)="updateLine($index, 'unit', $event)" class="tip">
-                      <option value="MTR">MTR</option>
-                      <option value="PCS">PCS</option>
-                      <option value="KG">KG</option>
-                      <option value="DOZ">DOZ</option>
-                      <option value="BOX">BOX</option>
-                    </select>
+                    <input [ngModel]="line.meters"
+                           (ngModelChange)="updateLine($index, 'meters', +$event)"
+                           type="number" step="0.01" class="tip text-right"
+                           [style.border]="line.rateBasis === 'MTR' ? '1.5px solid #5c1a8b' : ''"
+                           [title]="line.rateBasis === 'MTR' ? 'Rate ISI par lag raha hai' : ''">
+                  </td>
+                  <td class="text-center">
+                    <div style="display:inline-flex; border:1px solid #d1d5db; border-radius:999px; overflow:hidden;">
+                      <button type="button" (click)="updateLine($index, 'rateBasis', 'PCS')"
+                              [style.background]="line.rateBasis === 'PCS' ? '#5c1a8b' : 'transparent'"
+                              [style.color]="line.rateBasis === 'PCS' ? '#fff' : '#6b7280'"
+                              style="border:none; padding:3px 10px; font-size:11px; font-weight:700; cursor:pointer;">PCS</button>
+                      <button type="button" (click)="updateLine($index, 'rateBasis', 'MTR')"
+                              [style.background]="line.rateBasis === 'MTR' ? '#5c1a8b' : 'transparent'"
+                              [style.color]="line.rateBasis === 'MTR' ? '#fff' : '#6b7280'"
+                              style="border:none; padding:3px 10px; font-size:11px; font-weight:700; cursor:pointer;">MTR</button>
+                    </div>
                   </td>
                   <td>
                     <input [ngModel]="line.rate"
@@ -341,7 +360,8 @@ interface ReturnRow {
                 <td colspan="4" class="text-right">
                   <span class="check-tick">✓</span> SELECTED TOTALS →
                 </td>
-                <td class="text-center font-mono font-bold">{{ totalReturnQty() | number:'1.0-0' }}</td>
+                <td class="text-right font-mono font-bold">{{ totalReturnPcs() | number:'1.0-2' }}</td>
+                <td class="text-right font-mono font-bold">{{ totalReturnMeters() | number:'1.0-2' }}</td>
                 <td colspan="5"></td>
                 <td class="text-right font-mono">{{ totalTaxable() | number:'1.2-2' }}</td>
                 <td class="text-right font-mono">{{ totalTax() | number:'1.2-2' }}</td>
@@ -937,6 +957,8 @@ export class GrEntryComponent {
   netTaxableAfterGr(): number { return this.netBillAfterGr(); }
   commissionAmount(): number { return this.netTaxableAfterGr() * (this.commissionPct / 100); }
   totalReturnQty(): number { return this.lines().reduce((s, l) => s + (+l.qty || 0), 0); }
+  totalReturnPcs(): number { return this.lines().filter(l => l.selected).reduce((s, l) => s + (+l.pcs || 0), 0); }
+  totalReturnMeters(): number { return this.lines().filter(l => l.selected).reduce((s, l) => s + (+l.meters || 0), 0); }
 
   showCommission = false;
   buyerCommRate = 0;       // Party Master se buyer ka commission rate
@@ -1015,6 +1037,9 @@ export class GrEntryComponent {
               hsnSac: l.hsnSac || '',
               qty: l.qty,
               unit: l.unit || 'MTR',
+              rateBasis: (l.rateBasis === 'PCS' || (!l.rateBasis && l.unit === 'PCS') ? 'PCS' : 'MTR') as 'PCS' | 'MTR',
+              pcs: +(l.pcs ?? ((l.rateBasis ?? l.unit ?? 'MTR') === 'MTR' ? 0 : l.qty)) || 0,
+              meters: +(l.meters ?? ((l.rateBasis ?? l.unit ?? 'MTR') === 'MTR' ? l.qty : 0)) || 0,
               rate: l.rate,
               rd: l.rd || 0,
               igstPct: l.igstPct || 5
@@ -1038,7 +1063,8 @@ export class GrEntryComponent {
     return {
       selected: true, billLineId: null, itemId: null,
       itemName: '', description: '', hsnSac: '',
-      qty: 0, unit: 'MTR', rate: 0, rd: 0, igstPct: 5
+      qty: 0, unit: 'MTR', pcs: 0, meters: 0, rateBasis: 'MTR',
+      rate: 0, rd: 0, igstPct: 5
     };
   }
 
@@ -1144,6 +1170,10 @@ export class GrEntryComponent {
           hsnSac: bl.hsnSac ?? '',
           qty: bl.qty,
           unit: bl.unit ?? 'MTR',
+          // Bill line se PCS/METERS/basis waise ke waise — return usi maal ka hai
+          rateBasis: (bl.rateBasis === 'PCS' || (!bl.rateBasis && bl.unit === 'PCS') ? 'PCS' : 'MTR') as 'PCS' | 'MTR',
+          pcs: +(bl.pcs ?? ((bl.rateBasis ?? bl.unit ?? 'MTR') === 'MTR' ? 0 : bl.qty)) || 0,
+          meters: +(bl.meters ?? ((bl.rateBasis ?? bl.unit ?? 'MTR') === 'MTR' ? bl.qty : 0)) || 0,
           rate: bl.rate,
           rd: 0,
           igstPct: bl.taxRate ?? 5
@@ -1154,7 +1184,17 @@ export class GrEntryComponent {
 
   // ============ LINE OPERATIONS ============
   updateLine(idx: number, field: keyof ReturnRow, value: any) {
-    this.lines.update(arr => arr.map((l, i) => i === idx ? { ...l, [field]: value } : l));
+    this.lines.update(arr => arr.map((l, i) => {
+      if (i !== idx) return l;
+      const u: ReturnRow = { ...l, [field]: value };
+      // Bill jaisa hi: PCS/METERS/toggle badla to billing qty apne aap sync —
+      // return ka hisaab (taxable/tax/total) qty par hi chalta hai.
+      if (field === 'pcs' || field === 'meters' || field === 'rateBasis') {
+        u.qty = u.rateBasis === 'MTR' ? (u.meters || 0) : (u.pcs || 0);
+        u.unit = u.rateBasis;
+      }
+      return u;
+    }));
   }
   addLine() { this.lines.update(arr => [...arr, this.newLine()]); }
   removeLine(idx: number) { this.lines.update(arr => arr.filter((_, i) => i !== idx)); }
@@ -1251,6 +1291,9 @@ export class GrEntryComponent {
         hsnSac: l.hsnSac || null,
         qty: l.qty,
         unit: l.unit,
+        pcs: l.pcs || null,
+        meters: l.meters || null,
+        rateBasis: l.rateBasis,
         rate: l.rate,
         rd: l.rd || 0,
         igstPct: l.igstPct,

@@ -22,7 +22,10 @@ public record GoodsReturnLineDto(
     decimal IgstPct,
     decimal TaxableAmount,
     decimal TaxAmount,
-    decimal TotalAmount);
+    decimal TotalAmount,
+    decimal? Pcs = null,        // textile: pieces (Qty billing wali hai)
+    decimal? Meters = null,     // textile: meters
+    string? RateBasis = null);  // 'PCS' | 'MTR'
 
 public record GoodsReturnListItemDto(
     Guid Id,
@@ -181,7 +184,8 @@ public class GoodsReturnService : IGoodsReturnService
             g.Lines.OrderBy(l => l.SortOrder).Select(l => new GoodsReturnLineDto(
                 l.Id, l.BillLineId, l.ItemId, l.ItemName, l.Description, l.HsnSac,
                 l.Qty, l.Unit, l.Rate, l.Rd, l.IgstPct,
-                l.TaxableAmount, l.TaxAmount, l.TotalAmount)).ToList());
+                l.TaxableAmount, l.TaxAmount, l.TotalAmount,
+                l.Pcs, l.Meters, l.RateBasis)).ToList());
     }
 
     public async Task<GoodsReturnDetailDto> Create(CreateGoodsReturnDto dto, Guid firmId, Guid branchId, Guid userId)
@@ -265,6 +269,7 @@ public class GoodsReturnService : IGoodsReturnService
                 HsnSac = l.HsnSac,
                 Qty = l.Qty,
                 Unit = l.Unit,
+                Pcs = l.Pcs, Meters = l.Meters, RateBasis = l.RateBasis,
                 Rate = l.Rate,
                 Rd = l.Rd,
                 IgstPct = l.IgstPct,
@@ -334,6 +339,7 @@ public class GoodsReturnService : IGoodsReturnService
             HsnSac = l.HsnSac,
             Qty = l.Qty,
             Unit = l.Unit,
+            Pcs = l.Pcs, Meters = l.Meters, RateBasis = l.RateBasis,
             Rate = l.Rate,
             Rd = l.Rd,
             IgstPct = l.IgstPct,

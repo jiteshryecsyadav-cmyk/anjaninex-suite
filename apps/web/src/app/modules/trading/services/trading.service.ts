@@ -239,6 +239,12 @@ export interface GoodsReturnLine {
   hsnSac?: string | null;
   qty: number;
   unit?: string | null;
+  /** Textile: pieces — qty billing wali hai (rateBasis chuni hui) */
+  pcs?: number | null;
+  /** Textile: meters */
+  meters?: number | null;
+  /** 'PCS' | 'MTR' — kis ginti par rate laga */
+  rateBasis?: string | null;
   rate: number;
   rd: number;
   igstPct: number;

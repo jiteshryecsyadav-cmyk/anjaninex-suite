@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, inject, OnInit, OnDestroy } from '@angular/core';
+import { Component, Input, Output, EventEmitter, inject, OnInit, OnDestroy, ElementRef } from '@angular/core';
 import { CommonModule, DatePipe, DecimalPipe } from '@angular/common';
 import { Router } from '@angular/router';
 import { amountInWords } from './amount-in-words.util';
@@ -435,10 +435,11 @@ export interface PreviewData {
   `]
 })
 export class InvoicePreviewComponent implements OnInit, OnDestroy {
-  // Preview khula = body par printing-doc class (global print CSS isi par chalti
-  // hai). Modal ke saath lagti-hatati hai, taaki Chrome preview kitni bhi baar
-  // re-render kare, print HAMESHA sirf invoice ka ho — peeche ka page kabhi na ghule.
-  ngOnInit() { setPrintTarget(true); }
+  private elRef = inject(ElementRef);
+  // Preview khulte hi ye component BODY me shift + printing-doc class — print par
+  // app-root display:none hota hai aur sirf ye (body-level) invoice chhapta hai.
+  // Destroy par Angular node khud hata deta hai, class off.
+  ngOnInit() { setPrintTarget(true, this.elRef.nativeElement); }
   ngOnDestroy() { setPrintTarget(false); }
 
   @Input() data!: PreviewData;

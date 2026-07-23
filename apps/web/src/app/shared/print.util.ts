@@ -1,19 +1,27 @@
 // =============================================================================
-// Print helpers — sirf invoice chhape, poora page kabhi nahi.
+// Print helpers — sirf invoice chhape, poora page KABHI nahi.
 //
-// Kaam global CSS karti hai (styles.css): body.printing-doc hone par sab
-// hidden, sirf [data-print-root] dikhta hai.
-//
-// SEEKH: class ko print() ke waqt timer se lagana-hatana GALAT tha — Chrome
-// ka print-preview baad me DOBARA render hota hai (Destination/settings
-// badalne par), tab tak class hat chuki hoti thi aur peeche ka form invoice
-// me ghul kar chhap jata tha. Isliye ab class PREVIEW MODAL ke poore jeevan
-// bhar rehti hai: modal khula = class lagi; modal band = class hati.
+// AAKHRI (structural) tareeka — visibility-tricks teen baar dhokha de chuke:
+//   1. Preview khulte hi uska overlay-element BODY me shift ho jata hai
+//      (app-root ke BAHAR). Screen par farak nahi (overlay fixed hai).
+//   2. body par 'printing-doc' class lagti hai.
+//   3. @media print (styles.css): app-root { display:none } — poora app band
+//      dabbe me. Sirf body-level overlay (invoice) bachta hai = wahi chhapta hai.
+//      display:none ke andar se KUCH BHI leak nahi ho sakta — ye CSS ki guarantee hai.
+//   4. Modal band/destroy → Angular node ko body se khud hata deta hai; class off.
 // =============================================================================
 
-/** Preview modal khulte hi on karo, band hote hi off — component lifecycle se. */
-export function setPrintTarget(on: boolean): void {
+/**
+ * Preview modal khulne par: on=true + uska host element do (body me shift hoga).
+ * Band hone par: on=false (element Angular khud hata deta hai).
+ */
+export function setPrintTarget(on: boolean, host?: HTMLElement | null): void {
   document.body.classList.toggle('printing-doc', on);
+  if (on && host && host.parentElement !== document.body) {
+    // Overlay ko app-root se nikaal kar seedha body me — Angular ki bindings/
+    // events node ke saath chalti hain, jagah se matlab nahi.
+    document.body.appendChild(host);
+  }
 }
 
 /** Print button — element ko print-root mark karke seedha print dialog. */

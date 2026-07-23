@@ -607,26 +607,12 @@ button:active::after, [class*="btn"]:active::after { height: 38%; opacity: .8; }
    element (invoice paper) hi chhapta hai, baaki sab chhupta hai.
    ============================================================ */
 @media print {
-  @page { margin: 12mm; }
-  /* Purple header/gradient/colored badges bhi chhapein (browser default rang hata deta hai) */
-  body.printing-doc [data-print-root] * {
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-  }
-  body.printing-doc * { visibility: hidden !important; }
-  body.printing-doc [data-print-root],
-  body.printing-doc [data-print-root] * { visibility: visible !important; }
-  body.printing-doc [data-print-root] {
-    position: absolute !important;
-    left: 0 !important; top: 0 !important;
-    width: 100% !important;
-    max-height: none !important;
-    overflow: visible !important;
-    box-shadow: none !important;
-    padding: 16px !important;
-  }
-  /* fixed/scroll wale modal ancestors ko print ke liye khol do —
-     warna paper pehle page ke viewport me kat jata hai */
+  /* Poora app band dabbe me — display:none ke andar se KUCH leak nahi ho sakta.
+     Invoice-overlay preview khulte hi body me shift ho chuka hota hai
+     (print.util setPrintTarget), isliye wo app-root ke bahar bachta hai = wahi chhapta hai. */
+  body.printing-doc app-root { display: none !important; }
+
+  /* Body-level overlay ko print ke liye khol do — fixed/scroll hata, saaf paper */
   body.printing-doc .ip-overlay,
   body.printing-doc .modal-overlay {
     position: static !important;
@@ -635,9 +621,21 @@ button:active::after, [class*="btn"]:active::after { height: 38%; opacity: .8; }
     padding: 0 !important;
   }
   body.printing-doc .ip-paper,
-  body.printing-doc .modal-paper {
+  body.printing-doc .modal-paper,
+  body.printing-doc [data-print-root] {
     max-height: none !important;
     overflow: visible !important;
     box-shadow: none !important;
+    max-width: none !important;
+    width: 100% !important;
   }
+  /* Purple header/rang bhi chhapein (browser default me hata deta hai) */
+  body.printing-doc [data-print-root],
+  body.printing-doc [data-print-root] * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  /* Modal ke Close/Print buttons print me nahi */
+  body.printing-doc .modal-actions,
+  body.printing-doc .ip-toolbar { display: none !important; }
 }

@@ -316,7 +316,7 @@ import { FieldConfigService } from '../../../shared/field-config.service';
 
     <!-- PRINT PREVIEW MODAL -->
     @if (showPreview()) {
-      <div class="modal-overlay" (click)="closePreview()">
+      <div class="modal-overlay" id="cgPrintHost" (click)="closePreview()">
         <div class="modal-paper" (click)="$event.stopPropagation()">
           <div class="invoice-paper" id="invoicePaper" data-print-root>
             <div class="wm">NAMOKARA</div>
@@ -991,7 +991,9 @@ export class CommissionGenerateComponent implements OnDestroy {
         // Neeche rows() se ye bills hat jayenge — preview ke liye pehle snapshot le lo
         this.frozenRows.set(rows);
         this.showPreview.set(true);
-        setPrintTarget(true);   // preview khula — print ab sirf invoice ka hoga
+        // Render hone do, phir overlay ko body me shift (app-root ke bahar) —
+        // print par app display:none hota hai, sirf ye invoice bachta hai.
+        setTimeout(() => setPrintTarget(true, document.getElementById('cgPrintHost')));
         // DOUBLE-SAVE ROK: jin bills ka invoice ABHI bana, unhe list se TURANT
         // hatao — pehle wo pade rehte the aur dobara Generate dabate hi wahi
         // bills phir submit ho jate the (Ho-C26/C27 jaisi jodi ban jati thi).

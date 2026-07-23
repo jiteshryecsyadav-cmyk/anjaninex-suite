@@ -1019,8 +1019,8 @@ export class CommissionGenerateComponent implements OnDestroy {
   ngOnDestroy() { setPrintTarget(false); }   // page chhoda to bhi class na atki rahe
 
   printInvoice() {
-    // Sirf invoice-paper nayi saaf window me — poora page/form kabhi nahi chhapega
-    printElement(document.getElementById('invoicePaper'));
+    // Print se theek pehle shift+class DOBARA pakka — sirf invoice chhape
+    printElement(document.getElementById('invoicePaper'), '#cgPrintHost');
   }
 
   goToList() {

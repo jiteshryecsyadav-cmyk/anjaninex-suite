@@ -469,6 +469,8 @@ export class InvoicePreviewComponent implements OnInit, OnDestroy {
    * kabhi peeche ka form chhap jata tha.
    */
   private printDoc() {
+    // Print se theek pehle component ko body me DOBARA pakka karo, phir print
+    setPrintTarget(true, this.elRef.nativeElement);
     printElement(document.getElementById('ipPrintArea'));
   }
   print() { this.printDoc(); }

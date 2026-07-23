@@ -16,16 +16,29 @@
  * Band hone par: on=false (element Angular khud hata deta hai).
  */
 export function setPrintTarget(on: boolean, host?: HTMLElement | null): void {
-  document.body.classList.toggle('printing-doc', on);
-  if (on && host && host.parentElement !== document.body) {
-    // Overlay ko app-root se nikaal kar seedha body me — Angular ki bindings/
-    // events node ke saath chalti hain, jagah se matlab nahi.
-    document.body.appendChild(host);
+  if (!on) { document.body.classList.remove('printing-doc'); return; }
+
+  // Overlay ko app-root se nikaal kar seedha body me — Angular ki bindings/
+  // events node ke saath chalti hain, jagah se matlab nahi.
+  if (host && host.parentElement !== document.body) {
+    try { document.body.appendChild(host); } catch { /* niche verify hoga */ }
   }
+  // SAFETY: class (jo app ko chhupati hai) SIRF tab lage jab invoice sach me
+  // body me pahunch chuka ho — warna print BLANK aata hai (app ke saath invoice
+  // bhi chhup jata). Shift fail ho to class OFF: poora page chhapega (bura,
+  // par blank se lakh guna behtar).
+  const shifted = !!host && host.parentElement === document.body;
+  document.body.classList.toggle('printing-doc', shifted);
 }
 
-/** Print button — element ko print-root mark karke seedha print dialog. */
-export function printElement(el: HTMLElement | null): void {
+/**
+ * Print button — print-root mark + shift DOBARA pakka karke print dialog.
+ * hostSelector: overlay jo body me hona chahiye ('.ip-overlay' ya '#cgPrintHost').
+ */
+export function printElement(el: HTMLElement | null, hostSelector?: string): void {
   if (el) el.setAttribute('data-print-root', '');
+  if (hostSelector) {
+    setPrintTarget(true, document.querySelector<HTMLElement>(hostSelector));
+  }
   window.print();
 }

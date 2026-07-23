@@ -40,6 +40,22 @@ export interface ScreenDef {
 
 export const FIELD_REGISTRY: ScreenDef[] = [
   // ---------------------------------------------------------------------------
+  // AUTO-FILL NIYAM — field nahi, BEHAVIOUR switches (Order/Bill dono par lagte hain)
+  // Tick ON = supplier select hote hi master ka % apne aap bhar jaye.
+  // Scan ka niyam toggle se AZAAD hai: bill par khud likha ho to popup
+  // "Bhar dun?" — Haan par hi bharta hai.
+  // ---------------------------------------------------------------------------
+  {
+    key: 'auto_fill',
+    name: 'Auto-Fill Niyam (Order/Bill)',
+    fields: [
+      { key: 'normal_disc',     label: 'Normal Disc % master se auto bhare',
+        hint: 'ON = supplier select hote hi Party/Group master ka % lag jata hai' },
+      { key: 'exhibition_disc', label: 'Exhibition Disc % master se auto bhare', defaultOff: true,
+        hint: 'OFF = haath se bharo; scan par bill me likha ho to poochh kar bharta hai' }
+    ]
+  },
+  // ---------------------------------------------------------------------------
   // BILL ENTRY — Trading › Bill › New/Edit
   // Hisaab wale fields (CD, Disc, Fold, TCS...) chhupane par unki value 0 maani
   // jati hai — NET AMT ka hisaab sahi rehta hai, bas wo kat-kut nahi lagti.

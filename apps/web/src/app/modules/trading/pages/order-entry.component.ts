@@ -1515,8 +1515,16 @@ export class OrderEntryComponent {
       if (+t.insurance > 0) this.insuranceAmt.set(+t.insurance);
       if (+t.normalDiscPercent > 0)     this.onDiscNormalPct(+t.normalDiscPercent);
       else if (+t.normalDiscAmount > 0) this.onDiscNormalAmt(+t.normalDiscAmount);
-      if (+t.exhibitionDiscPercent > 0)     this.onDiscExhPct(+t.exhibitionDiscPercent);
-      else if (+t.exhibitionDiscAmount > 0) this.onDiscExhAmt(+t.exhibitionDiscAmount);
+      // Exhibition Disc: BILL par likha hai tabhi — aur pehle user se poochh kar
+      if (+t.exhibitionDiscPercent > 0 || +t.exhibitionDiscAmount > 0) {
+        const desc = +t.exhibitionDiscPercent > 0
+          ? `${+t.exhibitionDiscPercent}%`
+          : `₹${(+t.exhibitionDiscAmount).toFixed(2)}`;
+        if (confirm(`📄 Bill par EXHIBITION DISC ${desc} likha hai.\n\nBhar dun?`)) {
+          if (+t.exhibitionDiscPercent > 0) this.onDiscExhPct(+t.exhibitionDiscPercent);
+          else this.onDiscExhAmt(+t.exhibitionDiscAmount);
+        }
+      }
     }
 
     // Match supplier in master
@@ -1867,12 +1875,15 @@ export class OrderEntryComponent {
   onDiscNormalAmt(v: number) { this.discNormalOverride.set(+v || 0); }
   onDiscExhPct(v: number) { this.discExhPct.set(+v || 0); this.discExhOverride.set(null); }
   onDiscExhAmt(v: number) { this.discExhOverride.set(+v || 0); }
-  /** Supplier select hone par master ke % bhar do (edit-load me nahi) */
+  /** Supplier select hone par master ke % bhar do (edit-load me nahi).
+   *  Kaunsa disc AUTO bhare — Screen & Fields ke "Auto-Fill Niyam" se firm tay
+   *  karti hai (Normal default ON, Exhibition default OFF). Scan alag: popup se.
+   */
   fillDiscFromMaster(partyId: string) {
     if (this.suppressAutoDisc) return;
     const p = this.parties().find(x => x.id === partyId);
-    this.discNormalPct.set(+(p?.discountNormal ?? 0));
-    this.discExhPct.set(+(p?.discountExhibition ?? 0));
+    this.discNormalPct.set(this.fieldCfg.show('auto_fill', 'normal_disc') ? +(p?.discountNormal ?? 0) : 0);
+    this.discExhPct.set(this.fieldCfg.show('auto_fill', 'exhibition_disc') ? +(p?.discountExhibition ?? 0) : 0);
     this.discNormalOverride.set(null);
     this.discExhOverride.set(null);
   }

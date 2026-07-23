@@ -594,12 +594,10 @@ import { FieldConfigService } from '../../../shared/field-config.service';
     .inv-foot .sig { text-align:right; font-weight:700; color:#1B2E5C; }
     .modal-actions { padding:14px 20px; background:#FAF7F0; border-top:1px solid #D6DDEA; display:flex; gap:8px; justify-content:flex-end; }
 
-    @media print {
-      body * { visibility:hidden; }
-      #invoicePaper, #invoicePaper * { visibility:visible; }
-      #invoicePaper { position:absolute; left:0; top:0; width:100%; padding:20px; }
-      .modal-actions, .modal-overlay { display:none !important; }
-    }
+    /* Print ki CSS ab GLOBAL hai (styles.css: body.printing-doc + data-print-root).
+       Pehle yahan component-scoped @media print tha jisme .modal-overlay { display:none }
+       tha — invoice usi overlay ke ANDAR hai, isliye print par pura modal (invoice
+       samet) gayab ho jata tha aur peeche ka form chhap jata tha. Isliye hata diya. */
 
     @media (max-width: 640px) {
       /* All grids → single column */

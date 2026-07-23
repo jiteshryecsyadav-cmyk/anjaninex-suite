@@ -430,15 +430,8 @@ export interface PreviewData {
     .foot-note { text-align:center; font-size:10px; color:#9CA3AF; margin-top:18px;
       padding-top:12px; border-top:1px solid #E5E7EB; line-height:1.5; }
 
-    /* PRINT CSS — clean layout when printing */
-    @media print {
-      body * { visibility:hidden; }
-      #ipPrintArea, #ipPrintArea * { visibility:visible; }
-      #ipPrintArea { position:absolute; left:0; top:0; width:100%; padding:20px; }
-      .ip-overlay { background:#fff !important; padding:0; }
-      .ip-paper { box-shadow:none; max-width:none; }
-      .ip-toolbar { display:none !important; }
-    }
+    /* Print ki CSS ab GLOBAL hai (styles.css: body.printing-doc + data-print-root).
+       Component-scoped @media print hataya — wo scope hone se global se takrata tha. */
   `]
 })
 export class InvoicePreviewComponent {

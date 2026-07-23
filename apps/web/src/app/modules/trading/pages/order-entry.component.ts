@@ -306,15 +306,15 @@ interface LineRow {
                 <th class="w-10">SNO.</th>
                 <th>ITEM NAME</th>
                 <th>CATEGORY</th>
-                <th class="w-16">PCS</th>
-                <th class="w-20">METERS</th>
-                <th class="w-24">RATE KIS PAR</th>
+                <th class="w-12">PCS</th>
+                <th class="w-14">METERS</th>
+                <th class="w-20">RATE KIS PAR</th>
                 <th class="w-28">PRICE</th>
-                <th class="w-16">RD</th>
-                <th class="w-20">HSN</th>
-                <th class="w-16">SGST%</th>
-                <th class="w-16">CGST%</th>
-                <th class="w-16">IGST%</th>
+                <th class="w-24">RD</th>
+                <th class="w-28">HSN</th>
+                <th class="w-24">SGST%</th>
+                <th class="w-24">CGST%</th>
+                <th class="w-24">IGST%</th>
                 <th class="w-24">TAXABLE AMT</th>
                 <th class="w-20">TAX AMT</th>
                 <th class="w-24">TOTAL</th>
@@ -962,6 +962,15 @@ interface LineRow {
     /* Desktop: columns apni poori readable width me; table LEFT-RIGHT scroll karti hai */
     .item-table th:nth-child(2), .item-table td:nth-child(2){ min-width: 170px; }  /* Item Name */
     .item-table th:nth-child(3), .item-table td:nth-child(3){ min-width: 160px; }  /* Description */
+    /* PCS/METERS chhote; PRICE/RD/HSN/GST% chaude (auto-layout me width pakki karo) */
+    .item-table th:nth-child(4),  .item-table td:nth-child(4)  { min-width: 46px;  width: 46px; }   /* PCS */
+    .item-table th:nth-child(5),  .item-table td:nth-child(5)  { min-width: 54px;  width: 54px; }   /* METERS */
+    .item-table th:nth-child(7),  .item-table td:nth-child(7)  { min-width: 92px; }                 /* PRICE */
+    .item-table th:nth-child(8),  .item-table td:nth-child(8)  { min-width: 70px; }                 /* RD */
+    .item-table th:nth-child(9),  .item-table td:nth-child(9)  { min-width: 92px; }                 /* HSN */
+    .item-table th:nth-child(10), .item-table td:nth-child(10) { min-width: 68px; }                 /* SGST% */
+    .item-table th:nth-child(11), .item-table td:nth-child(11) { min-width: 68px; }                 /* CGST% */
+    .item-table th:nth-child(12), .item-table td:nth-child(12) { min-width: 68px; }                 /* IGST% */
     .item-table thead { background: var(--anjaninex-navy, #1B2E5C); color: #fff; }
     .item-table th {
       padding: 8px 6px; text-align: left; font-weight: 700; font-size: 10px;

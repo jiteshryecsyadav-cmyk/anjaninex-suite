@@ -316,7 +316,7 @@ import { FieldConfigService } from '../../../shared/field-config.service';
 
     <!-- PRINT PREVIEW MODAL -->
     @if (showPreview()) {
-      <div class="modal-overlay" (click)="showPreview.set(false)">
+      <div class="modal-overlay" (click)="closePreview()">
         <div class="modal-paper" (click)="$event.stopPropagation()">
           <div class="invoice-paper" id="invoicePaper" data-print-root>
             <div class="wm">NAMOKARA</div>
@@ -450,7 +450,7 @@ import { FieldConfigService } from '../../../shared/field-config.service';
           </div>
 
           <div class="modal-actions">
-            <button (click)="showPreview.set(false)" class="btn-cancel">Close</button>
+            <button (click)="closePreview()" class="btn-cancel">Close</button>
             <button (click)="printInvoice()" class="btn-primary">🖨️ Print / Download</button>
             <button (click)="goToList()" class="btn-primary">📋 Commission List</button>
           </div>
@@ -714,8 +714,12 @@ export class CommissionGenerateComponent {
 
   // METHOD (computed nahi) — buyerId plain property hai, signal use track nahi karta
   selectedBuyer(): Party | undefined { return this.buyers().find(p => p.id === this.targetId()); }
-  selectedCount = computed(() => this.rows().filter(r => r.selected).length);
-  selectedRows = computed(() => this.rows().filter(r => r.selected));
+  // Invoice save hote hi wo bills rows() se hat jate hain (double-save rok). Par preview
+  // modal inhi computeds se chhapta hai — isliye save ke waqt rows FREEZE kar dete hain,
+  // warna preview me table khali aur sab total 0 aa jata hai.
+  frozenRows = signal<CommRow[] | null>(null);
+  selectedRows = computed(() => this.frozenRows() ?? this.rows().filter(r => r.selected));
+  selectedCount = computed(() => this.selectedRows().length);
   selectedBillTotal = computed(() => this.selectedRows().reduce((s, r) => s + r.bill.total, 0));
   selectedCommTotal = computed(() => this.selectedRows().reduce((s, r) => s + r.commAmt, 0));
   gstAmt = computed(() => +(this.selectedCommTotal() * this.gstPct / 100).toFixed(2));
@@ -986,6 +990,8 @@ export class CommissionGenerateComponent {
         this.saving.set(false);
         this.savedId.set(res.id);
         this.invoiceNo = res.invoiceNo;
+        // Neeche rows() se ye bills hat jayenge — preview ke liye pehle snapshot le lo
+        this.frozenRows.set(rows);
         this.showPreview.set(true);
         // DOUBLE-SAVE ROK: jin bills ka invoice ABHI bana, unhe list se TURANT
         // hatao — pehle wo pade rehte the aur dobara Generate dabate hi wahi
@@ -1001,6 +1007,11 @@ export class CommissionGenerateComponent {
         alert('Save fail: ' + (e?.error?.error ?? e?.message ?? 'unknown error'));
       },
     });
+  }
+
+  closePreview() {
+    this.showPreview.set(false);
+    this.frozenRows.set(null);   // ab wapas live rows par
   }
 
   printInvoice() {

@@ -179,21 +179,6 @@ import { environment } from '../../../environments/environment';
                 <span class="w-5 text-center">📊</span> Reports
               </a>
             }
-            <!-- Plans — subscription plans + usage; wallet ke turant neeche -->
-            <a routerLink="/plans" routerLinkActive="!bg-anjaninex-red !text-white"
-               class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-semibold text-white/75 hover:text-white hover:bg-white/10">
-              <span class="w-5 text-center">💎</span> Plans
-            </a>
-            <!-- Complaint Box — Anjaninex ko complaint bhejo (default ON; sadmin firm-wise band kar sakta hai) -->
-            @if (features.complaintBoxEnabled()) {
-              <a routerLink="/complaints" routerLinkActive="!bg-anjaninex-red !text-white"
-                 class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-semibold text-white/75 hover:text-white hover:bg-white/10">
-                <span class="w-5 text-center">📢</span> Complaint Box
-                @if (cbUnread() > 0) {
-                  <span class="unread-badge">{{ cbUnread() > 99 ? '99+' : cbUnread() }}</span>
-                }
-              </a>
-            }
             <!-- Party Chat — apni parties se chat (feature flag: pilot pehle Riddhi) -->
             @if (features.flag('party_chat')) {
               <a routerLink="/party-chat" routerLinkActive="!bg-anjaninex-red !text-white"
@@ -204,32 +189,56 @@ import { environment } from '../../../environments/environment';
                 }
               </a>
             }
-            @if (features.credilEnabled()) {
-              <a routerLink="/credil" routerLinkActive="!bg-anjaninex-red !text-white"
-                 class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-semibold text-white/75 hover:text-white hover:bg-white/10">
-                <span class="w-5 text-center">📈</span> CREDIL
-              </a>
-            }
-            @if (auth.hasRole('firm_admin') || auth.hasRole('firm_owner') || auth.hasRole('admin') || auth.hasRole('owner')) {
-              <a routerLink="/team" routerLinkActive="!bg-anjaninex-red !text-white"
-                 class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-semibold text-white/75 hover:text-white hover:bg-white/10">
-                <span class="w-5 text-center">🛡️</span> Team
-              </a>
-              <!-- Screen & Fields — firm apni screens ke fields on/off kare -->
-              <a routerLink="/settings/screen-fields" routerLinkActive="!bg-anjaninex-red !text-white"
-                 class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-semibold text-white/75 hover:text-white hover:bg-white/10">
-                <span class="w-5 text-center">🎛️</span> Screen &amp; Fields
-              </a>
-            }
             <a routerLink="/core-master" routerLinkActive="!bg-anjaninex-red !text-white"
                class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-semibold text-white/75 hover:text-white hover:bg-white/10">
               <span class="w-5 text-center">🗂️</span> Core Master
             </a>
-            <!-- Import & Migration — naye customer ka purana data bulk import (har firm user) -->
-            <a routerLink="/migration" routerLinkActive="!bg-anjaninex-red !text-white"
-               class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-semibold text-white/75 hover:text-white hover:bg-white/10">
-              <span class="w-5 text-center">📥</span> Import &amp; Migration
-            </a>
+
+            <!-- ⭐ KEY FEATURES — roz-use na hone wale features EK group me,
+                 taaki sidebar saaf rahe. Khula/band localStorage me yaad rehta hai;
+                 andar ke kisi page par ho to group khud khula rehta hai. -->
+            <button (click)="toggleKeyFeatures()"
+                    class="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-bold text-white/85 hover:text-white hover:bg-white/10">
+              <span class="w-5 text-center">⭐</span> Key Features
+              <span class="ml-auto text-xs">{{ keyFeaturesOpen() ? '▾' : '▸' }}</span>
+            </button>
+            @if (keyFeaturesOpen()) {
+              <div class="ml-3 border-l border-white/15 pl-1">
+                <a routerLink="/plans" routerLinkActive="!bg-anjaninex-red !text-white"
+                   class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-semibold text-white/75 hover:text-white hover:bg-white/10">
+                  <span class="w-5 text-center">💎</span> Plans
+                </a>
+                @if (features.credilEnabled()) {
+                  <a routerLink="/credil" routerLinkActive="!bg-anjaninex-red !text-white"
+                     class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-semibold text-white/75 hover:text-white hover:bg-white/10">
+                    <span class="w-5 text-center">📈</span> CREDIL
+                  </a>
+                }
+                @if (auth.hasRole('firm_admin') || auth.hasRole('firm_owner') || auth.hasRole('admin') || auth.hasRole('owner')) {
+                  <a routerLink="/team" routerLinkActive="!bg-anjaninex-red !text-white"
+                     class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-semibold text-white/75 hover:text-white hover:bg-white/10">
+                    <span class="w-5 text-center">🛡️</span> Team
+                  </a>
+                  <a routerLink="/settings/screen-fields" routerLinkActive="!bg-anjaninex-red !text-white"
+                     class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-semibold text-white/75 hover:text-white hover:bg-white/10">
+                    <span class="w-5 text-center">🎛️</span> Screen &amp; Fields
+                  </a>
+                }
+                <a routerLink="/migration" routerLinkActive="!bg-anjaninex-red !text-white"
+                   class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-semibold text-white/75 hover:text-white hover:bg-white/10">
+                  <span class="w-5 text-center">📥</span> Import &amp; Migration
+                </a>
+                @if (features.complaintBoxEnabled()) {
+                  <a routerLink="/complaints" routerLinkActive="!bg-anjaninex-red !text-white"
+                     class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-semibold text-white/75 hover:text-white hover:bg-white/10">
+                    <span class="w-5 text-center">📢</span> Complaint Box
+                    @if (cbUnread() > 0) {
+                      <span class="unread-badge">{{ cbUnread() > 99 ? '99+' : cbUnread() }}</span>
+                    }
+                  </a>
+                }
+              </div>
+            }
             }
             <!-- Theme Color picker removed — theme is now fixed per-firm (set by Anjaninex super-admin). -->
           </nav>
@@ -579,6 +588,16 @@ export class ShellComponent {
   private http = inject(HttpClient);
   menuOpen = signal(false);
   private menuCloseTimer: any = null;
+
+  // ⭐ Key Features group — khula/band yaad rehta hai; andar ke page par ho to khud khula
+  keyFeaturesOpen = signal(
+    localStorage.getItem('ax_keyfeat_open') === '1'
+    || ['/plans', '/credil', '/team', '/settings/screen-fields', '/migration', '/complaints']
+         .some(p => location.pathname.startsWith(p)));
+  toggleKeyFeatures() {
+    this.keyFeaturesOpen.update(v => !v);
+    try { localStorage.setItem('ax_keyfeat_open', this.keyFeaturesOpen() ? '1' : '0'); } catch {}
+  }
   // Mobile par sidebar default band (overlay), desktop par khula
   sidebarOpen = signal(window.innerWidth >= 768);
 

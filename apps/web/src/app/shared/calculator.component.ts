@@ -9,12 +9,22 @@ import { Component, EventEmitter, Output, HostListener } from '@angular/core';
   selector: 'app-calculator',
   standalone: true,
   template: `
-    <div class="calc-backdrop" (click)="close()"></div>
-    <div class="calc" (click)="$event.stopPropagation()">
-      <div class="calc-head">
-        <span>🧮 Calculator</span>
-        <button class="calc-x" (click)="close()" title="Close">×</button>
-      </div>
+    <!-- Minimize: panel chhota hokar neeche-right pill ban jata hai — screen ka kaam
+         chalta rahe, hisaab bhi bana rahe (expr/display waise ke waise). -->
+    @if (minimized) {
+      <button class="calc-pill" (click)="minimized = false" title="Calculator wapas kholo">
+        🧮 {{ display }}
+      </button>
+    } @else {
+      <div class="calc-backdrop" (click)="close()"></div>
+      <div class="calc" (click)="$event.stopPropagation()">
+        <div class="calc-head">
+          <span>🧮 Calculator</span>
+          <span>
+            <button class="calc-x" (click)="minimized = true" title="Minimize — hisaab bana rahega">—</button>
+            <button class="calc-x" (click)="close()" title="Close">×</button>
+          </span>
+        </div>
       <div class="calc-expr">{{ expr || ' ' }}</div>
       <div class="calc-disp" [title]="display">{{ display }}</div>
       <div class="calc-grid">
@@ -43,8 +53,9 @@ import { Component, EventEmitter, Output, HostListener } from '@angular/core';
         <button class="k" (click)="dot()">.</button>
         <button class="k eq" (click)="equals()">=</button>
       </div>
-      <div class="calc-hint">Keyboard chalu hai · Esc = band</div>
-    </div>
+        <div class="calc-hint">Keyboard chalu hai · Esc = band · — se minimize</div>
+      </div>
+    }
   `,
   styles: [`
     .calc-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.35); z-index: 1200; }
@@ -74,10 +85,21 @@ import { Component, EventEmitter, Output, HostListener } from '@angular/core';
     .k.fn { background: #ffe9e9; color: #b91c1c; }
     .k.eq { background: var(--anjaninex-navy, #1B2E5C); color: #fff; }
     .calc-hint { text-align: center; font-size: 10px; color: #9aa3b2; padding: 4px 0 10px; }
+    .calc-pill {
+      position: fixed; right: 18px; bottom: 92px; z-index: 1201;
+      background: var(--anjaninex-navy, #1B2E5C); color: #fff; border: 0; cursor: pointer;
+      border-radius: 999px; padding: 10px 16px; font-size: 14px; font-weight: 800;
+      box-shadow: 0 8px 24px rgba(0,0,0,.3); max-width: 220px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .calc-pill:hover { filter: brightness(1.15); }
   `]
 })
 export class CalculatorComponent {
   @Output() closed = new EventEmitter<void>();
+
+  /** true = panel chhupa hai, sirf neeche-right pill dikh rahi hai (hisaab bana rehta hai) */
+  minimized = false;
 
   display = '0';
   expr = '';
@@ -154,6 +176,9 @@ export class CalculatorComponent {
 
   @HostListener('document:keydown', ['$event'])
   onKey(e: KeyboardEvent) {
+    // Minimize me keyboard user ke PAGE ka hai, calculator ka nahi —
+    // warna receipt me "5" type karo aur calc me lag jaye.
+    if (this.minimized) return;
     const k = e.key;
     if (k >= '0' && k <= '9') { this.num(k); e.preventDefault(); }
     else if (k === '.') { this.dot(); e.preventDefault(); }

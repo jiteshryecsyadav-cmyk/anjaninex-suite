@@ -1,52 +1,26 @@
 // =============================================================================
 // printElement — sirf DIYA HUA element chhapo, poora page nahi.
 //
-// Ek nayi khali window me sirf invoice ka HTML + page ki SAARI styles daal kar
-// wahan se print. Angular apni component styles do jagah rakhta hai:
-//   1. <style> tags <head> me  → document.head.innerHTML se aate hain
-//   2. adoptedStyleSheets       → innerHTML me NAHI aate (isliye print khali
-//      aata tha) — inhe alag se serialize karke <style> me daalte hain.
+// Nayi-window / iframe wale tareeke bharose ke laayak nahi the (Angular ki
+// component styles adoptedStyleSheets me hoti hain, dusri window me nahi
+// jaatin → print khali). Isliye ISI page me chhapte hain jahan styles pehle
+// se lagi hain — body par `printing-doc` class + element par `data-print-root`.
+// @media print (styles.css) me: sab kuch hidden, sirf print-root dikhta hai.
+// visibility (display nahi) isliye ki nested-visible child parent ke hidden
+// ko override kar deta hai — modal fixed/overflow me bhi invoice chhap jata hai.
 // =============================================================================
-
-function collectAllCss(): string {
-  let css = '';
-  // adoptedStyleSheets (Angular ki component styles yahan hoti hain)
-  const sheets = (document as any).adoptedStyleSheets as CSSStyleSheet[] | undefined;
-  if (sheets) {
-    for (const sheet of sheets) {
-      try {
-        for (const rule of Array.from(sheet.cssRules)) css += rule.cssText + '\n';
-      } catch { /* cross-origin — skip */ }
-    }
-  }
-  // <style> ya <link> se aayi stylesheets bhi (jinke rules padh sakein)
-  for (const sheet of Array.from(document.styleSheets)) {
-    try {
-      for (const rule of Array.from(sheet.cssRules)) css += rule.cssText + '\n';
-    } catch { /* cross-origin (fonts CDN etc) — skip */ }
-  }
-  return css;
-}
 
 export function printElement(el: HTMLElement | null): void {
   if (!el) { window.print(); return; }
+  el.setAttribute('data-print-root', '');
 
-  const w = window.open('', '_blank', 'width=900,height=1200');
-  if (!w) { window.print(); return; }   // popup block — purane tareeke par giro
+  document.body.classList.add('printing-doc');
+  const cleanup = () => document.body.classList.remove('printing-doc');
+  window.addEventListener('afterprint', cleanup, { once: true });
 
-  const css = collectAllCss();
-  w.document.write(
-    '<!doctype html><html><head><meta charset="utf-8">' +
-    '<style>' + css + '</style>' +
-    '<style>@page{margin:12mm} body{background:#fff;margin:0;padding:16px;' +
-    '-webkit-print-color-adjust:exact;print-color-adjust:exact}</style>' +
-    '</head><body>' + el.outerHTML + '</body></html>');
-  w.document.close();
-  w.focus();
-
-  // Styles/fonts settle hone ka chhota intezaar, phir print aur band.
+  // thoda ruk kar (class lagne do), print; safety cleanup agar afterprint na chale
   setTimeout(() => {
-    try { w.print(); } catch {}
-    setTimeout(() => { try { w.close(); } catch {} }, 400);
-  }, 400);
+    try { window.print(); } catch {}
+    setTimeout(cleanup, 1500);
+  }, 80);
 }

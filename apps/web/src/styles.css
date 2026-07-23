@@ -607,6 +607,12 @@ button:active::after, [class*="btn"]:active::after { height: 38%; opacity: .8; }
    element (invoice paper) hi chhapta hai, baaki sab chhupta hai.
    ============================================================ */
 @media print {
+  @page { margin: 12mm; }
+  /* Purple header/gradient/colored badges bhi chhapein (browser default rang hata deta hai) */
+  body.printing-doc [data-print-root] * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
   body.printing-doc * { visibility: hidden !important; }
   body.printing-doc [data-print-root],
   body.printing-doc [data-print-root] * { visibility: visible !important; }

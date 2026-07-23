@@ -1,8 +1,8 @@
-import { Component, Input, Output, EventEmitter, inject } from '@angular/core';
+import { Component, Input, Output, EventEmitter, inject, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule, DatePipe, DecimalPipe } from '@angular/common';
 import { Router } from '@angular/router';
 import { amountInWords } from './amount-in-words.util';
-import { printElement } from './print.util';
+import { printElement, setPrintTarget } from './print.util';
 import { FeatureService } from './feature.service';
 
 export interface PreviewParty {
@@ -434,7 +434,13 @@ export interface PreviewData {
        Component-scoped @media print hataya — wo scope hone se global se takrata tha. */
   `]
 })
-export class InvoicePreviewComponent {
+export class InvoicePreviewComponent implements OnInit, OnDestroy {
+  // Preview khula = body par printing-doc class (global print CSS isi par chalti
+  // hai). Modal ke saath lagti-hatati hai, taaki Chrome preview kitni bhi baar
+  // re-render kare, print HAMESHA sirf invoice ka ho — peeche ka page kabhi na ghule.
+  ngOnInit() { setPrintTarget(true); }
+  ngOnDestroy() { setPrintTarget(false); }
+
   @Input() data!: PreviewData;
   @Output() close = new EventEmitter<void>();
   features = inject(FeatureService);

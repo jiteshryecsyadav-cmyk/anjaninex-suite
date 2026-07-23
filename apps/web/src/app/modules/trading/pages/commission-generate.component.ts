@@ -1,4 +1,4 @@
-import { Component, inject, signal, computed } from '@angular/core';
+import { Component, inject, signal, computed, OnDestroy } from '@angular/core';
 import { CommonModule, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
@@ -10,7 +10,7 @@ import { amountInWords } from '../../../shared/amount-in-words.util';
 import { ToastService } from '../../../shared/toast.service';
 import { InDatePipe } from '../../../shared/in-date.pipe';
 import { todayLocal, toLocalYmd } from '../../../shared/date.util';
-import { printElement } from '../../../shared/print.util';
+import { printElement, setPrintTarget } from '../../../shared/print.util';
 import { FeatureService } from '../../../shared/feature.service';
 
 interface CommRow {
@@ -611,7 +611,7 @@ import { FieldConfigService } from '../../../shared/field-config.service';
     }
   `]
 })
-export class CommissionGenerateComponent {
+export class CommissionGenerateComponent implements OnDestroy {
   private svc = inject(TradingService);
   features = inject(FeatureService);
   private fieldCfg = inject(FieldConfigService);
@@ -991,6 +991,7 @@ export class CommissionGenerateComponent {
         // Neeche rows() se ye bills hat jayenge — preview ke liye pehle snapshot le lo
         this.frozenRows.set(rows);
         this.showPreview.set(true);
+        setPrintTarget(true);   // preview khula — print ab sirf invoice ka hoga
         // DOUBLE-SAVE ROK: jin bills ka invoice ABHI bana, unhe list se TURANT
         // hatao — pehle wo pade rehte the aur dobara Generate dabate hi wahi
         // bills phir submit ho jate the (Ho-C26/C27 jaisi jodi ban jati thi).
@@ -1010,7 +1011,10 @@ export class CommissionGenerateComponent {
   closePreview() {
     this.showPreview.set(false);
     this.frozenRows.set(null);   // ab wapas live rows par
+    setPrintTarget(false);       // preview band — page normal print par wapas
   }
+
+  ngOnDestroy() { setPrintTarget(false); }   // page chhoda to bhi class na atki rahe
 
   printInvoice() {
     // Sirf invoice-paper nayi saaf window me — poora page/form kabhi nahi chhapega

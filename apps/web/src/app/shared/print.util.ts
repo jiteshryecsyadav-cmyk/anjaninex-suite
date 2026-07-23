@@ -1,26 +1,23 @@
 // =============================================================================
-// printElement — sirf DIYA HUA element chhapo, poora page nahi.
+// Print helpers — sirf invoice chhape, poora page kabhi nahi.
 //
-// Nayi-window / iframe wale tareeke bharose ke laayak nahi the (Angular ki
-// component styles adoptedStyleSheets me hoti hain, dusri window me nahi
-// jaatin → print khali). Isliye ISI page me chhapte hain jahan styles pehle
-// se lagi hain — body par `printing-doc` class + element par `data-print-root`.
-// @media print (styles.css) me: sab kuch hidden, sirf print-root dikhta hai.
-// visibility (display nahi) isliye ki nested-visible child parent ke hidden
-// ko override kar deta hai — modal fixed/overflow me bhi invoice chhap jata hai.
+// Kaam global CSS karti hai (styles.css): body.printing-doc hone par sab
+// hidden, sirf [data-print-root] dikhta hai.
+//
+// SEEKH: class ko print() ke waqt timer se lagana-hatana GALAT tha — Chrome
+// ka print-preview baad me DOBARA render hota hai (Destination/settings
+// badalne par), tab tak class hat chuki hoti thi aur peeche ka form invoice
+// me ghul kar chhap jata tha. Isliye ab class PREVIEW MODAL ke poore jeevan
+// bhar rehti hai: modal khula = class lagi; modal band = class hati.
 // =============================================================================
 
+/** Preview modal khulte hi on karo, band hote hi off — component lifecycle se. */
+export function setPrintTarget(on: boolean): void {
+  document.body.classList.toggle('printing-doc', on);
+}
+
+/** Print button — element ko print-root mark karke seedha print dialog. */
 export function printElement(el: HTMLElement | null): void {
-  if (!el) { window.print(); return; }
-  el.setAttribute('data-print-root', '');
-
-  document.body.classList.add('printing-doc');
-  const cleanup = () => document.body.classList.remove('printing-doc');
-  window.addEventListener('afterprint', cleanup, { once: true });
-
-  // thoda ruk kar (class lagne do), print; safety cleanup agar afterprint na chale
-  setTimeout(() => {
-    try { window.print(); } catch {}
-    setTimeout(cleanup, 1500);
-  }, 80);
+  if (el) el.setAttribute('data-print-root', '');
+  window.print();
 }

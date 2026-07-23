@@ -2,6 +2,7 @@ import { Component, Input, Output, EventEmitter, inject } from '@angular/core';
 import { CommonModule, DatePipe, DecimalPipe } from '@angular/common';
 import { Router } from '@angular/router';
 import { amountInWords } from './amount-in-words.util';
+import { printElement } from './print.util';
 import { FeatureService } from './feature.service';
 
 export interface PreviewParty {
@@ -463,19 +464,16 @@ export class InvoicePreviewComponent {
     return this.data.lines.reduce((s, l) => s + (l.qty || 0), 0);
   }
   /**
-   * Print/PDF — body par .printing-doc laga kar chhapte hain (global print CSS
-   * styles.css me). Pehle component-scoped CSS thi jo body par lagti hi nahi
-   * thi — modal fixed me phansa rehta tha aur print KHALI aata tha.
+   * Print/PDF — sirf invoice-paper ek nayi saaf window me khol kar chhapta hai
+   * (print.util). CSS-visibility wale purane tareeke me kabhi khali page,
+   * kabhi peeche ka form chhap jata tha.
    */
   private printDoc() {
-    document.body.classList.add('printing-doc');
-    const cleanup = () => document.body.classList.remove('printing-doc');
-    window.addEventListener('afterprint', cleanup, { once: true });
-    setTimeout(() => { window.print(); setTimeout(cleanup, 1000); }, 50);
+    printElement(document.getElementById('ipPrintArea'));
   }
   print() { this.printDoc(); }
   savePdf() {
-    // Browser's print dialog → user picks "Save as PDF" destination
+    // Print dialog me destination "Save as PDF" chun lo
     this.printDoc();
   }
   /** Kis party se baat karni hai — buyer pehle, warna supplier. */

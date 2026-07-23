@@ -10,6 +10,7 @@ import { amountInWords } from '../../../shared/amount-in-words.util';
 import { ToastService } from '../../../shared/toast.service';
 import { InDatePipe } from '../../../shared/in-date.pipe';
 import { todayLocal, toLocalYmd } from '../../../shared/date.util';
+import { printElement } from '../../../shared/print.util';
 import { FeatureService } from '../../../shared/feature.service';
 
 interface CommRow {
@@ -1003,12 +1004,8 @@ export class CommissionGenerateComponent {
   }
 
   printInvoice() {
-    // Global print CSS (styles.css) — .printing-doc + data-print-root; component-scoped
-    // print CSS body par lagti nahi thi, isliye print kabhi-kabhi khali aata tha.
-    document.body.classList.add('printing-doc');
-    const cleanup = () => document.body.classList.remove('printing-doc');
-    window.addEventListener('afterprint', cleanup, { once: true });
-    setTimeout(() => { window.print(); setTimeout(cleanup, 1000); }, 50);
+    // Sirf invoice-paper nayi saaf window me — poora page/form kabhi nahi chhapega
+    printElement(document.getElementById('invoicePaper'));
   }
 
   goToList() {

@@ -14,6 +14,7 @@ interface Handover {
 import { BackButtonComponent } from '../../../shared/back-button.component';
 import { FldDirective } from '../../../shared/fld.directive';
 import { FieldConfigService } from '../../../shared/field-config.service';
+import { TradingService } from '../services/trading.service';
 @Component({
   selector: 'app-cheque-register',
   standalone: true,
@@ -36,7 +37,12 @@ import { FieldConfigService } from '../../../shared/field-config.service';
     <div class="card mb-4 flex flex-wrap gap-3 items-end">
       <div><label class="text-xs text-gray-500 block">From</label><input type="date" [(ngModel)]="from" (change)="load()" class="input w-40"></div>
       <div><label class="text-xs text-gray-500 block">To</label><input type="date" [(ngModel)]="to" (change)="load()" class="input w-40"></div>
-      <input [(ngModel)]="search" (keyup.enter)="load()" placeholder="Supplier / staff / cheque no..." class="input w-64">
+      <!-- Party master ke naam dropdown me — type karte hi suggest, arrow keys se select -->
+      <input [(ngModel)]="search" (keyup.enter)="load()" list="chqParties"
+             placeholder="Supplier / staff / cheque no..." class="input w-64" autocomplete="off">
+      <datalist id="chqParties">
+        @for (n of partyNames(); track n) { <option [value]="n"></option> }
+      </datalist>
       <button (click)="load()" class="px-3 py-1.5 text-sm border border-[#ddc8f5] rounded hover:bg-purple-50">Search</button>
       <div class="flex gap-1 ml-auto">
         <button (click)="commissionFilter.set(''); load()" [class]="commissionFilter()==='' ? 'bg-[#5c1a8b] text-white' : 'bg-white text-gray-600'" class="px-3 py-1 text-xs font-bold border border-[#ddc8f5] rounded-l">All</button>
@@ -99,7 +105,9 @@ import { FieldConfigService } from '../../../shared/field-config.service';
         <div class="bg-white rounded-2xl p-6 w-full max-w-lg" (click)="$event.stopPropagation()">
           <h3 class="font-black text-xl text-[#5c1a8b] mb-3">Cheque Handover</h3>
           <div class="grid grid-cols-2 gap-3">
-            <div><label class="text-xs text-gray-500">Supplier</label><input [(ngModel)]="f.supplierName" class="input" placeholder="Supplier naam"></div>
+            <div><label class="text-xs text-gray-500">Supplier</label>
+              <input [(ngModel)]="f.supplierName" list="chqParties" class="input"
+                     placeholder="Supplier naam" autocomplete="off"></div>
             <div *fld="'cheque_register.payment_ref'"><label class="text-xs text-gray-500">{{ fl('payment_ref') }}</label><input [(ngModel)]="f.paymentRef" class="input" placeholder="e.g. Surat Ho-R36"></div>
             <div><label class="text-xs text-gray-500">Cheque / UTR No</label><input [(ngModel)]="f.chequeNo" class="input"></div>
             <div *fld="'cheque_register.bank'"><label class="text-xs text-gray-500">{{ fl('bank') }}</label><input [(ngModel)]="f.bankName" class="input"></div>
@@ -129,8 +137,12 @@ import { FieldConfigService } from '../../../shared/field-config.service';
 export class ChequeRegisterComponent {
   private http = inject(HttpClient);
   private fieldCfg = inject(FieldConfigService);
+  private trading = inject(TradingService);
   /** Field ka naam — firm ne Screen & Fields me badla ho to wahi dikhega. */
   fl(key: string): string { return this.fieldCfg.label('cheque_register', key); }
+
+  /** Party master ke naam — search + "Cheque diya" form ke dropdown suggest ke liye */
+  partyNames = signal<string[]>([]);
   base = `${environment.apiUrl}/api/trading/cheque-handovers`;
   rows = signal<Handover[]>([]);
   loading = signal(false);
@@ -161,7 +173,16 @@ export class ChequeRegisterComponent {
     });
   }
 
-  constructor() { this.load(); this.loadInvoicedSuppliers(); }
+  constructor() {
+    this.load();
+    this.loadInvoicedSuppliers();
+    // Party master ke naam dropdown-suggest ke liye (A-Z)
+    this.trading.listParties().subscribe({
+      next: ps => this.partyNames.set(
+        ps.map(p => p.displayName).filter(Boolean).sort((a, b) => a.localeCompare(b))),
+      error: () => {}
+    });
+  }
 
   load() {
     this.loading.set(true);

@@ -11,6 +11,7 @@ import { ToastService } from '../../../shared/toast.service';
 import { InDatePipe } from '../../../shared/in-date.pipe';
 import { todayLocal, toLocalYmd } from '../../../shared/date.util';
 import { printElement } from '../../../shared/print.util';
+import { printElement } from '../../../shared/print.util';
 import { FeatureService } from '../../../shared/feature.service';
 
 interface CommRow {

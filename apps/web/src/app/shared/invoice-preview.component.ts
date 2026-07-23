@@ -3,6 +3,7 @@ import { CommonModule, DatePipe, DecimalPipe } from '@angular/common';
 import { Router } from '@angular/router';
 import { amountInWords } from './amount-in-words.util';
 import { printElement } from './print.util';
+import { printElement } from './print.util';
 import { FeatureService } from './feature.service';
 
 export interface PreviewParty {

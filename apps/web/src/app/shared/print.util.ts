@@ -28,7 +28,12 @@ export function printElement(el: HTMLElement | null): void {
 
   const iframe = document.createElement('iframe');
   iframe.setAttribute('aria-hidden', 'true');
-  iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;';
+  // ZAROORI: 0x0 iframe ka layout Chrome kabhi-kabhi skip kar deta hai → BLANK
+  // print. Isliye ASLI A4 size (794x1123px @96dpi), screen ke bahar + opacity:0
+  // se chhupa — layout/paint hota hai, dikhta nahi.
+  iframe.style.cssText =
+    'position:fixed;left:-10000px;top:0;width:794px;height:1123px;border:0;' +
+    'opacity:0;pointer-events:none;';
   document.body.appendChild(iframe);
 
   const doc = iframe.contentDocument!;
@@ -46,9 +51,12 @@ export function printElement(el: HTMLElement | null): void {
   const win = iframe.contentWindow!;
   const cleanup = () => { try { iframe.remove(); } catch {} };
   win.onafterprint = () => setTimeout(cleanup, 500);
-  // CSS/fonts settle hone do, phir IFRAME ka print (page ka nahi)
+  // Layout + CSS/fonts settle hone do (do frame), phir IFRAME ka print
   setTimeout(() => {
-    try { win.focus(); win.print(); } catch { cleanup(); }
+    try {
+      (doc.body as HTMLElement).getBoundingClientRect();   // layout force
+      win.focus(); win.print();
+    } catch { cleanup(); }
     setTimeout(cleanup, 60000);   // safety — dialog bahut der khula rahe to bhi hat jaye
-  }, 300);
+  }, 400);
 }

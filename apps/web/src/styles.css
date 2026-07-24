@@ -598,44 +598,8 @@ button:active::after, [class*="btn"]:active::after { height: 38%; opacity: .8; }
   main { padding: 8px !important; }
 }
 
-/* ============================================================
-   PRINT — invoice/receipt preview ka SAAF print
-   Ye GLOBAL isliye hai: component ke andar likha print-CSS Angular
-   scope kar deta tha (body * match hi nahi hota) — modal position:fixed
-   me phansa rehta tha aur print me KHALI page nikalta tha.
-   print() body par .printing-doc lagata hai; [data-print-root] wala
-   element (invoice paper) hi chhapta hai, baaki sab chhupta hai.
-   ============================================================ */
-@media print {
-  /* Poora app band dabbe me — display:none ke andar se KUCH leak nahi ho sakta.
-     Invoice-overlay preview khulte hi body me shift ho chuka hota hai
-     (print.util setPrintTarget), isliye wo app-root ke bahar bachta hai = wahi chhapta hai. */
-  body.printing-doc app-root { display: none !important; }
-
-  /* Body-level overlay ko print ke liye khol do — fixed/scroll hata, saaf paper */
-  body.printing-doc .ip-overlay,
-  body.printing-doc .modal-overlay {
-    position: static !important;
-    overflow: visible !important;
-    background: #fff !important;
-    padding: 0 !important;
-  }
-  body.printing-doc .ip-paper,
-  body.printing-doc .modal-paper,
-  body.printing-doc [data-print-root] {
-    max-height: none !important;
-    overflow: visible !important;
-    box-shadow: none !important;
-    max-width: none !important;
-    width: 100% !important;
-  }
-  /* Purple header/rang bhi chhapein (browser default me hata deta hai) */
-  body.printing-doc [data-print-root],
-  body.printing-doc [data-print-root] * {
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-  }
-  /* Modal ke Close/Print buttons print me nahi */
-  body.printing-doc .modal-actions,
-  body.printing-doc .ip-toolbar { display: none !important; }
-}
+/* PRINT: invoice-print ab page se BILKUL alag hota hai — print.util.ts ka
+   printElement() invoice ko apne iframe-document me daal kar wahan se chhapta
+   hai. Isliye yahan (page CSS me) print ki koi rule NAHI chahiye. Purana
+   .printing-doc / visibility wala system jaan-boojh kar DELETE kiya gaya hai —
+   wo baar-baar tootta tha (blank ya form ghula hua print). Wapas mat lana. */

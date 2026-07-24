@@ -1,8 +1,8 @@
-import { Component, Input, Output, EventEmitter, inject, OnInit, OnDestroy, ElementRef } from '@angular/core';
+import { Component, Input, Output, EventEmitter, inject } from '@angular/core';
 import { CommonModule, DatePipe, DecimalPipe } from '@angular/common';
 import { Router } from '@angular/router';
 import { amountInWords } from './amount-in-words.util';
-import { printElement, setPrintTarget } from './print.util';
+import { printElement } from './print.util';
 import { FeatureService } from './feature.service';
 
 export interface PreviewParty {
@@ -434,13 +434,7 @@ export interface PreviewData {
        Component-scoped @media print hataya — wo scope hone se global se takrata tha. */
   `]
 })
-export class InvoicePreviewComponent implements OnInit, OnDestroy {
-  private elRef = inject(ElementRef);
-  // Preview khulte hi ye component BODY me shift + printing-doc class — print par
-  // app-root display:none hota hai aur sirf ye (body-level) invoice chhapta hai.
-  // Destroy par Angular node khud hata deta hai, class off.
-  ngOnInit() { setPrintTarget(true, this.elRef.nativeElement); }
-  ngOnDestroy() { setPrintTarget(false); }
+export class InvoicePreviewComponent {
 
   @Input() data!: PreviewData;
   @Output() close = new EventEmitter<void>();
@@ -469,8 +463,7 @@ export class InvoicePreviewComponent implements OnInit, OnDestroy {
    * kabhi peeche ka form chhap jata tha.
    */
   private printDoc() {
-    // Print se theek pehle component ko body me DOBARA pakka karo, phir print
-    setPrintTarget(true, this.elRef.nativeElement);
+    // NAYA system: invoice apne alag iframe-document me chhapta hai (print.util)
     printElement(document.getElementById('ipPrintArea'));
   }
   print() { this.printDoc(); }

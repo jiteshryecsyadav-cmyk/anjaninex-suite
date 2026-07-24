@@ -1,4 +1,4 @@
-import { Component, inject, signal, computed, OnDestroy } from '@angular/core';
+import { Component, inject, signal, computed } from '@angular/core';
 import { CommonModule, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
@@ -10,7 +10,7 @@ import { amountInWords } from '../../../shared/amount-in-words.util';
 import { ToastService } from '../../../shared/toast.service';
 import { InDatePipe } from '../../../shared/in-date.pipe';
 import { todayLocal, toLocalYmd } from '../../../shared/date.util';
-import { printElement, setPrintTarget } from '../../../shared/print.util';
+import { printElement } from '../../../shared/print.util';
 import { FeatureService } from '../../../shared/feature.service';
 
 interface CommRow {
@@ -611,7 +611,7 @@ import { FieldConfigService } from '../../../shared/field-config.service';
     }
   `]
 })
-export class CommissionGenerateComponent implements OnDestroy {
+export class CommissionGenerateComponent {
   private svc = inject(TradingService);
   features = inject(FeatureService);
   private fieldCfg = inject(FieldConfigService);
@@ -991,9 +991,6 @@ export class CommissionGenerateComponent implements OnDestroy {
         // Neeche rows() se ye bills hat jayenge — preview ke liye pehle snapshot le lo
         this.frozenRows.set(rows);
         this.showPreview.set(true);
-        // Render hone do, phir overlay ko body me shift (app-root ke bahar) —
-        // print par app display:none hota hai, sirf ye invoice bachta hai.
-        setTimeout(() => setPrintTarget(true, document.getElementById('cgPrintHost')));
         // DOUBLE-SAVE ROK: jin bills ka invoice ABHI bana, unhe list se TURANT
         // hatao — pehle wo pade rehte the aur dobara Generate dabate hi wahi
         // bills phir submit ho jate the (Ho-C26/C27 jaisi jodi ban jati thi).
@@ -1013,14 +1010,11 @@ export class CommissionGenerateComponent implements OnDestroy {
   closePreview() {
     this.showPreview.set(false);
     this.frozenRows.set(null);   // ab wapas live rows par
-    setPrintTarget(false);       // preview band — page normal print par wapas
   }
 
-  ngOnDestroy() { setPrintTarget(false); }   // page chhoda to bhi class na atki rahe
-
   printInvoice() {
-    // Print se theek pehle shift+class DOBARA pakka — sirf invoice chhape
-    printElement(document.getElementById('invoicePaper'), '#cgPrintHost');
+    // NAYA system: invoice apne alag iframe-document me chhapta hai (print.util)
+    printElement(document.getElementById('invoicePaper'));
   }
 
   goToList() {

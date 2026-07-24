@@ -1,44 +1,54 @@
 // =============================================================================
-// Print helpers — sirf invoice chhape, poora page KABHI nahi.
+// PRINT — bilkul naya, akela tareeka (purane visibility/class/shift sab DELETE).
 //
-// AAKHRI (structural) tareeka — visibility-tricks teen baar dhokha de chuke:
-//   1. Preview khulte hi uska overlay-element BODY me shift ho jata hai
-//      (app-root ke BAHAR). Screen par farak nahi (overlay fixed hai).
-//   2. body par 'printing-doc' class lagti hai.
-//   3. @media print (styles.css): app-root { display:none } — poora app band
-//      dabbe me. Sirf body-level overlay (invoice) bachta hai = wahi chhapta hai.
-//      display:none ke andar se KUCH BHI leak nahi ho sakta — ye CSS ki guarantee hai.
-//   4. Modal band/destroy → Angular node ko body se khud hata deta hai; class off.
+// Invoice ka HTML ek chhupe IFRAME ke apne document me jata hai — us document
+// me SIRF invoice hai, page ka koi hissa nahi. Isliye:
+//   • form ghul nahi sakta (wahan hai hi nahi)
+//   • blank nahi aa sakta (content seedha likha jata hai)
+//   • popup-blocker ka lafda nahi (iframe kabhi block nahi hota)
+// Styling: page ki saari CSS serialize karke iframe me daal dete hain —
+// Angular ke scoped attributes markup ke saath jaate hain, isliye rang-roop
+// waisa ka waisa. CSS na bhi mile to content phir bhi chhapta hai (kabhi khali nahi).
 // =============================================================================
 
-/**
- * Preview modal khulne par: on=true + uska host element do (body me shift hoga).
- * Band hone par: on=false (element Angular khud hata deta hai).
- */
-export function setPrintTarget(on: boolean, host?: HTMLElement | null): void {
-  if (!on) { document.body.classList.remove('printing-doc'); return; }
-
-  // Overlay ko app-root se nikaal kar seedha body me — Angular ki bindings/
-  // events node ke saath chalti hain, jagah se matlab nahi.
-  if (host && host.parentElement !== document.body) {
-    try { document.body.appendChild(host); } catch { /* niche verify hoga */ }
-  }
-  // SAFETY: class (jo app ko chhupati hai) SIRF tab lage jab invoice sach me
-  // body me pahunch chuka ho — warna print BLANK aata hai (app ke saath invoice
-  // bhi chhup jata). Shift fail ho to class OFF: poora page chhapega (bura,
-  // par blank se lakh guna behtar).
-  const shifted = !!host && host.parentElement === document.body;
-  document.body.classList.toggle('printing-doc', shifted);
+function collectAllCss(): string {
+  let css = '';
+  const grab = (sheet: CSSStyleSheet) => {
+    try { for (const r of Array.from(sheet.cssRules)) css += r.cssText + '\n'; } catch {}
+  };
+  const adopted = (document as any).adoptedStyleSheets as CSSStyleSheet[] | undefined;
+  if (adopted) for (const s of adopted) grab(s);
+  for (const s of Array.from(document.styleSheets)) grab(s as CSSStyleSheet);
+  return css;
 }
 
-/**
- * Print button — print-root mark + shift DOBARA pakka karke print dialog.
- * hostSelector: overlay jo body me hona chahiye ('.ip-overlay' ya '#cgPrintHost').
- */
-export function printElement(el: HTMLElement | null, hostSelector?: string): void {
-  if (el) el.setAttribute('data-print-root', '');
-  if (hostSelector) {
-    setPrintTarget(true, document.querySelector<HTMLElement>(hostSelector));
-  }
-  window.print();
+/** El (invoice paper) ko apne alag document me print karo. */
+export function printElement(el: HTMLElement | null): void {
+  if (!el) { window.print(); return; }
+
+  const iframe = document.createElement('iframe');
+  iframe.setAttribute('aria-hidden', 'true');
+  iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;';
+  document.body.appendChild(iframe);
+
+  const doc = iframe.contentDocument!;
+  doc.open();
+  doc.write(
+    '<!doctype html><html><head><meta charset="utf-8"><title>Invoice</title>' +
+    '<style>' + collectAllCss() + '</style>' +
+    '<style>@page{margin:10mm} html,body{background:#fff !important;margin:0;padding:0}' +
+    'body>*{position:static !important;max-height:none !important;overflow:visible !important;' +
+    'box-shadow:none !important;max-width:100% !important;width:100% !important}' +
+    '*{-webkit-print-color-adjust:exact !important;print-color-adjust:exact !important}</style>' +
+    '</head><body>' + el.outerHTML + '</body></html>');
+  doc.close();
+
+  const win = iframe.contentWindow!;
+  const cleanup = () => { try { iframe.remove(); } catch {} };
+  win.onafterprint = () => setTimeout(cleanup, 500);
+  // CSS/fonts settle hone do, phir IFRAME ka print (page ka nahi)
+  setTimeout(() => {
+    try { win.focus(); win.print(); } catch { cleanup(); }
+    setTimeout(cleanup, 60000);   // safety — dialog bahut der khula rahe to bhi hat jaye
+  }, 300);
 }

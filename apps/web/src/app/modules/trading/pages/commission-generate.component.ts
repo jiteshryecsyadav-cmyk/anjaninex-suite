@@ -316,7 +316,7 @@ import { FieldConfigService } from '../../../shared/field-config.service';
 
     <!-- PRINT PREVIEW MODAL -->
     @if (showPreview()) {
-      <div class="modal-overlay" id="cgPrintHost" (click)="closePreview()">
+      <div class="modal-overlay" (click)="closePreview()">
         <div class="modal-paper" (click)="$event.stopPropagation()">
           <div class="invoice-paper" id="invoicePaper" data-print-root>
             <div class="wm">NAMOKARA</div>
@@ -594,10 +594,12 @@ import { FieldConfigService } from '../../../shared/field-config.service';
     .inv-foot .sig { text-align:right; font-weight:700; color:#1B2E5C; }
     .modal-actions { padding:14px 20px; background:#FAF7F0; border-top:1px solid #D6DDEA; display:flex; gap:8px; justify-content:flex-end; }
 
-    /* Print ki CSS ab GLOBAL hai (styles.css: body.printing-doc + data-print-root).
-       Pehle yahan component-scoped @media print tha jisme .modal-overlay { display:none }
-       tha — invoice usi overlay ke ANDAR hai, isliye print par pura modal (invoice
-       samet) gayab ho jata tha aur peeche ka form chhap jata tha. Isliye hata diya. */
+    @media print {
+      body * { visibility:hidden; }
+      #invoicePaper, #invoicePaper * { visibility:visible; }
+      #invoicePaper { position:absolute; left:0; top:0; width:100%; padding:20px; }
+      .modal-actions, .modal-overlay { display:none !important; }
+    }
 
     @media (max-width: 640px) {
       /* All grids → single column */
@@ -1013,7 +1015,7 @@ export class CommissionGenerateComponent {
   }
 
   printInvoice() {
-    // NAYA system: invoice apne alag iframe-document me chhapta hai (print.util)
+    // Sirf invoice-paper nayi saaf window me — poora page/form kabhi nahi chhapega
     printElement(document.getElementById('invoicePaper'));
   }
 

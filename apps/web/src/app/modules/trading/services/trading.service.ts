@@ -465,6 +465,18 @@ export class TradingService {
   listCommissionInvoices() {
     return this.http.get<any[]>(`${this.base}/commission-invoices`);
   }
+  /** Jin PAID bills ka commission nahi bana — chhoota hua paisa (SQL, koi ML nahi) */
+  getCommissionLeakage() {
+    return this.http.get<{ count: number; estCommission: number;
+      bills: { billNo: string; supplier: string; total: number; estCommission: number }[] }>(
+      `${this.base}/commission-invoices/leakage`);
+  }
+  /** Kaunsa buyer late hota ja raha hai — pichhli receipts ka average vs credit days */
+  getPaymentRisk() {
+    return this.http.get<{ partyName: string; baselineDays: number; last3AvgDays: number;
+      overallAvgDays: number; receipts: number; overBy: number }[]>(
+      `${this.base}/dashboard/payment-risk`);
+  }
   getCommissionInvoice(id: string) {
     return this.http.get<any>(`${this.base}/commission-invoices/${id}`);
   }

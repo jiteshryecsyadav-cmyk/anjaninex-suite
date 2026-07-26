@@ -471,6 +471,81 @@ public class DashboardController : ControllerBase
     //                 + Buyer (payment advance/early/ontime/late, GR)
     // Sab REAL data se compute hota hai — kuch store nahi karna padta.
     // =========================================================================
+    // =========================================================================
+    // PAYMENT-RISK FLAG — kaunsa buyer LATE hota ja raha hai. Koi ML nahi:
+    // pichhli receipts me (payment date − bill date) ka average nikaal kar
+    // party ke CREDIT DAYS (na ho to 30) se milate hain. Trend kharab = flag.
+    // =========================================================================
+    [HttpGet("payment-risk")]
+    public async Task<IActionResult> PaymentRisk()
+    {
+        // Pichhli ~400 receipt-allocations kaafi hain (data chhota hai) — hisaab memory me
+        var recent = await (from a in _db.PaymentAllocations
+                            join p in _db.Payments on a.PaymentId equals p.Id
+                            join b in _db.Bills on a.BillId equals b.Id
+                            where p.DeletedAt == null && p.PaymentType == "receipt" && b.DeletedAt == null
+                            orderby p.PaymentDate descending
+                            select new
+                            {
+                                Buyer = b.BuyerPartyId ?? b.PartyId,
+                                Days = p.PaymentDate.DayNumber - b.BillDate.DayNumber
+                            }).Take(400).ToListAsync();
+
+        var byBuyer = recent.GroupBy(x => x.Buyer)
+            .Select(g => new { Buyer = g.Key, Recent = g.Take(6).Select(x => x.Days).ToList() })
+            .Where(x => x.Recent.Count >= 2)   // 2 receipts se "lagatar badh raha" pakda ja sakta hai
+            .ToList();
+        if (byBuyer.Count == 0) return Ok(Array.Empty<object>());
+
+        var buyerIds = byBuyer.Select(x => x.Buyer).ToList();
+        var parties = await (from p in _db.PartyProfiles
+                             join c in _db.Contacts on p.ContactId equals c.Id
+                             where buyerIds.Contains(p.Id)
+                             select new { p.Id, c.DisplayName, p.CreditDays }).ToListAsync();
+        var pMap = parties.ToDictionary(x => x.Id, x => x);
+
+        var flags = byBuyer
+            .Select(x =>
+            {
+                var info = pMap.GetValueOrDefault(x.Buyer);
+                var baseline = (info?.CreditDays ?? 0) > 0 ? info!.CreditDays : 30;
+                var last3 = (int)Math.Round(x.Recent.Take(3).Average());
+                // "Pehle kaisa tha" = last-3 ko chhod kar purani receipts ka avg —
+                // isi se pata chalta hai der BADH rahi hai ya hamesha se itni thi
+                var older = x.Recent.Skip(3).ToList();
+                var olderAvg = older.Count > 0 ? (int)Math.Round(older.Average()) : last3;
+                var latest = x.Recent[0];                       // sabse nayi receipt ke din
+                var prev = x.Recent.Count > 1 ? x.Recent[1] : latest;   // usse pichhli
+                // Teen niyam:
+                //  limit  = limit se 5+ din upar chal raha hai
+                //  consec = LAGATAR badh raha (pichhli baar 10 late, ab 20 late) — 2 receipts kaafi
+                //  trend  = pehle ke avg se 7+ din zyada der (dheere-dheere bigad raha)
+                var reason = last3 - baseline > 5 ? "limit"
+                           : (latest > baseline && prev > baseline && latest >= prev + 5 ? "consec"
+                           : (older.Count >= 2 && last3 - olderAvg >= 7 ? "trend" : ""));
+                return new
+                {
+                    partyName = info?.DisplayName ?? "—",
+                    baselineDays = baseline,
+                    last3AvgDays = last3,
+                    olderAvgDays = olderAvg,
+                    latestDays = latest,
+                    prevDays = prev,
+                    receipts = x.Recent.Count,
+                    overBy = last3 - baseline,
+                    trendUp = last3 - olderAvg,
+                    reason
+                };
+            })
+            // Flag: (a) limit se 5+ din upar, YA (b) pehle se 7+ din zyada der (trend)
+            .Where(x => x.reason != "" && x.partyName != "—")
+            .OrderByDescending(x => Math.Max(x.overBy, x.trendUp))
+            .Take(5)
+            .ToList();
+
+        return Ok(flags);
+    }
+
     [HttpGet("behaviour")]
     public async Task<IActionResult> Behaviour()
     {

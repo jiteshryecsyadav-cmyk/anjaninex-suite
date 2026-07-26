@@ -64,6 +64,48 @@ public class CommissionInvoicesController : ControllerBase
     // Screen par likha hai "auto-pulls UNBILLED commissions", par ye check kahin
     // tha hi nahi: wahi bill dobara aa jate the aur do-do same invoice ban jati thi
     // (C24 aur C25 bilkul ek jaise — wahi 5 bill, wahi ₹2,830.28).
+    // =========================================================================
+    // COMMISSION LEAKAGE — jin PAID bills ka commission ab tak NAHI bana,
+    // unka chhoota hua paisa. Koi ML nahi — seedha SQL, pakka jawab.
+    // Est. commission = bill total × supplier ke master ka Commission % .
+    // =========================================================================
+    [HttpGet("leakage")]
+    public async Task<IActionResult> Leakage()
+    {
+        var billedIds = _db.CommissionInvoiceLines.Select(l => l.BillId);
+
+        var rows = await (from b in _db.Bills
+                          where b.DeletedAt == null && b.BillType == "sales"
+                                && b.Status == "paid" && !billedIds.Contains(b.Id)
+                          join p in _db.PartyProfiles on b.PartyId equals p.Id
+                          join c in _db.Contacts on p.ContactId equals c.Id
+                          select new
+                          {
+                              b.Id,
+                              BillNo = string.IsNullOrEmpty(b.SupplierBillNo) ? b.BillNo : b.SupplierBillNo,
+                              b.Total,
+                              p.CommissionRate,
+                              Supplier = c.DisplayName
+                          }).ToListAsync();
+
+        var est = rows.Sum(r => Math.Round(r.Total * r.CommissionRate / 100m, 2));
+        return Ok(new
+        {
+            count = rows.Count,
+            estCommission = est,
+            bills = rows
+                .OrderByDescending(r => r.Total * r.CommissionRate)
+                .Take(5)
+                .Select(r => new
+                {
+                    r.BillNo,
+                    r.Supplier,
+                    r.Total,
+                    estCommission = Math.Round(r.Total * r.CommissionRate / 100m, 2)
+                })
+        });
+    }
+
     [HttpGet("billed-bill-ids")]
     public async Task<IActionResult> BilledBillIds()
     {

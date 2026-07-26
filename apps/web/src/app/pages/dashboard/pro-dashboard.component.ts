@@ -158,6 +158,29 @@ interface DonutSeg { label: string; color: string; value: number; pct: number; d
         </div>
       }
 
+      <!-- ============ ⚠️ PAYMENT RISK — kaunsa buyer late hota ja raha hai ============ -->
+      @if (!riskDismissed() && paymentRisk().length > 0) {
+        <div class="ai-banner" style="border-color:#DC2626; background:#FEF2F2;">
+          <span class="ai-ico">⚠️</span>
+          <div class="ai-content">
+            <strong>Payment Risk:</strong>
+            @for (r of paymentRisk(); track r.partyName; let last = $last) {
+              <span>
+                <b>{{ r.partyName }}</b> —
+                @if (r.reason === 'consec') {
+                  pichhli baar <b>{{ r.prevDays }} din</b>, ab <b class="text-red-700">{{ r.latestDays }} din</b> me paisa — der LAGATAR badh rahi hai
+                } @else if (r.reason === 'trend') {
+                  pehle avg {{ r.olderAvgDays }} din, ab <b class="text-red-700">{{ r.last3AvgDays }} din</b> — der badhti ja rahi hai
+                } @else {
+                  avg <b class="text-red-700">{{ r.last3AvgDays }} din</b> me paisa (limit {{ r.baselineDays }} din, {{ r.overBy }} din upar)
+                }{{ last ? '' : ' · ' }}
+              </span>
+            }
+          </div>
+          <button class="ai-dismiss" (click)="riskDismissed.set(true)">✕</button>
+        </div>
+      }
+
       <!-- ============ TAB CONTENT: SALES ============ -->
       @if (tab() === 'sales') {
         <div class="grid grid-cols-3 gap-4 mt-4">
@@ -1129,6 +1152,12 @@ export class ProDashboardComponent {
   alertsOpen = false;
   insightDismissed = signal(false);
 
+  // ⚠️ Payment Risk — pichhli receipts ka avg din vs party ke credit days (SQL se)
+  paymentRisk = signal<{ partyName: string; baselineDays: number; last3AvgDays: number;
+    olderAvgDays: number; latestDays: number; prevDays: number;
+    receipts: number; overBy: number; trendUp: number; reason: string }[]>([]);
+  riskDismissed = signal(false);
+
   today = () => new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
 
   // ===== REAL DATA — GET api/dashboard/pro (period + branch filters) =====
@@ -1148,6 +1177,10 @@ export class ProDashboardComponent {
     this.http.get<any[]>(`${environment.apiUrl}/api/core/branches`).subscribe({
       next: (b) => this.branchList.set(b.map(x => ({ id: x.id, name: x.name }))),
       error: () => {}
+    });
+    this.http.get<any[]>(`${environment.apiUrl}/api/trading/dashboard/payment-risk`).subscribe({
+      next: r => this.paymentRisk.set(r || []),
+      error: () => {}   // card na aaye to dashboard rukna nahi chahiye
     });
   }
 

@@ -53,6 +53,34 @@ import { amountInWords } from '../../../shared/amount-in-words.util';
       <!-- ============ SUB NAV ============ -->
       <app-trading-sub-nav></app-trading-sub-nav>
 
+      <!-- ============ 💸 COMMISSION LEAKAGE — chhoota hua paisa ============ -->
+      @if (leakage(); as lk) {
+        @if (lk.count > 0) {
+          <div class="section-card" style="border:2px solid #F59E0B; background:#FFFBEB;">
+            <div class="flex items-center justify-between flex-wrap gap-2">
+              <div>
+                <div class="font-black text-amber-800">
+                  ⚠️ {{ lk.count }} PAID bill{{ lk.count > 1 ? 's' : '' }} ka commission ab tak nahi bana
+                  @if (lk.estCommission > 0) {
+                    — <span class="text-red-700">₹{{ lk.estCommission | number:'1.0-0' }} chhoot raha hai</span>
+                  }
+                </div>
+                <div class="text-xs text-amber-700 mt-1">
+                  @for (b of lk.bills; track b.billNo; let last = $last) {
+                    <span>{{ b.supplier }} ({{ b.billNo }}@if (b.estCommission > 0) {&nbsp;· ₹{{ b.estCommission | number:'1.0-0' }}}){{ last ? '' : ' · ' }}</span>
+                  }
+                  @if (lk.count > 5) { <span> · +{{ lk.count - 5 }} aur</span> }
+                </div>
+              </div>
+              <a routerLink="/trading/commission/new"
+                 class="px-4 py-2 rounded-lg bg-amber-600 text-white text-sm font-bold no-underline hover:bg-amber-700">
+                Generate karo →
+              </a>
+            </div>
+          </div>
+        }
+      }
+
             <!-- ============ FILTER ============ -->
       <div class="section-card">
         <div class="section-head">🔍 FILTER</div>
@@ -646,10 +674,18 @@ export class CommissionComponent {
   });
   supAxis(f: number): string { return this.kFmt(this.supMax() * f); }
 
+  /** 💸 Leakage — jin PAID bills ka commission nahi bana (SQL se, pakka jawab) */
+  leakage = signal<{ count: number; estCommission: number;
+    bills: { billNo: string; supplier: string; total: number; estCommission: number }[] } | null>(null);
+
   async ngOnInit() {
     this.parties.set(await firstValueFrom(this.svc.listParties()));
     this.apply();
     this.loadInvoices();
+    this.svc.getCommissionLeakage().subscribe({
+      next: lk => this.leakage.set(lk),
+      error: () => {}   // card na dikhe to page rukna nahi chahiye
+    });
   }
 
   async apply() {

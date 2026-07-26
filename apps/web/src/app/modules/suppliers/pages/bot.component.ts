@@ -51,6 +51,19 @@ interface BotMetrics {
            class="px-4 py-2 text-sm font-semibold text-gray-500 border-b-2 border-transparent hover:text-[#5c1a8b]">🤖 Bot</a>
       </div>
 
+      <!-- 🟣 NAYA TAREEKA: Party Chat — WhatsApp QR-bot ki jagah apna bharosemand chat.
+           Bot session tootta rehta hai + ban ka khatra; Party Chat apna hai, data apne DB me. -->
+      <div class="rounded-lg p-3 mb-4 border-2 border-[#5c1a8b] bg-purple-50 flex items-center justify-between flex-wrap gap-2 text-sm">
+        <span class="text-[#5c1a8b]">
+          <b>🟣 Naya bharosemand tareeka:</b> parties se baat ab <b>Party Chat</b> me karo —
+          na QR ka jhanjhat, na ban ka khatra, poora record apne paas.
+          Suppliers/Buyers list me har party par <b>🟣Chat</b> button aa gaya hai.
+        </span>
+        <a routerLink="/party-chat" class="px-3 py-1.5 rounded-lg bg-[#5c1a8b] text-white font-bold no-underline">
+          Party Chat kholo →
+        </a>
+      </div>
+
       <!-- Status banner -->
       <div class="rounded-lg p-3 mb-4 flex items-center gap-3 text-sm"
            [class.bg-green-50]="status().connected" [class.bg-red-50]="!status().connected">

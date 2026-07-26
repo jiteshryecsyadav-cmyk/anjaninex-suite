@@ -6,12 +6,16 @@ import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { environment } from '../../../../environments/environment';
 import { SuppliersService, SupplierListItem, SupplierCategory, LinkableContact } from '../services/suppliers.service';
 import { BackButtonComponent } from '../../../shared/back-button.component';
+import { PartyChatSendComponent } from '../../../shared/party-chat-send.component';
+import { TradingService } from '../../trading/services/trading.service';
+import { AuthService } from '../../../core/auth/auth.service';
+import { FeatureService } from '../../../shared/feature.service';
 import { ToastService } from '../../../shared/toast.service';
 
 @Component({
   selector: 'app-suppliers-directory',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, RouterLinkActive, DecimalPipe, BackButtonComponent],
+  imports: [CommonModule, FormsModule, RouterLink, RouterLinkActive, DecimalPipe, BackButtonComponent, PartyChatSendComponent],
   template: `
     <div class="max-w-7xl mx-auto">
       <div class="page-top-bar"><app-back-button></app-back-button></div>
@@ -197,6 +201,15 @@ import { ToastService } from '../../../shared/toast.service';
                     @if (s.phone) {
                       <a [href]="'tel:' + s.phone" class="mr-1" title="Call">📞</a>
                       <a [href]="waLink(s.phone)" target="_blank" class="mr-1" title="WhatsApp">💬</a>
+                      <!-- PARTY CHAT — WhatsApp bot ki jagah apna bharosemand chat -->
+                      @if (chatPartyId(s.phone); as pid) {
+                        <app-party-chat-send [partyId]="pid" [small]="true" label="🟣Chat" class="mr-1"></app-party-chat-send>
+                        <app-party-chat-send [partyId]="pid" [small]="true" label="₹Rate"
+                          message="Namaste 🙏 apni taaza RATE LIST bhej dijiye." class="mr-1"></app-party-chat-send>
+                      } @else {
+                        <a [href]="waInvite(s.phone)" target="_blank" class="mr-1"
+                           title="Party Chat ka invite WhatsApp se bhejo (Party Master me is number ki party nahi)">🟣✉️</a>
+                      }
                     }
                     <button type="button" (click)="del(s)" title="Delete"
                             style="border:0;background:transparent;cursor:pointer;font-size:14px">🗑️</button>
@@ -211,6 +224,46 @@ import { ToastService } from '../../../shared/toast.service';
   `
 })
 export class SuppliersDirectoryComponent {
+  // ===== PARTY CHAT jod — phone se trading party pehchano (last-10 digit) =====
+  private trading = inject(TradingService);
+  private authSvc = inject(AuthService);
+  private featSvc = inject(FeatureService);
+  private partyByPhone = signal<Map<string, string>>(new Map());
+
+  private static last10(p: string | null | undefined): string {
+    const d = (p || '').replace(/\D/g, '');
+    return d.length >= 10 ? d.slice(-10) : '';
+  }
+
+  /** Supplier ke phone se uski trading-party ka id — Party Chat isi se khulti hai */
+  chatPartyId(phone: string | null): string | null {
+    const k = SuppliersDirectoryComponent.last10(phone);
+    return k ? (this.partyByPhone().get(k) ?? null) : null;
+  }
+
+  constructor() {
+    // Trading parties ek baar — phone(last-10) → partyId map (Chat button ke liye)
+    this.trading.listParties().subscribe({
+      next: ps => {
+        const m = new Map<string, string>();
+        for (const p of ps) {
+          const k = SuppliersDirectoryComponent.last10(p.phone);
+          if (k && !m.has(k)) m.set(k, p.id);
+        }
+        this.partyByPhone.set(m);
+      },
+      error: () => {}
+    });
+  }
+
+  /** Party Master me nahi? WhatsApp se Party Chat ka INVITE bhejo (koi bot/API nahi) */
+  waInvite(phone: string): string {
+    const firmId = this.authSvc.user()?.firmId || '';
+    const link = `${location.origin}/pchat/${firmId}`;
+    const text = `Namaste! ${this.featSvc.firmName() || 'Hum'} aapse Vyapaar Setu Party Chat par baat karna chahte hain. Yahan tap karke judiye: ${link}`;
+    return 'https://wa.me/' + (phone || '').replace(/\D/g, '') + '?text=' + encodeURIComponent(text);
+  }
+
   private svc = inject(SuppliersService);
   private http = inject(HttpClient);
   private toast = inject(ToastService);

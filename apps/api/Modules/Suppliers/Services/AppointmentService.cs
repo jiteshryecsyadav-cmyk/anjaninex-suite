@@ -1,7 +1,10 @@
 using System.Text.Json;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Namokara.Api.Infrastructure.Persistence;
+using Namokara.Api.Modules.Platform.Hubs;
 using Namokara.Api.Modules.Suppliers.Entities;
+using Npgsql;
 
 namespace Namokara.Api.Modules.Suppliers.Services;
 
@@ -60,7 +63,102 @@ public interface IAppointmentService
 public class AppointmentService : IAppointmentService
 {
     private readonly AppDbContext _db;
-    public AppointmentService(AppDbContext db) => _db = db;
+    private readonly IHubContext<PartyChatHub> _hub;
+    public AppointmentService(AppDbContext db, IHubContext<PartyChatHub> hub)
+    { _db = db; _hub = hub; }
+
+    // =========================================================================
+    // PHASE 2 (Party Chat): appointment banne/badalne/cancel par party ko
+    // PARTY CHAT me apne aap message — WhatsApp bot ki zarurat khatam.
+    // Supplier/Buyer profile ka contact_id seedha trading party se judta hai.
+    // Fail-soft: chat na ja paye to appointment kabhi nahi rukta.
+    // =========================================================================
+    private async Task TrySendApptChat(Guid firmId, Appointment a, string kind)
+    {
+        try
+        {
+            var conn = (NpgsqlConnection)_db.Database.GetDbConnection();
+            // Middleware ne connection pehle se khola hai (RLS context ke saath) — OpenAsync NAHI
+
+            // Kis party ko: supplier pehle, warna buyer — contact_id se trading party
+            Guid? partyId = null; string? partyName = null; string phone = "";
+            await using (var q = conn.CreateCommand())
+            {
+                q.CommandText = a.SupplierId != null
+                    ? @"SELECT tp.id, c.display_name, COALESCE(c.phone_primary,'')
+                        FROM suppliers.supplier_profiles sp
+                        JOIN core.contacts c ON c.id = sp.contact_id
+                        LEFT JOIN trading.party_profiles tp ON tp.contact_id = sp.contact_id AND tp.firm_id = sp.firm_id
+                        WHERE sp.id = @id"
+                    : @"SELECT tp.id, c.display_name, COALESCE(c.phone_primary,'')
+                        FROM suppliers.buyer_profiles bp
+                        JOIN core.contacts c ON c.id = bp.contact_id
+                        LEFT JOIN trading.party_profiles tp ON tp.contact_id = bp.contact_id AND tp.firm_id = bp.firm_id
+                        WHERE bp.id = @id";
+                var target = a.SupplierId ?? a.BuyerId;
+                if (target == null) return;
+                q.Parameters.Add(new NpgsqlParameter("id", target.Value));
+                await using var r = await q.ExecuteReaderAsync();
+                if (await r.ReadAsync())
+                {
+                    partyId = r.IsDBNull(0) ? null : r.GetGuid(0);
+                    partyName = r.GetString(1);
+                    phone = new string(r.GetString(2).Where(char.IsDigit).ToArray());
+                }
+            }
+            if (partyId == null || phone.Length < 10) return;   // trading party/mobile nahi → chup-chaap skip
+
+            string? firmName = null;
+            await using (var f = conn.CreateCommand())
+            {
+                f.CommandText = "SELECT name FROM platform.firms WHERE id = @f";
+                f.Parameters.Add(new NpgsqlParameter("f", firmId));
+                firmName = (string?)await f.ExecuteScalarAsync();
+            }
+
+            var when = a.AppointmentDate.ToString("dd/MM/yyyy")
+                     + (a.AppointmentTime != null ? $" {a.AppointmentTime:hh\\:mm}" : "");
+            var title = string.IsNullOrWhiteSpace(a.Title) ? "" : $" · {a.Title}";
+            var body = kind switch
+            {
+                "cancel" => $"❌ Appointment CANCEL: {when}{title} — {firmName}. Nayi date ke liye yahin bata dein.",
+                "update" => $"📅 Appointment BADLI: nayi date {when}{title} — {firmName}. Theek ho to 👍 bhej dein.",
+                _        => $"📅 Appointment pakki: {when}{title} — {firmName}. Kuch badalna ho to yahin bata dein."
+            };
+
+            Guid threadId;
+            await using (var t = conn.CreateCommand())
+            {
+                t.CommandText = @"
+                    INSERT INTO platform.party_chat_threads (firm_id, party_id, party_name, phone)
+                    VALUES (@f, @p, @n, @ph)
+                    ON CONFLICT (firm_id, party_id) DO UPDATE SET party_name = @n, phone = @ph
+                    RETURNING id";
+                t.Parameters.Add(new NpgsqlParameter("f", firmId));
+                t.Parameters.Add(new NpgsqlParameter("p", partyId.Value));
+                t.Parameters.Add(new NpgsqlParameter("n", partyName ?? "—"));
+                t.Parameters.Add(new NpgsqlParameter("ph", phone));
+                threadId = (Guid)(await t.ExecuteScalarAsync())!;
+            }
+            await using (var m = conn.CreateCommand())
+            {
+                m.CommandText = @"INSERT INTO platform.party_chat_messages (thread_id, sender, sender_name, body)
+                                  VALUES (@t, 'firm', @n, @b)";
+                m.Parameters.Add(new NpgsqlParameter("t", threadId));
+                m.Parameters.Add(new NpgsqlParameter("n", firmName ?? "Firm"));
+                m.Parameters.Add(new NpgsqlParameter("b", body));
+                await m.ExecuteNonQueryAsync();
+            }
+            await using (var touch = conn.CreateCommand())
+            {
+                touch.CommandText = "UPDATE platform.party_chat_threads SET last_msg_at = now() WHERE id = @t";
+                touch.Parameters.Add(new NpgsqlParameter("t", threadId));
+                await touch.ExecuteNonQueryAsync();
+            }
+            await PartyChatEvents.Notify(_hub, threadId, firmId);
+        }
+        catch { /* chat fail-soft — appointment kabhi na ruke */ }
+    }
 
     public async Task<List<AppointmentListItemDto>> List(string? status, DateOnly? from, DateOnly? to)
     {
@@ -153,6 +251,11 @@ public class AppointmentService : IAppointmentService
             await _db.SaveChangesAsync();
 
             await tx.CommitAsync();
+
+            // Party ko Party Chat me khabar (draft ko chhod kar) — fail-soft
+            if (appt.Status != "draft" && appt.Status != "cancelled")
+                await TrySendApptChat(firmId, appt, "confirm");
+
             return (await Get(appt.Id))!;
         }
         catch { try { await tx.RollbackAsync(); } catch { } throw; }
@@ -188,6 +291,11 @@ public class AppointmentService : IAppointmentService
             await _db.SaveChangesAsync();
 
             await tx.CommitAsync();
+
+            // Date/time/details badle — party ko Party Chat me khabar (fail-soft)
+            if (a.Status != "draft" && a.Status != "cancelled")
+                await TrySendApptChat(firmId, a, "update");
+
             return (await Get(id))!;
         }
         catch { try { await tx.RollbackAsync(); } catch { } throw; }
@@ -196,9 +304,16 @@ public class AppointmentService : IAppointmentService
     public async Task UpdateStatus(Guid id, string status)
     {
         var a = await _db.Appointments.SingleAsync(x => x.Id == id);
+        var was = a.Status;
         a.Status = status;
         a.UpdatedAt = DateTimeOffset.UtcNow;
         await _db.SaveChangesAsync();
+
+        // Cancel hui ya draft se pakki hui — party ko Party Chat me khabar
+        if (status == "cancelled" && was != "cancelled")
+            await TrySendApptChat(a.FirmId, a, "cancel");
+        else if (was == "draft" && status != "draft" && status != "cancelled")
+            await TrySendApptChat(a.FirmId, a, "confirm");
     }
 
     public async Task Delete(Guid id)

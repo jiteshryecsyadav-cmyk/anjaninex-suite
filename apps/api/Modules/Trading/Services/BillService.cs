@@ -1289,6 +1289,34 @@ RETURNING next_no;";
     public async Task Delete(Guid id)
     {
         var bill = await _db.Bills.Include(b => b.Lines).SingleAsync(b => b.Id == id);
+        if (bill.DeletedAt != null) return;
+
+        // ===== CHAIN-ROK: bill ke NEECHE ki kadiyan bani hain to bill delete NAHI =====
+        // Kram: Order → Bill → GR/Payment → Commission. Neeche wala pehle hatao,
+        // warna hisaab (paid_amount, GR fold, commission) jhooth ho jata hai.
+        var blockers = new List<string>();
+
+        var grNo = await _db.GoodsReturns
+            .Where(g => g.OriginalBillId == id && g.DeletedAt == null)
+            .Select(g => g.GrNo).FirstOrDefaultAsync();
+        if (grNo != null) blockers.Add($"GR \"{grNo}\"");
+
+        var payNo = await (from a in _db.PaymentAllocations
+                           join p in _db.Payments on a.PaymentId equals p.Id
+                           where a.BillId == id && p.DeletedAt == null
+                           select p.PaymentNo).FirstOrDefaultAsync();
+        if (payNo != null) blockers.Add($"receipt/payment \"{payNo}\"");
+
+        var commNo = await (from l in _db.CommissionInvoiceLines
+                            join ci in _db.CommissionInvoices on l.CommissionInvoiceId equals ci.Id
+                            where l.BillId == id
+                            select ci.InvoiceNo).FirstOrDefaultAsync();
+        if (commNo != null) blockers.Add($"commission invoice \"{commNo}\"");
+
+        if (blockers.Count > 0)
+            throw new InvalidOperationException(
+                $"Is bill ki {string.Join(", ", blockers)} ban chuki hai — bill delete nahi hoga. " +
+                "Pehle wo delete karo (kram: commission → receipt/GR → bill), phir ye bill.");
 
         // Soft delete bill
         bill.DeletedAt = DateTimeOffset.UtcNow;

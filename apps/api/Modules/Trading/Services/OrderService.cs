@@ -381,7 +381,20 @@ public class OrderService : IOrderService
     public async Task Delete(Guid id)
     {
         var o = await _db.Orders.FindAsync(id);
-        if (o is null) return;
+        if (o is null || o.DeletedAt != null) return;
+
+        // CHAIN-ROK: order ka bill ban chuka hai to order delete NAHI hota —
+        // warna bill anath ho jata (kis order ka tha, pata nahi chalta) aur
+        // hisaab ki kadi toot jati. Pehle bill delete karo, phir order.
+        var billNo = await _db.Bills
+            .Where(b => b.OrderId == id && b.DeletedAt == null)
+            .Select(b => b.BillNo)
+            .FirstOrDefaultAsync();
+        if (billNo != null)
+            throw new InvalidOperationException(
+                $"Is order ka bill \"{billNo}\" ban chuka hai — order delete nahi hoga. " +
+                "Pehle wo bill delete karo, phir ye order.");
+
         o.DeletedAt = DateTimeOffset.UtcNow;
         await _db.SaveChangesAsync();
     }

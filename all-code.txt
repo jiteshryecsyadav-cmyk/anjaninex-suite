@@ -1,0 +1,1002 @@
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Namokara.Api.Common.Auth;
+using Namokara.Api.Modules.Trading.Services;
+
+namespace Namokara.Api.Modules.Trading.Controllers;
+
+[Authorize]
+public abstract class TradingControllerBase : ControllerBase
+{
+    protected Guid CurrentFirmId =>
+        Guid.Parse(User.FindFirst("firm_id")?.Value
+            ?? throw new InvalidOperationException("firm_id claim missing"));
+
+    protected Guid CurrentUserId =>
+        Guid.Parse(User.FindFirst("user_id")?.Value!);
+
+    protected Guid CurrentBranchId
+    {
+        get
+        {
+            var branchId = Request.Headers["X-Branch-Id"].FirstOrDefault()
+                        ?? User.FindFirst("default_branch_id")?.Value;
+            return Guid.Parse(branchId ?? throw new InvalidOperationException("Branch not selected"));
+        }
+    }
+}
+
+// =============================================================================
+// Parties
+// =============================================================================
+[ApiController]
+[Route("api/trading/parties")]
+public class PartiesController : TradingControllerBase
+{
+    private readonly IPartyService _svc;
+    public PartiesController(IPartyService svc) => _svc = svc;
+
+    [HttpGet]
+    [HasPermission("trading.party.view.firm")]
+    public async Task<IActionResult> List([FromQuery] string? search)
+        => Ok(await _svc.List(search));
+
+    [HttpGet("{id}")]
+    [HasPermission("trading.party.view.firm")]
+    public async Task<IActionResult> Get(Guid id)
+    {
+        var p = await _svc.Get(id);
+        return p is null ? NotFound() : Ok(p);
+    }
+
+    [HttpPost]
+    [HasPermission("trading.party.create.firm")]
+    public async Task<IActionResult> Create([FromBody] CreatePartyDto dto)
+    {
+        try
+        {
+            return Ok(await _svc.Create(dto, CurrentFirmId, CurrentUserId));
+        }
+        catch (Namokara.Api.Modules.Trading.Services.PartyExistsException ex)
+        {
+            // 409 Conflict — strict GST duplicate
+            return Conflict(new
+            {
+                error = "PARTY_EXISTS",
+                message = "Is GSTIN par party pehle se save hai.",
+                existing = new
+                {
+                    id = ex.ExistingPartyId,
+                    displayName = ex.DisplayName,
+                    gst = ex.Gst,
+                    phone = ex.Phone,
+                    city = ex.City,
+                    createdAt = ex.CreatedAt
+                }
+            });
+        }
+    }
+
+    [HttpPut("{id}")]
+    [HasPermission("trading.party.edit.firm")]
+    public async Task<IActionResult> Update(Guid id, [FromBody] CreatePartyDto dto)
+        => Ok(await _svc.Update(id, dto));
+
+    [HttpPatch("{id}/credit")]
+    [HasPermission("trading.party.edit.firm")]
+    public async Task<IActionResult> UpdateCredit(Guid id, [FromBody] UpdateCreditDto dto)
+    {
+        await _svc.UpdateCredit(id, dto);
+        return Ok();
+    }
+
+    [HttpDelete("{id}")]
+    [HasPermission("trading.party.edit.firm")]
+    public async Task<IActionResult> Delete(Guid id)
+    {
+        await _svc.Delete(id);
+        return NoContent();
+    }
+}
+
+// =============================================================================
+// Items
+// =============================================================================
+[ApiController]
+[Route("api/trading/items")]
+public class ItemsController : TradingControllerBase
+{
+    private readonly IItemService _svc;
+    public ItemsController(IItemService svc) => _svc = svc;
+
+    [HttpGet]
+    [HasPermission("trading.party.view.firm")]
+    public async Task<IActionResult> List([FromQuery] string? search)
+        => Ok(await _svc.List(search));
+
+    [HttpPost]
+    [HasPermission("trading.party.create.firm")]
+    public async Task<IActionResult> Create([FromBody] CreateItemDto dto)
+        => Ok(await _svc.Create(dto, CurrentFirmId));
+
+    [HttpPut("{id}")]
+    [HasPermission("trading.party.edit.firm")]
+    public async Task<IActionResult> Update(Guid id, [FromBody] CreateItemDto dto)
+        => Ok(await _svc.Update(id, dto));
+
+    [HttpDelete("{id}")]
+    [HasPermission("trading.party.edit.firm")]
+    public async Task<IActionResult> Delete(Guid id)
+    {
+        await _svc.Delete(id);
+        return NoContent();
+    }
+}
+
+// =============================================================================
+// Bills
+// =============================================================================
+[ApiController]
+[Route("api/trading/bills")]
+public class BillsController : TradingControllerBase
+{
+    private readonly IBillService _svc;
+    public BillsController(IBillService svc) => _svc = svc;
+
+    [HttpGet]
+    [HasPermission("trading.bill.view.branch")]
+    public async Task<IActionResult> List(
+        [FromQuery] string? type, [FromQuery] DateOnly? from, [FromQuery] DateOnly? to,
+        [FromQuery] Guid? partyId, [FromQuery] string? status,
+        [FromQuery] int page = 1, [FromQuery] int size = 50)
+    {
+        var (items, total) = await _svc.List(type, from, to, partyId, status, page, size);
+        return Ok(new { items, total, page, size });
+    }
+
+    [HttpGet("{id}")]
+    [HasPermission("trading.bill.view.branch")]
+    public async Task<IActionResult> Get(Guid id)
+    {
+        var b = await _svc.Get(id);
+        return b is null ? NotFound() : Ok(b);
+    }
+
+    [HttpPost]
+    [HasPermission("trading.bill.create.branch")]
+    public async Task<IActionResult> Create([FromBody] CreateBillDto dto)
+    {
+        try
+        {
+            var result = await _svc.Create(dto, CurrentFirmId, CurrentBranchId, CurrentUserId);
+            return CreatedAtAction(nameof(Get), new { id = result.Id }, result);
+        }
+        catch (Namokara.Api.Modules.Trading.Services.BillDuplicateException dup)
+        {
+            // 409 Conflict — strict block, NO override allowed
+            return Conflict(new
+            {
+                error = "DUPLICATE_BILL",
+                message = "Ye bill pehle se save hai (same supplier + bill no + date).",
+                existing = new
+                {
+                    id = dup.ExistingBillId,
+                    billNo = dup.ExistingBillNo,
+                    billDate = dup.BillDate,
+                    total = dup.Total,
+                    status = dup.Status
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            // Surface the REAL cause. EF's outer message is the useless generic
+            // "An error occurred while saving the entity changes." — the actual DB
+            // error (FK violation, NOT NULL, CHECK, etc.) lives in InnerException.
+            var root = ex;
+            while (root.InnerException != null) root = root.InnerException;
+            return BadRequest(new { error = Namokara.Api.Common.Errors.FriendlyError.From(ex) });
+        }
+    }
+
+    [HttpPut("{id}")]
+    [HasPermission("trading.bill.create.branch")]
+    public async Task<IActionResult> Update(Guid id, [FromBody] CreateBillDto dto)
+    {
+        try
+        {
+            var result = await _svc.Update(id, dto, CurrentFirmId, CurrentUserId);
+            return result is null ? NotFound(new { error = "Bill nahi mila." }) : Ok(result);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { error = Namokara.Api.Common.Errors.FriendlyError.From(ex) });
+        }
+    }
+
+    [HttpDelete("{id}")]
+    [HasPermission("trading.bill.delete.branch")]
+    public async Task<IActionResult> Delete(Guid id)
+    {
+        await _svc.Delete(id);
+        return NoContent();
+    }
+}
+
+// =============================================================================
+// Orders
+// =============================================================================
+[ApiController]
+[Route("api/trading/orders")]
+public class OrdersController : TradingControllerBase
+{
+    private readonly IOrderService _svc;
+    public OrdersController(IOrderService svc) => _svc = svc;
+
+    [HttpGet]
+    [HasPermission("trading.bill.view.branch")]
+    public async Task<IActionResult> List(
+        [FromQuery] string? type, [FromQuery] DateOnly? from, [FromQuery] DateOnly? to,
+        [FromQuery] Guid? partyId, [FromQuery] string? status,
+        [FromQuery] int page = 1, [FromQuery] int size = 50)
+    {
+        var (items, total) = await _svc.List(type, from, to, partyId, status, page, size);
+        return Ok(new { items, total, page, size });
+    }
+
+    [HttpGet("{id}")]
+    [HasPermission("trading.bill.view.branch")]
+    public async Task<IActionResult> Get(Guid id)
+    {
+        var o = await _svc.Get(id);
+        return o is null ? NotFound() : Ok(o);
+    }
+
+    [HttpPost]
+    [HasPermission("trading.bill.create.branch")]
+    public async Task<IActionResult> Create([FromBody] CreateOrderDto dto)
+    {
+        try
+        {
+            var result = await _svc.Create(dto, CurrentFirmId, CurrentBranchId, CurrentUserId);
+            return CreatedAtAction(nameof(Get), new { id = result.Id }, result);
+        }
+        catch (Exception ex)
+        {
+            var root = ex; while (root.InnerException != null) root = root.InnerException;
+            Console.WriteLine($"[Trading.Create] {root.GetType().Name}: {root.Message}");
+            return BadRequest(new { error = Namokara.Api.Common.Errors.FriendlyError.From(ex) });
+        }
+    }
+
+    [HttpPut("{id}")]
+    [HasPermission("trading.bill.create.branch")]
+    public async Task<IActionResult> Update(Guid id, [FromBody] CreateOrderDto dto)
+    {
+        try
+        {
+            var result = await _svc.Update(id, dto, CurrentUserId);
+            if (result == null) return NotFound(new { error = "Order nahi mila." });
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { error = Namokara.Api.Common.Errors.FriendlyError.From(ex) });
+        }
+    }
+
+    [HttpDelete("{id}")]
+    [HasPermission("trading.bill.delete.branch")]
+    public async Task<IActionResult> Delete(Guid id)
+    {
+        await _svc.Delete(id);
+        return NoContent();
+    }
+}
+
+// =============================================================================
+// Goods Returns
+// =============================================================================
+[ApiController]
+[Route("api/trading/goods-returns")]
+public class GoodsReturnsController : TradingControllerBase
+{
+    private readonly IGoodsReturnService _svc;
+    public GoodsReturnsController(IGoodsReturnService svc) => _svc = svc;
+
+    [HttpGet]
+    [HasPermission("trading.bill.view.branch")]
+    public async Task<IActionResult> List(
+        [FromQuery] string? status, [FromQuery] DateOnly? from, [FromQuery] DateOnly? to,
+        [FromQuery] Guid? partyId,
+        [FromQuery] int page = 1, [FromQuery] int size = 50)
+    {
+        var (items, total) = await _svc.List(status, from, to, partyId, page, size);
+        return Ok(new { items, total, page, size });
+    }
+
+    [HttpGet("{id}")]
+    [HasPermission("trading.bill.view.branch")]
+    public async Task<IActionResult> Get(Guid id)
+    {
+        var g = await _svc.Get(id);
+        return g is null ? NotFound() : Ok(g);
+    }
+
+    [HttpPost]
+    [HasPermission("trading.bill.create.branch")]
+    public async Task<IActionResult> Create([FromBody] CreateGoodsReturnDto dto)
+    {
+        try
+        {
+            var result = await _svc.Create(dto, CurrentFirmId, CurrentBranchId, CurrentUserId);
+            return CreatedAtAction(nameof(Get), new { id = result.Id }, result);
+        }
+        catch (Exception ex)
+        {
+            var root = ex; while (root.InnerException != null) root = root.InnerException;
+            Console.WriteLine($"[Trading.Create] {root.GetType().Name}: {root.Message}");
+            return BadRequest(new { error = Namokara.Api.Common.Errors.FriendlyError.From(ex) });
+        }
+    }
+
+    [HttpPut("{id}")]
+    [HasPermission("trading.bill.create.branch")]
+    public async Task<IActionResult> Update(Guid id, [FromBody] CreateGoodsReturnDto dto)
+    {
+        try
+        {
+            var result = await _svc.Update(id, dto, CurrentFirmId, CurrentUserId);
+            return result is null ? NotFound(new { error = "GR nahi mila." }) : Ok(result);
+        }
+        catch (Exception ex) { return BadRequest(new { error = Namokara.Api.Common.Errors.FriendlyError.From(ex) }); }
+    }
+
+    [HttpPost("{id}/approve")]
+    [HasPermission("trading.bill.create.branch")]
+    public async Task<IActionResult> Approve(Guid id)
+    {
+        try { return Ok(await _svc.Approve(id, CurrentUserId)); }
+        catch (Exception ex) { return BadRequest(new { error = Namokara.Api.Common.Errors.FriendlyError.From(ex) }); }
+    }
+
+    [HttpPost("{id}/reject")]
+    [HasPermission("trading.bill.create.branch")]
+    public async Task<IActionResult> Reject(Guid id, [FromBody] RejectGrDto dto)
+    {
+        try { return Ok(await _svc.Reject(id, dto.Reason ?? "", CurrentUserId)); }
+        catch (Exception ex) { return BadRequest(new { error = Namokara.Api.Common.Errors.FriendlyError.From(ex) }); }
+    }
+
+    [HttpDelete("{id}")]
+    [HasPermission("trading.bill.delete.branch")]
+    public async Task<IActionResult> Delete(Guid id)
+    {
+        await _svc.Delete(id);
+        return NoContent();
+    }
+}
+
+public record RejectGrDto(string? Reason);
+
+// =============================================================================
+// Payments
+// =============================================================================
+[ApiController]
+[Route("api/trading/payments")]
+public class PaymentsController : TradingControllerBase
+{
+    private readonly IPaymentService _svc;
+    public PaymentsController(IPaymentService svc) => _svc = svc;
+
+    [HttpGet]
+    [HasPermission("trading.payment.view.branch")]
+    public async Task<IActionResult> List(
+        [FromQuery] string? type, [FromQuery] DateOnly? from, [FromQuery] DateOnly? to,
+        [FromQuery] Guid? partyId,
+        [FromQuery] int page = 1, [FromQuery] int size = 50)
+    {
+        var (items, total) = await _svc.List(type, from, to, partyId, page, size);
+        return Ok(new { items, total, page, size });
+    }
+
+    [HttpGet("{id}")]
+    [HasPermission("trading.payment.view.branch")]
+    public async Task<IActionResult> Get(Guid id)
+    {
+        var p = await _svc.Get(id);
+        return p is null ? NotFound() : Ok(p);
+    }
+
+    [HttpGet("outstanding-bills")]
+    [HasPermission("trading.payment.view.branch")]
+    public async Task<IActionResult> Outstanding([FromQuery] Guid partyId, [FromQuery] Guid? supplierId)
+        => Ok(await _svc.GetOutstandingBills(partyId, supplierId));
+
+    [HttpPost]
+    [HasPermission("trading.payment.create.branch")]
+    public async Task<IActionResult> Create([FromBody] CreatePaymentDto dto)
+    {
+        try
+        {
+            var result = await _svc.Create(dto, CurrentFirmId, CurrentBranchId, CurrentUserId);
+            return CreatedAtAction(nameof(Get), new { id = result.Id }, result);
+        }
+        catch (Exception ex)
+        {
+            var root = ex; while (root.InnerException != null) root = root.InnerException;
+            Console.WriteLine($"[Trading.Create] {root.GetType().Name}: {root.Message}");
+            return BadRequest(new { error = Namokara.Api.Common.Errors.FriendlyError.From(ex) });
+        }
+    }
+
+    // ASLI UPDATE — pehle 'delete karo phir nayi banao' hota tha. Us tarike me
+    // delete chal jata aur banana atak jata to PAYMENT HI GAYAB ho jati thi
+    // (aur dobara try karne par "ye number pehle se maujood hai" aata tha).
+    // Ab sab kuch EK transaction me: kuch bhi bigde to poora wapas apni jagah.
+    [HttpPut("{id}")]
+    [HasPermission("trading.payment.create.branch")]
+    public async Task<IActionResult> Update(Guid id, [FromBody] CreatePaymentDto dto)
+    {
+        try
+        {
+            var result = await _svc.Update(id, dto, CurrentFirmId, CurrentBranchId, CurrentUserId);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            var root = ex; while (root.InnerException != null) root = root.InnerException;
+            Console.WriteLine($"[Trading.PaymentUpdate] {root.GetType().Name}: {root.Message}");
+            return BadRequest(new { error = Namokara.Api.Common.Errors.FriendlyError.From(ex) });
+        }
+    }
+
+    [HttpDelete("{id}")]
+    [HasPermission("trading.payment.create.branch")]
+    public async Task<IActionResult> Delete(Guid id)
+    {
+        await _svc.Delete(id);
+        return NoContent();
+    }
+}
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+
+namespace Namokara.Api.Modules.Trading.Entities;
+
+public class CommissionInvoice
+{
+    public Guid Id { get; set; }
+    public Guid FirmId { get; set; }
+    public Guid BranchId { get; set; }
+
+    [Required, MaxLength(50)]
+    public string InvoiceNo { get; set; } = "";
+
+    public DateOnly InvoiceDate { get; set; }
+    public Guid PartyId { get; set; }
+
+    [Column(TypeName = "numeric(5,2)")]
+    public decimal CommissionPct { get; set; }
+
+    [Column(TypeName = "numeric(14,2)")]
+    public decimal GrossAmount { get; set; }
+
+    [Column(TypeName = "numeric(14,2)")]
+    public decimal CommissionAmount { get; set; }
+
+    [Column(TypeName = "numeric(5,2)")]
+    public decimal GstPct { get; set; } = 18;
+
+    [Column(TypeName = "numeric(14,2)")]
+    public decimal GstAmount { get; set; }
+
+    /// Supplier se recover karne wala bacha hua discount (purchase − sales). TotalAmount me shaamil.
+    [Column(TypeName = "numeric(14,2)")]
+    public decimal DiscRecoveryAmount { get; set; }
+
+    [Column(TypeName = "numeric(14,2)")]
+    public decimal TotalAmount { get; set; }
+
+    public string Status { get; set; } = "pending";
+    public string? Notes { get; set; }
+
+    public Guid CreatedBy { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
+    public DateTimeOffset UpdatedAt { get; set; }
+}
+
+public class CommissionInvoiceLine
+{
+    public Guid Id { get; set; }
+    public Guid CommissionInvoiceId { get; set; }
+    public Guid BillId { get; set; }
+
+    [Required, MaxLength(50)]
+    public string BillNo { get; set; } = "";
+
+    public DateOnly BillDate { get; set; }
+
+    [Column(TypeName = "numeric(14,2)")]
+    public decimal BillAmount { get; set; }
+
+    [Column(TypeName = "numeric(5,2)")]
+    public decimal CommissionPct { get; set; }
+
+    [Column(TypeName = "numeric(14,2)")]
+    public decimal CommissionAmount { get; set; }
+
+    /// Balance disc % = purchase disc % − sales disc % (supplier se recover karna hai)
+    [Column(TypeName = "numeric(6,2)")]
+    public decimal BalDiscPct { get; set; }
+
+    /// Us bill par recoverable rupees = base × BalDiscPct / 100
+    [Column(TypeName = "numeric(14,2)")]
+    public decimal DiscAmount { get; set; }
+
+    public int? SortOrder { get; set; }
+}
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+
+namespace Namokara.Api.Modules.Trading.Entities;
+
+public class PartyProfile
+{
+    public Guid Id { get; set; }
+    public Guid FirmId { get; set; }
+    public Guid ContactId { get; set; }
+
+    [MaxLength(50)]
+    public string? PartyCode { get; set; }
+
+    [Required, MaxLength(20)]
+    public string PartyType { get; set; } = "buyer";   // buyer|seller|both
+
+    [Column(TypeName = "numeric(14,2)")]
+    public decimal CreditLimit { get; set; }
+
+    public int CreditDays { get; set; } = 30;
+
+    [Column(TypeName = "numeric(5,2)")]
+    public decimal CommissionRate { get; set; }
+
+    // Supplier ke multiple discounts — Order/Bill me chip se items par apply hote hain
+    [Column("discount_normal", TypeName = "numeric(5,2)")]
+    public decimal DiscountNormal { get; set; }
+
+    [Column("discount_exhibition", TypeName = "numeric(5,2)")]
+    public decimal DiscountExhibition { get; set; }
+
+    [Column("discount_special", TypeName = "numeric(5,2)")]
+    public decimal DiscountSpecial { get; set; }
+
+    public Guid? DefaultTransporterId { get; set; }
+
+    [Column(TypeName = "numeric(14,2)")]
+    public decimal OpeningBalance { get; set; }
+
+    [MaxLength(2)]
+    public string OpeningType { get; set; } = "Dr";
+
+    public Guid? LedgerId { get; set; }
+
+    [MaxLength(1)]
+    public string? CreditRating { get; set; }
+
+    public Guid? PriceListId { get; set; }
+    public string? TaxTreatment { get; set; }
+
+    public bool IsActive { get; set; } = true;
+    public DateTimeOffset CreatedAt { get; set; }
+    public DateTimeOffset UpdatedAt { get; set; }
+}
+
+public class Item
+{
+    public Guid Id { get; set; }
+    public Guid FirmId { get; set; }
+
+    [MaxLength(50)]
+    public string? Code { get; set; }
+
+    [Required, MaxLength(200)]
+    public string Name { get; set; } = "";
+
+    [MaxLength(20)]
+    public string? HsnSac { get; set; }
+
+    [MaxLength(20)]
+    public string Unit { get; set; } = "PCS";
+
+    [Column(TypeName = "numeric(12,2)")]
+    public decimal DefaultRate { get; set; }
+
+    [Column(TypeName = "numeric(5,2)")]
+    public decimal TaxRate { get; set; }
+
+    public string? Category { get; set; }
+    public string? Notes { get; set; }
+    public bool IsActive { get; set; } = true;
+    public DateTimeOffset CreatedAt { get; set; }
+}
+
+public class Bill
+{
+    public Guid Id { get; set; }
+    public Guid FirmId { get; set; }
+    public Guid BranchId { get; set; }
+
+    [Required, MaxLength(20)]
+    public string BillType { get; set; } = "sales";
+
+    [Required, MaxLength(50)]
+    public string BillNo { get; set; } = "";
+
+    public DateOnly BillDate { get; set; }
+    public Guid PartyId { get; set; }            // SUPPLIER for both sales/purchase (legacy: was buyer for sales)
+    public Guid? BuyerPartyId { get; set; }      // BUYER — separately stored from migration 18+
+    public Guid? OrderId { get; set; }
+
+    public string? InvoiceType { get; set; }
+    public string? PoNumber { get; set; }
+    public DateOnly? DeliveryDate { get; set; }
+
+    [Column(TypeName = "numeric(14,2)")] public decimal Subtotal { get; set; }
+    [Column(TypeName = "numeric(14,2)")] public decimal Discount { get; set; }
+    /// Fold Less — gross me se discount se PEHLE ghata jata hai. Discount me shaamil nahi (migration 88).
+    [Column(TypeName = "numeric(14,2)")] public decimal FoldAmt { get; set; }
+    [Column(TypeName = "numeric(14,2)")] public decimal TaxableAmount { get; set; }
+    [Column(TypeName = "numeric(14,2)")] public decimal Cgst { get; set; }
+    [Column(TypeName = "numeric(14,2)")] public decimal Sgst { get; set; }
+    [Column(TypeName = "numeric(14,2)")] public decimal Igst { get; set; }
+    [Column(TypeName = "numeric(6,2)")]  public decimal RoundOff { get; set; }
+    [Column(TypeName = "numeric(14,2)")] public decimal Total { get; set; }
+    [Column(TypeName = "numeric(14,2)")] public decimal PaidAmount { get; set; }
+
+    [MaxLength(20)]
+    public string Status { get; set; } = "pending";
+
+    public Guid? VoucherId { get; set; }
+    public bool AiExtracted { get; set; }
+    public Guid? AiExtractionId { get; set; }
+    public string? BillImageUrl { get; set; }
+    public string? Notes { get; set; }
+
+    // Transport / e-Way bill fields (migration 19)
+    [MaxLength(20)] public string? EwayBillNo { get; set; }
+    public Guid? TransporterId { get; set; }
+    [MaxLength(50)] public string? LrNo { get; set; }
+    public DateOnly? LrDate { get; set; }
+    public DateOnly? EwayBillDate { get; set; }   // migration 41 — e-Way bill generation date
+
+    // Duplicate protection (migration 20) — supplier's own bill no on their invoice
+    [MaxLength(50)] public string? SupplierBillNo { get; set; }
+
+    public Guid CreatedBy { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
+    public DateTimeOffset UpdatedAt { get; set; }
+    public DateTimeOffset? DeletedAt { get; set; }
+
+    public List<BillLine> Lines { get; set; } = new();
+}
+
+public class BillLine
+{
+    public Guid Id { get; set; }
+    public Guid BillId { get; set; }
+    public Guid? ItemId { get; set; }
+
+    [Required, MaxLength(200)]
+    public string ItemName { get; set; } = "";
+
+    public string? Description { get; set; }
+
+    public string? HsnSac { get; set; }
+
+    [Column(TypeName = "numeric(12,3)")]
+    public decimal Qty { get; set; }
+
+    public string? Unit { get; set; }
+
+    // Textile: har item par DO ginti (Pcs + Meters). Qty = billing wali (RateBasis
+    // chuni hui) — purane reports/hisaab Qty par hi chalte rehte hain.
+    [Column(TypeName = "numeric(12,3)")] public decimal? Pcs { get; set; }
+    [Column(TypeName = "numeric(12,3)")] public decimal? Meters { get; set; }
+    public string? RateBasis { get; set; }   // 'PCS' | 'MTR' — kis par rate laga
+
+    [Column(TypeName = "numeric(12,2)")] public decimal Rate { get; set; }
+    [Column(TypeName = "numeric(5,2)")]  public decimal DiscountPct { get; set; }
+    [Column(TypeName = "numeric(5,2)")]  public decimal TaxRate { get; set; }
+    [Column(TypeName = "numeric(14,2)")] public decimal TaxableAmount { get; set; }
+    [Column(TypeName = "numeric(14,2)")] public decimal TotalAmount { get; set; }
+
+    public int? SortOrder { get; set; }
+
+    public Bill? Bill { get; set; }
+}
+
+public class Payment
+{
+    public Guid Id { get; set; }
+    public Guid FirmId { get; set; }
+    public Guid BranchId { get; set; }
+
+    [Required, MaxLength(20)]
+    public string PaymentType { get; set; } = "receipt";
+
+    [Required, MaxLength(50)]
+    public string PaymentNo { get; set; } = "";
+
+    public DateOnly PaymentDate { get; set; }
+    public Guid PartyId { get; set; }
+
+    [Required, MaxLength(20)]
+    public string PaymentMode { get; set; } = "cash";
+
+    [Column(TypeName = "numeric(14,2)")]
+    public decimal Amount { get; set; }
+
+    public string? ReferenceNo { get; set; }
+    public string? BankName { get; set; }
+    public string? BankBranch { get; set; }
+    public Guid? BankLedgerId { get; set; }
+    public Guid? VoucherId { get; set; }
+    public string? Notes { get; set; }
+
+    // Aadhat/principal model: paisa AGENCY ko mila (Dr Cash/Bank, Cr Buyer).
+    // false = broker model (default): paisa seedha supplier ko gaya (Dr Supplier, Cr Buyer).
+    public bool MoneyToAgency { get; set; }
+
+    public Guid CreatedBy { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
+    public DateTimeOffset UpdatedAt { get; set; }
+    public DateTimeOffset? DeletedAt { get; set; }
+
+    public List<PaymentAllocation> Allocations { get; set; } = new();
+}
+
+public class PaymentAllocation
+{
+    public Guid PaymentId { get; set; }
+    public Guid BillId { get; set; }
+
+    [Column(TypeName = "numeric(14,2)")]
+    public decimal Allocated { get; set; }
+
+    /// Discount + packing + rate diff + other jo bill se KATA — cash nahi aaya par
+    /// bill utna settle ho gaya. bill.PaidAmount me Allocated ke saath ye bhi judta hai,
+    /// warna bill par kata hua amount hamesha "pending" dikhta rehta hai.
+    [Column(TypeName = "numeric(14,2)")]
+    public decimal Deduction { get; set; }
+}
+
+public class Order
+{
+    public Guid Id { get; set; }
+    public Guid FirmId { get; set; }
+    public Guid BranchId { get; set; }
+
+    [Required, MaxLength(20)]
+    public string OrderType { get; set; } = "sales";
+
+    [Required, MaxLength(50)]
+    public string OrderNo { get; set; } = "";
+
+    public DateOnly OrderDate { get; set; }
+    public Guid PartyId { get; set; }
+    public Guid? BuyerPartyId { get; set; }
+    public DateOnly? ExpectedDelivery { get; set; }
+
+    [MaxLength(20)]
+    public string Status { get; set; } = "pending";
+
+    [Column(TypeName = "numeric(14,2)")] public decimal Subtotal { get; set; }
+    [Column(TypeName = "numeric(14,2)")] public decimal TaxAmount { get; set; }
+    [Column(TypeName = "numeric(14,2)")] public decimal Total { get; set; }
+
+    // Order-specific fields
+    [Column(TypeName = "numeric(5,2)")] public decimal CdPercent { get; set; }
+    [Column(TypeName = "numeric(14,2)")] public decimal CdAmount { get; set; }
+    [MaxLength(10)] public string? CdType { get; set; } = "before";   // before|after GST
+    public Guid? TransporterId { get; set; }                          // freight partner (dropdown)
+    [MaxLength(50)] public string? SupplierOrderNo { get; set; }
+    [MaxLength(50)] public string? PaymentTerms { get; set; }
+    [MaxLength(200)] public string? SupplierGroupName { get; set; }  // sister-concern group; firm bill par pakki
+
+    public string? Notes { get; set; }
+    public Guid CreatedBy { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
+    public DateTimeOffset UpdatedAt { get; set; }
+    public DateTimeOffset? DeletedAt { get; set; }
+
+    public List<OrderLine> Lines { get; set; } = new();
+}
+
+public class GoodsReturn
+{
+    public Guid Id { get; set; }
+    public Guid FirmId { get; set; }
+    public Guid BranchId { get; set; }
+
+    [Required, MaxLength(50)]
+    public string GrNo { get; set; } = "";
+
+    public DateOnly GrDate { get; set; }
+
+    public Guid SupplierPartyId { get; set; }
+    public Guid? BuyerPartyId { get; set; }
+    public Guid? OriginalBillId { get; set; }
+
+    [MaxLength(50)] public string? Transport { get; set; }
+    [MaxLength(50)] public string? LrNo { get; set; }
+    [MaxLength(100)] public string? Reason { get; set; }
+    public string? Remark { get; set; }
+
+    [MaxLength(30)]
+    public string EffectMode { get; set; } = "direct_adjustment";  // direct_adjustment | credit_note
+
+    [Column(TypeName = "numeric(14,2)")] public decimal OriginalBillAmount { get; set; }
+    [Column(TypeName = "numeric(14,2)")] public decimal TotalReturnAmount { get; set; }
+    [Column(TypeName = "numeric(14,2)")] public decimal TaxableAmount { get; set; }
+    [Column(TypeName = "numeric(14,2)")] public decimal TaxAmount { get; set; }
+    [Column(TypeName = "numeric(14,2)")] public decimal NetBillAfterGr { get; set; }
+
+    // Credit note specific (when effect_mode = credit_note)
+    public DateOnly? CreditNoteValidTill { get; set; }
+    public bool CreditNoteAdjustFuture { get; set; } = true;
+
+    // Commission recalc
+    [Column(TypeName = "numeric(5,2)")] public decimal CommissionPct { get; set; }
+    [Column(TypeName = "numeric(14,2)")] public decimal CommissionAmount { get; set; }
+
+    [MaxLength(20)]
+    public string Status { get; set; } = "pending";   // pending | approved | rejected
+
+    public Guid? ApprovedBy { get; set; }
+    public DateTimeOffset? ApprovedAt { get; set; }
+    public string? RejectionReason { get; set; }
+
+    // Accounting voucher auto-posted for this GR (migration 50). Credits the bill
+    // party + Dr Sales/Purchase Return ledger. Re-posted on Update, removed on delete/reject.
+    public Guid? VoucherId { get; set; }
+
+    public Guid CreatedBy { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
+    public DateTimeOffset UpdatedAt { get; set; }
+    public DateTimeOffset? DeletedAt { get; set; }
+
+    public List<GoodsReturnLine> Lines { get; set; } = new();
+}
+
+public class GoodsReturnLine
+{
+    public Guid Id { get; set; }
+    public Guid GoodsReturnId { get; set; }
+    public Guid? BillLineId { get; set; }    // FK to original bill line
+    public Guid? ItemId { get; set; }
+
+    [Required, MaxLength(200)]
+    public string ItemName { get; set; } = "";
+
+    public string? Description { get; set; }
+    public string? HsnSac { get; set; }
+
+    [Column(TypeName = "numeric(12,3)")] public decimal Qty { get; set; }
+    public string? Unit { get; set; }
+
+    // Bill lines jaisa — Pcs + Meters dono, Qty = billing wali (RateBasis chuni hui)
+    [Column(TypeName = "numeric(12,3)")] public decimal? Pcs { get; set; }
+    [Column(TypeName = "numeric(12,3)")] public decimal? Meters { get; set; }
+    public string? RateBasis { get; set; }   // 'PCS' | 'MTR'
+
+    [Column(TypeName = "numeric(12,2)")] public decimal Rate { get; set; }
+    [Column(TypeName = "numeric(12,2)")] public decimal Rd { get; set; }
+    [Column(TypeName = "numeric(5,2)")]  public decimal IgstPct { get; set; }
+    [Column(TypeName = "numeric(14,2)")] public decimal TaxableAmount { get; set; }
+    [Column(TypeName = "numeric(14,2)")] public decimal TaxAmount { get; set; }
+    [Column(TypeName = "numeric(14,2)")] public decimal TotalAmount { get; set; }
+
+    public int? SortOrder { get; set; }
+    public GoodsReturn? GoodsReturn { get; set; }
+}
+
+public class OrderLine
+{
+    public Guid Id { get; set; }
+    public Guid OrderId { get; set; }
+    public Guid? ItemId { get; set; }
+
+    [Required, MaxLength(200)]
+    public string ItemName { get; set; } = "";
+
+    public string? Description { get; set; }
+    public string? HsnSac { get; set; }
+
+    [Column(TypeName = "numeric(12,3)")] public decimal Qty { get; set; }
+    public string? Unit { get; set; }
+
+    // Bill lines jaisa hi — Pcs + Meters dono, Qty = billing wali (RateBasis chuni hui)
+    [Column(TypeName = "numeric(12,3)")] public decimal? Pcs { get; set; }
+    [Column(TypeName = "numeric(12,3)")] public decimal? Meters { get; set; }
+    public string? RateBasis { get; set; }   // 'PCS' | 'MTR'
+
+    [Column(TypeName = "numeric(12,2)")] public decimal Rate { get; set; }
+    [Column(TypeName = "numeric(12,2)")] public decimal Rd { get; set; }         // Rate Discount per unit
+    [Column(TypeName = "numeric(5,2)")]  public decimal SgstPct { get; set; }
+    [Column(TypeName = "numeric(5,2)")]  public decimal CgstPct { get; set; }
+    [Column(TypeName = "numeric(14,2)")] public decimal TaxableAmount { get; set; }
+    [Column(TypeName = "numeric(14,2)")] public decimal TaxAmount { get; set; }
+    [Column(TypeName = "numeric(14,2)")] public decimal TotalAmount { get; set; }
+
+    public int? SortOrder { get; set; }
+    public Order? Order { get; set; }
+}
+
+// Cheque Handover Register (commission agent): kaun staff cheque le gaya, kab, commission paid/unpaid.
+[Table("cheque_handovers", Schema = "trading")]
+public class ChequeHandover
+{
+    public Guid Id { get; set; }
+    public Guid FirmId { get; set; }
+    public string? PaymentRef { get; set; }
+    public string? SupplierName { get; set; }
+    public string? BuyerName { get; set; }
+    public string? ChequeNo { get; set; }
+    public string? BankName { get; set; }
+    [Column(TypeName = "numeric(14,2)")] public decimal Amount { get; set; }
+    public DateOnly? ChequeDate { get; set; }
+    public string? TakenBy { get; set; }
+    public DateOnly? HandedDate { get; set; }
+    public string? HandedBy { get; set; }
+    public bool CommissionPaid { get; set; }
+    [Column(TypeName = "numeric(14,2)")] public decimal CommissionAmount { get; set; }
+    public string? Remark { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
+}
+
+// Buyer Agent (del-credere): buyer ka agent jo payment guarantee leta hai; hamari commission ka X% leta hai.
+[Table("buyer_agents", Schema = "trading")]
+public class BuyerAgent
+{
+    public Guid Id { get; set; }
+    public Guid FirmId { get; set; }
+    [Required, MaxLength(200)] public string Name { get; set; } = "";
+    [MaxLength(20)] public string? Phone { get; set; }
+    [MaxLength(100)] public string? City { get; set; }
+    [Column(TypeName = "numeric(5,2)")] public decimal DefaultSharePct { get; set; }
+    public string? Notes { get; set; }
+    public bool IsActive { get; set; } = true;
+    public DateTimeOffset CreatedAt { get; set; }
+}
+
+[Table("buyer_agent_earnings", Schema = "trading")]
+public class BuyerAgentEarning
+{
+    public Guid Id { get; set; }
+    public Guid FirmId { get; set; }
+    public Guid BuyerAgentId { get; set; }
+    public Guid? CommissionInvoiceId { get; set; }
+    public Guid? BuyerPartyId { get; set; }
+    public string? BuyerName { get; set; }
+    [Column(TypeName = "numeric(14,2)")] public decimal GrossCommission { get; set; }
+    [Column(TypeName = "numeric(5,2)")] public decimal SharePct { get; set; }
+    [Column(TypeName = "numeric(14,2)")] public decimal ShareAmount { get; set; }
+    public string? RefNo { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
+}
+
+[Table("buyer_agent_payouts", Schema = "trading")]
+public class BuyerAgentPayout
+{
+    public Guid Id { get; set; }
+    public Guid FirmId { get; set; }
+    public Guid BuyerAgentId { get; set; }
+    public DateOnly PayoutDate { get; set; }
+    [Column(TypeName = "numeric(14,2)")] public decimal Amount { get; set; }
+    [MaxLength(30)] public string? Mode { get; set; }
+    [MaxLength(80)] public string? RefNo { get; set; }
+    public string? Notes { get; set; }
+    public Guid? CreatedBy { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
+}

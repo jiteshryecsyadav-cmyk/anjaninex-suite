@@ -41,7 +41,14 @@ export function printElement(el: HTMLElement | null): void {
   doc.write(
     '<!doctype html><html><head><meta charset="utf-8"><title>Invoice</title>' +
     '<style>' + collectAllCss() + '</style>' +
-    '<style>@page{margin:10mm} html,body{background:#fff !important;margin:0;padding:0}' +
+    // ZAROORI: upar copy hui page-CSS me `@media print { body * { visibility:hidden } }`
+    // hai (styles.css line 19), jo sirf `app-shell main` ko wapas dikhati hai.
+    // Iframe ke andar app-shell hai hi nahi — isliye wo rule POORA invoice chhupa
+    // deta tha aur KHALI page chhapta tha. Yahan visibility wapas ON karte hain.
+    // Ye block copy-ki-hui CSS ke BAAD aata hai, isliye same specificity par yahi jeetta hai.
+    '<style>body,body *{visibility:visible !important}' +
+    '@media print{body,body *{visibility:visible !important}}' +
+    '@page{margin:10mm} html,body{background:#fff !important;margin:0;padding:0}' +
     'body>*{position:static !important;max-height:none !important;overflow:visible !important;' +
     'box-shadow:none !important;max-width:100% !important;width:100% !important}' +
     '*{-webkit-print-color-adjust:exact !important;print-color-adjust:exact !important}</style>' +

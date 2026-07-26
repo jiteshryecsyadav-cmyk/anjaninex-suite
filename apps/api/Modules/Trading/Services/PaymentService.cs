@@ -788,6 +788,23 @@ public class PaymentService : IPaymentService
         // negative (flipping status to "partial"/"pending" incorrectly).
         if (p.DeletedAt != null) return;
 
+        // CHAIN-ROK: is receipt ke kisi bill ka COMMISSION invoice ban chuka hai to
+        // receipt delete NAHI — commission "paid" bill par bana tha; receipt hatate
+        // hi wo bina-payment ke commission ban jata (hisaab jhooth). Pehle commission
+        // invoice delete karo, phir receipt.
+        var allocBillIdsForGuard = p.Allocations.Select(a => a.BillId).ToList();
+        if (allocBillIdsForGuard.Count > 0)
+        {
+            var comm = await (from l in _db.CommissionInvoiceLines
+                              join ci in _db.CommissionInvoices on l.CommissionInvoiceId equals ci.Id
+                              where allocBillIdsForGuard.Contains(l.BillId)
+                              select new { l.BillNo, ci.InvoiceNo }).FirstOrDefaultAsync();
+            if (comm != null)
+                throw new InvalidOperationException(
+                    $"Is receipt ke bill \"{comm.BillNo}\" ka commission invoice \"{comm.InvoiceNo}\" ban chuka hai — " +
+                    "receipt delete nahi hogi. Pehle wo commission invoice delete karo, phir ye receipt.");
+        }
+
         using var tx = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
         try
         {

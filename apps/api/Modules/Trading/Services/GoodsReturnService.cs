@@ -443,6 +443,21 @@ public class GoodsReturnService : IGoodsReturnService
         var gr = await _db.GoodsReturns.FindAsync(id);
         if (gr is null) return;
 
+        // CHAIN-ROK: GR ke bill par receipt/payment ban chuki hai to GR delete
+        // NAHI — us receipt ke hisaab me GR ka minus gina ja chuka hai; GR
+        // hatate hi Balance Pending jhooth bolne lagta. Pehle receipt delete karo.
+        if (gr.DeletedAt == null && gr.OriginalBillId != null)
+        {
+            var payNo = await (from a in _db.PaymentAllocations
+                               join p in _db.Payments on a.PaymentId equals p.Id
+                               where a.BillId == gr.OriginalBillId.Value && p.DeletedAt == null
+                               select p.PaymentNo).FirstOrDefaultAsync();
+            if (payNo != null)
+                throw new InvalidOperationException(
+                    $"Is GR ke bill ki receipt/payment \"{payNo}\" ban chuki hai — GR delete nahi hogi. " +
+                    "Pehle wo receipt delete karo, phir ye GR.");
+        }
+
         // Approved GR delete ho raha hai to pehle bill se fold kiya amount reverse karo.
         if (gr.Status == "approved" && gr.DeletedAt == null)
             await ReverseBillSettlement(gr);

@@ -501,14 +501,54 @@ public class DashboardController : ControllerBase
         var parties = await (from p in _db.PartyProfiles
                              join c in _db.Contacts on p.ContactId equals c.Id
                              where buyerIds.Contains(p.Id)
-                             select new { p.Id, c.DisplayName, p.CreditDays }).ToListAsync();
+                             select new { p.Id, c.DisplayName, p.CreditDays, c.GroupName }).ToListAsync();
         var pMap = parties.ToDictionary(x => x.Id, x => x);
+
+        // HAR BUYER ki APNI shart: CreditDays khali ho to uske GROUP ke
+        // Payment Terms se (net45 → 45 din, advance/cod → 0 din).
+        var groupTerms = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var groupNames = parties.Where(x => x.CreditDays <= 0 && !string.IsNullOrEmpty(x.GroupName))
+                                .Select(x => x.GroupName!).Distinct().ToList();
+        if (groupNames.Count > 0)
+        {
+            var conn = (Npgsql.NpgsqlConnection)_db.Database.GetDbConnection();
+            if (conn.State != System.Data.ConnectionState.Open) await conn.OpenAsync();
+            await using var cmd = conn.CreateCommand();
+            cmd.CommandText =
+                "SELECT name, COALESCE(payment_terms,'') FROM core.party_groups WHERE name = ANY(@n)";
+            cmd.Parameters.Add(new Npgsql.NpgsqlParameter("n", groupNames.ToArray()));
+            await using var reader = await cmd.ExecuteReaderAsync();
+            while (await reader.ReadAsync())
+                groupTerms[reader.GetString(0)] = reader.GetString(1);
+        }
+
+        // paymentTerms → din: net45 = 45 · advance/cod/loa = 0 · anjaan = null
+        static int? TermDays(string? t)
+        {
+            if (string.IsNullOrWhiteSpace(t)) return null;
+            t = t.Trim().ToLowerInvariant();
+            if (t is "advance" or "cod" or "loa") return 0;
+            var m = System.Text.RegularExpressions.Regex.Match(t, @"^net(\d+)$");
+            return m.Success ? int.Parse(m.Groups[1].Value) : null;
+        }
 
         var flags = byBuyer
             .Select(x =>
             {
                 var info = pMap.GetValueOrDefault(x.Buyer);
-                var baseline = (info?.CreditDays ?? 0) > 0 ? info!.CreditDays : 30;
+                // Shart ka kram: party ka apna CREDIT DAYS → group ke PAYMENT TERMS → default 30
+                int baseline; string termsLabel;
+                if ((info?.CreditDays ?? 0) > 0)
+                {
+                    baseline = info!.CreditDays; termsLabel = $"{baseline} din";
+                }
+                else
+                {
+                    var gt = info?.GroupName != null ? groupTerms.GetValueOrDefault(info.GroupName) : null;
+                    var td = TermDays(gt);
+                    if (td != null) { baseline = td.Value; termsLabel = td == 0 ? gt!.ToUpperInvariant() : $"Net {td}"; }
+                    else { baseline = 30; termsLabel = "~30 din (default)"; }
+                }
                 var last3 = (int)Math.Round(x.Recent.Take(3).Average());
                 // "Pehle kaisa tha" = last-3 ko chhod kar purani receipts ka avg —
                 // isi se pata chalta hai der BADH rahi hai ya hamesha se itni thi
@@ -527,6 +567,7 @@ public class DashboardController : ControllerBase
                 {
                     partyName = info?.DisplayName ?? "—",
                     baselineDays = baseline,
+                    termsLabel,
                     last3AvgDays = last3,
                     olderAvgDays = olderAvg,
                     latestDays = latest,

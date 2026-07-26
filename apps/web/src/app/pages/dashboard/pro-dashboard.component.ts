@@ -172,7 +172,7 @@ interface DonutSeg { label: string; color: string; value: number; pct: number; d
                 } @else if (r.reason === 'trend') {
                   pehle avg {{ r.olderAvgDays }} din, ab <b class="text-red-700">{{ r.last3AvgDays }} din</b> — der badhti ja rahi hai
                 } @else {
-                  avg <b class="text-red-700">{{ r.last3AvgDays }} din</b> me paisa (limit {{ r.baselineDays }} din, {{ r.overBy }} din upar)
+                  avg <b class="text-red-700">{{ r.last3AvgDays }} din</b> me paisa (shart {{ r.termsLabel }}, {{ r.overBy }} din upar)
                 }{{ last ? '' : ' · ' }}
               </span>
             }
@@ -1153,8 +1153,8 @@ export class ProDashboardComponent {
   insightDismissed = signal(false);
 
   // ⚠️ Payment Risk — pichhli receipts ka avg din vs party ke credit days (SQL se)
-  paymentRisk = signal<{ partyName: string; baselineDays: number; last3AvgDays: number;
-    olderAvgDays: number; latestDays: number; prevDays: number;
+  paymentRisk = signal<{ partyName: string; baselineDays: number; termsLabel: string;
+    last3AvgDays: number; olderAvgDays: number; latestDays: number; prevDays: number;
     receipts: number; overBy: number; trendUp: number; reason: string }[]>([]);
   riskDismissed = signal(false);
 

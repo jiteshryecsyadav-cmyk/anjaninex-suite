@@ -70,6 +70,7 @@ import { environment } from '../../../environments/environment';
           <button type="button" class="lx-otp">Sign in with OTP</button>
 
           <a href="mailto:support@anjaninex.com" class="lx-help">Need help? support&#64;anjaninex.com</a>
+          <a href="tel:9511540583" class="lx-help">📞 9511540583</a>
         </form>
       </main>
 

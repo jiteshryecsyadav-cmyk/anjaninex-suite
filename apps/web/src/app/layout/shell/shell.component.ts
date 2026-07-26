@@ -421,6 +421,8 @@ import { environment } from '../../../environments/environment';
               <a href="/privacy.html" target="_blank" rel="noopener" class="hover:text-anjaninex-red">Privacy</a>
               <a href="/terms.html" target="_blank" rel="noopener" class="hover:text-anjaninex-red">Terms</a>
               <a href="/refund.html" target="_blank" rel="noopener" class="hover:text-anjaninex-red">Refund</a>
+              <span class="opacity-50">·</span>
+              <a href="tel:9511540583" class="hover:text-anjaninex-red font-semibold whitespace-nowrap">📞 9511540583</a>
             </div>
             <a
               [href]="anjaninexUrl"

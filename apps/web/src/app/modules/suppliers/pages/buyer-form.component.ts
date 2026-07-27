@@ -23,6 +23,15 @@ import { UppercaseDirective } from '../../../shared/uppercase.directive';
       <div class="mb-4">
         <h2 class="font-display font-black text-2xl text-[#5c1a8b]">
           {{ editingId ? '✏️ Edit Buyer' : '+ Add New Buyer' }}
+          <!-- TYPE tag — buyer hai ya DONO (supplier directory me bhi wahi contact) -->
+          @if (editingId) {
+            @if (isAlsoSupplier()) {
+              <span class="align-middle ml-2 px-2 py-0.5 rounded text-xs font-bold bg-[#5c1a8b] text-white"
+                    title="Ye Buyer BHI hai aur Supplier BHI (dono directory me)">🔁 DONO</span>
+            } @else {
+              <span class="align-middle ml-2 px-2 py-0.5 rounded text-xs font-bold bg-green-100 text-green-700">BUYER</span>
+            }
+          }
         </h2>
         <p class="text-sm text-[#6b3fa0]">Customer / Boutique / Reseller details</p>
       </div>
@@ -326,6 +335,7 @@ export class BuyerFormComponent {
 
   editingId: string | null = null;
   contactId: string | null = null;
+  isAlsoSupplier = signal(false);   // same contact Supplier Directory me bhi — header ka "DONO" tag
   saving = signal(false);
   error = signal('');
   categories = signal<SupplierCategory[]>([]);
@@ -424,6 +434,7 @@ export class BuyerFormComponent {
     if (this.editingId) {
       this.svc.get(this.editingId).subscribe(b => {
         this.contactId = b.contactId;
+        this.isAlsoSupplier.set(!!(b as any).isAlsoSupplier);
         this.form.patchValue({
           displayName: b.displayName,
           legalName: b.legalName ?? '',

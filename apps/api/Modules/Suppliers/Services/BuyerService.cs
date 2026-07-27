@@ -26,7 +26,8 @@ public record BuyerDetailDto(
     string? WaPhone, string? Notes, bool IsActive,
     // Form gap-fill (migration 49)
     string? OwnerName = null, string? AltPhone = null, string? Website = null,
-    string? Instagram = null, bool IsSupplier = false, string? GpsLocation = null);
+    string? Instagram = null, bool IsSupplier = false, string? GpsLocation = null,
+    bool IsAlsoSupplier = false);   // same contact Supplier Directory me bhi — edit form par "DONO" tag
 
 public record CreateBuyerDto(
     string DisplayName, string? LegalName, string? Phone, string? Email,
@@ -112,7 +113,8 @@ public class BuyerService : IBuyerService
             row.b.OrderFrequency, row.b.PaymentTerms, row.b.QualityPref, row.b.TargetCustomer,
             row.b.WaPhone, row.b.Notes, row.b.IsActive,
             row.b.OwnerName, row.b.AltPhone, row.b.Website,
-            row.b.Instagram, row.b.IsSupplier, row.b.GpsLocation);
+            row.b.Instagram, row.b.IsSupplier, row.b.GpsLocation,
+            IsAlsoSupplier: await _db.SupplierProfiles.AnyAsync(s => s.IsActive && s.ContactId == row.b.ContactId));
     }
 
     public async Task<BuyerDetailDto> Create(CreateBuyerDto dto, Guid firmId, Guid userId)

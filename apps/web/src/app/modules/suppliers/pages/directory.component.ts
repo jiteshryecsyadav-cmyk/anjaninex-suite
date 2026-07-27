@@ -37,7 +37,8 @@ import { ToastService } from '../../../shared/toast.service';
             <div class="absolute right-0 mt-1 w-44 bg-white border border-[#ddc8f5] rounded-lg shadow-lg z-20 overflow-hidden">
               <a routerLink="/suppliers/new" (click)="addMenuOpen.set(false)"
                  class="block px-4 py-2 text-sm hover:bg-[#f0e6ff] text-[#5c1a8b] font-semibold">🏭 Supplier</a>
-              <a routerLink="/trading/parties" [queryParams]="{ add: 'buyer' }" (click)="addMenuOpen.set(false)"
+              <!-- Bazaar ka APNA buyer form — pehle galti se Trading Party Master khul jata tha -->
+              <a routerLink="/suppliers/buyers/new" (click)="addMenuOpen.set(false)"
                  class="block px-4 py-2 text-sm hover:bg-[#f0e6ff] text-[#5c1a8b] font-semibold border-t border-[#f0e6ff]">🛒 Buyer</a>
               <button type="button" (click)="openLinkModal()"
                  class="block w-full text-left px-4 py-2 text-sm hover:bg-[#f0e6ff] text-[#5c1a8b] font-semibold border-t border-[#f0e6ff]">🔗 Existing se laao</button>

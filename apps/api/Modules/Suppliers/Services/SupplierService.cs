@@ -69,6 +69,7 @@ public record SupplierDetailDto(
     string? Website = null,
     string? OwnerName = null,
     string? GpsLocation = null,
+    bool IsAlsoBuyer = false,    // same contact Buyer Directory me bhi — edit form par "DONO" tag
     decimal? RateMin = null,
     decimal? RateMax = null);
 
@@ -330,7 +331,8 @@ public class SupplierService : ISupplierService
             data.sp.ReliabilityScore, data.sp.MinOrderValue, data.sp.DeliveryLeadDays,
             data.sp.Notes, photos, rates, data.sp.IsActive, data.c.WaBuyer,
             data.sp.Website, data.sp.OwnerName, data.sp.GpsLocation,
-            data.sp.RateMin, data.sp.RateMax);
+            IsAlsoBuyer: await _db.BuyerProfiles.AnyAsync(b => b.IsActive && b.ContactId == data.c.Id),
+            RateMin: data.sp.RateMin, RateMax: data.sp.RateMax);
     }
 
     public async Task<SupplierDetailDto> Create(CreateSupplierDto dto, Guid firmId, Guid userId)
@@ -426,8 +428,11 @@ public class SupplierService : ISupplierService
         if (dto.WaPhone != null) contact.WaSupplier = string.IsNullOrWhiteSpace(dto.WaPhone) ? null : dto.WaPhone.Trim();
         if (dto.WaBuyer != null) contact.WaBuyer = string.IsNullOrWhiteSpace(dto.WaBuyer) ? null : dto.WaBuyer.Trim();
         contact.EmailPrimary = dto.Email;
-        contact.GstNumber = dto.Gst;
-        contact.PanNumber = dto.Pan;
+        // Khali string DB ke format-CHECK se takrati hai (constraint sirf NULL ya sahi
+        // format leta hai) — form khali PAN/GST bheje to NULL hi jaye, warna Update
+        // Supplier par "PAN format galat" error aata tha jabki field khali/lock thi
+        contact.GstNumber = string.IsNullOrWhiteSpace(dto.Gst) ? null : dto.Gst.Trim().ToUpperInvariant();
+        contact.PanNumber = string.IsNullOrWhiteSpace(dto.Pan) ? null : dto.Pan.Trim().ToUpperInvariant();
         if (!string.IsNullOrEmpty(dto.Address))
         {
             var addr = new {
@@ -516,8 +521,8 @@ public class SupplierService : ISupplierService
             EntityType = "proprietorship",
             PhonePrimary = dto.Phone,
             EmailPrimary = dto.Email,
-            GstNumber = dto.Gst,
-            PanNumber = dto.Pan,
+            GstNumber = string.IsNullOrWhiteSpace(dto.Gst) ? null : dto.Gst.Trim().ToUpperInvariant(),
+            PanNumber = string.IsNullOrWhiteSpace(dto.Pan) ? null : dto.Pan.Trim().ToUpperInvariant(),
             Addresses = addresses,
             Flags = "{\"is_supplier\":true}",
             SourceModule = "suppliers",

@@ -475,7 +475,9 @@ export class TradingService {
   getPaymentRisk() {
     return this.http.get<{ partyName: string; baselineDays: number; last3AvgDays: number;
       overallAvgDays: number; receipts: number; overBy: number }[]>(
-      `${this.base}/dashboard/payment-risk`);
+      // Dashboard ka route api/dashboard hai (api/trading/dashboard NAHI) — galat pate
+      // se 404 aata tha aur dashboard par payment-risk banner kabhi dikhta hi nahi tha
+      `${environment.apiUrl}/api/dashboard/payment-risk`);
   }
   getCommissionInvoice(id: string) {
     return this.http.get<any>(`${this.base}/commission-invoices/${id}`);

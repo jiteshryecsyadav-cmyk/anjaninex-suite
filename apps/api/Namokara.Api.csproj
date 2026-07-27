@@ -72,6 +72,9 @@
     <!-- Excel import/export (Import & Migration feature) — MIT, works on .NET 8 Linux -->
     <PackageReference Include="ClosedXML" Version="0.104.2" />
 
+    <!-- Bazaar Bot photo watermark (Party Chat) -->
+    <PackageReference Include="SixLabors.ImageSharp.Drawing" Version="2.1.5" />
+
     <!-- Misc -->
     <PackageReference Include="Mapster" Version="7.4.0" />
     <PackageReference Include="FluentValidation.AspNetCore" Version="11.3.0" />

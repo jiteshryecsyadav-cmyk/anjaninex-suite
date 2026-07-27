@@ -313,6 +313,8 @@ try
         Namokara.Api.Modules.Suppliers.Services.MatchService>();
     builder.Services.AddScoped<Namokara.Api.Modules.Suppliers.Services.ISearchService,
         Namokara.Api.Modules.Suppliers.Services.SearchService>();
+    builder.Services.AddScoped<Namokara.Api.Modules.Suppliers.Services.IBazaarChatBotService,
+        Namokara.Api.Modules.Suppliers.Services.BazaarChatBotService>();
 
     // AI module
     builder.Services.Configure<Namokara.Api.Modules.Ai.Services.AiSettings>(

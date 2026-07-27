@@ -388,9 +388,11 @@ public class PartyChatPublicController : ControllerBase
     private readonly AppDbContext _db;
     private readonly IWebHostEnvironment _env;
     private readonly IHubContext<PartyChatHub> _hub;
+    private readonly Namokara.Api.Modules.Suppliers.Services.IBazaarChatBotService _bot;
     private static readonly HttpClient Http = new HttpClient();
-    public PartyChatPublicController(AppDbContext db, IWebHostEnvironment env, IHubContext<PartyChatHub> hub)
-    { _db = db; _env = env; _hub = hub; }
+    public PartyChatPublicController(AppDbContext db, IWebHostEnvironment env, IHubContext<PartyChatHub> hub,
+        Namokara.Api.Modules.Suppliers.Services.IBazaarChatBotService bot)
+    { _db = db; _env = env; _hub = hub; _bot = bot; }
 
     // Message ke baad thread touch + firm_id nikal ke live push
     private async Task TouchAndNotify(Guid threadId)
@@ -731,6 +733,8 @@ public class PartyChatPublicController : ControllerBase
             await cmd.ExecuteNonQueryAsync();
         }
         await TouchAndNotify(threadId.Value);
+        // BAZAAR BOT — supplier ki stock-photo ho to watermark + buyers ko bhejo (fail-soft)
+        await _bot.HandlePartyMessageAsync(threadId.Value, body, Path.GetFileName(url!), type);
         return Ok(new { ok = true });
     }
 
@@ -812,6 +816,8 @@ public class PartyChatPublicController : ControllerBase
             await cmd.ExecuteNonQueryAsync();
         }
         await TouchAndNotify(threadId.Value);
+        // BAZAAR BOT — rate ka jawab / ORDER <code> / search ho to handle karo (fail-soft)
+        await _bot.HandlePartyMessageAsync(threadId.Value, dto.Body, null, null);
         return Ok(new { ok = true });
     }
 }

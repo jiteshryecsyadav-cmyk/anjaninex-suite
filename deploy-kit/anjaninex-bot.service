@@ -1,0 +1,28 @@
+# =============================================================================
+# Anjaninex WhatsApp Bot — systemd unit (VPS par /etc/systemd/system/ me)
+# Bot Node.js hai, /var/www/anjaninex-bot me chalta hai, port 5050 par health/QR
+# deta hai. API isi se Bot tab ka QR/pair-status laata hai (BotController).
+#
+# Install (VPS par):
+#   cp anjaninex-bot.service /etc/systemd/system/
+#   systemctl daemon-reload && systemctl enable --now anjaninex-bot
+#
+# Zaroori: /var/www/anjaninex-bot/.env me PG* creds, FIRM_ID, WA_PAIR_NUMBER.
+# Restart=always zaroori hai — "Pair Device" button bot ko exit karwata hai,
+# systemd usko wapas uthata hai tabhi naya QR/pairing-code banta hai.
+# =============================================================================
+[Unit]
+Description=Anjaninex WhatsApp Bot (Bazaar Link)
+After=network.target postgresql.service
+
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=/var/www/anjaninex-bot
+ExecStart=/usr/bin/node server.js
+Restart=always
+RestartSec=3
+Environment=NODE_ENV=production
+
+[Install]
+WantedBy=multi-user.target

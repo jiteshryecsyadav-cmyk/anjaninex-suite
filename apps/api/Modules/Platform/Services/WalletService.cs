@@ -313,8 +313,10 @@ public class WalletService : IWalletService
 
     public async Task<object> GetUsageReportAsync(Guid firmId, DateTimeOffset? from, DateTimeOffset? to)
     {
-        var fromD = from ?? DateTimeOffset.UtcNow.AddDays(-30);
-        var toD = to ?? DateTimeOffset.UtcNow.AddDays(1);
+        // Npgsql timestamptz me sirf UTC likhne deta hai — IST (+05:30) offset wali date
+        // seedhi bhejo to poora usage-report hi gir jata tha (Wallet page par error)
+        var fromD = (from ?? DateTimeOffset.UtcNow.AddDays(-30)).ToUniversalTime();
+        var toD = (to ?? DateTimeOffset.UtcNow.AddDays(1)).ToUniversalTime();
 
         var conn = (NpgsqlConnection)_db.Database.GetDbConnection();
         if (conn.State != ConnectionState.Open) await conn.OpenAsync();

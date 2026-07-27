@@ -118,7 +118,9 @@ export const FIELD_REGISTRY: ScreenDef[] = [
     name: 'Payment / Receipt',
     fields: [
       { key: 'rate_diff', label: 'Rate Diff column' },
+      { key: 'bill_disc', label: 'BILL DISC jhalak', hint: 'Bill me diya disc % — sirf dikhata hai, paisa nahi kaatta' },
       { key: 'dis',       label: 'DIS% + DIS AMT columns' },
+      { key: 'dis2',      label: 'DISC-2 columns (extra kat-kut)', hint: 'Doosri alag discount — paisa kaatti hai, commission balance me ginti hai' },
       { key: 'interest',  label: 'Interest column',  defaultOff: true },
       { key: 'adj_amt',   label: 'ADJ AMT column',   defaultOff: true },
       { key: 'packing',   label: 'Packing column' },

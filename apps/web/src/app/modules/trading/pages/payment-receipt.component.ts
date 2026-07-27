@@ -36,8 +36,11 @@ interface BillRow {
   taxAmt: number;
   grAmt: number;       // gross
   rateDiff: number;
+  billDiscPct: number; // bill me diya hua disc % — SIRF JHALAK (NET me pehle se ghata, dobara nahi katta)
   disPct: number;
   disAmt: number;
+  dis2Pct: number;     // DISC-2 — doosri alag kat-kut (paisa kaatti hai, commission balance me ginti hai)
+  dis2Amt: number;
   interest: number;
   adjAmt: number;
   packing: number;     // packing charge deduction
@@ -474,9 +477,15 @@ interface PartyBehavior {
                 <th class="text-right">TAX AMT</th>
                 <th class="text-right">GR AMT</th>
                 <th *fld="'payment_receipt.rate_diff'" class="text-right">RATE DIFF</th>
+                <th *fld="'payment_receipt.bill_disc'" class="text-right"
+                    title="Bill me diya hua disc — sirf jhalak, paisa nahi kaatta">BILL<br><small>DISC</small></th>
                 <ng-container *fld="'payment_receipt.dis'">
                   <th class="text-right">DIS%</th>
                   <th class="text-right">DIS AMT</th>
+                </ng-container>
+                <ng-container *fld="'payment_receipt.dis2'">
+                  <th class="text-right">DISC-2%</th>
+                  <th class="text-right">DISC-2 AMT</th>
                 </ng-container>
                 <th *fld="'payment_receipt.interest'" class="text-right">INTEREST</th>
                 <th *fld="'payment_receipt.adj_amt'" class="text-right">ADJ AMT</th>
@@ -498,7 +507,7 @@ interface PartyBehavior {
             <tbody>
               @if (bills().length === 0) {
                 <tr>
-                  <td colspan="21" class="empty-row">
+                  <td colspan="24" class="empty-row">
                     @if (billsError()) {
                       ⚠️ {{ billsError() }}
                     } @else if (supplierId || buyerId) {
@@ -527,12 +536,24 @@ interface PartyBehavior {
                       <input [ngModel]="b.rateDiff" (ngModelChange)="updateBill(i, 'rateDiff', +$event)"
                              type="number" step="0.01" class="tip text-right">
                     </td>
+                    <td *fld="'payment_receipt.bill_disc'" class="text-right font-mono"
+                        style="color:#6b3fa0; white-space:nowrap"
+                        title="Bill me diya hua disc — NET me pehle se ghata hai, yahan dobara nahi katega">
+                      @if (b.billDiscPct > 0) { {{ b.billDiscPct | number:'1.0-2' }}% ✓ } @else { — }
+                    </td>
                     <ng-container *fld="'payment_receipt.dis'">
                     <td>
                       <input [ngModel]="b.disPct" (ngModelChange)="updateBill(i, 'disPct', +$event)"
                              type="number" step="0.01" class="tip text-right">
                     </td>
                     <td class="text-right font-mono">{{ b.disAmt | number:'1.2-2' }}</td>
+                    </ng-container>
+                    <ng-container *fld="'payment_receipt.dis2'">
+                    <td>
+                      <input [ngModel]="b.dis2Pct" (ngModelChange)="updateBill(i, 'dis2Pct', +$event)"
+                             type="number" step="0.01" class="tip text-right">
+                    </td>
+                    <td class="text-right font-mono">{{ b.dis2Amt | number:'1.2-2' }}</td>
                     </ng-container>
                     <td *fld="'payment_receipt.interest'">
                       <input [ngModel]="b.interest" (ngModelChange)="updateBill(i, 'interest', +$event)"
@@ -1127,7 +1148,8 @@ export class PaymentReceiptComponent {
 
   // Bill ka PAYABLE total (toPay = total with tax) — netAmt to sirf taxable hai
   totalBillAmount = computed(() => this.bills().filter(b => b.selected).reduce((s, b) => s + (b.toPay || b.pending || 0), 0));
-  totalDiscount = computed(() => this.bills().filter(b => b.selected).reduce((s, b) => s + (b.disAmt || 0), 0));
+  totalDiscount = computed(() => this.bills().filter(b => b.selected)
+    .reduce((s, b) => s + (b.disAmt || 0) + (b.dis2Amt || 0), 0));
   // NET AMT − received. Zyada aa gaya to NEGATIVE (advance/extra) dikhega — 0 par clamp nahi.
   // (totalDiscount yahan minus nahi — wo NET AMT/toPay me pehle se kat chuka hai)
   balancePending = computed(() => this.totalBillAmount() - this.totalReceived());
@@ -1232,7 +1254,7 @@ export class PaymentReceiptComponent {
       // waghairah. Ye pehle hota hi nahi tha: edit kholne par sab 0 dikhta tha
       // aur user ko lagta tha "save nahi hua", jabki rakam sahi save hui thi.
       for (const s of pieces.filter(x => x.startsWith('DED:'))) {
-        const [billId, rateDiff, disPct, , interest, adjAmt, packing, other, gstMode]
+        const [billId, rateDiff, disPct, , interest, adjAmt, packing, other, gstMode, dis2Pct]
           = s.slice(4).split('|');
         const i = this.bills().findIndex(b => b.billId === billId);
         if (i < 0) continue;
@@ -1247,6 +1269,7 @@ export class PaymentReceiptComponent {
         this.updateBill(i, 'adjAmt', +adjAmt || 0);
         this.updateBill(i, 'packing', +packing || 0);
         this.updateBill(i, 'other', +other || 0);
+        this.updateBill(i, 'dis2Pct', +dis2Pct || 0); // DISC-2 wapas (purane records me field nahi = 0)
         this.updateBill(i, 'disPct', +disPct || 0);   // aakhir me — disAmt yahin banta hai
       }
 
@@ -1451,8 +1474,11 @@ export class PaymentReceiptComponent {
         gstMode: 'after',
         entitledDisc: +(b.entitledDisc ?? 0),
         entitledDiscAmount: +((b as any).entitledDiscAmount ?? 0),
+        billDiscPct: +((b as any).salesDiscPct ?? 0),   // bill me diya disc — sirf jhalak
         disPct: 0,
         disAmt: 0,
+        dis2Pct: 0,
+        dis2Amt: 0,
         interest: 0,
         adjAmt: 0,
         // Bill ka apna NET = grand total − GR (round-off bill-banate-waqt ka) — YAHI base
@@ -1492,20 +1518,7 @@ export class PaymentReceiptComponent {
     }));
     // 🎯 Supplier disc recovery alert — supplier ne jitna commit kiya (6%) usme se
     // bill pe jitna diya (3%) ghata ke jo bacha, wo agency ko recover karna hai.
-    if (val) {
-      const b = this.bills()[idx];
-      if (b && (b.entitledDisc || 0) > 0) {
-        // ⚠️ Buyer ko auto-fill NAHI karna — ye supplier se RECOVER karne wala disc hai,
-        // jo commission bill me claim hota hai. Yaha sirf yaad-dilane wala alert.
-        // % ke saath ₹ bhi — sirf % se pata nahi chalta kitna paisa banta hai.
-        // Amount backend se (sahi base = Subtotal − Fold par nikla hua). netAmt se
-        // multiply karna galat tha — wo discount ke BAAD ka taxable hai.
-        const recAmt = b.entitledDiscAmount || ((b.netAmt || 0) * (b.entitledDisc || 0) / 100);
-        const recStr = new Intl.NumberFormat('en-IN',
-          { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(recAmt);
-        this.discAlert.set(`${b.dispNo || b.billNo} — Supplier se ${b.entitledDisc}% discount lena BAAKI hai = ₹${recStr}. Ye commission bill me claim karo.`);
-      }
-    }
+    if (val) this.refreshDiscAlert(this.bills()[idx]);
     // Bill select karte hi pehli payment txn me NET AMT (selected bills ka total) auto bhar do
     this.autoFillReceivedAmount();
   }
@@ -1526,9 +1539,10 @@ export class PaymentReceiptComponent {
       const updated: any = { ...b, [field]: value };
       // Recompute discount amount (taxable par)
       updated.disAmt = updated.netAmt * (updated.disPct / 100);
+      updated.dis2Amt = updated.netAmt * (updated.dis2Pct / 100);   // DISC-2 bhi taxable par
 
-      // Kul deductions (discount + rate diff + packing + other)
-      const deduct = (updated.disAmt || 0) + (updated.rateDiff || 0)
+      // Kul deductions (discount + disc-2 + rate diff + packing + other)
+      const deduct = (updated.disAmt || 0) + (updated.dis2Amt || 0) + (updated.rateDiff || 0)
                    + (updated.packing || 0) + (updated.other || 0);
       const addOn  = (updated.interest || 0) + (updated.adjAmt || 0);
 
@@ -1557,6 +1571,32 @@ export class PaymentReceiptComponent {
       }
       return updated;
     }));
+    // DIS/DISC-2 type karte hi alert ka balance LIVE badle — user ko turant dikhe
+    // ki commission me ab kitna bachega
+    if (field === 'disPct' || field === 'dis2Pct') {
+      const b = this.bills()[idx];
+      if (b?.selected) this.refreshDiscAlert(b);
+    }
+  }
+
+  // 🎯 Supplier disc recovery alert — supplier ne jitna commit kiya (6%) usme se
+  // bill pe diya (3%) + IS receipt me kata (DIS + DISC-2) ghata ke jo bache,
+  // wahi agency commission bill me claim karegi.
+  // ⚠️ Buyer ko auto-fill NAHI karna — ye supplier se RECOVER hone wala disc hai.
+  // Amount backend-base se proportional (Subtotal − Fold) — netAmt se multiply
+  // galat tha (wo discount ke BAAD ka taxable hai).
+  private refreshDiscAlert(b: BillRow | undefined) {
+    if (!b || (b.entitledDisc || 0) <= 0) return;
+    const cut = (b.disPct || 0) + (b.dis2Pct || 0);
+    const bal = Math.max(0, +(b.entitledDisc - cut).toFixed(2));
+    const perPct = b.entitledDiscAmount > 0 ? b.entitledDiscAmount / b.entitledDisc
+                                            : (b.netAmt || 0) / 100;
+    const recStr = new Intl.NumberFormat('en-IN',
+      { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(bal * perPct);
+    const cutTxt = cut > 0 ? ` − is receipt me ${cut}%` : '';
+    this.discAlert.set(bal > 0
+      ? `${b.dispNo || b.billNo} — Supplier se lena BAAKI: ${b.entitledDisc}%${cutTxt} = ${bal}% (₹${recStr}). Ye commission bill me claim hoga.`
+      : `${b.dispNo || b.billNo} — Supplier ka poora committed disc mil gaya ✓ (commission me claim karne ko kuch nahi bacha).`);
   }
   recalcAllBills() {
     this.bills.update(arr => arr.map(b => {
@@ -1746,7 +1786,8 @@ export class PaymentReceiptComponent {
     // jabki rakam (Balance Pending) sahi hoti thi.
     const dedPieces = sel.map(b =>
       `DED:${b.billId}|${b.rateDiff || 0}|${b.disPct || 0}|${b.disAmt || 0}|` +
-      `${b.interest || 0}|${b.adjAmt || 0}|${b.packing || 0}|${b.other || 0}|${b.gstMode || 'after'}`
+      `${b.interest || 0}|${b.adjAmt || 0}|${b.packing || 0}|${b.other || 0}|${b.gstMode || 'after'}|` +
+      `${b.dis2Pct || 0}|${b.dis2Amt || 0}`   // DISC-2 aakhir me — purane records ke saath compatible
     );
 
     const notesPieces = [

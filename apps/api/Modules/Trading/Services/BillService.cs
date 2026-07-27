@@ -59,7 +59,8 @@ public record BillListItemDto(
     string? PartyGroup = null,          // supplier/party ka group name (sister firms)
     string? BuyerGroup = null,          // buyer ka group name
     decimal EntitledDisc = 0,           // buyer group ka banta-hua disc% (bill date ke hisaab se) — payment/commission popup ke liye
-    decimal EntitledDiscAmount = 0);    // ^ wahi % RUPEES me, sahi base (Subtotal − Fold) par — frontend khud multiply na kare
+    decimal EntitledDiscAmount = 0,     // ^ wahi % RUPEES me, sahi base (Subtotal − Fold) par — frontend khud multiply na kare
+    decimal SalesDiscPct = 0);          // bill me diya hua disc % — receipt ki "BILL DISC" jhalak ke liye
 
 public record BillDetailDto(
     Guid Id,
@@ -273,6 +274,16 @@ public class BillService : IBillService
                                  System.Globalization.CultureInfo.InvariantCulture, out var dAmt);
                 if (dPct > 0) receiptDisPct[bid] = receiptDisPct.GetValueOrDefault(bid) + dPct;
                 else if (dAmt > 0) receiptDisAmt[bid] = receiptDisAmt.GetValueOrDefault(bid) + dAmt;
+                // DISC-2 (piece ke index 9/10 me, purane records me nahi hote) — ye bhi discount hai
+                if (f.Length >= 11)
+                {
+                    decimal.TryParse(f[9], System.Globalization.NumberStyles.Number,
+                                     System.Globalization.CultureInfo.InvariantCulture, out var d2Pct);
+                    decimal.TryParse(f[10], System.Globalization.NumberStyles.Number,
+                                     System.Globalization.CultureInfo.InvariantCulture, out var d2Amt);
+                    if (d2Pct > 0) receiptDisPct[bid] = receiptDisPct.GetValueOrDefault(bid) + d2Pct;
+                    else if (d2Amt > 0) receiptDisAmt[bid] = receiptDisAmt.GetValueOrDefault(bid) + d2Amt;
+                }
             }
         }
         var extraByPayment = allocRows.GroupBy(x => x.PaymentId)
@@ -331,7 +342,8 @@ public class BillService : IBillService
                 PartyGroup: supplier?.GroupName,
                 BuyerGroup: buyer?.GroupName,
                 EntitledDisc: entDisc,
-                EntitledDiscAmount: entDiscAmt);
+                EntitledDiscAmount: entDiscAmt,
+                SalesDiscPct: salesDisc);
         }).ToList();
 
         return (items, total);

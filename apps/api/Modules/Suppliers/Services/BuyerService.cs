@@ -51,6 +51,7 @@ public interface IBuyerService
     Task<List<BuyerListItemDto>> List(string? search = null);
     Task<BuyerDetailDto?> Get(Guid id);
     Task<BuyerDetailDto> Create(CreateBuyerDto dto, Guid firmId, Guid userId);
+    Task<BuyerDetailDto> AddFromContact(Guid contactId, Guid firmId);
     Task<BuyerDetailDto> Update(Guid id, CreateBuyerDto dto);
     Task Delete(Guid id);
     Task<List<BuyerDuplicateMatchDto>> CheckDuplicate(Guid firmId, string? gst, string? phone, Guid? excludeId);
@@ -199,6 +200,38 @@ public class BuyerService : IBuyerService
             try { await tx.RollbackAsync(); } catch { }
             throw;
         }
+    }
+
+    // Ek-click: maujooda contact (jaise supplier) ko BUYER directory me bhi jodo —
+    // dobara typing nahi, wahi contact reuse (duplicate nahi banta).
+    // Budget/Category khali = "sab rate, sab category me interest" — baad me edit se bharo.
+    public async Task<BuyerDetailDto> AddFromContact(Guid contactId, Guid firmId)
+    {
+        var contact = await _db.Contacts.FirstOrDefaultAsync(c => c.Id == contactId && c.FirmId == firmId)
+            ?? throw new InvalidOperationException("Contact nahi mila.");
+
+        var already = await _db.BuyerProfiles
+            .FirstOrDefaultAsync(b => b.FirmId == firmId && b.ContactId == contactId);
+        if (already != null)
+            return (await Get(already.Id))!;   // pehle se buyer hai — wahi lauta do
+
+        var buyer = new BuyerProfile
+        {
+            Id = Guid.NewGuid(),
+            FirmId = firmId,
+            ContactId = contactId,
+            BuyerCode = await GenerateBuyerCode(firmId),
+            BuyerType = "trader",
+            Categories = "[]",
+            BudgetUnit = "mtr",
+            WaPhone = contact.WaBuyer ?? contact.PhonePrimary,
+            IsActive = true,
+            CreatedAt = DateTimeOffset.UtcNow,
+            UpdatedAt = DateTimeOffset.UtcNow
+        };
+        _db.BuyerProfiles.Add(buyer);
+        await _db.SaveChangesAsync();
+        return (await Get(buyer.Id))!;
     }
 
     public async Task<BuyerDetailDto> Update(Guid id, CreateBuyerDto dto)

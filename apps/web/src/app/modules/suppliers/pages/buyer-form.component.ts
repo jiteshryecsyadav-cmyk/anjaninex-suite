@@ -30,6 +30,12 @@ import { UppercaseDirective } from '../../../shared/uppercase.directive';
                     title="Ye Buyer BHI hai aur Supplier BHI (dono directory me)">🔁 DONO</span>
             } @else {
               <span class="align-middle ml-2 px-2 py-0.5 rounded text-xs font-bold bg-green-100 text-green-700">BUYER</span>
+              <!-- Ek click me isi contact ko Supplier directory me bhi jodo → DONO -->
+              <button type="button" (click)="makeSupplierToo()" [disabled]="makingSupplier()"
+                      class="align-middle ml-2 px-2 py-0.5 rounded text-xs font-bold bg-blue-100 text-blue-700 hover:bg-blue-200 border border-blue-300"
+                      title="Isi contact ko Supplier directory me bhi jodo — naam/GST/phone wahi rahega, duplicate nahi banega">
+                {{ makingSupplier() ? '...' : '➕ Supplier bhi banao' }}
+              </button>
             }
           }
         </h2>
@@ -336,6 +342,22 @@ export class BuyerFormComponent {
   editingId: string | null = null;
   contactId: string | null = null;
   isAlsoSupplier = signal(false);   // same contact Supplier Directory me bhi — header ka "DONO" tag
+  makingSupplier = signal(false);
+
+  // Ek-click: isi contact ko Supplier directory me bhi jodo (wahi contact, duplicate nahi)
+  makeSupplierToo() {
+    if (!this.contactId || this.makingSupplier()) return;
+    if (!confirm('Is buyer ko SUPPLIER directory me bhi jodna hai?\n(Category/rate baad me Supplier edit se bhar sakte ho)')) return;
+    this.makingSupplier.set(true);
+    this.supSvc.addFromContact(this.contactId).subscribe({
+      next: () => {
+        this.makingSupplier.set(false);
+        this.isAlsoSupplier.set(true);
+        alert('✅ Supplier directory me jud gaya — ab ye DONO hai.\nCategory/rate set karne ke liye Suppliers list me edit kholo.');
+      },
+      error: (e) => { this.makingSupplier.set(false); alert('⚠️ ' + (e?.error?.error ?? 'Jud nahi paya — dobara try karo')); }
+    });
+  }
   saving = signal(false);
   error = signal('');
   categories = signal<SupplierCategory[]>([]);

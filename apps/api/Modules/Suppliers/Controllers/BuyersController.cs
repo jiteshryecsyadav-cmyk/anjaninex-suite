@@ -33,6 +33,12 @@ public class BuyersController : ControllerBase
         return b is null ? NotFound() : Ok(b);
     }
 
+    // Ek-click: maujooda contact (jaise supplier) ko buyer directory me bhi jodo — "DONO" banao
+    [HttpPost("from-contact/{contactId}")]
+    [HasPermission("suppliers.directory.create.firm")]
+    public async Task<IActionResult> AddFromContact(Guid contactId)
+        => Ok(await _svc.AddFromContact(contactId, CurrentFirmId));
+
     [HttpPost]
     [HasPermission("suppliers.directory.create.firm")]
     public async Task<IActionResult> Create([FromBody] CreateBuyerDto dto)

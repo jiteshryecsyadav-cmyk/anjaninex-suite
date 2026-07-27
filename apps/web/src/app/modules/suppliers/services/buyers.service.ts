@@ -89,6 +89,11 @@ export class BuyersService {
   private http = inject(HttpClient);
   private base = `${environment.apiUrl}/api/buyers`;
 
+  // Ek-click: maujooda contact (jaise supplier) ko buyer directory me bhi jodo — "DONO"
+  addFromContact(contactId: string) {
+    return this.http.post<any>(`${this.base}/from-contact/${contactId}`, {});
+  }
+
   list(search?: string) {
     const params: any = {};
     if (search) params.search = search;

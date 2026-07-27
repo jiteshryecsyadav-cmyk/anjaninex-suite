@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, Validators, FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { SuppliersService, SupplierCategory, DuplicateMatch } from '../services/suppliers.service';
+import { BuyersService } from '../services/buyers.service';
 import { debounceTime } from 'rxjs/operators';
 import { BackButtonComponent } from '../../../shared/back-button.component';
 import { SupplierCatalogComponent } from './supplier-catalog.component';
@@ -29,6 +30,12 @@ import { UppercaseDirective } from '../../../shared/uppercase.directive';
                       title="Ye Supplier BHI hai aur Buyer BHI (dono directory me)">🔁 DONO</span>
               } @else {
                 <span class="align-middle ml-2 px-2 py-0.5 rounded text-xs font-bold bg-blue-100 text-blue-700">SUPPLIER</span>
+                <!-- Ek click me isi contact ko Buyer directory me bhi jodo → DONO -->
+                <button type="button" (click)="makeBuyerToo()" [disabled]="makingBuyer()"
+                        class="align-middle ml-2 px-2 py-0.5 rounded text-xs font-bold bg-green-100 text-green-700 hover:bg-green-200 border border-green-300"
+                        title="Isi contact ko Buyer directory me bhi jodo — naam/GST/phone wahi rahega, duplicate nahi banega">
+                  {{ makingBuyer() ? '...' : '➕ Buyer bhi banao' }}
+                </button>
               }
             }
           </h2>
@@ -244,6 +251,7 @@ import { UppercaseDirective } from '../../../shared/uppercase.directive';
 })
 export class SupplierFormComponent {
   private svc = inject(SuppliersService);
+  private buyersSvc = inject(BuyersService);
   private fb = inject(FormBuilder);
   private pinSvc = inject(IndiaPincodeService);
 
@@ -290,6 +298,22 @@ export class SupplierFormComponent {
   editingId: string | null = null;
   contactId: string | null = null;
   isAlsoBuyer = signal(false);   // same contact Buyer Directory me bhi — header ka "DONO" tag
+  makingBuyer = signal(false);
+
+  // Ek-click: isi contact ko Buyer directory me bhi jodo (wahi contact, duplicate nahi)
+  makeBuyerToo() {
+    if (!this.contactId || this.makingBuyer()) return;
+    if (!confirm('Is supplier ko BUYER directory me bhi jodna hai?\n(Budget/Category baad me Buyer edit se bhar sakte ho)')) return;
+    this.makingBuyer.set(true);
+    this.buyersSvc.addFromContact(this.contactId).subscribe({
+      next: () => {
+        this.makingBuyer.set(false);
+        this.isAlsoBuyer.set(true);
+        alert('✅ Buyer directory me jud gaya — ab ye DONO hai.\nBudget/Category set karne ke liye Buyers list me edit kholo (khali = sab rate/category me interest).');
+      },
+      error: (e) => { this.makingBuyer.set(false); alert('⚠️ ' + (e?.error?.error ?? 'Jud nahi paya — dobara try karo')); }
+    });
+  }
   saving = signal(false);
   error = signal('');
   categories = signal<SupplierCategory[]>([]);

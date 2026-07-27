@@ -65,7 +65,16 @@ import { FeatureService } from '../../../shared/feature.service';
                     <a [routerLink]="['/suppliers/buyers', b.id]" class="font-semibold text-[#5c1a8b] hover:underline">{{ b.displayName }}</a>
                     <div class="text-[11px] text-gray-400 font-mono">{{ b.buyerCode }}@if (b.brandName) { · {{ b.brandName }} }</div>
                   </td>
-                  <td class="px-3 py-2 capitalize">{{ b.buyerType || '—' }}</td>
+                  <td class="px-3 py-2 capitalize">
+                    {{ b.buyerType || '—' }}
+                    <!-- Buyer hai ya DONO (supplier directory me bhi wahi contact) -->
+                    @if (b.isAlsoSupplier) {
+                      <span class="ml-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#5c1a8b] text-white"
+                            title="Ye Buyer BHI hai aur Supplier BHI (dono directory me)">🔁 DONO</span>
+                    } @else {
+                      <span class="ml-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-700">BUYER</span>
+                    }
+                  </td>
                   <td class="px-3 py-2 font-mono text-xs">{{ b.phone || '—' }}</td>
                   <td class="px-3 py-2">{{ b.city || '—' }}</td>
                   <td class="px-3 py-2 font-mono text-xs">{{ b.gst || '—' }}</td>

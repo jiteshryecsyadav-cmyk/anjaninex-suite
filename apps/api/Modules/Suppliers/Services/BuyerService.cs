@@ -13,7 +13,8 @@ namespace Namokara.Api.Modules.Suppliers.Services;
 public record BuyerListItemDto(
     Guid Id, Guid ContactId, string? BuyerCode, string DisplayName,
     string? Phone, string? Gst, string? City, string? BuyerType, string? BrandName,
-    decimal? BudgetMin, decimal? BudgetMax, string BudgetUnit, bool IsActive);
+    decimal? BudgetMin, decimal? BudgetMax, string BudgetUnit, bool IsActive,
+    bool IsAlsoSupplier = false);   // same contact Supplier Directory me bhi hai → list me "DONO" tag
 
 public record BuyerDetailDto(
     Guid Id, Guid ContactId, string? BuyerCode, string DisplayName, string? LegalName,
@@ -75,11 +76,18 @@ public class BuyerService : IBuyerService
         }
 
         var rows = await q.OrderBy(x => x.c.DisplayName).Take(200).ToListAsync();
+
+        // Ye contact SUPPLIER directory me bhi hai kya? → list me "DONO" dikhane ke liye
+        var contactIds = rows.Select(x => x.c.Id).ToList();
+        var alsoSupplier = (await _db.SupplierProfiles
+            .Where(s => s.IsActive && contactIds.Contains(s.ContactId))
+            .Select(s => s.ContactId).ToListAsync()).ToHashSet();
+
         return rows.Select(x => new BuyerListItemDto(
             x.b.Id, x.b.ContactId, x.b.BuyerCode, x.c.DisplayName,
             x.c.PhonePrimary, x.c.GstNumber, City(x.c.Addresses),
             x.b.BuyerType, x.b.BrandName, x.b.BudgetMin, x.b.BudgetMax, x.b.BudgetUnit,
-            x.b.IsActive)).ToList();
+            x.b.IsActive, alsoSupplier.Contains(x.c.Id))).ToList();
     }
 
     public async Task<BuyerDetailDto?> Get(Guid id)

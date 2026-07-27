@@ -183,7 +183,16 @@ import { ToastService } from '../../../shared/toast.service';
                     <a [routerLink]="['/suppliers', s.id]" class="font-semibold text-[#5c1a8b] hover:underline">{{ s.displayName }}</a>
                     <div class="text-[11px] text-gray-400 font-mono">{{ s.supplierCode }}@if (s.gst) { · GST: {{ s.gst }} }</div>
                   </td>
-                  <td class="px-3 py-2 capitalize">{{ s.businessType || '—' }}</td>
+                  <td class="px-3 py-2 capitalize">
+                    {{ s.businessType || '—' }}
+                    <!-- Supplier hai ya DONO (buyer directory me bhi wahi contact) -->
+                    @if (s.isAlsoBuyer) {
+                      <span class="ml-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#5c1a8b] text-white"
+                            title="Ye Supplier BHI hai aur Buyer BHI (dono directory me)">🔁 DONO</span>
+                    } @else {
+                      <span class="ml-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-700">SUPPLIER</span>
+                    }
+                  </td>
                   <td class="px-3 py-2 font-mono text-xs">{{ s.phone || '—' }}</td>
                   <td class="px-3 py-2">{{ s.city || '—' }}</td>
                   <td class="px-3 py-2 font-mono text-xs">{{ s.gst || '—' }}</td>

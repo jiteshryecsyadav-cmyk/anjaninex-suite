@@ -36,7 +36,8 @@ public record SupplierListItemDto(
     int PhotoCount,
     int RateCount,
     string? PrimaryPhotoUrl,
-    bool IsActive);
+    bool IsActive,
+    bool IsAlsoBuyer = false);   // same contact Buyer Directory me bhi hai → list me "DONO" tag
 
 public record SupplierDetailDto(
     Guid Id,
@@ -238,6 +239,12 @@ public class SupplierService : ISupplierService
         // Category names
         var allCats = await _db.SupplierCategories.ToDictionaryAsync(c => c.Id, c => c.Name);
 
+        // Ye contact BUYER directory me bhi hai kya? → list me "DONO" dikhane ke liye
+        var contactIds = rows.Select(r => r.c.Id).ToList();
+        var alsoBuyer = (await _db.BuyerProfiles
+            .Where(b => b.IsActive && contactIds.Contains(b.ContactId))
+            .Select(b => b.ContactId).ToListAsync()).ToHashSet();
+
         return rows.Select(r =>
         {
             // Parse city from contact addresses
@@ -269,7 +276,8 @@ public class SupplierService : ISupplierService
                 photoCounts.GetValueOrDefault(r.sp.Id, 0),
                 rateCounts.GetValueOrDefault(r.sp.Id, 0),
                 primaryMap.GetValueOrDefault(r.sp.Id),
-                r.sp.IsActive);
+                r.sp.IsActive,
+                alsoBuyer.Contains(r.c.Id));
         }).ToList();
     }
 

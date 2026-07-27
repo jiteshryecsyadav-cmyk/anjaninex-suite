@@ -16,6 +16,7 @@ export interface BuyerListItem {
   budgetMax: number | null;
   budgetUnit: string;
   isActive: boolean;
+  isAlsoSupplier?: boolean;   // same contact Supplier Directory me bhi — "DONO" tag
 }
 
 export interface BuyerDetail extends BuyerListItem {

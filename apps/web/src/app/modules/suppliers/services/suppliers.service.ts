@@ -48,6 +48,7 @@ export interface SupplierListItem {
   rateCount: number;
   primaryPhotoUrl: string | null;
   isActive: boolean;
+  isAlsoBuyer?: boolean;   // same contact Buyer Directory me bhi — "DONO" tag
 }
 
 export interface SupplierDetail extends SupplierListItem {

@@ -248,9 +248,33 @@ public class BillService : IBillService
         var listBillIds = rawItems.Select(b => b.Id).ToList();
         var allocRows = await _db.PaymentAllocations.AsNoTracking()
             .Join(_db.Payments.AsNoTracking(), a => a.PaymentId, p => p.Id,
-                  (a, p) => new { a.BillId, a.PaymentId, a.Allocated, p.Amount })
+                  (a, p) => new { a.BillId, a.PaymentId, a.Allocated, p.Amount, p.Notes })
             .Where(x => listBillIds.Contains(x.BillId))
             .ToListAsync();
+
+        // RECEIPT me di gayi DIS kat-kut — balance-disc me ye bhi ghatti hai.
+        // Flow: group me 6% committed, bill me 3% diya, receipt me 2% DIS kata
+        // to commission me balance 1% hi bachna chahiye (pehle 3% dikhta tha).
+        // Sirf DIS ginte hain — PACKING/RATE-DIFF/OTHER/INTEREST discount nahi hain.
+        // Breakdown payment.Notes ke "DED:billId|rateDiff|disPct|disAmt|..." pieces me hai.
+        var receiptDisPct = new Dictionary<Guid, decimal>();   // % me di gayi DIS
+        var receiptDisAmt = new Dictionary<Guid, decimal>();   // sirf-amount me di gayi DIS (pct 0)
+        foreach (var note in allocRows.GroupBy(x => x.PaymentId).Select(g => g.First().Notes))
+        {
+            if (string.IsNullOrEmpty(note)) continue;
+            foreach (var piece in note.Split(" | "))
+            {
+                if (!piece.StartsWith("DED:")) continue;
+                var f = piece[4..].Split('|');
+                if (f.Length < 4 || !Guid.TryParse(f[0], out var bid)) continue;
+                decimal.TryParse(f[2], System.Globalization.NumberStyles.Number,
+                                 System.Globalization.CultureInfo.InvariantCulture, out var dPct);
+                decimal.TryParse(f[3], System.Globalization.NumberStyles.Number,
+                                 System.Globalization.CultureInfo.InvariantCulture, out var dAmt);
+                if (dPct > 0) receiptDisPct[bid] = receiptDisPct.GetValueOrDefault(bid) + dPct;
+                else if (dAmt > 0) receiptDisAmt[bid] = receiptDisAmt.GetValueOrDefault(bid) + dAmt;
+            }
+        }
         var extraByPayment = allocRows.GroupBy(x => x.PaymentId)
             .ToDictionary(g => g.Key, g => g.First().Amount - g.Sum(x => x.Allocated));
         var advanceByBill = allocRows.GroupBy(x => x.BillId)
@@ -271,7 +295,14 @@ public class BillService : IBillService
             var salesDisc = discBase > 0
                 ? Math.Round(b.Discount / discBase * 100m, 2, MidpointRounding.AwayFromZero)
                 : 0m;
-            var entDisc = Math.Max(0m, pDisc - salesDisc);   // = balance disc, commission me claim
+            // Receipt ki DIS: % waali seedhi ghatao (user 6−3−2=1 hi sochta hai);
+            // sirf-amount waali ko isi discBase par % banao
+            var rDisPct = receiptDisPct.GetValueOrDefault(b.Id, 0m);
+            var rDisAmt = receiptDisAmt.GetValueOrDefault(b.Id, 0m);
+            if (rDisAmt > 0 && discBase > 0)
+                rDisPct += Math.Round(rDisAmt / discBase * 100m, 2, MidpointRounding.AwayFromZero);
+            var entDisc = Math.Round(Math.Max(0m, pDisc - salesDisc - rDisPct), 2,
+                                     MidpointRounding.AwayFromZero);   // = balance disc, commission me claim
             // RUPEES bhi yahin nikalo — usi base (discBase) par jis par % nikla hai.
             // Pehle frontend khud multiply karta tha (taxable ya total se) — dono galat the:
             // taxable discount ke BAAD ka hai aur total me GST bhi hai, jabki supplier ka

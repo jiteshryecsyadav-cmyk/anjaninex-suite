@@ -52,7 +52,7 @@ interface BzOrder {
                   class="px-3 py-1.5 rounded-full text-sm font-semibold border"
                   [class]="filter() === f.key ? 'bg-[#5c1a8b] text-white border-[#5c1a8b]' : 'bg-white text-gray-600 border-gray-300'">
             {{ f.label }}
-            @if (f.key === 'pending_agency' && pendingCount() > 0) {
+            @if ((f.key === 'pending_agency' || f.key === '') && pendingCount() > 0) {
               <span class="ml-1 px-1.5 rounded-full bg-red-600 text-white text-xs">{{ pendingCount() }}</span>
             }
           </button>
@@ -64,6 +64,7 @@ interface BzOrder {
       } @else if (rows().length === 0) {
         <div class="card text-center text-gray-500 py-8">
           @if (filter() === 'pending_agency') { ✅ Koi order manzoori ke intezar me nahi — sab nipta hua! }
+          @else if (filter() === '') { Abhi koi bot-order bana hi nahi — supplier ki photo se shuru hota hai. 📸 }
           @else { Is filter me koi order nahi. }
         </div>
       } @else {
@@ -110,7 +111,10 @@ interface BzOrder {
                       <div class="text-[11px] text-green-700 font-mono mt-1">📦 {{ o.tradingOrderNo }}</div>
                     }
                     @if (o.rejectReason) {
-                      <div class="text-[11px] text-red-500 mt-1" [title]="o.rejectReason">{{ o.rejectReason.slice(0, 30) }}</div>
+                      <!-- Reject ki POORI wajah — kaat-chhaant nahi -->
+                      <div class="text-[11px] text-red-500 mt-1 whitespace-normal" style="max-width:180px">
+                        Wajah: {{ o.rejectReason }}
+                      </div>
                     }
                   </td>
                   <td class="px-3 py-2 text-right whitespace-nowrap">
@@ -144,17 +148,17 @@ export class BazaarOrdersComponent {
   private base = `${environment.apiUrl}/api/bazaar-orders`;
 
   filters = [
+    { key: '', label: '📋 Sab' },
     { key: 'pending_agency', label: '⏳ Manzoori baki' },
     { key: 'approved', label: '✓ Approved' },
-    { key: 'rejected', label: '✗ Rejected' },
-    { key: '', label: 'Sab' }
+    { key: 'rejected', label: '✗ Rejected' }
   ];
-  filter = signal('pending_agency');
+  // Default: SAB dikhe — manzoori-wale khud sabse upar aate hain, neeche poori history
+  filter = signal('');
   rows = signal<BzOrder[]>([]);
   loading = signal(true);
   acting = signal<string | null>(null);
-  pendingCount = computed(() =>
-    this.filter() === 'pending_agency' ? this.rows().length : 0);
+  pendingCount = computed(() => this.rows().filter(r => r.status === 'pending_agency').length);
 
   ngOnInit() { this.load(); }
 

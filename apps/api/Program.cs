@@ -136,6 +136,17 @@ try
                                 ?? ctx.Principal?.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
                     if (userId == null) { ctx.Fail("Missing user claim"); return; }
 
+                    // 🔐 DUKAN ka buyer/supplier token SIRF dukan ke apne raston par chale.
+                    // (Ye token storefront ke khule signup se banta hai aur usme firm_id
+                    //  hota hai — agar poore API par chal jaye to koi bhi anjaan aadmi
+                    //  kisi bhi firm ka data padh/likh sakta tha. Ab wo darwaza band.)
+                    if (ctx.Principal?.FindFirst("buyer_id")?.Value != null)
+                    {
+                        var p = ctx.HttpContext.Request.Path;
+                        if (!p.StartsWithSegments("/api/dukan") && !p.StartsWithSegments("/api/public"))
+                        { ctx.Fail("Dukan token is not valid here"); return; }
+                    }
+
                     // SUPER ADMIN (Anjaninex) ki koi firm nahi hoti — firm checks skip.
                     // (Pehle yahan firm_id na hone par har request reject ho jati thi →
                     //  super admin ko har call par 401 milta tha = login flash/bounce bug.)

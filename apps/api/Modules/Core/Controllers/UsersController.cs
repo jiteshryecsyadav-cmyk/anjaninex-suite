@@ -89,6 +89,9 @@ public record SessionDto(
 // Controller
 // =============================================================================
 [Authorize]
+// 🔐 SIRF firm owner/admin — pehle yahan koi permission-check thi hi NAHI: koi bhi staff
+// apna role badal kar super_admin ban sakta tha (= poore platform ka data). Ab band.
+[HasPermission("core.user.manage.firm")]
 [ApiController]
 [Route("api/core/users")]
 public class UsersController : ControllerBase
@@ -254,6 +257,24 @@ public class UsersController : ControllerBase
         ));
     }
 
+
+    // 🔐 ROLE ka pehra — koi bhi (chahe firm owner) kisi ko SUPER_ADMIN nahi bana sakta,
+    // aur doosri firm ka role bhi nahi de sakta. (Pehle ye check tha hi nahi: staff apna
+    // role badal kar poore platform ka malik ban sakta tha.)
+    private async Task<string?> RoleNotAllowed(Guid roleId)
+    {
+        var role = await _db.Set<Namokara.Api.Modules.Core.Entities.Role>()
+            .Where(r => r.Id == roleId)
+            .Select(r => new { r.Code, r.FirmId })
+            .FirstOrDefaultAsync();
+        if (role is null) return "Role nahi mila";
+        if (string.Equals(role.Code, "super_admin", StringComparison.OrdinalIgnoreCase))
+            return "Super Admin role kisi ko nahi diya ja sakta";
+        if (role.FirmId != null && role.FirmId != CurrentFirmId)
+            return "Ye role aapki firm ka nahi hai";
+        return null;
+    }
+
     // -------------------------------------------------------------------------
     // Create user
     // -------------------------------------------------------------------------
@@ -292,6 +313,8 @@ public class UsersController : ControllerBase
 
             if (dto.RoleId.HasValue)
             {
+                var bad = await RoleNotAllowed(dto.RoleId.Value);
+                if (bad != null) return BadRequest(new { error = bad });
                 _db.Set<UserRole>().Add(new UserRole
                 {
                     UserId = user.Id,
@@ -340,6 +363,8 @@ public class UsersController : ControllerBase
         // Update role assignment (replace primary role)
         if (dto.RoleId.HasValue)
         {
+            var badRole = await RoleNotAllowed(dto.RoleId.Value);
+            if (badRole != null) return BadRequest(new { error = badRole });
             var existing = await _db.Set<UserRole>().Where(ur => ur.UserId == u.Id).ToListAsync();
             _db.Set<UserRole>().RemoveRange(existing);
             _db.Set<UserRole>().Add(new UserRole

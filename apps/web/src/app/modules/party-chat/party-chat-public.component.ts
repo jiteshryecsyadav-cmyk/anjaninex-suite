@@ -34,11 +34,20 @@ interface PMsg {
 
       <!-- Header bar (WhatsApp jaisa) -->
       <div class="pc-header">
-        <div class="pc-avatar">{{ (firmName() || 'V').charAt(0) }}</div>
-        <div class="flex-1 min-w-0">
-          <div class="pc-title">{{ firmName() || 'Vyapaar Setu' }}</div>
-          <div class="pc-sub">{{ step() === 'chat' ? ('Aap: ' + partyName()) : 'Party Chat — Vyapaar Setu' }} · {{ BUILD }}</div>
+        <!-- Portal me chat ke andar ← WAPAS (agencies list par) — WhatsApp jaisa -->
+        @if (portalMode && step() === 'chat') {
+          <button (click)="goHome()" class="pc-logout" title="Saari agencies" style="font-size:22px">←</button>
+        }
+        <div class="pc-avatar" [style.background]="step() === 'chat' || !portalMode ? avColor(firmName() || 'V') : '#1B2E5C'">
+          {{ step() === 'firms' ? '💬' : (firmName() || 'V').charAt(0) }}
         </div>
+        <div class="flex-1 min-w-0">
+          <div class="pc-title">{{ step() === 'firms' ? 'Meri Chats' : (firmName() || 'Vyapaar Setu') }}</div>
+          <div class="pc-sub">{{ step() === 'chat' ? ('Aap: ' + partyName()) : step() === 'firms' ? 'Saari agencies ek jagah' : 'Party Chat — Vyapaar Setu' }} · {{ BUILD }}</div>
+        </div>
+        @if (step() === 'firms') {
+          <button (click)="logout()" class="pc-logout" title="Logout">⏻</button>
+        }
         @if (step() === 'chat') {
           @if (!selectMode()) {
             <button (click)="startSelect()" class="pc-logout" title="Select karke delete">☑</button>
@@ -120,6 +129,48 @@ interface PMsg {
             </button>
             <button (click)="step.set('phone'); err.set('')" class="w-full mt-3 text-sm text-gray-500 underline">number badlo</button>
           </div>
+        </div>
+      }
+
+      <!-- STEP: AGENCIES LIST (portal) — WhatsApp ka ghar: saari firms, DP/akshar, unread -->
+      @if (step() === 'firms') {
+        <div class="pc-body" style="background:#fff; overflow-y:auto">
+          @if (agencies().length === 0) {
+            <div class="text-center text-gray-500 text-base mt-12 px-8">
+              Aapka number abhi kisi agency ke Party Master me nahi mila.<br>
+              <small>Apni agency se apna number judwayein.</small>
+            </div>
+          }
+          @for (a of agencies(); track a.firmId) {
+            <div class="pc-agn" (click)="openAgency(a)">
+              @if (a.logoUrl) {
+                <img [src]="a.logoUrl" class="pc-agn-av" alt="">
+              } @else {
+                <!-- DP nahi → firm ka PEHLA AKSHAR hi DP (naam se pakka rang) -->
+                <div class="pc-agn-av pc-agn-letter" [style.background]="avColor(a.firmName)">
+                  {{ a.firmName.charAt(0) }}
+                </div>
+              }
+              <div class="flex-1 min-w-0" style="border-bottom:1px solid #F0F0F0; padding:14px 0">
+                <div style="display:flex; justify-content:space-between; align-items:center">
+                  <span style="font-weight:700; font-size:17px; color:#111">{{ a.firmName }}</span>
+                  @if (a.lastMsgAt) {
+                    <span style="font-size:12px" [style.color]="a.unread > 0 ? '#16A34A' : '#9CA3AF'">
+                      {{ a.lastMsgAt | date:'d/M/yy h:mm a' }}
+                    </span>
+                  }
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:center; gap:8px">
+                  <span style="font-size:14px; color:#6B7280; overflow:hidden; text-overflow:ellipsis; white-space:nowrap">
+                    {{ a.lastBody || 'Chat shuru karein…' }}
+                  </span>
+                  @if (a.unread > 0) {
+                    <span class="pc-agn-badge">{{ a.unread }}</span>
+                  }
+                </div>
+              </div>
+            </div>
+          }
         </div>
       }
 
@@ -223,6 +274,15 @@ interface PMsg {
       overflow-x: hidden;
     }
     .pc-input, textarea { width: 100%; min-width: 0; }
+    /* AGENCIES LIST (portal) — WhatsApp ka ghar */
+    .pc-agn { display:flex; align-items:center; gap:12px; padding:0 14px; cursor:pointer; }
+    .pc-agn:active { background:#F5F3FF; }
+    .pc-agn-av { width:52px; height:52px; border-radius:50%; object-fit:cover; flex-shrink:0; }
+    .pc-agn-letter { display:flex; align-items:center; justify-content:center;
+      color:#fff; font-size:24px; font-weight:800; }
+    .pc-agn-badge { background:#16A34A; color:#fff; font-size:12px; font-weight:800;
+      min-width:22px; height:22px; border-radius:999px; display:flex;
+      align-items:center; justify-content:center; padding:0 6px; flex-shrink:0; }
     /* 🛒 ORDER button — stock-photo ke neeche */
     .pc-orderbtn { display:block; width:100%; margin-top:8px; padding:10px 12px;
       background:#1B2E5C; color:#fff; font-weight:700; font-size:16px; border-radius:10px; }
@@ -313,9 +373,22 @@ export class PartyChatPublicComponent {
   private base = `${environment.apiUrl}/api/party-chat/public`;
 
   firmId = '';
-  readonly BUILD = 'b8-live';                // har fix par badhta hai — phone par yahi dikhna chahiye
+  readonly BUILD = 'b9-portal';              // har fix par badhta hai — phone par yahi dikhna chahiye
   jsError = signal('');                      // koi JS error → header ke neeche lal patti
-  step = signal<'phone' | 'otp' | 'chat'>('phone');
+  step = signal<'phone' | 'otp' | 'firms' | 'chat'>('phone');
+
+  // ===== PARTY PORTAL — /pchat (bina firm): ek number, SAARI agencies (WhatsApp-ghar) =====
+  portalMode = false;
+  portalToken = '';
+  agencies = signal<{ firmId: string; firmName: string; logoUrl: string | null;
+                      unread: number; lastBody: string | null; lastMsgAt: string | null }[]>([]);
+
+  /** DP na ho to firm ke pehle akshar ka rang — naam se hamesha wahi rang bane */
+  avColor(name: string): string {
+    const colors = ['#5c1a8b', '#1B2E5C', '#0E7490', '#B45309', '#15803D', '#BE185D', '#7C3AED', '#B91C1C'];
+    let h = 0; for (const ch of (name || 'V')) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+    return colors[h % colors.length];
+  }
   phone = '';
   otp = '';
   draft = '';
@@ -448,14 +521,15 @@ export class PartyChatPublicComponent {
 
   ngOnInit() {
     this.firmId = this.route.snapshot.paramMap.get('firmId') || '';
+    this.portalMode = !this.firmId;   // /pchat bina firm = PORTAL (saari agencies ki list)
 
-    // 📲 PWA manifest ISI FIRM ke Party Chat wala kar do — party "Install" kare to
-    // app ka naam FIRM ka hoga aur khulegi seedha /pchat/<firmId> par (sirf chat,
-    // poora Vyapaar Setu nahi). Manifest API se aata hai (per-firm naam ke saath).
+    // 📲 PWA manifest — firm-link par FIRM ke naam ki app; portal par "VS Chat" (sab agencies)
     try {
       const mLink = document.querySelector('link[rel="manifest"]') as HTMLLinkElement | null;
-      if (mLink && this.firmId)
-        mLink.href = `${environment.apiUrl}/api/party-chat/public/manifest/${this.firmId}`;
+      if (mLink)
+        mLink.href = this.portalMode
+          ? `${environment.apiUrl}/api/party-chat/public/manifest-portal`
+          : `${environment.apiUrl}/api/party-chat/public/manifest/${this.firmId}`;
     } catch { /* manifest swap fail ho to install generic hi rahega — chat par asar nahi */ }
 
     // JS error trap — production me console nahi dikhta, isliye error page par hi dikhao
@@ -489,13 +563,21 @@ export class PartyChatPublicComponent {
         this.installReady.set(true);
       }
     } catch {}
-    // Pehle se session ho to seedha chat kholo
+    // Pehle se session ho to seedha aage — portal me AGENCIES list, firm-link me chat
     try {
-      const saved = localStorage.getItem('pchat_token_' + this.firmId);
-      if (saved) { this.token = saved; this.step.set('chat'); this.loadMsgs(); this.startLive(); }
+      if (this.portalMode) {
+        const pt = localStorage.getItem('pchat_portal_token');
+        if (pt) { this.portalToken = pt; this.step.set('firms'); this.loadAgencies(); }
+      } else {
+        const saved = localStorage.getItem('pchat_token_' + this.firmId);
+        if (saved) { this.token = saved; this.step.set('chat'); this.loadMsgs(); this.startLive(); }
+      }
     } catch {}
     // Polling ab sirf BACKUP hai — main rasta SignalR live push
-    this.pollTimer = setInterval(() => { if (this.step() === 'chat') this.loadMsgs(); }, 30_000);
+    this.pollTimer = setInterval(() => {
+      if (this.step() === 'chat') this.loadMsgs();
+      else if (this.step() === 'firms') this.loadAgencies();   // list ka unread bhi taaza rahe
+    }, 30_000);
   }
   ngOnDestroy() {
     clearInterval(this.pollTimer);
@@ -521,7 +603,9 @@ export class PartyChatPublicComponent {
 
   requestOtp() {
     this.busy.set(true); this.err.set('');
-    this.http.post<any>(`${this.base}/request-otp`, { firmId: this.firmId, phone: this.phone }).subscribe({
+    const url = this.portalMode ? `${this.base}/portal/request-otp` : `${this.base}/request-otp`;
+    const body = this.portalMode ? { phone: this.phone } : { firmId: this.firmId, phone: this.phone };
+    this.http.post<any>(url, body).subscribe({
       next: (r) => {
         this.busy.set(false);
         this.partyName.set(r.partyName || '');
@@ -534,6 +618,20 @@ export class PartyChatPublicComponent {
 
   verify() {
     this.busy.set(true); this.err.set('');
+    if (this.portalMode) {
+      // PORTAL: OTP ek baar → saari agencies ki list
+      this.http.post<any>(`${this.base}/portal/verify`, { phone: this.phone, otp: this.otp }).subscribe({
+        next: (r) => {
+          this.busy.set(false);
+          this.portalToken = r.token;
+          try { localStorage.setItem('pchat_portal_token', r.token); } catch {}
+          this.step.set('firms');
+          this.loadAgencies();
+        },
+        error: (e) => { this.busy.set(false); this.err.set(e?.error?.error ?? 'OTP verify nahi hua'); }
+      });
+      return;
+    }
     this.http.post<any>(`${this.base}/verify`, { firmId: this.firmId, phone: this.phone, otp: this.otp }).subscribe({
       next: (r) => {
         this.busy.set(false);
@@ -547,6 +645,49 @@ export class PartyChatPublicComponent {
       },
       error: (e) => { this.busy.set(false); this.err.set(e?.error?.error ?? 'OTP verify nahi hua'); }
     });
+  }
+
+  // ===== PORTAL: agencies list + firm kholna + wapas =====
+  loadAgencies() {
+    if (!this.portalToken) return;
+    this.http.get<any[]>(`${this.base}/portal/firms`, { params: { token: this.portalToken } }).subscribe({
+      next: (l) => this.agencies.set(l || []),
+      error: (e) => {
+        if (e?.status === 401) {   // portal session expire → dobara OTP
+          try { localStorage.removeItem('pchat_portal_token'); } catch {}
+          this.portalToken = '';
+          this.step.set('phone');
+        }
+      }
+    });
+  }
+
+  openAgency(a: { firmId: string; firmName: string }) {
+    if (this.busy()) return;
+    this.busy.set(true);
+    this.http.post<any>(`${this.base}/portal/open`, { token: this.portalToken, firmId: a.firmId }).subscribe({
+      next: (r) => {
+        this.busy.set(false);
+        this.firmId = a.firmId;
+        this.token = r.token;
+        try { localStorage.setItem('pchat_token_' + a.firmId, r.token); } catch {}
+        this.firmName.set(r.firmName || a.firmName);
+        this.partyName.set(r.partyName || '');
+        this.firstLoad = true;
+        this.step.set('chat');
+        this.loadMsgs(true);
+        // Live push: nayi firm ke thread se jud jao (hub pehle se ho to sirf join)
+        if (this.hub) this.hub.invoke('JoinParty', this.token).catch(() => {});
+        else this.startLive();
+      },
+      error: (e) => { this.busy.set(false); alert('⚠️ ' + (e?.error?.error ?? 'Chat nahi khuli — dobara try karo')); }
+    });
+  }
+
+  /** Chat se wapas agencies ki list par (sirf portal me) */
+  goHome() {
+    this.step.set('firms');
+    this.loadAgencies();
   }
 
   @ViewChild('chatBox') chatBox?: ElementRef<HTMLDivElement>;
@@ -607,6 +748,7 @@ export class PartyChatPublicComponent {
   logout() {
     if (!confirm('Logout karein? Dobara chat kholne ke liye OTP lagega.')) return;
     try { localStorage.removeItem('pchat_token_' + this.firmId); } catch {}
+    try { if (this.portalMode) { localStorage.removeItem('pchat_portal_token'); this.portalToken = ''; this.agencies.set([]); } } catch {}
     this.hub?.stop().catch(() => {});
     this.hub = undefined;
     this.token = '';

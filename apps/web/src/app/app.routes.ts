@@ -31,6 +31,11 @@ export const routes: Routes = [
     path: 'pchat/:firmId',
     loadComponent: () => import('./modules/party-chat/party-chat-public.component').then(m => m.PartyChatPublicComponent)
   },
+  // PARTY PORTAL — bina firm: ek number, SAARI agencies ki chat-list (WhatsApp-ghar)
+  {
+    path: 'pchat',
+    loadComponent: () => import('./modules/party-chat/party-chat-public.component').then(m => m.PartyChatPublicComponent)
+  },
   {
     path: '',
     canActivate: [authGuard],

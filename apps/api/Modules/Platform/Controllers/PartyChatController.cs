@@ -496,6 +496,225 @@ public class PartyChatPublicController : ControllerBase
         return Content(json, "application/manifest+json");
     }
 
+    // =========================================================================
+    // PARTY PORTAL — EK number, SAARI agencies (WhatsApp-ghar jaisa)
+    // /pchat (bina firmId): number+OTP ek baar → jitni firms me ye number Party
+    // Master me hai, sabki chat-list (DP/unread ke saath) → tap = us firm ki chat.
+    // =========================================================================
+
+    public record PortalOtpReqDto(string Phone);
+    public record PortalVerifyDto(string Phone, string Otp);
+    public record PortalOpenDto(string Token, Guid FirmId);
+
+    /// Is phone wali party JIN firms me hai (party_chat flag ON) — unki list (logo samet)
+    private async Task<List<(Guid id, string name, string? logo)>> FirmsForPhone(string phone10)
+    {
+        var candidates = new List<(Guid id, string name, string? logo)>();
+        await using (var cmd = await CmdAsync(@"
+            SELECT f.id, f.name, f.logo_url FROM platform.firms f
+            WHERE EXISTS (SELECT 1 FROM platform.feature_flags ff WHERE ff.key = 'party_chat'
+                   AND (ff.enabled_all OR EXISTS (SELECT 1 FROM platform.feature_flag_firms x
+                                                   WHERE x.flag_key = 'party_chat' AND x.firm_id = f.id)))
+            ORDER BY f.name"))
+        await using (var r = await cmd.ExecuteReaderAsync())
+            while (await r.ReadAsync())
+                candidates.Add((r.GetGuid(0), r.GetString(1), r.IsDBNull(2) ? null : r.GetString(2)));
+
+        var result = new List<(Guid, string, string?)>();
+        foreach (var f in candidates)
+        {
+            await SetFirmContext(f.id);            // RLS: har firm ka master usi ke context me
+            if (await FindParty(f.id, phone10) is not null) result.Add(f);
+        }
+        return result;
+    }
+
+    private async Task<string?> PhoneFromPortalToken(string? token)
+    {
+        if (string.IsNullOrEmpty(token)) return null;
+        await using var cmd = await CmdAsync(
+            "SELECT phone FROM platform.party_portal_sessions WHERE token = @t AND expires_at > now()");
+        cmd.Parameters.Add(new NpgsqlParameter("t", token));
+        return (await cmd.ExecuteScalarAsync()) as string;
+    }
+
+    // ---- PORTAL 1) OTP bhejo (bina firm) ----
+    [HttpPost("portal/request-otp")]
+    public async Task<IActionResult> PortalRequestOtp([FromBody] PortalOtpReqDto dto)
+    {
+        var phone = Digits(dto.Phone);
+        if (phone.Length < 10) return BadRequest(new { error = "Sahi mobile number daalo" });
+        phone = phone.Length > 10 ? phone[^10..] : phone;
+
+        var firms = await FirmsForPhone(phone);
+        if (firms.Count == 0)
+            return BadRequest(new { error = "Ye number kisi bhi agency ke Party Master me nahi mila — apni agency se number judwayein" });
+
+        var otp = RandomNumberGenerator.GetInt32(100000, 999999).ToString();
+        await using (var cmd = await CmdAsync(@"
+            INSERT INTO platform.party_portal_otps (phone, otp_hash, expires_at, attempts)
+            VALUES (@ph, @h, now() + interval '10 minutes', 0)
+            ON CONFLICT (phone) DO UPDATE
+              SET otp_hash = @h, expires_at = now() + interval '10 minutes', attempts = 0, created_at = now()"))
+        {
+            cmd.Parameters.Add(new NpgsqlParameter("ph", phone));
+            cmd.Parameters.Add(new NpgsqlParameter("h", Hash(otp)));
+            await cmd.ExecuteNonQueryAsync();
+        }
+        var sent = await TrySendOtpWhatsApp(phone, otp, "Vyapaar Setu");
+        return Ok(new { otpSent = sent, firmsCount = firms.Count, otpPreview = sent ? null : otp });
+    }
+
+    // ---- PORTAL 2) OTP verify → portal token + agencies ki list ----
+    [HttpPost("portal/verify")]
+    public async Task<IActionResult> PortalVerify([FromBody] PortalVerifyDto dto)
+    {
+        var phone = Digits(dto.Phone);
+        phone = phone.Length > 10 ? phone[^10..] : phone;
+        string? hash = null; DateTime? exp = null; int attempts = 0;
+        await using (var cmd = await CmdAsync(
+            "SELECT otp_hash, expires_at, attempts FROM platform.party_portal_otps WHERE phone = @ph"))
+        {
+            cmd.Parameters.Add(new NpgsqlParameter("ph", phone));
+            await using var r = await cmd.ExecuteReaderAsync();
+            if (await r.ReadAsync())
+            {
+                hash = r["otp_hash"] as string;
+                exp = (r["expires_at"] as DateTime?) ?? (r["expires_at"] is DateTimeOffset dtoff ? dtoff.UtcDateTime : null);
+                attempts = Convert.ToInt32(r["attempts"] ?? 0);
+            }
+        }
+        if (hash is null) return BadRequest(new { error = "Pehle OTP mangao" });
+        if (attempts >= 5) return BadRequest(new { error = "Bahut galat koshish — naya OTP mangao" });
+        if (exp is not null && exp < DateTime.UtcNow) return BadRequest(new { error = "OTP expire ho gaya — naya mangao" });
+        if (Hash((dto.Otp ?? "").Trim()) != hash)
+        {
+            await using var up = await CmdAsync("UPDATE platform.party_portal_otps SET attempts = attempts + 1 WHERE phone = @ph");
+            up.Parameters.Add(new NpgsqlParameter("ph", phone));
+            await up.ExecuteNonQueryAsync();
+            return BadRequest(new { error = "OTP galat hai" });
+        }
+
+        var token = Convert.ToHexString(RandomNumberGenerator.GetBytes(32)).ToLowerInvariant();
+        await using (var cmd = await CmdAsync(@"
+            INSERT INTO platform.party_portal_sessions (token, phone, expires_at)
+            VALUES (@t, @ph, now() + interval '7 days')"))
+        {
+            cmd.Parameters.Add(new NpgsqlParameter("t", token));
+            cmd.Parameters.Add(new NpgsqlParameter("ph", phone));
+            await cmd.ExecuteNonQueryAsync();
+        }
+        var firms = await FirmsForPhone(phone);
+        return Ok(new { token, firms = firms.Select(f => new { firmId = f.id, firmName = f.name, logoUrl = f.logo }) });
+    }
+
+    // ---- PORTAL 3) Agencies ki chat-list (unread + aakhri msg + DP) ----
+    [HttpGet("portal/firms")]
+    public async Task<IActionResult> PortalFirms([FromQuery] string token)
+    {
+        var phone = await PhoneFromPortalToken(token);
+        if (phone is null) return Unauthorized(new { error = "Session expire — dobara OTP se kholo" });
+
+        var list = new List<object>();
+        foreach (var f in await FirmsForPhone(phone))
+        {
+            Guid? threadId = null; DateTimeOffset? lastAt = null; long unread = 0; string? lastBody = null;
+            await using (var cmd = await CmdAsync(@"
+                SELECT t.id, t.last_msg_at,
+                       (SELECT COUNT(*) FROM platform.party_chat_messages m
+                         WHERE m.thread_id = t.id AND m.sender = 'firm' AND m.read_at IS NULL AND NOT m.deleted_for_party),
+                       (SELECT m.body FROM platform.party_chat_messages m
+                         WHERE m.thread_id = t.id AND NOT m.deleted_for_party ORDER BY m.created_at DESC LIMIT 1)
+                FROM platform.party_chat_threads t
+                WHERE t.firm_id = @f AND right(regexp_replace(t.phone, '\D', '', 'g'), 10) = @ph
+                ORDER BY t.last_msg_at DESC LIMIT 1"))
+            {
+                cmd.Parameters.Add(new NpgsqlParameter("f", f.id));
+                cmd.Parameters.Add(new NpgsqlParameter("ph", phone));
+                await using var r = await cmd.ExecuteReaderAsync();
+                if (await r.ReadAsync())
+                {
+                    threadId = r.GetGuid(0);
+                    lastAt = r.IsDBNull(1) ? null : r.GetFieldValue<DateTimeOffset>(1);
+                    unread = r.IsDBNull(2) ? 0 : r.GetInt64(2);
+                    lastBody = r.IsDBNull(3) ? null : r.GetString(3);
+                }
+            }
+            list.Add(new { firmId = f.id, firmName = f.name, logoUrl = f.logo, threadId, lastMsgAt = lastAt, unread, lastBody });
+        }
+        return Ok(list.OrderByDescending(x => ((dynamic)x).lastMsgAt ?? DateTimeOffset.MinValue).ToList());
+    }
+
+    // ---- PORTAL 4) Firm kholo → usi firm ka normal chat-session (sab purana code wahi chalta hai) ----
+    [HttpPost("portal/open")]
+    public async Task<IActionResult> PortalOpen([FromBody] PortalOpenDto dto)
+    {
+        var phone = await PhoneFromPortalToken(dto.Token);
+        if (phone is null) return Unauthorized(new { error = "Session expire — dobara OTP se kholo" });
+
+        await SetFirmContext(dto.FirmId);
+        var party = await FindParty(dto.FirmId, phone);
+        if (party is null) return BadRequest(new { error = "Is agency me aapka number ab nahi mila" });
+
+        Guid threadId;
+        await using (var cmd = await CmdAsync(@"
+            INSERT INTO platform.party_chat_threads (firm_id, party_id, party_name, phone)
+            VALUES (@f, @p, @n, @ph)
+            ON CONFLICT (firm_id, party_id) DO UPDATE SET phone = @ph
+            RETURNING id"))
+        {
+            cmd.Parameters.Add(new NpgsqlParameter("f", dto.FirmId));
+            cmd.Parameters.Add(new NpgsqlParameter("p", party.Value.partyId));
+            cmd.Parameters.Add(new NpgsqlParameter("n", party.Value.name));
+            cmd.Parameters.Add(new NpgsqlParameter("ph", phone));
+            threadId = (Guid)(await cmd.ExecuteScalarAsync())!;
+        }
+        var sessionToken = Convert.ToHexString(RandomNumberGenerator.GetBytes(32)).ToLowerInvariant();
+        await using (var cmd = await CmdAsync(@"
+            INSERT INTO platform.party_chat_sessions (token, thread_id, expires_at)
+            VALUES (@t, @th, now() + interval '7 days')"))
+        {
+            cmd.Parameters.Add(new NpgsqlParameter("t", sessionToken));
+            cmd.Parameters.Add(new NpgsqlParameter("th", threadId));
+            await cmd.ExecuteNonQueryAsync();
+        }
+        string? firmName = null;
+        await using (var fc = await CmdAsync("SELECT name FROM platform.firms WHERE id = @f"))
+        {
+            fc.Parameters.Add(new NpgsqlParameter("f", dto.FirmId));
+            firmName = (await fc.ExecuteScalarAsync()) as string;
+        }
+        return Ok(new { token = sessionToken, threadId, firmName, partyName = party.Value.name });
+    }
+
+    // ---- PORTAL manifest — generic "Vyapaar Setu Chat" app, khulti /pchat par ----
+    [HttpGet("manifest-portal")]
+    public IActionResult ManifestPortal()
+    {
+        var json = JsonSerializer.Serialize(new
+        {
+            name = "Vyapaar Setu — Party Chat",
+            short_name = "VS Chat",
+            description = "Apni saari agencies se ek jagah chat — Vyapaar Setu",
+            id = "/pchat",
+            start_url = "/pchat?source=pwa",
+            scope = "/pchat",
+            display = "standalone",
+            orientation = "portrait",
+            background_color = "#FAF7F0",
+            theme_color = "#1B2E5C",
+            lang = "hi-IN",
+            icons = new object[]
+            {
+                new { src = "/icons/icon-144.png", sizes = "144x144", type = "image/png", purpose = "any" },
+                new { src = "/icons/icon-192.png", sizes = "192x192", type = "image/png", purpose = "any" },
+                new { src = "/icons/icon-512.png", sizes = "512x512", type = "image/png", purpose = "any" },
+                new { src = "/icons/icon-maskable-512.png", sizes = "512x512", type = "image/png", purpose = "maskable" }
+            }
+        });
+        return Content(json, "application/manifest+json");
+    }
+
     // ---- 1) OTP bhejo ----
     [HttpPost("request-otp")]
     public async Task<IActionResult> RequestOtp([FromBody] PchatOtpReqDto dto)

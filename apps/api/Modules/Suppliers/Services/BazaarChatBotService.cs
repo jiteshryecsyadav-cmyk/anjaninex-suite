@@ -133,8 +133,8 @@ public class BazaarChatBotService : IBazaarChatBotService
         await using (var cmd = await Cmd(@"
             INSERT INTO wa.incoming
               (firm_id, from_phone, supplier_id, image_hash, image_path, caption,
-               rate, rate_unit, category_id, category_name, status, model_used, source)
-            VALUES (@f, @ph, @sid, @h, @p, @c, @r, @u, @cid, @cn, @st, 'regex', 'pchat')
+               rate, rate_unit, category_id, category_name, status, model_used, source, pchat_thread_id)
+            VALUES (@f, @ph, @sid, @h, @p, @c, @r, @u, @cid, @cn, @st, 'regex', 'pchat', @tid)
             RETURNING id"))
         {
             cmd.Parameters.Add(new NpgsqlParameter("f", firmId));
@@ -148,6 +148,7 @@ public class BazaarChatBotService : IBazaarChatBotService
             cmd.Parameters.Add(new NpgsqlParameter("cid", (object?)catId ?? DBNull.Value));
             cmd.Parameters.Add(new NpgsqlParameter("cn", (object?)catName ?? DBNull.Value));
             cmd.Parameters.Add(new NpgsqlParameter("st", rate > 0 ? "processing" : "awaiting_rate"));
+            cmd.Parameters.Add(new NpgsqlParameter("tid", threadId));   // supplier ki APNI chat — order/bargain isi par jayega
             incId = (Guid)(await cmd.ExecuteScalarAsync())!;
         }
 
@@ -292,9 +293,9 @@ public class BazaarChatBotService : IBazaarChatBotService
         }
 
         string? supPhone = null, rateUnit = null, catName = null, imagePath = null;
-        Guid? supId = null; decimal rate = 0; Guid incId = Guid.Empty;
+        Guid? supId = null; decimal rate = 0; Guid incId = Guid.Empty; Guid? supThreadId = null;
         await using (var cmd = await Cmd(@"
-            SELECT id, from_phone, supplier_id, rate, rate_unit, category_name, image_path
+            SELECT id, from_phone, supplier_id, rate, rate_unit, category_name, image_path, pchat_thread_id
               FROM wa.incoming WHERE track_code = @tc AND firm_id = @f
              ORDER BY created_at DESC LIMIT 1"))
         {
@@ -310,6 +311,7 @@ public class BazaarChatBotService : IBazaarChatBotService
                 rateUnit = r.IsDBNull(4) ? null : r.GetString(4);
                 catName = r.IsDBNull(5) ? null : r.GetString(5);
                 imagePath = r.IsDBNull(6) ? null : r.GetString(6);
+                supThreadId = r.IsDBNull(7) ? null : r.GetGuid(7);
             }
         }
         if (incId == Guid.Empty)
@@ -322,6 +324,7 @@ public class BazaarChatBotService : IBazaarChatBotService
         {
             ["incoming_id"] = incId, ["track_code"] = trackCode,
             ["supplier_phone"] = supPhone, ["supplier_id"] = supId,
+            ["supplier_thread_id"] = supThreadId,   // photo wali chat — phone-duplicate se bachne ko
             ["rate"] = rate, ["rate_unit"] = rateUnit ?? "mtr",
             ["category_name"] = catName, ["image_path"] = imagePath,
             ["buyer_name"] = partyName, ["buyer_id"] = buyer.Value.id, ["buyer_phone"] = phone10
@@ -503,15 +506,21 @@ public class BazaarChatBotService : IBazaarChatBotService
                     await BotReply(threadId, firmId, "Kitni quantity chahiye? (sirf number bhejein, jaise 500)");
                     return;
                 }
-                var supPhone2 = CtxStr(ctx, "supplier_phone");
-                var supParty2 = string.IsNullOrEmpty(supPhone2) ? null : await FindPartyByPhone(firmId, Last10(supPhone2));
-                if (supParty2 is null)
+                // PEHLE photo wali chat (pakka sahi supplier) — phone se tabhi dhundo jab wo na ho
+                // (ek number kai parties par ho to phone-lookup galat party pakad leta tha)
+                var supThread3 = CtxGuid(ctx, "supplier_thread_id");
+                if (supThread3 == Guid.Empty)
                 {
-                    await BotReply(threadId, firmId,
-                        "Supplier abhi Party Chat me nahi hai — rate ki baat firm se karein, ya listed rate par yes bhejein.");
-                    return;
+                    var supPhone2 = CtxStr(ctx, "supplier_phone");
+                    var supParty2 = string.IsNullOrEmpty(supPhone2) ? null : await FindPartyByPhone(firmId, Last10(supPhone2));
+                    if (supParty2 is null)
+                    {
+                        await BotReply(threadId, firmId,
+                            "Supplier abhi Party Chat me nahi hai — rate ki baat firm se karein, ya listed rate par yes bhejein.");
+                        return;
+                    }
+                    supThread3 = await UpsertThread(firmId, supParty2.Value.id, supParty2.Value.name, Last10(supPhone2!));
                 }
-                var supThread3 = await UpsertThread(firmId, supParty2.Value.id, supParty2.Value.name, Last10(supPhone2!));
                 var unit3 = CtxStr(ctx, "rate_unit") ?? "mtr";
 
                 var supCtx = ToObjDict(ctx);
@@ -592,14 +601,20 @@ public class BazaarChatBotService : IBazaarChatBotService
 
             await ClearState(threadId);
 
-            // Supplier ke Party Chat me order bhejo + accept ka state
+            // Supplier ke Party Chat me order bhejo + accept ka state — PEHLE photo wali chat
+            // (phone-duplicate se galat party ke paas na jaye), phone-lookup sirf fallback
             var notified = false;
-            if (!string.IsNullOrEmpty(supPhone))
+            var supThreadK = CtxGuid(ctx, "supplier_thread_id");
+            if (supThreadK == Guid.Empty && !string.IsNullOrEmpty(supPhone))
             {
                 var supParty = await FindPartyByPhone(firmId, Last10(supPhone));
                 if (supParty is not null)
+                    supThreadK = await UpsertThread(firmId, supParty.Value.id, supParty.Value.name, Last10(supPhone));
+            }
+            {
+                if (supThreadK != Guid.Empty)
                 {
-                    var supThread = await UpsertThread(firmId, supParty.Value.id, supParty.Value.name, Last10(supPhone));
+                    var supThread = supThreadK;
                     await SetState(supThread, "ORDER_ACCEPT", new Dictionary<string, object?>
                     {
                         ["order_id"] = orderId, ["order_code"] = orderCode,

@@ -88,7 +88,7 @@ public class BazaarChatBotService : IBazaarChatBotService
 
         if (isImage)
         {
-            await HandlePhoto(threadId, firmId, partyName, phone10, text, attachFile!);
+            await HandlePhoto(threadId, firmId, partyName, phone10, text, attachFile!, state);
             return;
         }
         if (text.Length == 0) return;
@@ -113,7 +113,7 @@ public class BazaarChatBotService : IBazaarChatBotService
 
     // ---------------- photo ----------------
 
-    private async Task HandlePhoto(Guid threadId, Guid firmId, string partyName, string phone10, string caption, string attachFile)
+    private async Task HandlePhoto(Guid threadId, Guid firmId, string partyName, string phone10, string caption, string attachFile, string prevState = "IDLE")
     {
         var supplier = await FindSupplierByPhone(firmId, phone10);
         if (supplier is null) return;   // buyer/anjaan ki photo = aam chat, bot chup
@@ -163,7 +163,10 @@ public class BazaarChatBotService : IBazaarChatBotService
         }
 
         await SetState(threadId, "ASK_RATE", new Dictionary<string, object?> { ["incoming_id"] = incId });
-        await BotReply(threadId, firmId, "📷 Photo mil gayi! Is fabric ka *rate* kya hai?\n(sirf number bhejein, jaise 699)");
+        // Pichhli photo ka rate abhi baki tha aur nayi aa gayi? — saaf bata do, chupchaap mat chhodo
+        await BotReply(threadId, firmId, prevState == "ASK_RATE"
+            ? "📷 Nayi photo mil gayi — PICHHLI photo chhod di!\nAb IS photo ka *rate* bhejein (sirf number).\n💡 Tip: har photo ke caption me \"Rate 699\" likh kar bhejo to rukna nahi padega — sab ek saath nikal jayengi."
+            : "📷 Photo mil gayi! Is fabric ka *rate* kya hai?\n(sirf number bhejein, jaise 699)");
     }
 
     private async Task HandleRateReply(Guid threadId, Guid firmId, string partyName, string phone10, string text, Dictionary<string, JsonElement> ctx)
@@ -340,6 +343,21 @@ public class BazaarChatBotService : IBazaarChatBotService
     {
         var low = text.ToLowerInvariant();
 
+        // Buyer ne beech-baat me DOOSRI photo ka ORDER code bhej diya? → purani baat
+        // chhod kar nayi photo par aao. (Warna code ke numbers rate/qty samjhe jate the!)
+        var switchCode = FindTrackCode(text);
+        if (switchCode != null && CtxStr(ctx, "buyer_phone") != null   // sirf BUYER-side states me
+            && !string.Equals(switchCode, CtxStr(ctx, "track_code"), StringComparison.OrdinalIgnoreCase))
+        {
+            await ClearState(threadId);
+            await BotReply(threadId, firmId, "Theek hai — pichhli photo ki baat wahin chhodi, ab nayi photo par:");
+            var pName = "";
+            await using (var cmd = await Cmd("SELECT party_name FROM platform.party_chat_threads WHERE id = @t"))
+            { cmd.Parameters.Add(new NpgsqlParameter("t", threadId)); pName = (await cmd.ExecuteScalarAsync()) as string ?? ""; }
+            await StartBuyerOrder(threadId, firmId, pName, Last10(CtxStr(ctx, "buyer_phone") ?? ""), switchCode);
+            return;
+        }
+
         // BUYER ke paas supplier ka COUNTER-OFFER pada hai ("500 nahi, 300 bhej sakta hoon")
         // — sabse pehle, warna neeche wala generic 'no' isse adhura chhod deta
         if (state == "ORDER_PARTIAL")
@@ -462,7 +480,7 @@ public class BazaarChatBotService : IBazaarChatBotService
                 await BotReply(threadId, firmId, $"🕐 Aapka ₹{counter:0.##}/{unit2} ka rate saamne wale ko bhej diya — jawab ka intezar karein.");
                 if (otherThread != Guid.Empty)
                     await BotReply(otherThread, firmId,
-                        $"💬 {cat2 ?? "Fabric"}: saamne se naya rate aaya — *₹{counter:0.##}/{unit2}*.\nManzoor hai? (reply: yes / no / ya apna rate likhein, jaise 950)");
+                        $"💬 {cat2 ?? "Fabric"} ({CtxStr(ctx, "track_code")}): saamne se naya rate aaya — *₹{counter:0.##}/{unit2}*.\nManzoor hai? (reply: yes / no / ya apna rate likhein, jaise 950)");
                 return;
             }
             await BotReply(threadId, firmId, "Reply karein: yes (manzoor) · no (nahi) · ya apna rate likhein (jaise 950).");

@@ -351,6 +351,10 @@ export class PartyChatPublicComponent {
     inp.accept = kind === 'doc' ? '.pdf,.doc,.docx,.xls,.xlsx' : 'image/jpeg,image/png,image/webp';
     if (kind === 'camera') inp.setAttribute('capture', 'environment');
     else inp.removeAttribute('capture');
+    // GALLERY se EK SAATH KAI photos chun sako — har ek alag message banti hai
+    // (supplier ke liye: har photo ki apni ID banegi, bot sabki list dega)
+    if (kind === 'gallery') inp.setAttribute('multiple', '');
+    else inp.removeAttribute('multiple');
     inp.value = '';
     inp.click();
   }
@@ -401,17 +405,28 @@ export class PartyChatPublicComponent {
   }
 
   fileChosen(e: Event) {
-    const file = (e.target as HTMLInputElement).files?.[0];
-    if (!file) return;
-    const fd = new FormData();
-    fd.append('token', this.token);
-    fd.append('file', file);
-    if (this.draft.trim()) { fd.append('body', this.draft.trim()); this.draft = ''; }
+    const files = Array.from((e.target as HTMLInputElement).files ?? []);
+    if (!files.length) return;
+    // Caption (draft) sirf PEHLI photo ke saath — baki bina caption jayengi
+    // (har ek ko bot alag padhega, apni-apni Photo ID milegi)
+    const caption = this.draft.trim();
+    this.draft = '';
     this.busy.set(true);
-    this.http.post(`${this.base}/attachment`, fd).subscribe({
-      next: () => { this.busy.set(false); this.loadMsgs(); },
-      error: (err) => { this.busy.set(false); alert('⚠️ ' + (err?.error?.error ?? 'File nahi gayi')); }
-    });
+    const sendOne = (i: number) => {
+      if (i >= files.length) { this.busy.set(false); this.loadMsgs(); return; }
+      const fd = new FormData();
+      fd.append('token', this.token);
+      fd.append('file', files[i]);
+      if (i === 0 && caption) fd.append('body', caption);
+      this.http.post(`${this.base}/attachment`, fd).subscribe({
+        next: () => { this.loadMsgs(); sendOne(i + 1); },   // ek-ke-baad-ek — order bana rahe
+        error: (err) => {
+          this.busy.set(false);
+          alert(`⚠️ Photo ${i + 1}/${files.length} nahi gayi: ` + (err?.error?.error ?? 'error'));
+        }
+      });
+    };
+    sendOne(0);
   }
 
   sendLocation() {

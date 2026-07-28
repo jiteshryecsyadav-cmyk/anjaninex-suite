@@ -228,6 +228,7 @@ export const FIELD_REGISTRY: ScreenDef[] = [
     name: 'Party Master',
     fields: [
       { key: 'gstin',           label: 'GSTIN' },
+      { key: 'add_to_bazaar',   label: 'Bazaar Link me bhi jodo (tick)', hint: 'Nayi party save hote hi bazaar buyer/supplier bhi ban jaye' },
       { key: 'pan',             label: 'PAN Number',        defaultOff: true },
       { key: 'wa_supplier',     label: 'WhatsApp – Supplier' },
       { key: 'wa_buyer',        label: 'WhatsApp – Buyer' },

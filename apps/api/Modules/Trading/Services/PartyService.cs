@@ -101,7 +101,9 @@ public record CreatePartyDto(
     int? Stars = null,
     int? AvgPayDays = null,
     decimal? ReturnRatePct = null,
-    List<PartyAddressDto>? ExtraAddresses = null);
+    List<PartyAddressDto>? ExtraAddresses = null,
+    // "Bazaar Link me bhi jodo" tick — party type ke hisaab se bazaar buyer/supplier bhi ban jaye
+    bool AddToBazaar = false);
 
 // =============================================================================
 // Service
@@ -139,7 +141,12 @@ public class PartyService : IPartyService
 {
     private readonly AppDbContext _db;
 
-    public PartyService(AppDbContext db) => _db = db;
+    private readonly Namokara.Api.Modules.Suppliers.Services.ISupplierService _bzSuppliers;
+    private readonly Namokara.Api.Modules.Suppliers.Services.IBuyerService _bzBuyers;
+    public PartyService(AppDbContext db,
+        Namokara.Api.Modules.Suppliers.Services.ISupplierService bzSuppliers,
+        Namokara.Api.Modules.Suppliers.Services.IBuyerService bzBuyers)
+    { _db = db; _bzSuppliers = bzSuppliers; _bzBuyers = bzBuyers; }
 
     public async Task<List<PartyDto>> List(string? search = null)
     {
@@ -417,6 +424,23 @@ public class PartyService : IPartyService
                 throw;
             }
         });
+
+        // RASTA A — "Bazaar Link me bhi jodo" tick laga ho to party type ke hisaab se
+        // bazaar profile bhi bana do (buyer → Bazaar Buyer, seller → Supplier, both → dono).
+        // Fail-soft: bazaar na jude to bhi party to ban hi chuki hai — usse mat roko.
+        if (dto.AddToBazaar)
+        {
+            try
+            {
+                var bzContactId = await _db.PartyProfiles
+                    .Where(p => p.Id == createdPartyId).Select(p => p.ContactId).FirstAsync();
+                if (normalizedPartyType is "buyer" or "both")
+                    await _bzBuyers.AddFromContact(bzContactId, firmId);
+                if (normalizedPartyType is "seller" or "both")
+                    await _bzSuppliers.AddFromContact(bzContactId, firmId, userId);
+            }
+            catch { /* bazaar jodna optional hai — party creation nahi rukni chahiye */ }
+        }
 
         return (await Get(createdPartyId))!;
     }

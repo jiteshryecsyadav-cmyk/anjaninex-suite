@@ -568,7 +568,16 @@ import { FieldConfigService } from '../../../shared/field-config.service';
 
             </div>
 
-            <div class="modal-footer">
+            <div class="modal-footer" style="flex-wrap:wrap; gap:8px">
+              <!-- RASTA A: nayi party banate hi Bazaar Link me bhi jud jaye (type ke hisaab se) -->
+              @if (!editingId()) {
+                <label *fld="'party_master.add_to_bazaar'"
+                       style="display:flex;align-items:center;gap:6px;margin-right:auto;cursor:pointer;font-size:13px;color:#5c1a8b;font-weight:600">
+                  <input type="checkbox" formControlName="addToBazaar" style="width:16px;height:16px;accent-color:#5c1a8b">
+                  🛍️ Bazaar Link me bhi jodo
+                  <small style="color:#9ca3af;font-weight:400">(buyer→Buyer, supplier→Supplier, dono→DONO)</small>
+                </label>
+              }
               <button (click)="closeForm()" class="btn-cancel">Cancel</button>
               <button (click)="save()" [disabled]="form.invalid || saving() || !newType()" class="btn-save">
                 {{ saving() ? 'Saving...' : '✓ Save Party' }}
@@ -975,7 +984,8 @@ export class PartiesComponent {
     note: [''],
     creditLimit: [50000],
     creditDays: [30],
-    openingBalance: [0]
+    openingBalance: [0],
+    addToBazaar: [true]   // tick pehle se laga — Bazaar Link me bhi jud jaye (Rasta A)
   });
 
   // Computed stats
@@ -1169,7 +1179,7 @@ export class PartiesComponent {
     this.editingId.set(null);
     this.newType.set(null);
     this.extraAddresses.clear();
-    this.form.reset({ rating: 'A', stars: '5', avgPayDays: 45, returnRate: 2.5, commission: 0, creditLimit: 50000, creditDays: 30, openingBalance: 0 });
+    this.form.reset({ rating: 'A', stars: '5', avgPayDays: 45, returnRate: 2.5, commission: 0, creditLimit: 50000, creditDays: 30, openingBalance: 0, addToBazaar: true });
     this.showForm.set(true);
   }
   closeForm() { this.showForm.set(false); }
@@ -1296,7 +1306,9 @@ export class PartiesComponent {
       rating: v.rating || null,
       stars: (v.stars === '' || v.stars == null) ? null : Number(v.stars),
       avgPayDays: (v.avgPayDays === '' || v.avgPayDays == null) ? null : Number(v.avgPayDays),
-      returnRatePct: (v.returnRate === '' || v.returnRate == null) ? null : Number(v.returnRate)
+      returnRatePct: (v.returnRate === '' || v.returnRate == null) ? null : Number(v.returnRate),
+      // Sirf NAYI party par — tick laga ho to bazaar buyer/supplier bhi ban jaye (Rasta A)
+      addToBazaar: !this.editingId() && !!v.addToBazaar
     };
     const id = this.editingId();
     const obs = id ? this.svc.updateParty(id, data) : this.svc.createParty(data);

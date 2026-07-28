@@ -236,6 +236,51 @@ public class PartyChatController : ControllerBase
         return Ok(new { ok = true });
     }
 
+    private static string OtpHash(string s) =>
+        Convert.ToHexString(SHA256.HashData(Encoding.ASCII.GetBytes(s))).ToLowerInvariant();
+
+    // ---- Firm: PARTY ka abhi ka OTP dekho (jab WhatsApp provider band ho) ----
+    // 🔐 Surakshit kyunki: firm LOGGED-IN hai, aur sirf APNI hi party ka OTP dikhta hai.
+    // (Pehle OTP khud party ki screen par dikh jata tha = koi bhi kisi ki chat khol leta.)
+    // Firm phone karke party ko OTP bata deti hai. Provider ON hote hi ye zaroorat khatam.
+    [HttpGet("threads/{id}/otp")]
+    public async Task<IActionResult> PartyOtp(Guid id)
+    {
+        string? phone = null;
+        await using (var cmd = await CmdAsync(@"
+            SELECT COALESCE(NULLIF(regexp_replace(COALESCE(c.phone_primary,''), '\D', '', 'g'), ''), t.phone)
+            FROM platform.party_chat_threads t
+            LEFT JOIN trading.party_profiles p ON p.id = t.party_id
+            LEFT JOIN core.contacts c ON c.id = p.contact_id
+            WHERE t.id = @t AND t.firm_id = @f"))
+        {
+            cmd.Parameters.Add(new NpgsqlParameter("t", id));
+            cmd.Parameters.Add(new NpgsqlParameter("f", CurrentFirmId));
+            phone = (await cmd.ExecuteScalarAsync()) as string;
+        }
+        if (phone is null) return NotFound(new { error = "Thread nahi mila" });
+        var last10 = phone.Length > 10 ? phone[^10..] : phone;
+
+        // OTP hash me hai (plain kahin nahi rakha) — isliye 10 lakh me se milaan karke
+        // nikalte hain. Sirf tab jab party ne abhi-abhi OTP manga ho.
+        string? hash = null;
+        await using (var cmd = await CmdAsync(@"
+            SELECT otp_hash FROM platform.party_chat_otps
+            WHERE firm_id = @f AND right(phone, 10) = @ph AND expires_at > now()"))
+        {
+            cmd.Parameters.Add(new NpgsqlParameter("f", CurrentFirmId));
+            cmd.Parameters.Add(new NpgsqlParameter("ph", last10));
+            hash = (await cmd.ExecuteScalarAsync()) as string;
+        }
+        if (hash is null)
+            return Ok(new { otp = (string?)null, hint = "Party pehle apne phone par link kholkar 'OTP bhejo' dabaye — phir yahan OTP dikhega." });
+
+        for (int i = 100000; i <= 999999; i++)
+            if (OtpHash(i.ToString()) == hash)
+                return Ok(new { otp = i.ToString(), phone = last10 });
+        return Ok(new { otp = (string?)null, hint = "OTP nahi mila — party dobara 'OTP bhejo' dabaye." });
+    }
+
     // ---- Firm: PERSONAL INVITE LINK — har party ka apna code; link sirf usi ke number se khulega ----
     [HttpPost("threads/{id}/invite")]
     public async Task<IActionResult> InviteLink(Guid id)

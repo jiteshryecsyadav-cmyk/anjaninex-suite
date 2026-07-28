@@ -159,6 +159,12 @@ import { PhotoLightboxComponent } from '../../shared/photo-lightbox.component';
                   <button (click)="shareLink()" class="text-xs font-bold border border-[#1B2E5C] text-[#1B2E5C] rounded px-3 py-1.5 hover:bg-purple-50">
                     🔗 Chat link bhejo
                   </button>
+                  <!-- Jab tak WhatsApp-OTP provider band hai: party ka OTP yahan dekh kar
+                       phone par bata do (party ki screen par OTP dikhana suraksha ke liye band) -->
+                  <button (click)="showPartyOtp()" class="text-xs font-bold border border-amber-500 text-amber-700 rounded px-3 py-1.5 hover:bg-amber-50"
+                          title="Party ne abhi OTP manga ho to yahan dikhega — use phone par bata dein">
+                    🔑 OTP dekho
+                  </button>
                   <button (click)="deleteThread()" class="text-xs font-bold border border-red-600 text-red-600 rounded px-3 py-1.5 hover:bg-red-50"
                           title="Puri chat delete — wapas nahi aayegi">
                     🗑 Delete chat
@@ -834,6 +840,19 @@ export class PartyChatComponent {
   // Party ko WhatsApp se chat link bhejo — wo mobile+OTP se verify hoke reply karegi
   // Link hamesha vyaparsetu.anjaninex.com se jaye (public/branded domain)
   private static readonly PUBLIC_BASE = 'https://vyaparsetu.anjaninex.com';
+  /** Party ka abhi ka OTP — firm dekh kar phone par bata de (provider band hone tak) */
+  showPartyOtp() {
+    const t = this.active();
+    if (!t) return;
+    this.http.get<any>(`${this.base}/threads/${t.id}/otp`).subscribe({
+      next: (r) => {
+        if (r?.otp) alert(`🔑 ${t.partyName} ka OTP: ${r.otp}\n\nPhone par bata dein — 10 minute me expire ho jayega.`);
+        else alert(`ℹ️ ${r?.hint || 'Abhi koi OTP pending nahi hai.'}`);
+      },
+      error: (e) => alert('⚠️ ' + (e?.error?.error ?? 'OTP nahi mila'))
+    });
+  }
+
   shareLink() {
     const t = this.active();
     if (!t) return;

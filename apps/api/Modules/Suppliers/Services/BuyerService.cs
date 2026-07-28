@@ -213,7 +213,16 @@ public class BuyerService : IBuyerService
         var already = await _db.BuyerProfiles
             .FirstOrDefaultAsync(b => b.FirmId == firmId && b.ContactId == contactId);
         if (already != null)
-            return (await Get(already.Id))!;   // pehle se buyer hai — wahi lauta do
+        {
+            // Pehle delete (inactive) kiya hua tha to WAPAS CHALU karo
+            if (!already.IsActive)
+            {
+                already.IsActive = true;
+                already.UpdatedAt = DateTimeOffset.UtcNow;
+                await _db.SaveChangesAsync();
+            }
+            return (await Get(already.Id))!;
+        }
 
         var buyer = new BuyerProfile
         {

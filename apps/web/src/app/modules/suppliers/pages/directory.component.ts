@@ -150,11 +150,12 @@ import { ToastService } from '../../../shared/toast.service';
            class="px-4 py-2 text-sm font-semibold text-gray-500 border-b-2 border-transparent hover:text-[#5c1a8b]">🤖 Bot</a>
       </div>
 
-      <!-- Search + Category Filter -->
-      <div class="flex gap-3 mb-4">
+      <!-- Search + Category Filter (search box sikud kar gaayab ho jata tha — min-width zaroori) -->
+      <div class="flex gap-3 mb-4 flex-wrap">
         <input [(ngModel)]="searchQuery" (input)="onSearch()" type="text"
-               placeholder="🔍 Search supplier by name, phone, GST..." class="input flex-1">
-        <select [(ngModel)]="filteredCategory" (change)="load()" class="input w-56">
+               placeholder="🔍 Search supplier by name, phone, GST..."
+               class="input flex-1" style="min-width:260px">
+        <select [(ngModel)]="filteredCategory" (change)="load()" class="input w-56 shrink-0">
           <option value="">All Categories</option>
           @for (c of categories(); track c.id) {
             <option [value]="c.id">{{ c.name }} ({{ c.supplierCount }})</option>

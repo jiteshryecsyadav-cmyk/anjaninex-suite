@@ -603,7 +603,17 @@ public class SupplierService : ISupplierService
         var already = await _db.SupplierProfiles
             .FirstOrDefaultAsync(sp => sp.FirmId == firmId && sp.ContactId == contactId);
         if (already != null)
-            return (await Get(already.Id))!;   // already in directory — just return it
+        {
+            // Pehle delete (inactive) kiya hua tha to WAPAS CHALU karo — warna "add ho gaya"
+            // ka toast aata tha par list me dikhta nahi tha (list sirf active dikhati hai)
+            if (!already.IsActive)
+            {
+                already.IsActive = true;
+                already.UpdatedAt = DateTimeOffset.UtcNow;
+                await _db.SaveChangesAsync();
+            }
+            return (await Get(already.Id))!;
+        }
 
         // Mark contact as supplier in flags
         try

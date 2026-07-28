@@ -178,8 +178,8 @@ export interface PreviewData {
                 </strong>
               </div>
             }
-            @if (data.notes) {
-              <div class="pmt-row"><span>Notes:</span><strong>{{ data.notes }}</strong></div>
+            @if (cleanNotes()) {
+              <div class="pmt-row"><span>Notes:</span><strong>{{ cleanNotes() }}</strong></div>
             }
           </div>
         }
@@ -193,8 +193,8 @@ export interface PreviewData {
                 <strong [class.adj-minus]="a.amount < 0">{{ a.amount < 0 ? '− ₹ ' : '₹ ' }}{{ (a.amount < 0 ? -a.amount : a.amount) | number:'1.2-2' }}</strong>
               </div>
             }
-            @if (data.notes) {
-              <div class="pmt-row"><span>Notes:</span><strong>{{ data.notes }}</strong></div>
+            @if (cleanNotes()) {
+              <div class="pmt-row"><span>Notes:</span><strong>{{ cleanNotes() }}</strong></div>
             }
           </div>
         }
@@ -444,6 +444,14 @@ export class InvoicePreviewComponent {
   /** Watermark text — firm ka pehla shabd (Namokara) uppercase. */
   wmText(): string {
     return (this.data.firmName || '').split(' ')[0].toUpperCase() || 'INVOICE';
+  }
+
+  /** Notes me se system ke ANDARUNI tukde hatao (DED:/TXN:/CALC:) — wo edit-restore
+   *  ke liye save hote hain, print/preview me dikhna nahi chahiye. */
+  cleanNotes(): string {
+    return (this.data?.notes || '').split(' | ')
+      .filter(p => !/^(DED:|TXN:|CALC:)/.test(p.trim()))
+      .join(' | ').trim();
   }
   /** Amount in words (negative ho to "Minus"). */
   inWords(n: number): string {

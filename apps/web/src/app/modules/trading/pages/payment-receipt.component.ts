@@ -1785,9 +1785,9 @@ export class PaymentReceiptComponent {
     // DIS%/PACKING/OTHER khali dikhte the aur lagta tha "save nahi hua" —
     // jabki rakam (Balance Pending) sahi hoti thi.
     const dedPieces = sel.map(b =>
-      `DED:${b.billId}|${b.rateDiff || 0}|${b.disPct || 0}|${b.disAmt || 0}|` +
+      `DED:${b.billId}|${b.rateDiff || 0}|${b.disPct || 0}|${(+(b.disAmt || 0)).toFixed(2)}|` +
       `${b.interest || 0}|${b.adjAmt || 0}|${b.packing || 0}|${b.other || 0}|${b.gstMode || 'after'}|` +
-      `${b.dis2Pct || 0}|${b.dis2Amt || 0}`   // DISC-2 aakhir me — purane records ke saath compatible
+      `${b.dis2Pct || 0}|${(+(b.dis2Amt || 0)).toFixed(2)}`   // DISC-2 aakhir me — purane records ke saath compatible
     );
 
     const notesPieces = [

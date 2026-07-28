@@ -28,11 +28,14 @@ interface PchatMsg {
  * Feature flag 'party_chat' — pilot firms me hi sidebar me dikhta hai.
  */
 import { BackButtonComponent } from '../../shared/back-button.component';
+import { PhotoLightboxComponent } from '../../shared/photo-lightbox.component';
 @Component({
   selector: 'app-party-chat',
   standalone: true,
-  imports: [BackButtonComponent, CommonModule, FormsModule, DatePipe],
+  imports: [BackButtonComponent, CommonModule, FormsModule, DatePipe, PhotoLightboxComponent],
   template: `
+    <!-- Photo zoom lightbox — kisi bhi photo par click karke kholo -->
+    <app-photo-lightbox #lb></app-photo-lightbox>
     <div class="page-top-bar"><app-back-button></app-back-button></div>
     <div class="max-w-6xl mx-auto p-4">
       <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
@@ -198,9 +201,10 @@ import { BackButtonComponent } from '../../shared/back-button.component';
                       </div>
                     }
                     @if (m.attachmentType === 'image') {
-                      <a [href]="fileUrl(m.attachmentUrl!)" target="_blank">
-                        <img [src]="fileUrl(m.attachmentUrl!)" class="rounded-lg max-w-full max-h-64 mb-1" alt="photo">
-                      </a>
+                      <!-- Tap = poori screen + zoom (lightbox) -->
+                      <img [src]="fileUrl(m.attachmentUrl!)" class="rounded-lg max-w-full max-h-64 mb-1"
+                           style="cursor:zoom-in" alt="photo"
+                           (click)="lb.open(fileUrl(m.attachmentUrl!))">
                     } @else if (m.attachmentType === 'document') {
                       <a [href]="fileUrl(m.attachmentUrl!)" target="_blank"
                          class="flex items-center gap-2 bg-white/70 rounded-lg px-2 py-2 mb-1 no-underline text-[#1B2E5C] font-semibold">

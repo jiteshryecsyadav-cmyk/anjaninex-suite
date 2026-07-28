@@ -6,6 +6,7 @@ import * as signalR from '@microsoft/signalr';
 import { ActivatedRoute } from '@angular/router';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { environment } from '../../../environments/environment';
+import { PhotoLightboxComponent } from '../../shared/photo-lightbox.component';
 
 interface PMsg {
   id: string; sender: 'firm' | 'party'; senderName: string | null;
@@ -24,8 +25,10 @@ interface PMsg {
 @Component({
   selector: 'app-party-chat-public',
   standalone: true,
-  imports: [CommonModule, FormsModule, DatePipe],
+  imports: [CommonModule, FormsModule, DatePipe, PhotoLightboxComponent],
   template: `
+    <!-- Photo zoom lightbox — chat ki kisi bhi photo par tap karke kholo -->
+    <app-photo-lightbox #lb></app-photo-lightbox>
     <!-- WhatsApp jaisa FULL-SCREEN layout — mobile par poori screen, desktop par center column -->
     <div class="pc-shell">
 
@@ -143,9 +146,10 @@ interface PMsg {
                   </div>
                 }
                 @if (m.attachmentType === 'image') {
-                  <a [href]="fileUrl(m.attachmentUrl!)" target="_blank">
-                    <img [src]="fileUrl(m.attachmentUrl!)" class="pc-img" alt="photo">
-                  </a>
+                  <!-- Tap = poori screen + pinch ZOOM (lightbox) -->
+                  <img [src]="fileUrl(m.attachmentUrl!)" class="pc-img" alt="photo"
+                       style="cursor:zoom-in"
+                       (click)="lb.open(fileUrl(m.attachmentUrl!)); $event.stopPropagation()">
                 } @else if (m.attachmentType === 'document') {
                   <a [href]="fileUrl(m.attachmentUrl!)" target="_blank" class="pc-doc">📄 {{ m.attachmentName || 'Document' }}</a>
                 }

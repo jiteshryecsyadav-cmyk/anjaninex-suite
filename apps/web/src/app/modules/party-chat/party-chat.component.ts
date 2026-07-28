@@ -181,7 +181,7 @@ import { PhotoLightboxComponent } from '../../shared/photo-lightbox.component';
                     <input type="checkbox" class="w-5 h-5 accent-[#1B2E5C] mx-2 shrink-0"
                            [checked]="selected().has(m.id)" (click)="$event.stopPropagation(); toggleSel(m)">
                   }
-                  <div class="rounded-2xl py-2 pl-3 pr-7 max-w-[75%] text-sm relative"
+                  <div class="rounded-2xl py-2 pl-3 pr-9 max-w-[75%] text-sm relative"
                        [class]="m.sender === 'firm' ? 'bg-[#DCF8C6]' : 'bg-gray-100'"
                        (contextmenu)="openMsgMenu($event, m)">
                     <!-- WhatsApp jaisa: message par hover/right-click -> menu (Reply/Copy/Forward/Delete) -->

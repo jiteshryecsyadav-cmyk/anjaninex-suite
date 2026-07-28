@@ -77,7 +77,13 @@ import { UppercaseDirective } from '../../../shared/uppercase.directive';
               }
             </div>
           } @else if (existSearch.trim().length >= 2 && existSearched()) {
-            <div class="text-xs text-gray-500 mt-2">Koi nahi mila — neeche naya bhar lo. 👇</div>
+            @if (existDone().length) {
+              <div class="text-xs text-green-700 mt-2 font-semibold">
+                ✓ "{{ existDone()[0] }}" pehle se SUPPLIER ban chuka hai — Suppliers list me dekho.
+              </div>
+            } @else {
+              <div class="text-xs text-gray-500 mt-2">Koi nahi mila — neeche naya bhar lo. 👇</div>
+            }
           }
         </div>
       }
@@ -338,6 +344,7 @@ export class SupplierFormComponent {
   // ---- Core Master/Trading se seedha laao (Add mode ka searchable picker) ----
   existSearch = '';
   existResults = signal<LinkableContact[]>([]);
+  existDone = signal<string[]>([]);   // jo pehle se Supplier ban chuke — naam dikhane ko
   existSearched = signal(false);
   picking = signal<string | null>(null);
   private existTimer: any;
@@ -352,6 +359,8 @@ export class SupplierFormComponent {
           const rank = (c: LinkableContact) =>
             c.tradingType === 'seller' ? 0 : c.tradingType === 'both' ? 1 : c.tradingType === 'buyer' ? 3 : 2;
           this.existResults.set(l.filter(c => !c.isBazaarSupplier).sort((a, b) => rank(a) - rank(b)));
+          // "Ban chuka hai" wale alag batao — warna "koi nahi mila" se lagta hai kho gaya
+          this.existDone.set(l.filter(c => !!c.isBazaarSupplier).map(c => c.displayName));
           this.existSearched.set(true);
         },
         error: () => { this.existResults.set([]); this.existSearched.set(true); }

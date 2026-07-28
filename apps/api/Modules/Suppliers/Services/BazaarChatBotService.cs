@@ -587,7 +587,41 @@ public class BazaarChatBotService : IBazaarChatBotService
                         $"😔 Buyer ko {offerQty:0.##} {pUnit} manzoor nahi — order {pCode} cancel ho gaya.");
                 return;
             }
-            await BotReply(threadId, firmId, $"Supplier {offerQty:0.##} {pUnit} bhej sakta hai — reply karein: yes (manzoor) ya no (cancel).");
+            // BUYER ne apna QTY likha — wapas supplier ke paas (qty ka ping-pong, rate jaisa)
+            var buyerQty = SmartNumber(text);
+            if (buyerQty > 0 && buyerQty != offerQty)
+            {
+                var supTh = CtxGuid(ctx, "supplier_thread_id");
+                if (supTh != Guid.Empty)
+                {
+                    var newAmt2 = Math.Round(pRate * buyerQty, 2, MidpointRounding.AwayFromZero);
+                    var backCtx = ToObjDict(ctx);
+                    backCtx["quantity"] = buyerQty;
+                    backCtx["amount"] = newAmt2;
+                    backCtx.Remove("offer_qty");
+                    backCtx["buyer_thread_id"] = threadId;
+                    await SetState(supTh, "ORDER_ACCEPT", backCtx);
+                    await ClearState(threadId);
+                    await BotReply(threadId, firmId,
+                        $"🕐 Aapka {buyerQty:0.##} {pUnit} ka offer supplier ko bhej diya — jawab ka intezar karein.");
+                    await BotReply(supTh, firmId,
+                        $"🔁 Buyer ne qty badli: *{buyerQty:0.##} {pUnit}* (₹{pRate:0.##} × {buyerQty:0.##} = ₹{newAmt2:0.##}) — order {pCode}.\n" +
+                        "Accept karte ho? (reply: yes / no / ya apna qty likhein)");
+                    // wa.orders me bhi nayi qty yaad rakho (aakhri haan par yahi pakki hogi)
+                    if (oid != Guid.Empty)
+                        await using (var uq = await Cmd("UPDATE wa.orders SET quantity = @q, amount = @a, updated_at = now() WHERE id = @o"))
+                        {
+                            uq.Parameters.Add(new NpgsqlParameter("q", buyerQty));
+                            uq.Parameters.Add(new NpgsqlParameter("a", newAmt2));
+                            uq.Parameters.Add(new NpgsqlParameter("o", oid));
+                            await uq.ExecuteNonQueryAsync();
+                        }
+                    return;
+                }
+            }
+
+            await BotReply(threadId, firmId,
+                $"Supplier {offerQty:0.##} {pUnit} bhej sakta hai — reply karein: yes (manzoor) · no (cancel) · ya apna qty likhein.");
             return;
         }
 
@@ -847,10 +881,12 @@ public class BazaarChatBotService : IBazaarChatBotService
 
         if (state == "ORDER_ACCEPT")
         {
-            // SUPPLIER ne NUMBER likha = kam quantity ka counter ("500 nahi, 300 bhej sakta hoon")
+            // SUPPLIER ne NUMBER likha = quantity ka counter — DONO taraf:
+            //   kam  ("500 nahi, 300 bhej sakta hoon")  ya  zyada ("minimum 100 lene honge")
+            // Dono me buyer se poochha jayega — wahi haan/na/apna qty bolega.
             var qtyOffer = SmartNumber(text);
             var askedQty = CtxDec(ctx, "quantity");
-            if (!IsYes(low) && qtyOffer > 0 && askedQty > 0 && qtyOffer < askedQty)
+            if (!IsYes(low) && qtyOffer > 0 && askedQty > 0 && qtyOffer != askedQty)
             {
                 var aRate = CtxDec(ctx, "rate");
                 var aUnit = CtxStr(ctx, "rate_unit") ?? "mtr";
@@ -870,8 +906,10 @@ public class BazaarChatBotService : IBazaarChatBotService
                 await BotReply(threadId, firmId,
                     $"🕐 Aapka {qtyOffer:0.##} {aUnit} ka offer buyer ko bhej diya — uske jawab ka intezar karein.");
                 await BotReply(bThread, firmId,
-                    $"📦 Aapke order ({CtxStr(ctx, "order_code")}) par supplier ne kaha: {askedQty:0.##} ki jagah *{qtyOffer:0.##} {aUnit}* bhej sakta hai.\n" +
-                    $"₹{aRate:0.##}/{aUnit} × {qtyOffer:0.##} = ₹{newAmt:0.##}\n\nManzoor hai? (reply: yes / no)");
+                    (qtyOffer > askedQty
+                        ? $"📦 Aapke order ({CtxStr(ctx, "order_code")}) par supplier ne kaha: KAM SE KAM *{qtyOffer:0.##} {aUnit}* lene honge (aapne {askedQty:0.##} maange the).\n"
+                        : $"📦 Aapke order ({CtxStr(ctx, "order_code")}) par supplier ne kaha: {askedQty:0.##} ki jagah *{qtyOffer:0.##} {aUnit}* bhej sakta hai.\n") +
+                    $"₹{aRate:0.##}/{aUnit} × {qtyOffer:0.##} = ₹{newAmt:0.##}\n\nManzoor hai? (reply: yes / no / ya apna qty likhein, jaise 80)");
                 return;
             }
             // Number >= mangi hui qty = poora de sakta hai = accept hi hai
@@ -892,7 +930,7 @@ public class BazaarChatBotService : IBazaarChatBotService
                     $"✅ Order {CtxStr(ctx, "order_code")} accept ho gaya!\n🕐 AGENCY ki manzoori ka intezar — approve hote hi DISPATCH ka message milega.");
             }
             else await BotReply(threadId, firmId,
-                "Reply karein: yes (poora accept) · no (reject) · ya number likhein kitna bhej sakte ho (jaise 300).");
+                "Reply karein: yes (accept) · no (reject) · ya apna qty likhein — kam YA zyada dono (jaise 300 ya minimum 100).");
         }
     }
 

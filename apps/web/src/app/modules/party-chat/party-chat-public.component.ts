@@ -185,7 +185,11 @@ interface PMsg {
           @if (msgs().length === 0) {
             <div class="text-center text-gray-500 text-base mt-12 bg-white/70 rounded-xl mx-8 py-4">Pehla message bhejo 👇</div>
           }
-          @for (m of msgs(); track m.id) {
+          @for (m of msgs(); track m.id; let mi = $index) {
+            <!-- WhatsApp jaisi DATE-PATTI — din badla to beech me Aaj/Kal/date -->
+            @if (showDateSep(mi)) {
+              <div class="pc-datepill"><span>{{ dateLabel(m.createdAt) }}</span></div>
+            }
             <div class="flex mb-1.5 px-3 items-center" [class.justify-end]="m.sender === 'party'"
                  [style.background]="selected().has(m.id) ? 'rgba(27,46,92,.12)' : ''"
                  (click)="selectMode() && toggleSel(m)">
@@ -279,6 +283,10 @@ interface PMsg {
       overflow-x: hidden;
     }
     .pc-input, textarea { width: 100%; min-width: 0; }
+    /* WhatsApp jaisi beech ki date-patti */
+    .pc-datepill { display:flex; justify-content:center; margin:10px 0 8px; }
+    .pc-datepill span { background:#fff; color:#54656F; font-size:12.5px; font-weight:600;
+      padding:5px 12px; border-radius:8px; box-shadow:0 1px 1px rgba(0,0,0,.08); }
     /* AGENCIES LIST (portal) — WhatsApp ka ghar */
     .pc-agn { display:flex; align-items:center; gap:12px; padding:0 14px; cursor:pointer; }
     .pc-agn:active { background:#F5F3FF; }
@@ -389,6 +397,20 @@ export class PartyChatPublicComponent {
   inviteName = signal('');   // personal link ho to party ka naam — "Namaste X ji!"
   agencies = signal<{ firmId: string; firmName: string; logoUrl: string | null;
                       unread: number; lastBody: string | null; lastMsgAt: string | null }[]>([]);
+
+  /** WhatsApp jaisi date-patti: is message se din badla kya? */
+  showDateSep(i: number): boolean {
+    const arr = this.msgs();
+    if (i === 0) return true;
+    return new Date(arr[i].createdAt).toDateString() !== new Date(arr[i - 1].createdAt).toDateString();
+  }
+  dateLabel(d: string): string {
+    const dt = new Date(d); const today = new Date();
+    const yest = new Date(); yest.setDate(today.getDate() - 1);
+    if (dt.toDateString() === today.toDateString()) return 'Aaj';
+    if (dt.toDateString() === yest.toDateString()) return 'Kal';
+    return dt.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+  }
 
   /** DP na ho to firm ke pehle akshar ka rang — naam se hamesha wahi rang bane */
   avColor(name: string): string {

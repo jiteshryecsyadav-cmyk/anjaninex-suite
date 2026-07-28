@@ -173,7 +173,13 @@ import { PhotoLightboxComponent } from '../../shared/photo-lightbox.component';
             </div>
 
             <div #scrollBox class="flex-1 overflow-y-auto p-4 space-y-2" style="max-height:55vh">
-              @for (m of msgs(); track m.id) {
+              @for (m of msgs(); track m.id; let mi = $index) {
+                <!-- WhatsApp jaisi DATE-PATTI — din badla to beech me Aaj/Kal/date -->
+                @if (showDateSep(mi)) {
+                  <div style="display:flex; justify-content:center; margin:8px 0">
+                    <span style="background:#fff; color:#54656F; font-size:12px; font-weight:600; padding:4px 12px; border-radius:8px; box-shadow:0 1px 1px rgba(0,0,0,.1)">{{ dateLabel(m.createdAt) }}</span>
+                  </div>
+                }
                 <div class="flex group items-center" [class.justify-end]="m.sender === 'firm'"
                      [class.bg-blue-50]="selected().has(m.id)"
                      (click)="selectMode() && toggleSel(m)">
@@ -745,6 +751,20 @@ export class PartyChatComponent {
   openThread(t: PchatThread) {
     this.active.set(t);
     this.loadMsgs(t.id, true);   // chat khulte hi seedha aakhri message par
+  }
+
+  /** WhatsApp jaisi date-patti: is message se din badla kya? */
+  showDateSep(i: number): boolean {
+    const arr = this.msgs();
+    if (i === 0) return true;
+    return new Date(arr[i].createdAt).toDateString() !== new Date(arr[i - 1].createdAt).toDateString();
+  }
+  dateLabel(d: string): string {
+    const dt = new Date(d); const today = new Date();
+    const yest = new Date(); yest.setDate(today.getDate() - 1);
+    if (dt.toDateString() === today.toDateString()) return 'Aaj';
+    if (dt.toDateString() === yest.toDateString()) return 'Kal';
+    return dt.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
   }
 
   @ViewChild('scrollBox') scrollBox?: ElementRef<HTMLDivElement>;

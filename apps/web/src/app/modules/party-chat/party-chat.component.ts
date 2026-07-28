@@ -760,11 +760,8 @@ export class PartyChatComponent {
     return new Date(arr[i].createdAt).toDateString() !== new Date(arr[i - 1].createdAt).toDateString();
   }
   dateLabel(d: string): string {
-    const dt = new Date(d); const today = new Date();
-    const yest = new Date(); yest.setDate(today.getDate() - 1);
-    if (dt.toDateString() === today.toDateString()) return 'Aaj';
-    if (dt.toDateString() === yest.toDateString()) return 'Kal';
-    return dt.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    // Seedhi DATE — 29/07/2026 (user ko Aaj/Kal nahi, tareekh chahiye)
+    return new Date(d).toLocaleDateString('en-GB');
   }
 
   @ViewChild('scrollBox') scrollBox?: ElementRef<HTMLDivElement>;

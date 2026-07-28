@@ -125,7 +125,7 @@ interface PMsg {
 
       <!-- STEP 3: chat (WhatsApp-style) -->
       @if (step() === 'chat') {
-        <div class="pc-body pc-chatbg">
+        <div #chatBox class="pc-body pc-chatbg">
           @if (msgs().length === 0) {
             <div class="text-center text-gray-500 text-base mt-12 bg-white/70 rounded-xl mx-8 py-4">Pehla message bhejo 👇</div>
           }
@@ -413,7 +413,7 @@ export class PartyChatPublicComponent {
     this.draft = '';
     this.busy.set(true);
     const sendOne = (i: number) => {
-      if (i >= files.length) { this.busy.set(false); this.loadMsgs(); return; }
+      if (i >= files.length) { this.busy.set(false); this.loadMsgs(true); return; }
       const fd = new FormData();
       fd.append('token', this.token);
       fd.append('file', files[i]);
@@ -538,12 +538,27 @@ export class PartyChatPublicComponent {
     });
   }
 
-  loadMsgs() {
+  @ViewChild('chatBox') chatBox?: ElementRef<HTMLDivElement>;
+  private firstLoad = true;
+
+  /** WhatsApp jaisa: khulte/bhejte hi NEECHE; purane padhte waqt naya aaye to jhatka nahi */
+  private scrollDown(force = false) {
+    setTimeout(() => {
+      const el = this.chatBox?.nativeElement;
+      if (!el) return;
+      const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 160;
+      if (force || nearBottom) el.scrollTop = el.scrollHeight;
+    });
+  }
+
+  loadMsgs(jump = false) {
     this.http.get<any>(`${this.base}/messages`, { params: { token: this.token } }).subscribe({
       next: (r) => {
         this.firmName.set(r.firmName || this.firmName());
         this.partyName.set(r.partyName || this.partyName());
         this.msgs.set(r.messages || []);
+        this.scrollDown(jump || this.firstLoad);   // pehli baar = seedha aakhri msg par
+        this.firstLoad = false;
       },
       error: (e) => {
         if (e?.status === 401) {   // session expire → dobara OTP
@@ -597,7 +612,7 @@ export class PartyChatPublicComponent {
     this.busy.set(true);
     const replyToId = this.replyTo()?.id ?? null;
     this.http.post(`${this.base}/messages`, { token: this.token, body, replyToId }).subscribe({
-      next: () => { this.busy.set(false); this.draft = ''; this.replyTo.set(null); this.loadMsgs(); },
+      next: () => { this.busy.set(false); this.draft = ''; this.replyTo.set(null); this.loadMsgs(true); },
       error: (e) => { this.busy.set(false); alert('⚠️ ' + (e?.error?.error ?? 'Message nahi gaya')); }
     });
   }

@@ -734,13 +734,27 @@ export class PartyChatComponent {
 
   openThread(t: PchatThread) {
     this.active.set(t);
-    this.loadMsgs(t.id);
+    this.loadMsgs(t.id, true);   // chat khulte hi seedha aakhri message par
   }
 
-  loadMsgs(threadId: string) {
+  @ViewChild('scrollBox') scrollBox?: ElementRef<HTMLDivElement>;
+
+  /** WhatsApp jaisa scroll: chat khulte/apna msg bhejte hi NEECHE; purane padh rahe ho
+   *  aur naya aa jaye to jhatka nahi (sirf neeche ke paas ho tab hi khiske). */
+  private scrollDown(force = false) {
+    setTimeout(() => {
+      const el = this.scrollBox?.nativeElement;
+      if (!el) return;
+      const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 160;
+      if (force || nearBottom) el.scrollTop = el.scrollHeight;
+    });
+  }
+
+  loadMsgs(threadId: string, jump = false) {
     this.http.get<PchatMsg[]>(`${this.base}/threads/${threadId}/messages`).subscribe({
       next: m => {
         this.msgs.set(m);
+        this.scrollDown(jump);   // khulte hi last msg dikhe — upar purane
         this.loadThreads();
         // Padh liya → sidebar badge turant update (WhatsApp jaisa)
         window.dispatchEvent(new Event('unread-refresh'));
@@ -761,7 +775,7 @@ export class PartyChatComponent {
     const replyToId = this.replyTo()?.id ?? null;
     this.http.post(`${this.base}/threads/${t.id}/messages`, { body, replyToId }).subscribe({
       next: () => {
-        this.busy.set(false); this.draft = ''; this.replyTo.set(null); this.loadMsgs(t.id);
+        this.busy.set(false); this.draft = ''; this.replyTo.set(null); this.loadMsgs(t.id, true);
       },
       error: (e) => { this.busy.set(false); alert('⚠️ ' + (e?.error?.error ?? 'Message nahi gaya')); }
     });

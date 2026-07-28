@@ -331,6 +331,11 @@ export class SuppliersDirectoryComponent {
   }
   // kind: 'supplier' ya 'buyer' — jo button dabaya wahi darja milega (pehle sab supplier ban jate the)
   linkContact(c: LinkableContact, kind: 'supplier' | 'buyer') {
+    // Trading ke darje se ULTA bana rahe ho to ek baar poochho — galti se galat button na dab jaye
+    if (kind === 'supplier' && c.tradingType === 'buyer'
+        && !confirm(`⚠️ "${c.displayName}" Trading me BUYER hai.\nBazaar me bhi aam taur par BUYER hi banate hain.\n\nPakka SUPPLIER banana hai? (photo bhejne wala)`)) return;
+    if (kind === 'buyer' && c.tradingType === 'seller'
+        && !confirm(`⚠️ "${c.displayName}" Trading me SUPPLIER hai.\n\nPakka BUYER banana hai? (photo paane wala)`)) return;
     this.linkingId.set(c.contactId);
     const call = kind === 'supplier'
       ? this.svc.addFromContact(c.contactId)

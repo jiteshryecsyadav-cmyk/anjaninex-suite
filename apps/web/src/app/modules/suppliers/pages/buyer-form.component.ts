@@ -413,6 +413,9 @@ export class BuyerFormComponent {
   }
   pickExisting(c: LinkableContact) {
     if (this.picking()) return;
+    // Trading me SUPPLIER hai aur yahan BUYER bana rahe ho — ek baar poochho
+    if (c.tradingType === 'seller'
+        && !confirm(`⚠️ "${c.displayName}" Trading me SUPPLIER hai.\n\nPakka BUYER banana hai? (photo paane wala)`)) return;
     this.picking.set(c.contactId);
     this.svc.addFromContact(c.contactId).subscribe({
       next: (res: any) => {

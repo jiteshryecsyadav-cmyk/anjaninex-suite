@@ -321,10 +321,12 @@ import { PhotoLightboxComponent } from '../../shared/photo-lightbox.component';
     /* Hamesha dikhta hai (sirf hover par nahi) — mobile/tablet par na hover hota
        hai na right-click, wahan menu milta hi nahi. Halka rakha hai taaki message
        padhne me kharal na kare; hover par gehra ho jata hai. */
-    .pc-menu-btn { position:absolute; top:1px; right:4px; border:none; background:none;
-      color:#6B7280; font-size:15px; line-height:1; cursor:pointer;
-      opacity:.45; transition:opacity .12s; padding:2px 4px; }
-    .pc-menu-btn:hover, .group:hover .pc-menu-btn { opacity:1; }
+    .pc-menu-btn { position:absolute; top:2px; right:4px; border:none;
+      background:rgba(27,46,92,.10); border-radius:50%;
+      width:26px; height:26px; display:flex; align-items:center; justify-content:center;
+      color:#1B2E5C; font-size:19px; font-weight:700; line-height:1; cursor:pointer;
+      opacity:.85; transition:opacity .12s; }
+    .pc-menu-btn:hover, .group:hover .pc-menu-btn { opacity:1; background:rgba(27,46,92,.18); }
     .pc-menu-back { position:fixed; inset:0; z-index:1290; }
     .pc-menu { position:fixed; z-index:1300; background:#fff; border-radius:10px;
       box-shadow:0 10px 30px rgba(0,0,0,.22); padding:5px; min-width:170px; }

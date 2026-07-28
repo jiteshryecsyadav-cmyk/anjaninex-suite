@@ -231,10 +231,11 @@ interface PMsg {
     .pc-quote { border-left:4px solid #1B2E5C; background:rgba(27,46,92,.08);
       border-radius:6px; padding:4px 8px; margin-bottom:6px; font-size:14px; }
     .pc-quote-txt { color:#555; font-size:13px; white-space:pre-wrap; word-break:break-word; }
-    /* Reply/Share chhote buttons — bubble ke neeche */
-    .pc-actions { display:flex; gap:10px; margin-top:4px; }
-    .pc-actions button { font-size:15px; opacity:.55; padding:2px 4px; }
-    .pc-actions button:active { opacity:1; }
+    /* Reply/Share buttons — bubble ke neeche (mobile par saaf dikhen — dark + bade) */
+    .pc-actions { display:flex; gap:12px; margin-top:5px; }
+    .pc-actions button { font-size:19px; opacity:.9; padding:4px 8px;
+      background:rgba(27,46,92,.08); border-radius:8px; }
+    .pc-actions button:active { opacity:1; background:rgba(27,46,92,.18); }
     /* Reply bar — composer ke upar (WhatsApp jaisa) */
     .pc-replybar { display:flex; align-items:center; gap:8px; background:#fff;
       border-top:1px solid #e5e7eb; padding:6px 10px; }

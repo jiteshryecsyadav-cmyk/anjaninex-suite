@@ -816,8 +816,8 @@ public class PartyChatPublicController : ControllerBase
             await cmd.ExecuteNonQueryAsync();
         }
         await TouchAndNotify(threadId.Value);
-        // BAZAAR BOT — rate ka jawab / ORDER <code> / search ho to handle karo (fail-soft)
-        await _bot.HandlePartyMessageAsync(threadId.Value, dto.Body, null, null);
+        // BAZAAR BOT — rate/ORDER/search + photo-par-reply (quote se code khud samjhega)
+        await _bot.HandlePartyMessageAsync(threadId.Value, dto.Body, null, null, dto.ReplyToId);
         return Ok(new { ok = true });
     }
 }

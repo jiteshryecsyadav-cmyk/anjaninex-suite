@@ -27,7 +27,8 @@ namespace Namokara.Api.Modules.Suppliers.Services;
 public interface IBazaarChatBotService
 {
     /// Party (public side) ka message aane ke BAAD call hota hai. Kabhi throw nahi karta.
-    Task HandlePartyMessageAsync(Guid threadId, string? body, string? attachmentFileName, string? attachmentType);
+    /// replyToId = jis message par quote-reply hua (photo par reply → wahi photo ki baat).
+    Task HandlePartyMessageAsync(Guid threadId, string? body, string? attachmentFileName, string? attachmentType, Guid? replyToId = null);
 }
 
 public class BazaarChatBotService : IBazaarChatBotService
@@ -51,15 +52,15 @@ public class BazaarChatBotService : IBazaarChatBotService
     private static readonly Regex LabeledRateRx = new(
         @"(?:rate|price|rs|inr|rupees|₹|@)\s*[:\-]?\s*(\d+(?:\.\d+)?)", RegexOptions.IgnoreCase);
 
-    public async Task HandlePartyMessageAsync(Guid threadId, string? body, string? attachmentFileName, string? attachmentType)
+    public async Task HandlePartyMessageAsync(Guid threadId, string? body, string? attachmentFileName, string? attachmentType, Guid? replyToId = null)
     {
-        try { await Handle(threadId, body, attachmentFileName, attachmentType); }
+        try { await Handle(threadId, body, attachmentFileName, attachmentType, replyToId); }
         catch (Exception ex) { _log.LogWarning(ex, "Bazaar bot fail-soft (thread {Thread})", threadId); }
     }
 
     // ---------------- core ----------------
 
-    private async Task Handle(Guid threadId, string? body, string? attachFile, string? attachType)
+    private async Task Handle(Guid threadId, string? body, string? attachFile, string? attachType, Guid? replyToId = null)
     {
         Guid firmId = Guid.Empty, partyId = Guid.Empty;
         string partyName = "", phone = "";
@@ -92,6 +93,32 @@ public class BazaarChatBotService : IBazaarChatBotService
             return;
         }
         if (text.Length == 0) return;
+
+        // 📌 PHOTO PAR REPLY (quote) — buyer ne photo quote karke likha ("700" / "order") to
+        // quoted message se hi photo ka code nikaal lo: KAUNSI photo, kabhi confusion nahi.
+        if (replyToId.HasValue && state != "ASK_RATE" && FindTrackCode(text) == null)
+        {
+            string? quotedBody = null;
+            await using (var qc = await Cmd(
+                "SELECT body FROM platform.party_chat_messages WHERE id = @m AND thread_id = @t"))
+            {
+                qc.Parameters.Add(new NpgsqlParameter("m", replyToId.Value));
+                qc.Parameters.Add(new NpgsqlParameter("t", threadId));
+                quotedBody = (await qc.ExecuteScalarAsync()) as string;
+            }
+            var quotedCode = FindTrackCode(quotedBody);
+            if (quotedCode != null
+                && !string.Equals(quotedCode, CtxStr(ctx, "track_code"), StringComparison.OrdinalIgnoreCase))
+            {
+                await ClearState(threadId);
+                await StartBuyerOrder(threadId, firmId, partyName, phone10, quotedCode);
+                // Jo saath me likha tha ("700" / "yes") use turant aage badhao — dobara na poochna pade
+                var (st2, ctx2) = await GetState(threadId);
+                if (st2 == "ORDER_CONFIRM" && text.Length > 0)
+                    await HandleOrderReply(threadId, firmId, text, st2, ctx2);
+                return;
+            }
+        }
 
         if (state is "ORDER_CONFIRM" or "ORDER_QTY" or "ORDER_ACCEPT" or "ORDER_PARTIAL"
                   or "ORDER_BARGAIN_SUP" or "ORDER_BARGAIN_BUY" or "ORDER_BARGAIN_WAIT")

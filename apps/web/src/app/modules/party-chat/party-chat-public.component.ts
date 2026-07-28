@@ -11,6 +11,8 @@ interface PMsg {
   id: string; sender: 'firm' | 'party'; senderName: string | null;
   body: string; readAt: string | null; createdAt: string;
   attachmentUrl?: string | null; attachmentName?: string | null; attachmentType?: string | null;
+  // Quote (jis message ka jawab hai) — WhatsApp jaisa
+  replyBody?: string | null; replySender?: string | null; replySenderName?: string | null;
 }
 
 /**
@@ -133,6 +135,13 @@ interface PMsg {
                        [checked]="selected().has(m.id)" (click)="$event.stopPropagation(); toggleSel(m)">
               }
               <div class="pc-bubble" [class.pc-mine]="m.sender === 'party'">
+                <!-- Quote — jis message ka jawab hai (WhatsApp jaisa) -->
+                @if (m.replyBody) {
+                  <div class="pc-quote">
+                    <b>{{ m.replySender === 'party' ? 'Aap' : (m.replySenderName || 'Firm') }}</b>
+                    <div class="pc-quote-txt">{{ m.replyBody.length > 90 ? m.replyBody.slice(0, 90) + '…' : m.replyBody }}</div>
+                  </div>
+                }
                 @if (m.attachmentType === 'image') {
                   <a [href]="fileUrl(m.attachmentUrl!)" target="_blank">
                     <img [src]="fileUrl(m.attachmentUrl!)" class="pc-img" alt="photo">
@@ -141,16 +150,39 @@ interface PMsg {
                   <a [href]="fileUrl(m.attachmentUrl!)" target="_blank" class="pc-doc">📄 {{ m.attachmentName || 'Document' }}</a>
                 }
                 @if (m.body) { <div class="whitespace-pre-wrap break-words" [innerHTML]="linkify(m.body)"></div> }
+                <!-- 🛒 ORDER button — bot ki stock-photo ke neeche, tap = code khud chala jayega -->
+                @if (m.sender === 'firm' && orderCode(m); as oc) {
+                  <button (click)="quickOrder(oc)" [disabled]="busy()" class="pc-orderbtn">🛒 ORDER KAREIN</button>
+                }
                 <div class="pc-meta">
                   {{ m.createdAt | date:'h:mm a' }}
                   @if (m.sender === 'party') {
                     <span class="pc-tick" [style.color]="m.readAt ? '#34B7F1' : '#9ca3af'">✓✓</span>
                   }
                 </div>
+                <!-- Reply / Share — WhatsApp jaise chhote options har bubble par -->
+                @if (!selectMode()) {
+                  <div class="pc-actions">
+                    <button (click)="startReply(m); $event.stopPropagation()" title="Reply">↩️</button>
+                    @if (m.attachmentType === 'image') {
+                      <button (click)="shareImage(m); $event.stopPropagation()" title="Aage bhejo / share">📤</button>
+                    }
+                  </div>
+                }
               </div>
             </div>
           }
         </div>
+        <!-- Reply-quote bar (WhatsApp jaisa) — kis message ka jawab likh rahe ho -->
+        @if (replyTo(); as r) {
+          <div class="pc-replybar">
+            <div class="pc-replybar-in">
+              <b>{{ r.sender === 'party' ? 'Aap' : (r.senderName || 'Firm') }}</b>
+              <div class="pc-quote-txt">{{ (r.body || (r.attachmentType === 'image' ? '📷 Photo' : '📄 Document')).slice(0, 80) }}</div>
+            </div>
+            <button (click)="replyTo.set(null)" class="pc-replybar-x">✕</button>
+          </div>
+        }
         <div class="pc-inputbar">
           @if (attachOpen()) {
             <div class="pc-attmenu">
@@ -186,6 +218,24 @@ interface PMsg {
       overflow-x: hidden;
     }
     .pc-input, textarea { width: 100%; min-width: 0; }
+    /* 🛒 ORDER button — stock-photo ke neeche */
+    .pc-orderbtn { display:block; width:100%; margin-top:8px; padding:10px 12px;
+      background:#1B2E5C; color:#fff; font-weight:700; font-size:16px; border-radius:10px; }
+    .pc-orderbtn:disabled { opacity:.5; }
+    /* Quote (reply) — bubble ke andar */
+    .pc-quote { border-left:4px solid #1B2E5C; background:rgba(27,46,92,.08);
+      border-radius:6px; padding:4px 8px; margin-bottom:6px; font-size:14px; }
+    .pc-quote-txt { color:#555; font-size:13px; white-space:pre-wrap; word-break:break-word; }
+    /* Reply/Share chhote buttons — bubble ke neeche */
+    .pc-actions { display:flex; gap:10px; margin-top:4px; }
+    .pc-actions button { font-size:15px; opacity:.55; padding:2px 4px; }
+    .pc-actions button:active { opacity:1; }
+    /* Reply bar — composer ke upar (WhatsApp jaisa) */
+    .pc-replybar { display:flex; align-items:center; gap:8px; background:#fff;
+      border-top:1px solid #e5e7eb; padding:6px 10px; }
+    .pc-replybar-in { flex:1; min-width:0; border-left:4px solid #1B2E5C;
+      background:rgba(27,46,92,.06); border-radius:6px; padding:4px 8px; font-size:14px; }
+    .pc-replybar-x { font-size:18px; color:#6b7280; padding:4px 8px; }
     .pc-header {
       display: flex; align-items: center; gap: 12px;
       background: #1B2E5C; color: #fff; padding: 12px 14px;
@@ -521,10 +571,47 @@ export class PartyChatPublicComponent {
   send() {
     const body = this.draft.trim();
     if (!body || this.busy()) return;
+    this.sendText(body);
+  }
+
+  private sendText(body: string) {
     this.busy.set(true);
-    this.http.post(`${this.base}/messages`, { token: this.token, body }).subscribe({
-      next: () => { this.busy.set(false); this.draft = ''; this.loadMsgs(); },
+    const replyToId = this.replyTo()?.id ?? null;
+    this.http.post(`${this.base}/messages`, { token: this.token, body, replyToId }).subscribe({
+      next: () => { this.busy.set(false); this.draft = ''; this.replyTo.set(null); this.loadMsgs(); },
       error: (e) => { this.busy.set(false); alert('⚠️ ' + (e?.error?.error ?? 'Message nahi gaya')); }
     });
+  }
+
+  // ===== WhatsApp jaise: reply-quote + share + ek-tap ORDER =====
+  replyTo = signal<PMsg | null>(null);
+  startReply(m: PMsg) { this.replyTo.set(m); }
+
+  /** Bot ki stock-photo? — "ORDER BZ-..." wali line se code nikaalo (button ke liye) */
+  orderCode(m: PMsg): string | null {
+    if (!m.body || m.attachmentType !== 'image') return null;
+    const match = m.body.match(/ORDER\s+((?:NAM|BZ)-\S+)/i);
+    return match ? match[1].replace(/[.,;]+$/, '') : null;
+  }
+  /** 🛒 button — ORDER <code> khud bhej do, typing ki zaroorat nahi */
+  quickOrder(code: string) {
+    if (this.busy()) return;
+    this.replyTo.set(null);
+    this.sendText('ORDER ' + code);
+  }
+
+  /** 📤 photo aage bhejo — phone ka share (WhatsApp/wagera), na chale to nayi tab me kholo */
+  async shareImage(m: PMsg) {
+    const url = this.fileUrl(m.attachmentUrl!);
+    try {
+      const blob = await (await fetch(url)).blob();
+      const file = new File([blob], 'photo.jpg', { type: blob.type || 'image/jpeg' });
+      const nav: any = navigator;
+      if (nav.share && (!nav.canShare || nav.canShare({ files: [file] }))) {
+        await nav.share({ files: [file], text: m.body || '' });
+        return;
+      }
+    } catch { /* share cancel/na-mumkin — neeche fallback */ }
+    window.open(url, '_blank');
   }
 }

@@ -39,6 +39,10 @@ export const adminRoutes: Routes = [
     loadComponent: () => import('./pages/admin-billing.component').then(m => m.AdminBillingComponent)
   },
   {
+    path: 'backup',
+    loadComponent: () => import('./pages/admin-backup.component').then(m => m.AdminBackupComponent)
+  },
+  {
     path: 'accounting',
     loadComponent: () => import('./pages/admin-books.component').then(m => m.AdminBooksComponent)
   },

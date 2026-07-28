@@ -43,6 +43,21 @@ if [ "$SIZE" -lt 100000 ]; then
 fi
 echo "$LOG_PREFIX daily OK ($(numfmt --to=iec $SIZE))"
 
+# ---------- 1b. CHAT PHOTOS/FILES bhi (Party Chat uploads) ----------
+# DB me sirf raste hain — asli photos uploads/ me hain. Wo bina backup ke thin!
+UPLOADS_DIR="/var/www/anjaninex/api-out/uploads"
+UFILE=""; USIZE=0
+if [ -d "$UPLOADS_DIR" ]; then
+    UFILE="$BASE/daily/uploads-$STAMP.tgz"
+    tar -czf "$UFILE.tmp" -C "$(dirname "$UPLOADS_DIR")" uploads && mv "$UFILE.tmp" "$UFILE"
+    USIZE=$(stat -c%s "$UFILE")
+    echo "$LOG_PREFIX uploads OK ($(numfmt --to=iec "$USIZE"))"
+    # Hafte me ek uploads-copy weekly me bhi (photos ka GFS halka rakha hai)
+    [ "$DOW" = "7" ] && cp "$UFILE" "$BASE/weekly/"
+fi
+find "$BASE/daily"  -name 'uploads-*.tgz' -mtime +7  -delete
+find "$BASE/weekly" -name 'uploads-*.tgz' -mtime +35 -delete
+
 # ---------- 2. GFS copies ----------
 [ "$DOW" = "7" ]      && cp "$FILE" "$BASE/weekly/"  && echo "$LOG_PREFIX weekly copy"
 [ "$DOM" = "01" ]     && cp "$FILE" "$BASE/monthly/" && echo "$LOG_PREFIX monthly copy"
@@ -76,8 +91,17 @@ if command -v rclone >/dev/null 2>&1 && rclone listremotes 2>/dev/null | grep -q
             rclone copy "$YENC" gdrive:anjaninex-backups/yearly/
             rm -f "$YENC"
         done
+        # CHAT PHOTOS bhi Drive par — usi taale (pass) se band karke
+        if [ -n "$UFILE" ] && [ -f "$UFILE" ]; then
+            UENC="/tmp/$(basename "$UFILE").enc"
+            openssl enc -aes-256-cbc -pbkdf2 -pass file:/root/.backup-pass -in "$UFILE" -out "$UENC"
+            rclone copy "$UENC" gdrive:anjaninex-backups/uploads/
+            rm -f "$UENC"
+            rclone delete gdrive:anjaninex-backups/uploads/ --min-age 30d 2>/dev/null || true
+        fi
         # Drive par daily 90 din rakhte hain
         rclone delete gdrive:anjaninex-backups/daily/ --min-age 90d 2>/dev/null || true
+        DRIVE_OK=1
         echo "$LOG_PREFIX Drive upload OK"
     else
         echo "$LOG_PREFIX Drive skip — /root/.backup-pass nahi hai (bina encryption upload nahi karte)"
@@ -85,5 +109,11 @@ if command -v rclone >/dev/null 2>&1 && rclone listremotes 2>/dev/null | grep -q
 else
     echo "$LOG_PREFIX Drive skip — rclone 'gdrive' remote setup nahi hai"
 fi
+
+# ---------- 5. Status likho — app ki "Backup" setting-screen isi se dikhati hai ----------
+cat > "$BASE/status.json" <<EOF
+{"lastAt":"$(date -Is)","dbFile":"$(basename "$FILE")","dbSize":$SIZE,"uploadsSize":${USIZE:-0},"driveOk":${DRIVE_OK:-0}}
+EOF
+chmod 644 "$BASE/status.json"
 
 echo "$LOG_PREFIX done."

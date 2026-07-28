@@ -449,6 +449,15 @@ export class PartyChatPublicComponent {
   ngOnInit() {
     this.firmId = this.route.snapshot.paramMap.get('firmId') || '';
 
+    // 📲 PWA manifest ISI FIRM ke Party Chat wala kar do — party "Install" kare to
+    // app ka naam FIRM ka hoga aur khulegi seedha /pchat/<firmId> par (sirf chat,
+    // poora Vyapaar Setu nahi). Manifest API se aata hai (per-firm naam ke saath).
+    try {
+      const mLink = document.querySelector('link[rel="manifest"]') as HTMLLinkElement | null;
+      if (mLink && this.firmId)
+        mLink.href = `${environment.apiUrl}/api/party-chat/public/manifest/${this.firmId}`;
+    } catch { /* manifest swap fail ho to install generic hi rahega — chat par asar nahi */ }
+
     // JS error trap — production me console nahi dikhta, isliye error page par hi dikhao
     window.addEventListener('error', (e: any) =>
       this.jsError.set((e?.message || 'JS error') + (e?.filename ? ' @ ' + e.filename.split('/').pop() : '')));

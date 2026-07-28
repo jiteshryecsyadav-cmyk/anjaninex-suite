@@ -459,6 +459,43 @@ public class PartyChatPublicController : ControllerBase
         return null;
     }
 
+    // ---- PWA MANIFEST (per-firm) — party link se INSTALL kare to app SIRF PARTY CHAT
+    // par khule (us firm ki), poora Vyapaar Setu nahi. Naam bhi firm ka dikhta hai. ----
+    [HttpGet("manifest/{firmId}")]
+    public async Task<IActionResult> Manifest(Guid firmId)
+    {
+        string firmName = "Party Chat";
+        await using (var cmd = await CmdAsync("SELECT name FROM platform.firms WHERE id = @f"))
+        {
+            cmd.Parameters.Add(new NpgsqlParameter("f", firmId));
+            if (await cmd.ExecuteScalarAsync() is string n && n.Length > 0) firmName = n;
+        }
+        var shortName = firmName.Split(' ')[0];
+        if (shortName.Length > 12) shortName = shortName[..12];
+        var json = JsonSerializer.Serialize(new
+        {
+            name = $"{firmName} — Party Chat",
+            short_name = shortName,
+            description = $"{firmName} se seedha chat — Vyapaar Setu Party Chat",
+            id = $"/pchat/{firmId}",
+            start_url = $"/pchat/{firmId}?source=pwa",
+            scope = "/pchat/",
+            display = "standalone",
+            orientation = "portrait",
+            background_color = "#FAF7F0",
+            theme_color = "#1B2E5C",
+            lang = "hi-IN",
+            icons = new object[]
+            {
+                new { src = "/icons/icon-144.png", sizes = "144x144", type = "image/png", purpose = "any" },
+                new { src = "/icons/icon-192.png", sizes = "192x192", type = "image/png", purpose = "any" },
+                new { src = "/icons/icon-512.png", sizes = "512x512", type = "image/png", purpose = "any" },
+                new { src = "/icons/icon-maskable-512.png", sizes = "512x512", type = "image/png", purpose = "maskable" }
+            }
+        });
+        return Content(json, "application/manifest+json");
+    }
+
     // ---- 1) OTP bhejo ----
     [HttpPost("request-otp")]
     public async Task<IActionResult> RequestOtp([FromBody] PchatOtpReqDto dto)

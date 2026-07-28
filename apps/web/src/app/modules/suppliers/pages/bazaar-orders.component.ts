@@ -72,6 +72,7 @@ interface BzOrder {
           <table class="w-full text-sm" style="min-width:1000px">
             <thead class="bg-anjaninex-navy text-white uppercase text-xs">
               <tr>
+                <th class="px-3 py-3 text-left">#</th>
                 <th class="px-3 py-3 text-left">KAB</th>
                 <th class="px-3 py-3 text-left">ORDER</th>
                 <th class="px-3 py-3 text-left">SUPPLIER → BUYER</th>
@@ -82,8 +83,9 @@ interface BzOrder {
               </tr>
             </thead>
             <tbody>
-              @for (o of rows(); track o.id) {
+              @for (o of rows(); track o.id; let idx = $index) {
                 <tr class="border-t border-gray-100 hover:bg-[#faf7ff]">
+                  <td class="px-3 py-2 text-gray-400">{{ idx + 1 }}</td>
                   <td class="px-3 py-2 text-xs whitespace-nowrap">{{ o.createdAt | date:'dd/MM/yy h:mm a' }}</td>
                   <td class="px-3 py-2">
                     <div class="font-mono font-bold text-[#5c1a8b]">{{ o.orderCode }}</div>

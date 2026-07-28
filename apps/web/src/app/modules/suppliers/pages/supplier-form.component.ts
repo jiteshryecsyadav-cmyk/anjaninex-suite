@@ -2,7 +2,7 @@ import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, Validators, FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { SuppliersService, SupplierCategory, DuplicateMatch } from '../services/suppliers.service';
+import { SuppliersService, SupplierCategory, DuplicateMatch, LinkableContact } from '../services/suppliers.service';
 import { BuyersService } from '../services/buyers.service';
 import { debounceTime } from 'rxjs/operators';
 import { BackButtonComponent } from '../../../shared/back-button.component';
@@ -46,6 +46,41 @@ import { UppercaseDirective } from '../../../shared/uppercase.directive';
           Back to Directory
         </a>
       </div>
+
+      <!-- 📇 CORE MASTER / TRADING se seedha laao — dobara typing nahi (sirf naya add karte waqt) -->
+      @if (!editingId) {
+        <div class="card mb-4" style="background:#faf7ff;border:1.5px dashed #b794d4">
+          <div class="text-sm font-bold text-[#5c1a8b] mb-2">📇 Core Master / Trading me pehle se hai? Yahan se dhundo — ek click me ban jayega</div>
+          <input [(ngModel)]="existSearch" [ngModelOptions]="{standalone: true}" (input)="onExistSearch()"
+                 type="text" placeholder="🔍 Naam / phone / GST likho (kam se kam 2 akshar)..." class="input w-full">
+          @if (existResults().length) {
+            <div class="mt-2 overflow-y-auto" style="max-height:230px">
+              @for (c of existResults(); track c.contactId) {
+                <div class="flex items-center justify-between border-b border-[#eee] py-1.5 gap-2">
+                  <div class="min-w-0">
+                    <span class="font-semibold text-sm">{{ c.displayName }}</span>
+                    @if (c.tradingType) {
+                      <span class="ml-1 px-1.5 py-0.5 rounded text-[10px] font-bold"
+                            [class]="c.tradingType === 'buyer' ? 'bg-green-100 text-green-700'
+                                   : c.tradingType === 'seller' ? 'bg-blue-100 text-blue-700'
+                                   : 'bg-purple-100 text-purple-700'">
+                        Trading: {{ c.tradingType === 'seller' ? 'SUPPLIER' : c.tradingType === 'both' ? 'DONO' : 'BUYER' }}
+                      </span>
+                    }
+                    <div class="text-xs text-gray-500 truncate">{{ c.phone || '—' }} · {{ c.gst || 'No GST' }} · {{ c.city || '' }}</div>
+                  </div>
+                  <button type="button" (click)="pickExisting(c)" [disabled]="picking() === c.contactId"
+                          class="btn-primary text-xs px-3 py-1 shrink-0">
+                    {{ picking() === c.contactId ? '...' : '+ Supplier banao' }}
+                  </button>
+                </div>
+              }
+            </div>
+          } @else if (existSearch.trim().length >= 2 && existSearched()) {
+            <div class="text-xs text-gray-500 mt-2">Koi nahi mila — neeche naya bhar lo. 👇</div>
+          }
+        </div>
+      }
 
       <form [formGroup]="form" (ngSubmit)="save()" class="card flex flex-col gap-4">
 
@@ -299,6 +334,42 @@ export class SupplierFormComponent {
   contactId: string | null = null;
   isAlsoBuyer = signal(false);   // same contact Buyer Directory me bhi — header ka "DONO" tag
   makingBuyer = signal(false);
+
+  // ---- Core Master/Trading se seedha laao (Add mode ka searchable picker) ----
+  existSearch = '';
+  existResults = signal<LinkableContact[]>([]);
+  existSearched = signal(false);
+  picking = signal<string | null>(null);
+  private existTimer: any;
+  onExistSearch() {
+    clearTimeout(this.existTimer);
+    const q = this.existSearch.trim();
+    if (q.length < 2) { this.existResults.set([]); this.existSearched.set(false); return; }
+    this.existTimer = setTimeout(() => {
+      this.svc.listLinkable(q).subscribe({
+        next: l => {
+          // Jo pehle se bazaar-supplier hai use chhupao; Trading ke SUPPLIER/DONO upar dikhao
+          const rank = (c: LinkableContact) =>
+            c.tradingType === 'seller' ? 0 : c.tradingType === 'both' ? 1 : c.tradingType === 'buyer' ? 3 : 2;
+          this.existResults.set(l.filter(c => !c.isBazaarSupplier).sort((a, b) => rank(a) - rank(b)));
+          this.existSearched.set(true);
+        },
+        error: () => { this.existResults.set([]); this.existSearched.set(true); }
+      });
+    }, 350);
+  }
+  pickExisting(c: LinkableContact) {
+    if (this.picking()) return;
+    this.picking.set(c.contactId);
+    this.svc.addFromContact(c.contactId).subscribe({
+      next: (res: any) => {
+        this.picking.set(null);
+        alert(`✅ ${c.displayName} Supplier ban gaya!\nAb category/rate waghairah bhar lo.`);
+        this.router.navigate(['/suppliers', res.id, 'edit']);
+      },
+      error: (e) => { this.picking.set(null); alert('⚠️ ' + (e?.error?.error ?? 'Add nahi hua — dobara try karo')); }
+    });
+  }
 
   // Ek-click: isi contact ko Buyer directory me bhi jodo (wahi contact, duplicate nahi)
   makeBuyerToo() {

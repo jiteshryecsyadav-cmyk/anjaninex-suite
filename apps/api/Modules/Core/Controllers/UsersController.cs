@@ -91,7 +91,7 @@ public record SessionDto(
 [Authorize]
 // 🔐 SIRF firm owner/admin — pehle yahan koi permission-check thi hi NAHI: koi bhi staff
 // apna role badal kar super_admin ban sakta tha (= poore platform ka data). Ab band.
-[HasPermission("core.user.manage.firm")]
+[HasPermission("settings.user.manage.firm")]
 [ApiController]
 [Route("api/core/users")]
 public class UsersController : ControllerBase

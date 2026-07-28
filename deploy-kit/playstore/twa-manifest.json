@@ -1,0 +1,37 @@
+{
+  "packageId": "com.anjaninex.vyaparsetu",
+  "host": "vyaparsetu.anjaninex.com",
+  "name": "Vyapaar Setu",
+  "launcherName": "Vyapaar Setu",
+  "display": "standalone",
+  "themeColor": "#5c1a8b",
+  "themeColorDark": "#1B2E5C",
+  "navigationColor": "#5c1a8b",
+  "navigationColorDark": "#1B2E5C",
+  "backgroundColor": "#faf5ff",
+  "enableNotifications": true,
+  "startUrl": "/?source=playstore",
+  "iconUrl": "https://vyaparsetu.anjaninex.com/icons/icon-512.png",
+  "maskableIconUrl": "https://vyaparsetu.anjaninex.com/icons/icon-maskable-512.png",
+  "splashScreenFadeOutDuration": 300,
+  "signingKey": {
+    "path": "./android.keystore",
+    "alias": "vyaparsetu"
+  },
+  "appVersionName": "1.0.0",
+  "appVersionCode": 1,
+  "shortcuts": [
+    { "name": "Party Chat", "short_name": "Chat", "url": "/pchat", "chosenIconUrl": "https://vyaparsetu.anjaninex.com/icons/icon-192.png" }
+  ],
+  "generatorApp": "bubblewrap-cli",
+  "webManifestUrl": "https://vyaparsetu.anjaninex.com/manifest.webmanifest",
+  "fallbackType": "customtabs",
+  "features": {},
+  "alphaDependencies": { "enabled": false },
+  "enableSiteSettingsShortcut": true,
+  "isChromeOSOnly": false,
+  "isMetaQuest": false,
+  "fullScopeUrl": "https://vyaparsetu.anjaninex.com/",
+  "minSdkVersion": 21,
+  "orientation": "portrait"
+}

@@ -186,7 +186,14 @@ import { PhotoLightboxComponent } from '../../shared/photo-lightbox.component';
                        (contextmenu)="openMsgMenu($event, m)">
                     <!-- WhatsApp jaisa: message par hover/right-click -> menu (Reply/Copy/Forward/Delete) -->
                     @if (!selectMode()) {
-                      <button class="pc-menu-btn" (click)="openMsgMenu($event, m)" title="Options">⌄</button>
+                      <button class="pc-menu-btn" (click)="openMsgMenu($event, m)" title="Options">
+                        <!-- Double-chevron (black) — mobile par bhi saaf dikhe -->
+                        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="#111827"
+                             stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round">
+                          <polyline points="5 4.5 12 10.5 19 4.5"/>
+                          <polyline points="5 13 12 19 19 13"/>
+                        </svg>
+                      </button>
                     }
 
                     @if (m.sender === 'party') {
@@ -322,11 +329,11 @@ import { PhotoLightboxComponent } from '../../shared/photo-lightbox.component';
        hai na right-click, wahan menu milta hi nahi. Halka rakha hai taaki message
        padhne me kharal na kare; hover par gehra ho jata hai. */
     .pc-menu-btn { position:absolute; top:2px; right:4px; border:none;
-      background:rgba(27,46,92,.10); border-radius:50%;
+      background:rgba(255,255,255,.85); border-radius:50%;
       width:26px; height:26px; display:flex; align-items:center; justify-content:center;
-      color:#1B2E5C; font-size:19px; font-weight:700; line-height:1; cursor:pointer;
-      opacity:.85; transition:opacity .12s; }
-    .pc-menu-btn:hover, .group:hover .pc-menu-btn { opacity:1; background:rgba(27,46,92,.18); }
+      line-height:1; cursor:pointer; box-shadow:0 1px 3px rgba(0,0,0,.18);
+      opacity:.95; transition:opacity .12s; }
+    .pc-menu-btn:hover, .group:hover .pc-menu-btn { opacity:1; background:#fff; }
     .pc-menu-back { position:fixed; inset:0; z-index:1290; }
     .pc-menu { position:fixed; z-index:1300; background:#fff; border-radius:10px;
       box-shadow:0 10px 30px rgba(0,0,0,.22); padding:5px; min-width:170px; }

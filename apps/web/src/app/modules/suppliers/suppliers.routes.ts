@@ -62,6 +62,11 @@ export const suppliersRoutes: Routes = [
     path: 'bot',
     loadComponent: () => import('./pages/bot.component').then(m => m.BotComponent)
   },
+  // ----- Bot Orders — agency approval desk -----
+  {
+    path: 'orders',
+    loadComponent: () => import('./pages/bazaar-orders.component').then(m => m.BazaarOrdersComponent)
+  },
   // ----- Supplier detail/edit (catch-all :id — keep LAST) -----
   {
     path: ':id/edit',

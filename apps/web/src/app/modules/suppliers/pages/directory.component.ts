@@ -144,6 +144,8 @@ import { ToastService } from '../../../shared/toast.service';
            class="px-4 py-2 text-sm font-semibold text-gray-500 border-b-2 border-transparent hover:text-[#5c1a8b]">🎯 Match</a>
         <a routerLink="/suppliers/search" routerLinkActive="!border-[#5c1a8b] !text-[#5c1a8b]"
            class="px-4 py-2 text-sm font-semibold text-gray-500 border-b-2 border-transparent hover:text-[#5c1a8b]">🔍 Search</a>
+        <a routerLink="/suppliers/orders" routerLinkActive="!border-[#5c1a8b] !text-[#5c1a8b]"
+           class="px-4 py-2 text-sm font-semibold text-gray-500 border-b-2 border-transparent hover:text-[#5c1a8b]">🛒 Orders</a>
         <a routerLink="/suppliers/categories" routerLinkActive="!border-[#5c1a8b] !text-[#5c1a8b]"
            class="px-4 py-2 text-sm font-semibold text-gray-500 border-b-2 border-transparent hover:text-[#5c1a8b]">📂 Categories</a>
         <a routerLink="/suppliers/bot" routerLinkActive="!border-[#5c1a8b] !text-[#5c1a8b]"

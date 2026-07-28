@@ -30,6 +30,7 @@ import { FeatureService } from '../../../shared/feature.service';
       <div class="flex gap-1 mb-6 border-b border-[#ddc8f5] flex-wrap">
         <a routerLink="/suppliers" class="px-4 py-2 text-sm font-semibold text-gray-500 border-b-2 border-transparent hover:text-[#5c1a8b]">🚚 Suppliers</a>
         <a routerLink="/suppliers/buyers" class="px-4 py-2 text-sm font-semibold text-[#5c1a8b] border-b-2 border-[#5c1a8b]">🛒 Buyers</a>
+        <a routerLink="/suppliers/orders" class="px-4 py-2 text-sm font-semibold text-gray-500 border-b-2 border-transparent hover:text-[#5c1a8b]">🛒 Orders</a>
         <a routerLink="/suppliers/categories" class="px-4 py-2 text-sm font-semibold text-gray-500 border-b-2 border-transparent hover:text-[#5c1a8b]">📂 Categories</a>
       </div>
 

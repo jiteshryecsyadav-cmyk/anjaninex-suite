@@ -401,7 +401,7 @@ public class BazaarChatBotService : IBazaarChatBotService
             {
                 if (oid != Guid.Empty)
                     await using (var cmd = await Cmd(@"
-                        UPDATE wa.orders SET quantity = @q, amount = @a, status = 'accepted', updated_at = now()
+                        UPDATE wa.orders SET quantity = @q, amount = @a, status = 'pending_agency', updated_at = now()
                         WHERE id = @o"))
                     {
                         cmd.Parameters.Add(new NpgsqlParameter("q", offerQty));
@@ -411,11 +411,11 @@ public class BazaarChatBotService : IBazaarChatBotService
                     }
                 await ClearState(threadId);
                 await BotReply(threadId, firmId,
-                    $"✅ Pakka! Order {pCode} ab {offerQty:0.##} {pUnit} ka ho gaya.\n" +
-                    $"₹{pRate:0.##}/{pUnit} × {offerQty:0.##} = ₹{pAmt:0.##}\n\nFirm aapse aage ki baat ke liye sampark karegi.");
+                    $"✅ Order {pCode} ab {offerQty:0.##} {pUnit} ka ho gaya.\n" +
+                    $"₹{pRate:0.##}/{pUnit} × {offerQty:0.##} = ₹{pAmt:0.##}\n\n🕐 Ab AGENCY ki aakhri manzoori baki hai — muhar lagte hi pakka.");
                 if (supThread != Guid.Empty)
                     await BotReply(supThread, firmId,
-                        $"🎉 Buyer maan gaya! Order {pCode} ab {offerQty:0.##} {pUnit} ka pakka — taiyari shuru karein.");
+                        $"🎉 Buyer maan gaya! Order {pCode} ab {offerQty:0.##} {pUnit} ka.\n🕐 AGENCY ki manzoori ka intezar — approve hote hi DISPATCH ka message milega.");
                 return;
             }
             if (NoWords.Contains(low))
@@ -613,17 +613,30 @@ public class BazaarChatBotService : IBazaarChatBotService
                     supplierName = (await cmd.ExecuteScalarAsync()) as string;
                 }
 
+            // Supplier ki chat PEHLE taay karo (photo wali chat = pakki pehchan) — order me bhi
+            // save hogi taaki AGENCY-approval ke messages seedha sahi chats me jayein
+            var supThreadK = CtxGuid(ctx, "supplier_thread_id");
+            if (supThreadK == Guid.Empty && !string.IsNullOrEmpty(supPhone))
+            {
+                var supPartyPre = await FindPartyByPhone(firmId, Last10(supPhone));
+                if (supPartyPre is not null)
+                    supThreadK = await UpsertThread(firmId, supPartyPre.Value.id, supPartyPre.Value.name, Last10(supPhone));
+            }
+
             Guid orderId; string orderCode;
             await using (var cmd = await Cmd(@"
                 INSERT INTO wa.orders
                   (firm_id, order_code, incoming_id, track_code, buyer_phone, buyer_id, buyer_name,
                    supplier_phone, supplier_id, supplier_name, category_name,
-                   rate, rate_unit, quantity, amount, image_path, status, source)
+                   rate, rate_unit, quantity, amount, image_path, status, source,
+                   buyer_thread_id, supplier_thread_id)
                 VALUES (@f, 'ORD-' || lpad(nextval('wa.order_code_seq')::text, 6, '0'),
                         @inc, @tc, @bph, @bid, @bn, @sph, @sid, @sn, @cn,
-                        @r, @u, @q, @a, @img, 'pending_supplier', 'pchat')
+                        @r, @u, @q, @a, @img, 'pending_supplier', 'pchat', @bt, @st)
                 RETURNING id, order_code"))
             {
+                cmd.Parameters.Add(new NpgsqlParameter("bt", threadId));
+                cmd.Parameters.Add(new NpgsqlParameter("st", NullableGuid(supThreadK)));
                 cmd.Parameters.Add(new NpgsqlParameter("f", firmId));
                 cmd.Parameters.Add(new NpgsqlParameter("inc", NullableGuid(CtxGuid(ctx, "incoming_id"))));
                 cmd.Parameters.Add(new NpgsqlParameter("tc", (object?)CtxStr(ctx, "track_code") ?? DBNull.Value));
@@ -646,16 +659,8 @@ public class BazaarChatBotService : IBazaarChatBotService
 
             await ClearState(threadId);
 
-            // Supplier ke Party Chat me order bhejo + accept ka state — PEHLE photo wali chat
-            // (phone-duplicate se galat party ke paas na jaye), phone-lookup sirf fallback
+            // Supplier ke Party Chat me order bhejo + accept ka state
             var notified = false;
-            var supThreadK = CtxGuid(ctx, "supplier_thread_id");
-            if (supThreadK == Guid.Empty && !string.IsNullOrEmpty(supPhone))
-            {
-                var supParty = await FindPartyByPhone(firmId, Last10(supPhone));
-                if (supParty is not null)
-                    supThreadK = await UpsertThread(firmId, supParty.Value.id, supParty.Value.name, Last10(supPhone));
-            }
             {
                 if (supThreadK != Guid.Empty)
                 {
@@ -717,16 +722,17 @@ public class BazaarChatBotService : IBazaarChatBotService
             {
                 var oid = CtxGuid(ctx, "order_id");
                 if (oid != Guid.Empty)
-                    await using (var cmd = await Cmd("UPDATE wa.orders SET status = 'accepted', updated_at = now() WHERE id = @o"))
+                    await using (var cmd = await Cmd("UPDATE wa.orders SET status = 'pending_agency', updated_at = now() WHERE id = @o"))
                     { cmd.Parameters.Add(new NpgsqlParameter("o", oid)); await cmd.ExecuteNonQueryAsync(); }
                 await ClearState(threadId);
                 var bt = CtxGuid(ctx, "buyer_thread_id");
                 if (bt != Guid.Empty)
                     await BotReply(bt, firmId,
-                        $"🎉 Mubarak! Supplier ne aapka order *{CtxStr(ctx, "order_code")}* ACCEPT kar liya.\n" +
+                        $"🎉 Supplier ne aapka order *{CtxStr(ctx, "order_code")}* ACCEPT kar liya!\n" +
                         $"{CtxStr(ctx, "category_name") ?? "Fabric"} — {CtxDec(ctx, "quantity"):0.##} {CtxStr(ctx, "rate_unit") ?? "mtr"} " +
-                        $"@ ₹{CtxDec(ctx, "rate"):0.##} = ₹{CtxDec(ctx, "amount"):0.##}\n\nFirm aapse aage ki baat ke liye sampark karegi.");
-                await BotReply(threadId, firmId, $"✅ Order {CtxStr(ctx, "order_code")} accept ho gaya. Buyer ko bata diya.");
+                        $"@ ₹{CtxDec(ctx, "rate"):0.##} = ₹{CtxDec(ctx, "amount"):0.##}\n\n🕐 Ab AGENCY ki aakhri manzoori baki hai — muhar lagte hi pakka.");
+                await BotReply(threadId, firmId,
+                    $"✅ Order {CtxStr(ctx, "order_code")} accept ho gaya!\n🕐 AGENCY ki manzoori ka intezar — approve hote hi DISPATCH ka message milega.");
             }
             else await BotReply(threadId, firmId,
                 "Reply karein: yes (poora accept) · no (reject) · ya number likhein kitna bhej sakte ho (jaise 300).");

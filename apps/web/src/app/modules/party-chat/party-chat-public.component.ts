@@ -98,7 +98,12 @@ interface PMsg {
         <div class="pc-body pc-center">
           <div class="pc-card">
             <div class="text-4xl text-center mb-2">💬</div>
-            <p class="text-base text-gray-700 mb-4 text-center">Apna <b>wahi mobile number</b> daalein<br>jo firm ke paas registered hai:</p>
+            @if (inviteName()) {
+              <p class="text-lg text-center mb-1 font-bold text-[#1B2E5C]">Namaste {{ inviteName() }} ji! 👋</p>
+              <p class="text-sm text-gray-500 mb-4 text-center">Ye aapka personal link hai — apna number verify karein:</p>
+            } @else {
+              <p class="text-base text-gray-700 mb-4 text-center">Apna <b>wahi mobile number</b> daalein<br>jo firm ke paas registered hai:</p>
+            }
             <input [(ngModel)]="phone" type="tel" maxlength="10" placeholder="98XXXXXXXX" inputmode="numeric"
                    class="w-full border-2 border-[#D6DDEA] rounded-xl px-3 py-4 text-2xl font-mono text-center">
             @if (err()) { <p class="text-red-600 text-sm mt-3 text-center">{{ err() }}</p> }
@@ -380,6 +385,8 @@ export class PartyChatPublicComponent {
   // ===== PARTY PORTAL — /pchat (bina firm): ek number, SAARI agencies (WhatsApp-ghar) =====
   portalMode = false;
   portalToken = '';
+  inviteCode = '';
+  inviteName = signal('');   // personal link ho to party ka naam — "Namaste X ji!"
   agencies = signal<{ firmId: string; firmName: string; logoUrl: string | null;
                       unread: number; lastBody: string | null; lastMsgAt: string | null }[]>([]);
 
@@ -523,6 +530,15 @@ export class PartyChatPublicComponent {
     this.firmId = this.route.snapshot.paramMap.get('firmId') || '';
     this.portalMode = !this.firmId;   // /pchat bina firm = PORTAL (saari agencies ki list)
 
+    // PERSONAL invite link (?i=CODE) — "Namaste <party>!" + ye link sirf usi number se khulega
+    this.inviteCode = (this.route.snapshot.queryParamMap.get('i') || '').trim().toUpperCase();
+    if (this.inviteCode && this.firmId) {
+      this.http.get<any>(`${this.base}/invite/${this.inviteCode}`).subscribe({
+        next: (r) => { this.inviteName.set(r.partyName || ''); if (r.firmName) this.firmName.set(r.firmName); },
+        error: () => { this.inviteCode = ''; }   // galat code → aam link ki tarah chale
+      });
+    }
+
     // 📲 PWA manifest — firm-link par FIRM ke naam ki app; portal par "VS Chat" (sab agencies)
     try {
       const mLink = document.querySelector('link[rel="manifest"]') as HTMLLinkElement | null;
@@ -604,7 +620,9 @@ export class PartyChatPublicComponent {
   requestOtp() {
     this.busy.set(true); this.err.set('');
     const url = this.portalMode ? `${this.base}/portal/request-otp` : `${this.base}/request-otp`;
-    const body = this.portalMode ? { phone: this.phone } : { firmId: this.firmId, phone: this.phone };
+    const body = this.portalMode
+      ? { phone: this.phone }
+      : { firmId: this.firmId, phone: this.phone, inviteCode: this.inviteCode || null };
     this.http.post<any>(url, body).subscribe({
       next: (r) => {
         this.busy.set(false);

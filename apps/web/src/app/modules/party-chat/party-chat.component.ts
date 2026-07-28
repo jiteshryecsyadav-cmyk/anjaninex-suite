@@ -816,10 +816,20 @@ export class PartyChatComponent {
   shareLink() {
     const t = this.active();
     if (!t) return;
-    const firmId = this.auth.user()?.firmId;
-    const link = `${PartyChatComponent.PUBLIC_BASE}/pchat/${firmId}`;
-    const text = `Namaste ${t.partyName} ji,\nHumse seedha baat karne ke liye ye link *Chrome me* kholein aur apna mobile number verify karein:\n${link}\n\n📲 Upar "App install karo" ka option aaye to install kar lein — agli baar ek tap me chat khulegi.`;
-    window.open(`https://wa.me/91${t.phone.slice(-10)}?text=${encodeURIComponent(text)}`, '_blank');
-    navigator.clipboard?.writeText(link).then(() => this.toast.success('Link copy bhi ho gaya'));
+    // PERSONAL link — party ka apna code, SIRF usi ke number se khulega (galat use band)
+    this.http.post<any>(`${this.base}/threads/${t.id}/invite`, {}).subscribe({
+      next: (r) => {
+        const link = `${PartyChatComponent.PUBLIC_BASE}${r.path}`;
+        const text = `Namaste ${t.partyName} ji,\nYe aapka PERSONAL chat link hai — sirf aapke number (${t.phone.slice(-10)}) se khulega:\n${link}\n\n*Chrome me* kholein, apna number verify karein.\n📲 "App install karo" aaye to install kar lein — agli baar ek tap me chat khulegi.`;
+        window.open(`https://wa.me/91${t.phone.slice(-10)}?text=${encodeURIComponent(text)}`, '_blank');
+        navigator.clipboard?.writeText(link).then(() => this.toast.success('Personal link copy bhi ho gaya'));
+      },
+      error: () => {
+        // Invite na bane to purana aam link — chat rukni nahi chahiye
+        const firmId = this.auth.user()?.firmId;
+        const link = `${PartyChatComponent.PUBLIC_BASE}/pchat/${firmId}`;
+        window.open(`https://wa.me/91${t.phone.slice(-10)}?text=${encodeURIComponent('Namaste! Humse chat ke liye: ' + link)}`, '_blank');
+      }
+    });
   }
 }

@@ -23,7 +23,7 @@ namespace Namokara.Api.Modules.Platform.Controllers;
 
 public record PchatStartDto(Guid PartyId);
 public record PchatMsgDto(string Body, Guid? ReplyToId = null);
-public record PchatOtpReqDto(Guid FirmId, string Phone);
+public record PchatOtpReqDto(Guid FirmId, string Phone, string? InviteCode = null);
 public record PchatVerifyDto(Guid FirmId, string Phone, string Otp);
 public record PchatPublicMsgDto(string Token, string Body, Guid? ReplyToId = null);
 
@@ -234,6 +234,39 @@ public class PartyChatController : ControllerBase
         if (tid is null) return NotFound(new { error = "Everyone-delete sirf apne bheje message ka ho sakta hai" });
         if (tid is Guid threadGuid) await PartyChatEvents.Notify(_hub, threadGuid, CurrentFirmId);
         return Ok(new { ok = true });
+    }
+
+    // ---- Firm: PERSONAL INVITE LINK — har party ka apna code; link sirf usi ke number se khulega ----
+    [HttpPost("threads/{id}/invite")]
+    public async Task<IActionResult> InviteLink(Guid id)
+    {
+        Guid partyId;
+        await using (var cmd = await CmdAsync(
+            "SELECT party_id FROM platform.party_chat_threads WHERE id = @t AND firm_id = @f"))
+        {
+            cmd.Parameters.Add(new NpgsqlParameter("t", id));
+            cmd.Parameters.Add(new NpgsqlParameter("f", CurrentFirmId));
+            var v = await cmd.ExecuteScalarAsync();
+            if (v is not Guid pg) return NotFound(new { error = "Thread nahi mila" });
+            partyId = pg;
+        }
+        // Code: 8 akshar, ulajhne wale (0/O/1/I) nahi — ek party ka hamesha WAHI code
+        const string set = "23456789ABCDEFGHJKMNPQRSTUVWXYZ";
+        var buf = RandomNumberGenerator.GetBytes(8);
+        var newCode = new string(buf.Select(b => set[b % set.Length]).ToArray());
+        string code;
+        await using (var cmd = await CmdAsync(@"
+            INSERT INTO platform.party_chat_invites (code, firm_id, party_id)
+            VALUES (@c, @f, @p)
+            ON CONFLICT (firm_id, party_id) DO UPDATE SET firm_id = EXCLUDED.firm_id
+            RETURNING code"))
+        {
+            cmd.Parameters.Add(new NpgsqlParameter("c", newCode));
+            cmd.Parameters.Add(new NpgsqlParameter("f", CurrentFirmId));
+            cmd.Parameters.Add(new NpgsqlParameter("p", partyId));
+            code = (string)(await cmd.ExecuteScalarAsync())!;
+        }
+        return Ok(new { code, path = $"/pchat/{CurrentFirmId}?i={code}" });
     }
 
     // ---- Firm: puri chat DELETE (messages + party sessions bhi CASCADE se ud jaate hain) ----
@@ -687,6 +720,30 @@ public class PartyChatPublicController : ControllerBase
         return Ok(new { token = sessionToken, threadId, firmName, partyName = party.Value.name });
     }
 
+    // ---- Invite ki jankari — link kholte hi "Namaste <party>!" dikhane ko ----
+    [HttpGet("invite/{code}")]
+    public async Task<IActionResult> InviteInfo(string code)
+    {
+        Guid firmId = Guid.Empty, partyId = Guid.Empty;
+        await using (var cmd = await CmdAsync(
+            "SELECT firm_id, party_id FROM platform.party_chat_invites WHERE code = @c"))
+        {
+            cmd.Parameters.Add(new NpgsqlParameter("c", (code ?? "").Trim().ToUpperInvariant()));
+            await using var r = await cmd.ExecuteReaderAsync();
+            if (!await r.ReadAsync()) return NotFound(new { error = "Invite nahi mila" });
+            firmId = r.GetGuid(0); partyId = r.GetGuid(1);
+        }
+        await SetFirmContext(firmId);
+        string? partyName = null, firmName = null;
+        await using (var cmd = await CmdAsync(@"
+            SELECT c.display_name FROM trading.party_profiles p
+            JOIN core.contacts c ON c.id = p.contact_id WHERE p.id = @p"))
+        { cmd.Parameters.Add(new NpgsqlParameter("p", partyId)); partyName = (await cmd.ExecuteScalarAsync()) as string; }
+        await using (var fc = await CmdAsync("SELECT name FROM platform.firms WHERE id = @f"))
+        { fc.Parameters.Add(new NpgsqlParameter("f", firmId)); firmName = (await fc.ExecuteScalarAsync()) as string; }
+        return Ok(new { firmId, firmName, partyName });
+    }
+
     // ---- PORTAL manifest — generic "Vyapaar Setu Chat" app, khulti /pchat par ----
     [HttpGet("manifest-portal")]
     public IActionResult ManifestPortal()
@@ -727,6 +784,36 @@ public class PartyChatPublicController : ControllerBase
         var party = await FindParty(dto.FirmId, phone);
         if (party is null)
             return BadRequest(new { error = "Ye number is firm ke kisi party master me nahi mila — firm se apna number update karwayein" });
+
+        // PERSONAL LINK ka pehra — invite-code wala link SIRF usi party ke number se khule
+        if (!string.IsNullOrWhiteSpace(dto.InviteCode))
+        {
+            Guid? invParty = null;
+            await using (var ic = await CmdAsync(
+                "SELECT party_id FROM platform.party_chat_invites WHERE code = @c AND firm_id = @f"))
+            {
+                ic.Parameters.Add(new NpgsqlParameter("c", dto.InviteCode.Trim().ToUpperInvariant()));
+                ic.Parameters.Add(new NpgsqlParameter("f", dto.FirmId));
+                invParty = (await ic.ExecuteScalarAsync()) as Guid?;
+            }
+            if (invParty is null)
+                return BadRequest(new { error = "Ye invite link sahi nahi hai — firm se naya link mangwayein" });
+            if (invParty.Value != party.Value.partyId)
+            {
+                string invName = "kisi aur party";
+                await using (var nc = await CmdAsync(@"
+                    SELECT c.display_name FROM trading.party_profiles p
+                    JOIN core.contacts c ON c.id = p.contact_id WHERE p.id = @p"))
+                {
+                    nc.Parameters.Add(new NpgsqlParameter("p", invParty.Value));
+                    invName = ((await nc.ExecuteScalarAsync()) as string) ?? invName;
+                }
+                return BadRequest(new { error = $"Ye personal link \"{invName}\" ke liye hai — aap apne wale link se kholein ya firm se apna link mangwayein" });
+            }
+            await using (var uc = await CmdAsync(
+                "UPDATE platform.party_chat_invites SET last_used_at = now() WHERE code = @c"))
+            { uc.Parameters.Add(new NpgsqlParameter("c", dto.InviteCode.Trim().ToUpperInvariant())); await uc.ExecuteNonQueryAsync(); }
+        }
 
         string? firmName = null;
         await using (var fc = await CmdAsync("SELECT name FROM platform.firms WHERE id = @f"))

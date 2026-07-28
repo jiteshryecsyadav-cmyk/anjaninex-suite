@@ -102,7 +102,10 @@ public record AddPhotoDto(string StorageUrl, string? Title, decimal? Rate, strin
 public record AddRateDto(Guid? CategoryId, string? CategoryName, decimal Rate, string RateUnit, decimal? MinQty);
 
 // A Core Master contact (e.g. a Trading party) that is NOT yet in the supplier directory.
-public record LinkableContactDto(Guid ContactId, string DisplayName, string? Gst, string? Phone, string? City);
+public record LinkableContactDto(Guid ContactId, string DisplayName, string? Gst, string? Phone, string? City,
+    string? TradingType = null,      // Trading Party Master me darja (buyer/seller/both) — modal me dikhane ko
+    bool IsBazaarBuyer = false,      // Bazaar Buyer directory me pehle se hai
+    bool IsBazaarSupplier = false);  // Bazaar Supplier directory me pehle se hai
 
 // Live duplicate-check result (GST / mobile typed in the form).
 public record DuplicateMatchDto(Guid Id, Guid ContactId, string DisplayName, string? Gst, string? Phone, string MatchOn);
@@ -545,14 +548,10 @@ public class SupplierService : ISupplierService
     // =================================================
     public async Task<List<LinkableContactDto>> ListLinkableContacts(Guid firmId, string? search)
     {
-        // Contacts that already have a supplier_profile — exclude these.
-        var alreadySuppliers = _db.SupplierProfiles
-            .Where(sp => sp.FirmId == firmId)
-            .Select(sp => sp.ContactId);
-
-        var q = _db.Contacts
-            .Where(c => c.FirmId == firmId && c.DeletedAt == null
-                     && !alreadySuppliers.Contains(c.Id));
+        // SAB contacts dikhao (Trading parties samet) — har row par "+ Supplier" / "+ Buyer"
+        // ka apna button hota hai; jo darja pehle se hai wo button band dikhega.
+        // Pehle sirf-supplier banata tha — Trading ka BUYER bhi yahan supplier ban jata tha (galat).
+        var q = _db.Contacts.Where(c => c.FirmId == firmId && c.DeletedAt == null);
 
         if (!string.IsNullOrWhiteSpace(search))
         {
@@ -563,8 +562,24 @@ public class SupplierService : ISupplierService
         }
 
         var rows = await q.OrderBy(c => c.DisplayName).Take(50).ToListAsync();
+        var ids = rows.Select(r => r.Id).ToList();
 
-        return rows.Select(c =>
+        var supSet = (await _db.SupplierProfiles
+            .Where(sp => sp.FirmId == firmId && sp.IsActive && ids.Contains(sp.ContactId))
+            .Select(sp => sp.ContactId).ToListAsync()).ToHashSet();
+        var buySet = (await _db.BuyerProfiles
+            .Where(b => b.FirmId == firmId && b.IsActive && ids.Contains(b.ContactId))
+            .Select(b => b.ContactId).ToListAsync()).ToHashSet();
+        // Trading Party Master ka darja — modal me guide karne ko (buyer ko Buyer hi banao!)
+        var trade = new Dictionary<Guid, string>();
+        foreach (var p in await _db.PartyProfiles
+            .Where(p => p.FirmId == firmId && p.IsActive && ids.Contains(p.ContactId))
+            .Select(p => new { p.ContactId, p.PartyType }).ToListAsync())
+            trade[p.ContactId] = p.PartyType;
+
+        return rows
+            .Where(c => !(supSet.Contains(c.Id) && buySet.Contains(c.Id)))   // dono ban chuka = list me kaam nahi
+            .Select(c =>
         {
             string? city = null;
             try
@@ -575,7 +590,8 @@ public class SupplierService : ISupplierService
                     city = cc.GetString();
             }
             catch { }
-            return new LinkableContactDto(c.Id, c.DisplayName, c.GstNumber, c.PhonePrimary, city);
+            return new LinkableContactDto(c.Id, c.DisplayName, c.GstNumber, c.PhonePrimary, city,
+                trade.GetValueOrDefault(c.Id), buySet.Contains(c.Id), supSet.Contains(c.Id));
         }).ToList();
     }
 

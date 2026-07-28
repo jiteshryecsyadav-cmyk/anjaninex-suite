@@ -117,6 +117,9 @@ export interface LinkableContact {
   gst: string | null;
   phone: string | null;
   city: string | null;
+  tradingType?: string | null;   // Trading Party Master ka darja (buyer/seller/both)
+  isBazaarBuyer?: boolean;       // Bazaar Buyer me pehle se
+  isBazaarSupplier?: boolean;    // Bazaar Supplier me pehle se
 }
 
 @Injectable({ providedIn: 'root' })

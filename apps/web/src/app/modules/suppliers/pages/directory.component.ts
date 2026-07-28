@@ -5,6 +5,7 @@ import { HttpClient } from '@angular/common/http';
 import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { environment } from '../../../../environments/environment';
 import { SuppliersService, SupplierListItem, SupplierCategory, LinkableContact } from '../services/suppliers.service';
+import { BuyersService } from '../services/buyers.service';
 import { BackButtonComponent } from '../../../shared/back-button.component';
 import { PartyChatSendComponent } from '../../../shared/party-chat-send.component';
 import { TradingService } from '../../trading/services/trading.service';
@@ -87,15 +88,40 @@ import { ToastService } from '../../../shared/toast.service';
                   <div class="text-center text-gray-500 py-6 text-sm">Koi naya contact nahi mila. (Sab pehle se directory me hain, ya Trading me party banao.)</div>
                 } @else {
                   @for (c of linkable(); track c.contactId) {
-                    <div class="flex items-center justify-between border-b py-2">
-                      <div>
-                        <div class="font-semibold text-sm">{{ c.displayName }}</div>
-                        <div class="text-xs text-gray-500">{{ c.phone || '—' }} · {{ c.gst || 'No GST' }} · {{ c.city || '' }}</div>
+                    <div class="flex items-center justify-between border-b py-2 gap-2">
+                      <div class="min-w-0">
+                        <div class="font-semibold text-sm truncate">
+                          {{ c.displayName }}
+                          <!-- Trading ka darja — taaki buyer galti se supplier na ban jaye -->
+                          @if (c.tradingType) {
+                            <span class="ml-1 px-1.5 py-0.5 rounded text-[10px] font-bold"
+                                  [class]="c.tradingType === 'buyer' ? 'bg-green-100 text-green-700'
+                                         : c.tradingType === 'seller' ? 'bg-blue-100 text-blue-700'
+                                         : 'bg-purple-100 text-purple-700'">
+                              Trading: {{ c.tradingType === 'seller' ? 'SUPPLIER' : c.tradingType === 'both' ? 'DONO' : 'BUYER' }}
+                            </span>
+                          }
+                        </div>
+                        <div class="text-xs text-gray-500 truncate">{{ c.phone || '—' }} · {{ c.gst || 'No GST' }} · {{ c.city || '' }}</div>
                       </div>
-                      <button (click)="linkContact(c)" [disabled]="linkingId() === c.contactId"
-                              class="btn-primary text-xs px-3 py-1">
-                        {{ linkingId() === c.contactId ? '...' : '+ Add' }}
-                      </button>
+                      <div class="flex gap-1 shrink-0">
+                        @if (c.isBazaarSupplier) {
+                          <span class="text-[10px] px-2 py-1 rounded bg-blue-50 text-blue-400 border border-blue-100">Supplier ✓</span>
+                        } @else {
+                          <button (click)="linkContact(c, 'supplier')" [disabled]="linkingId() === c.contactId"
+                                  class="text-xs px-2 py-1 rounded font-bold bg-blue-100 text-blue-700 hover:bg-blue-200 border border-blue-300">
+                            {{ linkingId() === c.contactId ? '...' : '+ Supplier' }}
+                          </button>
+                        }
+                        @if (c.isBazaarBuyer) {
+                          <span class="text-[10px] px-2 py-1 rounded bg-green-50 text-green-400 border border-green-100">Buyer ✓</span>
+                        } @else {
+                          <button (click)="linkContact(c, 'buyer')" [disabled]="linkingId() === c.contactId"
+                                  class="text-xs px-2 py-1 rounded font-bold bg-green-100 text-green-700 hover:bg-green-200 border border-green-300">
+                            {{ linkingId() === c.contactId ? '...' : '+ Buyer' }}
+                          </button>
+                        }
+                      </div>
                     </div>
                   }
                 }
@@ -275,6 +301,7 @@ export class SuppliersDirectoryComponent {
   }
 
   private svc = inject(SuppliersService);
+  private buyersSvc = inject(BuyersService);
   private http = inject(HttpClient);
   private toast = inject(ToastService);
   addMenuOpen = signal(false);
@@ -301,13 +328,24 @@ export class SuppliersDirectoryComponent {
       error: () => this.linkable.set([])
     });
   }
-  linkContact(c: LinkableContact) {
+  // kind: 'supplier' ya 'buyer' — jo button dabaya wahi darja milega (pehle sab supplier ban jate the)
+  linkContact(c: LinkableContact, kind: 'supplier' | 'buyer') {
     this.linkingId.set(c.contactId);
-    this.svc.addFromContact(c.contactId).subscribe({
+    const call = kind === 'supplier'
+      ? this.svc.addFromContact(c.contactId)
+      : this.buyersSvc.addFromContact(c.contactId);
+    call.subscribe({
       next: () => {
-        this.toast.success(`${c.displayName} Directory me add ho gaya!`);
+        this.toast.success(`${c.displayName} ${kind === 'supplier' ? 'Supplier' : 'Buyer'} directory me add ho gaya!`);
         this.linkingId.set(null);
-        this.linkable.update(l => l.filter(x => x.contactId !== c.contactId));
+        // Row par ✓ lagao; dono ban gaya to row hata do
+        this.linkable.update(l => l
+          .map(x => x.contactId === c.contactId
+            ? { ...x,
+                isBazaarSupplier: x.isBazaarSupplier || kind === 'supplier',
+                isBazaarBuyer: x.isBazaarBuyer || kind === 'buyer' }
+            : x)
+          .filter(x => !(x.isBazaarSupplier && x.isBazaarBuyer)));
         this.load();
       },
       error: (e) => {

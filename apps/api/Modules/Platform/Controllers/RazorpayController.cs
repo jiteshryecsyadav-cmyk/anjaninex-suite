@@ -124,6 +124,42 @@ public class RazorpayController : ControllerBase
         if (dto.Amount <= 0) return BadRequest(new { error = "Amount galat." });
         var firmId = CurrentFirmId;
 
+        // 🔐 ASLI RAKAM RAZORPAY SE POOCHHO — client ki bheji amount par kabhi bharosa nahi.
+        // (Warna ₹1 ka payment karke "₹5,00,000 aaya" bola ja sakta tha — wallet muft bhar jata.)
+        decimal verifiedAmount;
+        try
+        {
+            var (keyId2, secret2, _) = await LoadKeysAsync();
+            using var pr = new HttpRequestMessage(HttpMethod.Get,
+                $"https://api.razorpay.com/v1/payments/{Uri.EscapeDataString(dto.PaymentId)}");
+            pr.Headers.Authorization = new AuthenticationHeaderValue("Basic",
+                Convert.ToBase64String(Encoding.ASCII.GetBytes($"{keyId2}:{secret2}")));
+            var presp = await Http.SendAsync(pr);
+            var ptext = await presp.Content.ReadAsStringAsync();
+            if (!presp.IsSuccessStatusCode)
+                return BadRequest(new { error = "Payment verify nahi ho paya — thodi der me try karo ya support se sampark karo." });
+
+            using var pdoc = JsonDocument.Parse(ptext);
+            var root = pdoc.RootElement;
+            var status = root.TryGetProperty("status", out var st) ? st.GetString() : null;
+            var ordId = root.TryGetProperty("order_id", out var oid) ? oid.GetString() : null;
+            var paise = root.TryGetProperty("amount", out var am) ? am.GetInt64() : 0;
+
+            if (!string.Equals(status, "captured", StringComparison.OrdinalIgnoreCase))
+                return BadRequest(new { error = $"Payment abhi poora nahi hua (status: {status}). Paisa kata ho to support se sampark karo." });
+            if (!string.Equals(ordId, dto.OrderId, StringComparison.Ordinal))
+                return BadRequest(new { error = "Payment aur order aapas me nahi milte." });
+            if (paise <= 0)
+                return BadRequest(new { error = "Payment ki rakam nahi mili." });
+
+            verifiedAmount = paise / 100m;
+        }
+        catch
+        {
+            return BadRequest(new { error = "Payment verify nahi ho paya — thodi der me try karo ya support se sampark karo." });
+        }
+        dto = dto with { Amount = verifiedAmount };   // aage sab jagah ASLI rakam hi chalegi
+
         // Dedupe: same payment_id pehle process ho chuka?
         await using (var chk = await CmdAsync(
             "SELECT 1 FROM platform.payment_requests WHERE reference = @ref AND method = 'razorpay' LIMIT 1"))

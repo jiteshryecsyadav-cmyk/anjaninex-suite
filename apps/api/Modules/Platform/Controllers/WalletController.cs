@@ -41,12 +41,17 @@ public class WalletController : ControllerBase
         return Ok(entries);
     }
 
+    // 🔐 SIRF PLATFORM ADMIN — pehle koi bhi firm-owner apne wallet me muft paisa daal
+    // sakta tha (bina payment ke!). Ab firm UPI/manual se paisa bheje to "claim" banti hai
+    // (payment_requests) jise sadmin verify karke approve karta hai; Razorpay wala rasta
+    // apne-aap verify hota hai (asli rakam Razorpay se poochh kar).
     [HttpPost("recharge")]
-    [HasPermission("settings.wallet.recharge.firm")]
+    [HasPermission("platform.firm.edit.platform")]
     public async Task<IActionResult> Recharge([FromBody] RechargeDto dto)
     {
-        await _wallet.Recharge(CurrentFirmId, dto.Amount, dto.Source ?? "manual", dto.Reference ?? "", CurrentUserId, dto.Gstin);
-        var newBalance = await _wallet.GetBalance(CurrentFirmId);
+        var target = dto.FirmId ?? CurrentFirmId;
+        await _wallet.Recharge(target, dto.Amount, dto.Source ?? "manual", dto.Reference ?? "", CurrentUserId, dto.Gstin);
+        var newBalance = await _wallet.GetBalance(target);
         return Ok(new { success = true, newBalance });
     }
 
@@ -80,5 +85,5 @@ public class WalletController : ControllerBase
     }
 }
 
-public record RechargeDto(decimal Amount, string? Source, string? Reference, string? Gstin);
+public record RechargeDto(decimal Amount, string? Source, string? Reference, string? Gstin, Guid? FirmId = null);
 public record UseServiceDto(string Code, decimal Units, string? Reference);

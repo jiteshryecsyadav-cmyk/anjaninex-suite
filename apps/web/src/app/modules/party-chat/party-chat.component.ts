@@ -422,8 +422,12 @@ export class PartyChatComponent {
   linkify(body: string): SafeHtml {
     let v = this.linkCache.get(body);
     if (!v) {
-      const esc = body.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-      const html = esc.replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" style="color:#2563EB;text-decoration:underline">$1</a>');
+      // 🔐 QUOTES bhi escape — warna link ke andar onmouseover=... daal kar script chal
+      // sakti thi (party ka message firm ke logged-in session me chalta). rel bhi zaroori.
+      const esc = body.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+      const html = esc.replace(/(https?:\/\/[^\s"'<>]+)/g,
+        (m: string) => `<a href="${encodeURI(m)}" target="_blank" rel="noopener noreferrer nofollow" style="color:#2563EB;text-decoration:underline">${m}</a>`);
       v = this.sanitizer.bypassSecurityTrustHtml(html);
       this.linkCache.set(body, v);
     }

@@ -583,19 +583,33 @@ public class PartyChatPublicController : ControllerBase
         if (firms.Count == 0)
             return BadRequest(new { error = "Ye number kisi bhi agency ke Party Master me nahi mila — apni agency se number judwayein" });
 
+        // 🔐 FLOOD ki rok — 15 min me 3 se zyada OTP nahi
+        await using (var fc = await CmdAsync(@"
+            SELECT sends FROM platform.party_portal_otps
+            WHERE phone = @ph AND created_at > now() - interval '15 minutes'"))
+        {
+            fc.Parameters.Add(new NpgsqlParameter("ph", phone));
+            if (await fc.ExecuteScalarAsync() is int prev && prev >= 3)
+                return BadRequest(new { error = "Bahut baar OTP manga — 15 minute baad dobara try karein" });
+        }
+
         var otp = RandomNumberGenerator.GetInt32(100000, 999999).ToString();
         await using (var cmd = await CmdAsync(@"
-            INSERT INTO platform.party_portal_otps (phone, otp_hash, expires_at, attempts)
-            VALUES (@ph, @h, now() + interval '10 minutes', 0)
+            INSERT INTO platform.party_portal_otps (phone, otp_hash, expires_at, attempts, sends)
+            VALUES (@ph, @h, now() + interval '10 minutes', 0, 1)
             ON CONFLICT (phone) DO UPDATE
-              SET otp_hash = @h, expires_at = now() + interval '10 minutes', attempts = 0, created_at = now()"))
+              SET otp_hash = @h, expires_at = now() + interval '10 minutes', attempts = 0, created_at = now(),
+                  sends = CASE WHEN platform.party_portal_otps.created_at > now() - interval '15 minutes'
+                               THEN platform.party_portal_otps.sends + 1 ELSE 1 END"))
         {
             cmd.Parameters.Add(new NpgsqlParameter("ph", phone));
             cmd.Parameters.Add(new NpgsqlParameter("h", Hash(otp)));
             await cmd.ExecuteNonQueryAsync();
         }
         var sent = await TrySendOtpWhatsApp(phone, otp, "Vyapaar Setu");
-        return Ok(new { otpSent = sent, firmsCount = firms.Count, otpPreview = sent ? null : otp });
+        // 🔐 OTP sirf DEV me dikhta hai — production me kabhi nahi (warna koi bhi kisi ki chat khol le)
+        return Ok(new { otpSent = sent, firmsCount = firms.Count,
+                        otpPreview = (!sent && _env.IsDevelopment()) ? otp : null });
     }
 
     // ---- PORTAL 2) OTP verify → portal token + agencies ki list ----
@@ -822,12 +836,25 @@ public class PartyChatPublicController : ControllerBase
             firmName = (await fc.ExecuteScalarAsync()) as string;
         }
 
+        // 🔐 FLOOD ki rok — 15 min me 3 se zyada OTP nahi (na spam, na anginat guess-rounds)
+        await using (var fc = await CmdAsync(@"
+            SELECT sends FROM platform.party_chat_otps
+            WHERE firm_id = @f AND phone = @ph AND created_at > now() - interval '15 minutes'"))
+        {
+            fc.Parameters.Add(new NpgsqlParameter("f", dto.FirmId));
+            fc.Parameters.Add(new NpgsqlParameter("ph", phone));
+            if (await fc.ExecuteScalarAsync() is int prev && prev >= 3)
+                return BadRequest(new { error = "Bahut baar OTP manga — 15 minute baad dobara try karein" });
+        }
+
         var otp = RandomNumberGenerator.GetInt32(100000, 999999).ToString();
         await using (var cmd = await CmdAsync(@"
-            INSERT INTO platform.party_chat_otps (firm_id, phone, otp_hash, expires_at, attempts)
-            VALUES (@f, @ph, @h, now() + interval '10 minutes', 0)
+            INSERT INTO platform.party_chat_otps (firm_id, phone, otp_hash, expires_at, attempts, sends)
+            VALUES (@f, @ph, @h, now() + interval '10 minutes', 0, 1)
             ON CONFLICT (firm_id, phone) DO UPDATE
-              SET otp_hash = @h, expires_at = now() + interval '10 minutes', attempts = 0, created_at = now()"))
+              SET otp_hash = @h, expires_at = now() + interval '10 minutes', attempts = 0, created_at = now(),
+                  sends = CASE WHEN platform.party_chat_otps.created_at > now() - interval '15 minutes'
+                               THEN platform.party_chat_otps.sends + 1 ELSE 1 END"))
         {
             cmd.Parameters.Add(new NpgsqlParameter("f", dto.FirmId));
             cmd.Parameters.Add(new NpgsqlParameter("ph", phone));
@@ -842,7 +869,8 @@ public class PartyChatPublicController : ControllerBase
             partyName = party.Value.name,
             // PILOT ONLY: WA provider off ho to OTP yahi dikha do taaki flow ruke nahi.
             // Production me wa_provider_settings enable karo — fir ye null hi rahega.
-            otpPreview = sent ? null : otp
+            // 🔐 OTP sirf DEV me — production me kabhi screen par nahi
+            otpPreview = (!sent && _env.IsDevelopment()) ? otp : null
         });
     }
 

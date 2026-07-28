@@ -86,7 +86,7 @@ import { UppercaseDirective } from '../../../shared/uppercase.directive';
       <form [formGroup]="form" (ngSubmit)="save()" class="card flex flex-col gap-4">
         @if (editingId && contactId) {
           <div class="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-800 flex items-center justify-between">
-            <span>🔒 Naam / Phone / GST common data hai — yahan lock hai. Badalne ke liye Core Master me jao.</span>
+            <span>🔗 Naam / Phone / GST common data hai — yahan badloge to HAR JAGAH badlega (Core Master, Trading, Chat sab).</span>
             <a [routerLink]="['/core-master', contactId]" class="font-bold text-[#5c1a8b] underline whitespace-nowrap ml-2">🗂️ Edit in Core Master</a>
           </div>
         }

@@ -246,7 +246,32 @@ public class BuyerService : IBuyerService
     public async Task<BuyerDetailDto> Update(Guid id, CreateBuyerDto dto)
     {
         var buyer = await _db.BuyerProfiles.SingleAsync(b => b.Id == id);
-        // Common fields are edited in Core Master, NOT here — only buyer-specific detail.
+
+        // COMMON fields (naam/mobile/GST/PAN/email/address) bhi yahin se update — Supplier
+        // wale Update jaisa. Pehle ye chhodta tha: user mobile badalta tha, 200 OK aata
+        // tha, par asal me kuch save nahi hota tha ("edit nahi ho raha").
+        var contact = await _db.Contacts.SingleAsync(c => c.Id == buyer.ContactId);
+        contact.DisplayName = Namokara.Api.Common.Text.NameCase.TitleCase(dto.DisplayName);
+        contact.LegalName = Namokara.Api.Common.Text.NameCase.TitleCaseOrNull(dto.LegalName);
+        contact.PhonePrimary = dto.Phone;
+        if (dto.WaPhone != null) contact.WaBuyer = string.IsNullOrWhiteSpace(dto.WaPhone) ? null : dto.WaPhone.Trim();
+        contact.EmailPrimary = dto.Email;
+        // Khali string DB ke format-CHECK se takrati hai — khali ho to NULL hi jaye
+        contact.GstNumber = string.IsNullOrWhiteSpace(dto.Gst) ? null : dto.Gst.Trim().ToUpperInvariant();
+        contact.PanNumber = string.IsNullOrWhiteSpace(dto.Pan) ? null : dto.Pan.Trim().ToUpperInvariant();
+        if (!string.IsNullOrEmpty(dto.Address))
+        {
+            var addr = new {
+                type = "billing",
+                line1 = dto.Address,
+                city = dto.City ?? "",
+                state = dto.State ?? "",
+                pincode = dto.Pincode ?? ""
+            };
+            contact.Addresses = $"[{JsonSerializer.Serialize(addr)}]";
+        }
+        contact.UpdatedAt = DateTimeOffset.UtcNow;
+
         buyer.BuyerType = dto.BuyerType;
         buyer.BrandName = dto.BrandName;
         buyer.Categories = JsonSerializer.Serialize(dto.CategoryIds ?? new());

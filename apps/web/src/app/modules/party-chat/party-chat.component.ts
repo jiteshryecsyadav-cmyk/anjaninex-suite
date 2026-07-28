@@ -204,7 +204,8 @@ import { PhotoLightboxComponent } from '../../shared/photo-lightbox.component';
                       <!-- Tap = poori screen + zoom (lightbox) -->
                       <img [src]="fileUrl(m.attachmentUrl!)" class="rounded-lg max-w-full max-h-64 mb-1"
                            style="cursor:zoom-in" alt="photo"
-                           (click)="lb.open(fileUrl(m.attachmentUrl!))">
+                           (click)="lb.open(fileUrl(m.attachmentUrl!))"
+                           (load)="scrollDown()">
                     } @else if (m.attachmentType === 'document') {
                       <a [href]="fileUrl(m.attachmentUrl!)" target="_blank"
                          class="flex items-center gap-2 bg-white/70 rounded-lg px-2 py-2 mb-1 no-underline text-[#1B2E5C] font-semibold">
@@ -740,14 +741,17 @@ export class PartyChatComponent {
   @ViewChild('scrollBox') scrollBox?: ElementRef<HTMLDivElement>;
 
   /** WhatsApp jaisa scroll: chat khulte/apna msg bhejte hi NEECHE; purane padh rahe ho
-   *  aur naya aa jaye to jhatka nahi (sirf neeche ke paas ho tab hi khiske). */
-  private scrollDown(force = false) {
-    setTimeout(() => {
+   *  aur naya aa jaye to jhatka nahi. PHOTOS der se load hoti hain isliye 3 baar
+   *  koshish + har photo load par bhi (img load) se dobara. Template se bhi call hota
+   *  hai isliye public. */
+  scrollDown(force = false) {
+    const go = () => {
       const el = this.scrollBox?.nativeElement;
       if (!el) return;
-      const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 160;
+      const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 200;
       if (force || nearBottom) el.scrollTop = el.scrollHeight;
-    });
+    };
+    setTimeout(go); setTimeout(go, 150); setTimeout(go, 450);
   }
 
   loadMsgs(threadId: string, jump = false) {

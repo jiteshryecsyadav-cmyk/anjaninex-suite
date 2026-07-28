@@ -149,7 +149,8 @@ interface PMsg {
                   <!-- Tap = poori screen + pinch ZOOM (lightbox) -->
                   <img [src]="fileUrl(m.attachmentUrl!)" class="pc-img" alt="photo"
                        style="cursor:zoom-in"
-                       (click)="lb.open(fileUrl(m.attachmentUrl!)); $event.stopPropagation()">
+                       (click)="lb.open(fileUrl(m.attachmentUrl!)); $event.stopPropagation()"
+                       (load)="scrollDown()">
                 } @else if (m.attachmentType === 'document') {
                   <a [href]="fileUrl(m.attachmentUrl!)" target="_blank" class="pc-doc">📄 {{ m.attachmentName || 'Document' }}</a>
                 }
@@ -541,14 +542,16 @@ export class PartyChatPublicComponent {
   @ViewChild('chatBox') chatBox?: ElementRef<HTMLDivElement>;
   private firstLoad = true;
 
-  /** WhatsApp jaisa: khulte/bhejte hi NEECHE; purane padhte waqt naya aaye to jhatka nahi */
-  private scrollDown(force = false) {
-    setTimeout(() => {
+  /** WhatsApp jaisa: khulte/bhejte hi NEECHE; purane padhte waqt naya aaye to jhatka nahi.
+   *  Photos der se load hoti hain — 3 staged koshish + har (img load) par dobara. */
+  scrollDown(force = false) {
+    const go = () => {
       const el = this.chatBox?.nativeElement;
       if (!el) return;
-      const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 160;
+      const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 200;
       if (force || nearBottom) el.scrollTop = el.scrollHeight;
-    });
+    };
+    setTimeout(go); setTimeout(go, 150); setTimeout(go, 450);
   }
 
   loadMsgs(jump = false) {

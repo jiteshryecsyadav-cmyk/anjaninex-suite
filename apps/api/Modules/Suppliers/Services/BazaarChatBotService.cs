@@ -172,6 +172,49 @@ public class BazaarChatBotService : IBazaarChatBotService
         if (state == "ASK_RATE")
         { await HandleRateReply(threadId, firmId, partyName, phone10, text, ctx); return; }
 
+        // SUPPLIER: "BZ-XXXXXX 1050" — Photo-ID ke saath rate (kai photos me bhi zero confusion).
+        // ID ke andar ke ank rate na ban jayein isliye ID hata kar number padhte hain.
+        var idm = Regex.Match(text, @"\b(?:BZ|NAM)-([0-9A-Za-z]{6})\b", RegexOptions.IgnoreCase);
+        if (idm.Success)
+        {
+            var numTxt = text.Replace(idm.Value, " ");
+            if (SmartNumber(numTxt) > 0 && await FindSupplierByPhone(firmId, phone10) is not null)
+            {
+                var pref = idm.Groups[1].Value.ToLowerInvariant();
+                Guid pInc = Guid.Empty; string pStatus = ""; decimal pRate2 = 0; string? pTc = null;
+                await using (var pc = await Cmd(@"
+                    SELECT id, status, rate, track_code FROM wa.incoming
+                    WHERE pchat_thread_id = @t AND replace(id::text, '-', '') LIKE @p || '%'
+                    ORDER BY created_at DESC LIMIT 1"))
+                {
+                    pc.Parameters.Add(new NpgsqlParameter("t", threadId));
+                    pc.Parameters.Add(new NpgsqlParameter("p", pref));
+                    await using var prr = await pc.ExecuteReaderAsync();
+                    if (await prr.ReadAsync())
+                    {
+                        pInc = prr.GetGuid(0);
+                        pStatus = prr.IsDBNull(1) ? "" : prr.GetString(1);
+                        pRate2 = prr.IsDBNull(2) ? 0 : prr.GetDecimal(2);
+                        pTc = prr.IsDBNull(3) ? null : prr.GetString(3);
+                    }
+                }
+                if (pInc != Guid.Empty && pStatus == "awaiting_rate")
+                {
+                    await HandleRateReply(threadId, firmId, partyName, phone10, numTxt,
+                        new Dictionary<string, JsonElement>
+                        { ["incoming_id"] = JsonSerializer.SerializeToElement(pInc.ToString()) });
+                    return;
+                }
+                if (pInc != Guid.Empty && pStatus == "processed")
+                {
+                    await BotReply(threadId, firmId,
+                        $"Us photo ka rate ₹{pRate2:0.##} pehle hi pakka hai (Code: {pTc}).\nNaya rate chahiye to photo DOBARA bhejein caption ke saath.");
+                    return;
+                }
+                // apni chat me aisi photo nahi mili — neeche order-code wale raste par girne do
+            }
+        }
+
         var code = FindTrackCode(text);
         if (code != null)
         { await StartBuyerOrder(threadId, firmId, partyName, phone10, code); return; }
@@ -284,10 +327,30 @@ public class BazaarChatBotService : IBazaarChatBotService
         }
 
         await SetState(threadId, "ASK_RATE", new Dictionary<string, object?> { ["incoming_id"] = incId });
-        // Pichhli photo ka rate abhi baki tha aur nayi aa gayi? — saaf bata do, chupchaap mat chhodo
-        await BotReply(threadId, firmId, prevState == "ASK_RATE"
-            ? "📷 Nayi photo mil gayi — PICHHLI photo chhod di!\nAb IS photo ka *rate* bhejein (sirf number).\n💡 Tip: har photo ke caption me \"Rate 699\" likh kar bhejo to rukna nahi padega — sab ek saath nikal jayengi."
-            : "📷 Photo mil gayi! Is fabric ka *rate* kya hai?\n(sirf number bhejein, jaise 699)");
+
+        // HAR PHOTO KI APNI ID — "BZ-" + id ke pehle 6 akshar (rate lagte hi yahi code
+        // BZ-XXXXXX-R749 ban jata hai). Kai photos ek saath hon to bhi har ek ka rate
+        // ID se set ho sakta hai: "BZ-XXXXXX 850".
+        var newId = "BZ-" + incId.ToString("N")[..6].ToUpperInvariant();
+        var pendingIds = new List<string>();
+        await using (var pq = await Cmd(@"
+            SELECT id FROM wa.incoming
+            WHERE pchat_thread_id = @t AND status = 'awaiting_rate'
+              AND created_at > now() - interval '24 hours'
+            ORDER BY created_at DESC LIMIT 5"))
+        {
+            pq.Parameters.Add(new NpgsqlParameter("t", threadId));
+            await using var pr = await pq.ExecuteReaderAsync();
+            while (await pr.ReadAsync())
+                pendingIds.Add("BZ-" + pr.GetGuid(0).ToString("N")[..6].ToUpperInvariant());
+        }
+
+        await BotReply(threadId, firmId, pendingIds.Count > 1
+            ? $"📷 Nayi photo mil gayi! (Photo ID: {newId})\n" +
+              $"Rate ke intezar me: {string.Join(", ", pendingIds)}\n\n" +
+              $"Har photo ka rate aise bhejein:\n{newId} 850\n" +
+              "(ya akela number = sabse NAYI photo ka rate)\n💡 Caption me \"Rate 699\" likho to poochhna hi nahi padega."
+            : $"📷 Photo mil gayi! (Photo ID: {newId})\nIs fabric ka *rate* kya hai?\n(sirf number bhejein, jaise 699)");
     }
 
     private async Task HandleRateReply(Guid threadId, Guid firmId, string partyName, string phone10, string text, Dictionary<string, JsonElement> ctx)

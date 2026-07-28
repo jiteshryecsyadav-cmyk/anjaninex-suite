@@ -68,7 +68,9 @@ public record OrderDetailDto(
     string? Notes,
     List<OrderLineDto> Lines,
     string? SupplierGroupName = null,
-    string? PreparedBy = null);
+    string? PreparedBy = null,
+    string? DocUrl = null,        // order ke saath juda doc/photo (bazaar stock-photo)
+    string? DocName = null);
 
 public record CreateOrderDto(
     string OrderType,
@@ -207,7 +209,8 @@ public class OrderService : IOrderService
                 l.Qty, l.Unit, l.Rate, l.Rd, l.SgstPct, l.CgstPct,
                 l.TaxableAmount, l.TaxAmount, l.TotalAmount,
                 l.Pcs, l.Meters, l.RateBasis)).ToList(),
-            SupplierGroupName: o.SupplierGroupName, PreparedBy: preparedBy);
+            SupplierGroupName: o.SupplierGroupName, PreparedBy: preparedBy,
+            DocUrl: o.DocUrl, DocName: o.DocName);
     }
 
     public async Task<OrderDetailDto> Create(CreateOrderDto dto, Guid firmId, Guid branchId, Guid userId)

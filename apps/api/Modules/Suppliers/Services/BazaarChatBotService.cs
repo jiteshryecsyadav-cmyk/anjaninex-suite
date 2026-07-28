@@ -94,20 +94,28 @@ public class BazaarChatBotService : IBazaarChatBotService
         }
         if (text.Length == 0) return;
 
-        // 📌 PHOTO PAR REPLY (quote) — buyer ne photo quote karke likha ("700" / "order") to
-        // quoted message se hi photo ka code nikaal lo: KAUNSI photo, kabhi confusion nahi.
-        if (replyToId.HasValue && state != "ASK_RATE" && FindTrackCode(text) == null)
+        // 📌 PHOTO PAR REPLY (quote) — reply hi photo ki PEHCHAN hai:
+        //   • BUYER broadcast-photo par reply kare ("700"/"order") → usi photo ka order/bhav
+        //   • SUPPLIER APNI photo par reply kare ("1050") → usi photo ka RATE set
+        if (replyToId.HasValue && FindTrackCode(text) == null)
         {
-            string? quotedBody = null;
+            string? quotedBody = null, quotedAttach = null;
             await using (var qc = await Cmd(
-                "SELECT body FROM platform.party_chat_messages WHERE id = @m AND thread_id = @t"))
+                "SELECT body, attachment_url FROM platform.party_chat_messages WHERE id = @m AND thread_id = @t"))
             {
                 qc.Parameters.Add(new NpgsqlParameter("m", replyToId.Value));
                 qc.Parameters.Add(new NpgsqlParameter("t", threadId));
-                quotedBody = (await qc.ExecuteScalarAsync()) as string;
+                await using var qr = await qc.ExecuteReaderAsync();
+                if (await qr.ReadAsync())
+                {
+                    quotedBody = qr.IsDBNull(0) ? null : qr.GetString(0);
+                    quotedAttach = qr.IsDBNull(1) ? null : qr.GetString(1);
+                }
             }
+
+            // BUYER path — quoted message me ORDER code hai
             var quotedCode = FindTrackCode(quotedBody);
-            if (quotedCode != null
+            if (quotedCode != null && state != "ASK_RATE"
                 && !string.Equals(quotedCode, CtxStr(ctx, "track_code"), StringComparison.OrdinalIgnoreCase))
             {
                 await ClearState(threadId);
@@ -117,6 +125,43 @@ public class BazaarChatBotService : IBazaarChatBotService
                 if (st2 == "ORDER_CONFIRM" && text.Length > 0)
                     await HandleOrderReply(threadId, firmId, text, st2, ctx2);
                 return;
+            }
+
+            // SUPPLIER path — apni bheji photo par reply + number = USI photo ka rate
+            if (quotedCode == null && quotedAttach != null && SmartNumber(text) > 0
+                && await FindSupplierByPhone(firmId, phone10) is not null)
+            {
+                var fname = quotedAttach.Split('/').Last();
+                Guid qInc = Guid.Empty; string qStatus = ""; decimal qRate = 0; string? qTc = null;
+                await using (var ic = await Cmd(@"
+                    SELECT id, status, rate, track_code FROM wa.incoming
+                    WHERE pchat_thread_id = @t AND image_path LIKE @pat
+                    ORDER BY created_at DESC LIMIT 1"))
+                {
+                    ic.Parameters.Add(new NpgsqlParameter("t", threadId));
+                    ic.Parameters.Add(new NpgsqlParameter("pat", "%" + fname));
+                    await using var ir = await ic.ExecuteReaderAsync();
+                    if (await ir.ReadAsync())
+                    {
+                        qInc = ir.GetGuid(0);
+                        qStatus = ir.IsDBNull(1) ? "" : ir.GetString(1);
+                        qRate = ir.IsDBNull(2) ? 0 : ir.GetDecimal(2);
+                        qTc = ir.IsDBNull(3) ? null : ir.GetString(3);
+                    }
+                }
+                if (qInc != Guid.Empty && qStatus == "awaiting_rate")
+                {
+                    await HandleRateReply(threadId, firmId, partyName, phone10, text,
+                        new Dictionary<string, JsonElement>
+                        { ["incoming_id"] = JsonSerializer.SerializeToElement(qInc.ToString()) });
+                    return;
+                }
+                if (qInc != Guid.Empty && qStatus == "processed")
+                {
+                    await BotReply(threadId, firmId,
+                        $"Is photo ka rate ₹{qRate:0.##} pehle hi pakka ho chuka hai (Code: {qTc}).\nNaya rate chahiye to photo DOBARA bhejein caption ke saath.");
+                    return;
+                }
             }
         }
 
@@ -130,6 +175,55 @@ public class BazaarChatBotService : IBazaarChatBotService
         var code = FindTrackCode(text);
         if (code != null)
         { await StartBuyerOrder(threadId, firmId, partyName, phone10, code); return; }
+
+        // ANATH PHOTO ka rate — supplier ne AKELA SHUDDH NUMBER bheja (jaise "1050") aur
+        // pichhle 60 min me isi chat ki koi bina-rate photo padi ho, to wahi uska rate hai.
+        // (Asli case: 2 photo jaldi-jaldi aayin, pehli ka rate baad me akela aaya — kho jata tha.)
+        if (Regex.IsMatch(text, @"^(?:rate\s*)?\d+(?:\.\d+)?$", RegexOptions.IgnoreCase)
+            && await FindSupplierByPhone(firmId, phone10) is not null)
+        {
+            Guid orphanId = Guid.Empty;
+            await using (var oc = await Cmd(@"
+                SELECT id FROM wa.incoming
+                WHERE pchat_thread_id = @t AND status = 'awaiting_rate'
+                  AND created_at > now() - interval '60 minutes'
+                ORDER BY created_at DESC LIMIT 1"))
+            {
+                oc.Parameters.Add(new NpgsqlParameter("t", threadId));
+                if (await oc.ExecuteScalarAsync() is Guid og) orphanId = og;
+            }
+            if (orphanId != Guid.Empty)
+            {
+                await HandleRateReply(threadId, firmId, partyName, phone10, text,
+                    new Dictionary<string, JsonElement>
+                    {
+                        ["incoming_id"] = JsonSerializer.SerializeToElement(orphanId.ToString())
+                    });
+                return;
+            }
+        }
+
+        // Buyer ne sirf "order" likha (bina code) — jo AAKHRI photo USI ko bheji thi, wahi
+        if (Regex.IsMatch(text, @"^(order|book)\b", RegexOptions.IgnoreCase)
+            && await FindBuyerByPhone(firmId, phone10) is not null)
+        {
+            string? lastCode = null;
+            await using (var fc = await Cmd(@"
+                SELECT f.track_code FROM wa.forwards f
+                JOIN wa.incoming i ON i.id = f.incoming_id
+                WHERE i.firm_id = @f AND f.to_phone = @p AND f.sent_at > now() - interval '48 hours'
+                ORDER BY f.sent_at DESC LIMIT 1"))
+            {
+                fc.Parameters.Add(new NpgsqlParameter("f", firmId));
+                fc.Parameters.Add(new NpgsqlParameter("p", phone10));
+                lastCode = (await fc.ExecuteScalarAsync()) as string;
+            }
+            if (lastCode != null)
+            { await StartBuyerOrder(threadId, firmId, partyName, phone10, lastCode); return; }
+            await BotReply(threadId, firmId,
+                "Kaunsi photo ka order? Photo ke neeche 🛒 ORDER button dabaein, ya photo par reply karke 'order' likhein.");
+            return;
+        }
 
         // Buyer search — "Cotton 100-150" jaisa saaf pattern ho tabhi
         if ((RangeRx.IsMatch(text) || FabricRx.IsMatch(text))
@@ -198,7 +292,7 @@ public class BazaarChatBotService : IBazaarChatBotService
 
     private async Task HandleRateReply(Guid threadId, Guid firmId, string partyName, string phone10, string text, Dictionary<string, JsonElement> ctx)
     {
-        var rate = ParsePlainNumber(text);
+        var rate = SmartNumber(text);
         if (rate <= 0) { await BotReply(threadId, firmId, "Sirf number bhejein, jaise 699"); return; }
 
         var incId = CtxGuid(ctx, "incoming_id");
@@ -397,7 +491,7 @@ public class BazaarChatBotService : IBazaarChatBotService
             var pAmt = CtxDec(ctx, "amount");
             var pCode = CtxStr(ctx, "order_code");
 
-            if (YesWords.Contains(low))
+            if (IsYes(low))
             {
                 if (oid != Guid.Empty)
                     await using (var cmd = await Cmd(@"
@@ -418,7 +512,7 @@ public class BazaarChatBotService : IBazaarChatBotService
                         $"🎉 Buyer maan gaya! Order {pCode} ab {offerQty:0.##} {pUnit} ka.\n🕐 AGENCY ki manzoori ka intezar — approve hote hi DISPATCH ka message milega.");
                 return;
             }
-            if (NoWords.Contains(low))
+            if (IsNo(low))
             {
                 if (oid != Guid.Empty)
                     await using (var cmd = await Cmd("UPDATE wa.orders SET status = 'rejected', updated_at = now() WHERE id = @o"))
@@ -448,7 +542,7 @@ public class BazaarChatBotService : IBazaarChatBotService
             var unit2 = CtxStr(ctx, "rate_unit") ?? "mtr";
             var cat2 = CtxStr(ctx, "category_name");
 
-            if (YesWords.Contains(low))
+            if (IsYes(low))
             {
                 // Sauda pakka is rate par → buyer se quantity (aage wahi purana flow)
                 var buyerThread = state == "ORDER_BARGAIN_SUP" ? otherThread : threadId;
@@ -466,7 +560,7 @@ public class BazaarChatBotService : IBazaarChatBotService
                         $"🤝 Rate ₹{offerRate:0.##}/{unit2} par sauda pakka — buyer quantity bata raha hai.");
                 return;
             }
-            if (NoWords.Contains(low))
+            if (IsNo(low))
             {
                 await ClearState(threadId);
                 if (otherThread != Guid.Empty) await ClearState(otherThread);
@@ -492,7 +586,7 @@ public class BazaarChatBotService : IBazaarChatBotService
                 }
                 return;
             }
-            var counter = ParsePlainNumber(text);
+            var counter = SmartNumber(text);
             if (counter > 0)
             {
                 // Naya rate saamne wale ko — ping-pong (jitni baar chaahe mol-bhav)
@@ -514,7 +608,7 @@ public class BazaarChatBotService : IBazaarChatBotService
             return;
         }
 
-        if (NoWords.Contains(low) && state != "ORDER_QTY")
+        if (IsNo(low) && state != "ORDER_QTY")
         {
             await ClearState(threadId);
             if (state == "ORDER_ACCEPT" && CtxGuid(ctx, "order_id") is var oid && oid != Guid.Empty)
@@ -533,14 +627,14 @@ public class BazaarChatBotService : IBazaarChatBotService
 
         if (state == "ORDER_CONFIRM")
         {
-            if (YesWords.Contains(low))
+            if (IsYes(low))
             {
                 await SetState(threadId, "ORDER_QTY", ToObjDict(ctx));
                 await BotReply(threadId, firmId, "Kitni quantity chahiye? (sirf number bhejein, jaise 500)");
                 return;
             }
             // BUYER ne NUMBER likha = rate ka mol-bhav ("₹999 nahi, 950 me do")
-            var rateOffer = ParsePlainNumber(text);
+            var rateOffer = SmartNumber(text);
             var listedRate = CtxDec(ctx, "rate");
             if (rateOffer > 0 && listedRate > 0)
             {
@@ -593,7 +687,7 @@ public class BazaarChatBotService : IBazaarChatBotService
 
         if (state == "ORDER_QTY")
         {
-            var qty = ParsePlainNumber(text);
+            var qty = SmartNumber(text);
             if (qty <= 0) { await BotReply(threadId, firmId, "Sirf number bhejein, jaise 500"); return; }
 
             var rate = CtxDec(ctx, "rate");
@@ -674,7 +768,7 @@ public class BazaarChatBotService : IBazaarChatBotService
                     });
                     await InsertBotMsg(supThread,
                         $"🛒 *Naya Order!* ({orderCode})\n{catName ?? "Fabric"} · ₹{rate:0.##}/{unit}\n" +
-                        $"Quantity: {qty:0.##} {unit}\nTotal: ₹{amount:0.##}\n\nIs order ko accept karte ho? (reply: yes / no)",
+                        $"Qty: {qty:0.##} {unit}\nTotal: ₹{amount:0.##}\n\nIs order ko accept karte ho? (reply: yes / no)",
                         null, null, null);
                     await TouchNotify(supThread, firmId);
                     notified = true;
@@ -691,9 +785,9 @@ public class BazaarChatBotService : IBazaarChatBotService
         if (state == "ORDER_ACCEPT")
         {
             // SUPPLIER ne NUMBER likha = kam quantity ka counter ("500 nahi, 300 bhej sakta hoon")
-            var qtyOffer = ParsePlainNumber(text);
+            var qtyOffer = SmartNumber(text);
             var askedQty = CtxDec(ctx, "quantity");
-            if (!YesWords.Contains(low) && qtyOffer > 0 && askedQty > 0 && qtyOffer < askedQty)
+            if (!IsYes(low) && qtyOffer > 0 && askedQty > 0 && qtyOffer < askedQty)
             {
                 var aRate = CtxDec(ctx, "rate");
                 var aUnit = CtxStr(ctx, "rate_unit") ?? "mtr";
@@ -718,7 +812,7 @@ public class BazaarChatBotService : IBazaarChatBotService
                 return;
             }
             // Number >= mangi hui qty = poora de sakta hai = accept hi hai
-            if (YesWords.Contains(low) || (qtyOffer > 0 && askedQty > 0 && qtyOffer >= askedQty))
+            if (IsYes(low) || (qtyOffer > 0 && askedQty > 0 && qtyOffer >= askedQty))
             {
                 var oid = CtxGuid(ctx, "order_id");
                 if (oid != Guid.Empty)
@@ -900,6 +994,26 @@ public class BazaarChatBotService : IBazaarChatBotService
         return m.Success && decimal.TryParse(m.Groups[1].Value, out var d) ? d : 0;
     }
 
+    // INSAAN JAISA PADHNA — "Rate 1050 hai", "₹1050", "1050 rs", "1050/mtr", "1050" sab chalega.
+    // Label (rate/₹/rs/@) mile to wahi number; warna message me EK HI number ho to wahi.
+    // Do+ number bina label = 0 (bot saaf poochh lega — galat pakadne se poochhna behtar).
+    private static decimal SmartNumber(string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return 0;
+        var clean = text.Replace(",", "");
+        var lm = LabeledRateRx.Match(clean);
+        if (lm.Success && decimal.TryParse(lm.Groups[1].Value, out var lv)) return lv;
+        var all = Regex.Matches(clean, @"\d+(?:\.\d+)?");
+        return all.Count == 1 && decimal.TryParse(all[0].Value, out var v) ? v : 0;
+    }
+
+    // HAAN ke sau roop: haan/ji/thik hai/pakka/chalega/manzoor/kar do/bhej do...
+    private static bool IsYes(string low) => Regex.IsMatch(low,
+        @"^(yes|y|haan|haanji|han|ha|ji|ok|okay|okey|thik|theek|sahi|pakka|chalega|manzoor|manjur|confirm|accept|done|kar do|kardo|bhej do|bhejdo|ho jayega)\b");
+    // NA ke sau roop: nahi/nhi/mat/ruko/cancel...
+    private static bool IsNo(string low) => Regex.IsMatch(low,
+        @"^(no|nahi|nahin|nhi|na|mat|cancel|reset|reject|ruko|band|rehne do)\b");
+
     private async Task<(decimal rate, string unit, Guid? catId, string? catName)> ExtractRate(Guid firmId, string? caption)
     {
         decimal rate = 0;
@@ -907,6 +1021,13 @@ public class BazaarChatBotService : IBazaarChatBotService
         {
             var m = LabeledRateRx.Match(caption.Replace(",", ""));
             if (m.Success) decimal.TryParse(m.Groups[1].Value, out rate);
+            // Caption me bas EK number ho (jaise "699") to wahi rate maan lo —
+            // par 10 se chhota nahi ("3 pic" jaisi ginti rate na ban jaye)
+            if (rate == 0)
+            {
+                var sn = SmartNumber(caption);
+                if (sn >= 10) rate = sn;
+            }
         }
         var unit = "mtr";
         if (!string.IsNullOrEmpty(caption))

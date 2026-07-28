@@ -265,6 +265,9 @@ public class Order
     [MaxLength(50)] public string? SupplierOrderNo { get; set; }
     [MaxLength(50)] public string? PaymentTerms { get; set; }
     [MaxLength(200)] public string? SupplierGroupName { get; set; }  // sister-concern group; firm bill par pakki
+    /// Order ke saath juda document/photo (jaise Bazaar Bot ki stock-photo) — migration 105
+    public string? DocUrl { get; set; }
+    public string? DocName { get; set; }
 
     public string? Notes { get; set; }
     public Guid CreatedBy { get; set; }

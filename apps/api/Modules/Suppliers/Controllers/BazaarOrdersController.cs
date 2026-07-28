@@ -155,6 +155,18 @@ public class BazaarOrdersController : ControllerBase
             Lines: new List<OrderLineDto> { line });
         var created = await _orders.Create(dto, CurrentFirmId, CurrentBranchId, CurrentUserId);
 
+        // 📷 Bazaar ki STOCK-PHOTO Trading order ke document me — dhundhni na pade
+        if (!string.IsNullOrEmpty(o.ImagePath))
+        {
+            var photoUrl = "/api/party-chat/public/file/" + o.ImagePath.Split('/', '\\').Last();
+            await using var pd = await Cmd(
+                "UPDATE trading.orders SET doc_url = @u, doc_name = @n WHERE id = @o");
+            pd.Parameters.Add(new NpgsqlParameter("u", photoUrl));
+            pd.Parameters.Add(new NpgsqlParameter("n", $"Bazaar photo — {o.TrackCode}.jpg"));
+            pd.Parameters.Add(new NpgsqlParameter("o", created.Id));
+            await pd.ExecuteNonQueryAsync();
+        }
+
         await using (var up = await Cmd(@"
             UPDATE wa.orders SET status = 'approved', approved_at = now(), approved_by = @u,
                    trading_order_id = @tid, trading_order_no = @tno, updated_at = now()
@@ -207,14 +219,14 @@ public class BazaarOrdersController : ControllerBase
     private record BzOrder(Guid Id, string? OrderCode, string? TrackCode, string? CategoryName,
         string? BuyerPhone, string? SupplierPhone, decimal Rate, string RateUnit,
         decimal Quantity, decimal Amount, string Status, DateTimeOffset CreatedAt,
-        Guid? BuyerThreadId, Guid? SupplierThreadId);
+        Guid? BuyerThreadId, Guid? SupplierThreadId, string? ImagePath);
 
     private async Task<BzOrder?> LoadOrder(Guid id)
     {
         await using var cmd = await Cmd(@"
             SELECT id, order_code, track_code, category_name, buyer_phone, supplier_phone,
                    rate, rate_unit, quantity, amount, status, created_at,
-                   buyer_thread_id, supplier_thread_id
+                   buyer_thread_id, supplier_thread_id, image_path
             FROM wa.orders WHERE id = @o AND firm_id = @f");
         cmd.Parameters.Add(new NpgsqlParameter("o", id));
         cmd.Parameters.Add(new NpgsqlParameter("f", CurrentFirmId));
@@ -234,7 +246,8 @@ public class BazaarOrdersController : ControllerBase
             r.IsDBNull(10) ? "" : r.GetString(10),
             r.GetFieldValue<DateTimeOffset>(11),
             r.IsDBNull(12) ? null : r.GetGuid(12),
-            r.IsDBNull(13) ? null : r.GetGuid(13));
+            r.IsDBNull(13) ? null : r.GetGuid(13),
+            r.IsDBNull(14) ? null : r.GetString(14));
     }
 
     private async Task<Guid?> PartyFromThread(Guid? threadId)

@@ -224,6 +224,8 @@ export interface CreateOrder {
   paymentTerms?: string;
   status: string;
   notes?: string;
+  docUrl?: string | null;    // order ke saath juda doc/photo (bazaar stock-photo)
+  docName?: string | null;
   lines: OrderLine[];
 }
 

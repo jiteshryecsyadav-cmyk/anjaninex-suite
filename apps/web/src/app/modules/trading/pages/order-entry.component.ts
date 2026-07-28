@@ -10,6 +10,7 @@ import { TransporterQuickAddComponent } from '../../../shared/transporter-quick-
 import { BillScanModalComponent } from '../../ai/components/bill-scan-modal.component';
 import { ExtractedBill, AiService } from '../../ai/services/ai.service';
 import { amountInWords } from '../../../shared/amount-in-words.util';
+import { environment } from '../../../../environments/environment';
 import { todayLocal } from '../../../shared/date.util';
 import { ToastService } from '../../../shared/toast.service';
 import { AuthService } from '../../../core/auth/auth.service';
@@ -731,7 +732,13 @@ interface LineRow {
             <input type="file" accept="image/*,application/pdf" hidden (change)="onDocUpload($event)">
             @if (uploadedDocName()) {
               <div class="doc-uploaded">
-                <span class="doc-ico">✓</span>
+                @if (serverDocUrl() && !serverDocUrl()!.toLowerCase().includes('.pdf')) {
+                  <!-- Bazaar stock-photo ki jhalak — order kholte hi dikhe kaunsi photo ka sauda tha -->
+                  <img [src]="serverDocUrl()" alt="order photo"
+                       style="width:56px;height:56px;object-fit:cover;border-radius:10px;flex-shrink:0">
+                } @else {
+                  <span class="doc-ico">✓</span>
+                }
                 <div class="flex-1">
                   <div class="doc-name">{{ uploadedDocName() }}</div>
                   <div class="doc-hint">Click to replace · Use 🤖 Scan Order to auto-fill from this document</div>
@@ -1289,8 +1296,18 @@ export class OrderEntryComponent {
   // Document preview modal state
   docPreviewUrl   = signal<string | SafeResourceUrl | null>(null);
   docPreviewType  = signal<'image' | 'pdf' | null>(null);
+  /** Server par saved doc/photo (jaise Bazaar approval se aayi stock-photo) */
+  serverDocUrl    = signal<string | null>(null);
 
   previewDoc() {
+    // Server wali photo/doc (bazaar se) — local file na ho to bhi preview chale
+    const sUrl = this.serverDocUrl();
+    if (!this.uploadedDocFile && sUrl) {
+      const isPdf = sUrl.toLowerCase().includes('.pdf');
+      this.docPreviewUrl.set(isPdf ? this.sanitizer.bypassSecurityTrustResourceUrl(sUrl) : sUrl);
+      this.docPreviewType.set(isPdf ? 'pdf' : 'image');
+      return;
+    }
     if (!this.uploadedDocFile) return;
     const file = this.uploadedDocFile;
     const name = this.uploadedDocName();
@@ -1994,6 +2011,11 @@ export class OrderEntryComponent {
         this.supplierGroupName = (o as any).supplierGroupName || '';
         this.paymentTerms = o.paymentTerms || '';
         this.orderStatus = o.status || 'pending';
+        // Order ke saath judi photo/doc (Bazaar approval wali stock-photo) — turant dikhe
+        if ((o as any).docUrl) {
+          this.serverDocUrl.set(environment.apiUrl + (o as any).docUrl);
+          this.uploadedDocName.set((o as any).docName || 'order-photo.jpg');
+        }
         // Transporter restore (warna edit par blank ho jaata tha aur re-save par null chala jaata tha)
         this.transporterId = o.transporterId || '';
         this.syncTransporterName();

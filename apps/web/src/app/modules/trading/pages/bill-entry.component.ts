@@ -2327,9 +2327,32 @@ export class BillEntryComponent {
     }
     return Math.max(0, (gross - this.foldAmt() - this.allDiscAmt()) / gross);
   });
-  effSgst = computed(() => +(this.sgstTotal() * this.cdTaxFactor()).toFixed(2));
-  effCgst = computed(() => +(this.cgstTotal() * this.cdTaxFactor()).toFixed(2));
-  effIgst = computed(() => +(this.igstTotal() * this.cdTaxFactor()).toFixed(2));
+  // ===== GST ka EK SAAF NIYAM (asli supplier bill jaisa) =====
+  // GST usi TAXABLE AMT par lagta hai jo screen par dikhta hai — yaani maal ki keemat
+  // me se fold/discount ghata kar, aur PACKING + SWEET + INTEREST + INSURANCE jod kar
+  // (bank charge ghata kar). Pehle ye extra field taxable me to judte the par unpar
+  // GST lagta hi nahi tha — isliye bill supplier ke bill se match nahi hota tha.
+  private lineBase = computed(() => this.grossAmt());   // lines ka taxable jod
+  private sgstRate = computed(() => { const b = this.lineBase(); return b > 0 ? this.sgstTotal() / b : 0; });
+  private cgstRate = computed(() => { const b = this.lineBase(); return b > 0 ? this.cgstTotal() / b : 0; });
+  private igstRate = computed(() => { const b = this.lineBase(); return b > 0 ? this.igstTotal() / b : 0; });
+
+  /** Extra fields ka jod — ye sab bill ki value ka hissa hain, GST inpar bhi lagta hai */
+  private extrasTotal = computed(() =>
+    this.sweetLs() + this.interestAmt() + this.packingSigned()
+    + (+this.insuranceAmt() || 0) - (+this.bankCharge() || 0));
+
+  /** GST kis rakam par lagega */
+  private taxBase = computed(() => {
+    const afterFold = this.grossAmt() - this.foldAmt();
+    // Before GST = discount pehle katta hai (GST kam par) · After GST = discount baad me
+    const base = this.cdType() === 'before' ? afterFold - this.allDiscAmt() : afterFold;
+    return Math.max(0, base + this.extrasTotal());
+  });
+
+  effSgst = computed(() => +(this.taxBase() * this.sgstRate()).toFixed(2));
+  effCgst = computed(() => +(this.taxBase() * this.cgstRate()).toFixed(2));
+  effIgst = computed(() => +(this.taxBase() * this.igstRate()).toFixed(2));
   toggleCd() {
     this.cdEnabled.set(!this.cdEnabled());
     this.cdAmountOverride.set(null);

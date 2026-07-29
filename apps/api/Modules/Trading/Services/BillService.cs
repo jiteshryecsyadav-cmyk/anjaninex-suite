@@ -120,7 +120,8 @@ public record CreateBillDto(
     List<BillLineDto> Lines,
     string? CdType = "before",     // before = GST se pehle discount | after = GST ke baad
     Guid? OrderId = null,          // jis order se bill bana — wo auto-BILLED hoga
-    decimal OtherCharges = 0,      // Sweet/L.S + Interest + Insurance − Bank Charge (net me judte hain)
+    decimal OtherCharges = 0,      // Sweet/L.S + Interest + Packing + Insurance + TCS − Bank Charge (net me judte hain)
+    decimal TaxableExtras = 0,     // inme se jinpar GST bhi lagta hai (TCS chhod kar) — frontend jaisa hi
     decimal FoldAmt = 0);          // Fold Less — Discount me shaamil NAHI, alag bhejo (migration 88)
 
 public static class BillMath
@@ -468,6 +469,13 @@ public class BillService : IBillService
             var totalTax = BillMath.ApplyCdTaxFactor(
                 dto.Lines.Sum(l => l.TotalAmount - l.TaxableAmount),
                 subtotal, dto.Discount, dto.FoldAmt, dto.CdType);
+            // Packing/Sweet/Interest/Insurance bhi bill ki value ka hissa hain — GST unpar bhi
+            // (screen par yahi dikhta hai; pehle sirf lines par lagta tha to list ka total alag aata tha)
+            if (dto.TaxableExtras != 0 && subtotal > 0)
+            {
+                var rate = dto.Lines.Sum(l => l.TotalAmount - l.TaxableAmount) / subtotal;
+                totalTax = Math.Round(totalTax + dto.TaxableExtras * rate, 2, MidpointRounding.AwayFromZero);
+            }
             // OtherCharges = Sweet/L.S + Interest + Insurance − Bank Charge (frontend jaisa hi)
             var total = subtotal + totalTax - dto.FoldAmt - dto.Discount + dto.OtherCharges + dto.RoundOff;
 
@@ -673,6 +681,13 @@ public class BillService : IBillService
             var totalTax = BillMath.ApplyCdTaxFactor(
                 dto.Lines.Sum(l => l.TotalAmount - l.TaxableAmount),
                 subtotal, dto.Discount, dto.FoldAmt, dto.CdType);
+            // Packing/Sweet/Interest/Insurance bhi bill ki value ka hissa hain — GST unpar bhi
+            // (screen par yahi dikhta hai; pehle sirf lines par lagta tha to list ka total alag aata tha)
+            if (dto.TaxableExtras != 0 && subtotal > 0)
+            {
+                var rate = dto.Lines.Sum(l => l.TotalAmount - l.TaxableAmount) / subtotal;
+                totalTax = Math.Round(totalTax + dto.TaxableExtras * rate, 2, MidpointRounding.AwayFromZero);
+            }
             var total = subtotal + totalTax - dto.FoldAmt - dto.Discount + dto.OtherCharges + dto.RoundOff;
             decimal cgst = 0, sgst = 0, igst = 0;
             if (isInterState) igst = totalTax; else { cgst = totalTax / 2m; sgst = totalTax / 2m; }

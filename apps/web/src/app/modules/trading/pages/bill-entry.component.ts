@@ -2510,7 +2510,7 @@ export class BillEntryComponent {
           // Pieces ab '\n' se jude hain (purane bills me ' | ' se) — dono ke liye [^\n|]+ se rok do.
           const notes = b.notes || '';
           // REMARK = sirf user ka text — known structured prefixes wali lines/pieces hata do
-          const knownPrefix = /^(Supplier Bill|Transporter|LR|CD\s|Fold Less|Normal Disc|Exhibition Disc|Bank Charge|Case\/Parcel|Sweet\/L\.S|Interest|Insurance|TCS|Payment Terms|Credit Days)\b/i;
+          const knownPrefix = /^(Supplier Bill|Transporter|LR|CD\s|Fold Less|Normal Disc|Exhibition Disc|Bank Charge|Case\/Parcel|Sweet\/L\.S|Packing|Interest|Insurance|TCS|Payment Terms|Credit Days)\b/i;
           this.remark = notes
             .split(/\n| \| /)
             .map(s => s.trim())
@@ -2548,7 +2548,10 @@ export class BillEntryComponent {
           // Sweet/L.S, Interest, TCS
           const sweetMatch = notes.match(/Sweet\/L\.S:\s*₹?([\d.]+)/);
           if (sweetMatch) this.sweetLs.set(+sweetMatch[1] || 0);
-          const packMatch = notes.match(/Packing:\s*₹?(-?[\d.]+)/);
+          // AAKHRI wala Packing lo (purane bills me galti se kai baar chipak gaya tha —
+          // pehla utha lene se purani rakam wapas dikh jati thi)
+          const packAll = [...notes.matchAll(/Packing:\s*₹?(-?[\d.]+)/g)];
+          const packMatch = packAll.length ? packAll[packAll.length - 1] : null;
           if (packMatch) {
             const pv = +packMatch[1] || 0;
             this.packingAdd.set(pv >= 0);
@@ -3261,8 +3264,11 @@ export class BillEntryComponent {
       foldAmt: this.foldAmt(),
       // Sweet/L.S + Interest + Insurance + TCS − Bank Charge — backend total me bhi jude
       // (pehle sirf notes me jate the → list ka total entry screen se alag dikhta tha)
-      otherCharges: this.sweetLs() + this.interestAmt() + (+this.insuranceAmt() || 0)
+      otherCharges: this.sweetLs() + this.interestAmt() + this.packingSigned() + (+this.insuranceAmt() || 0)
                   + (+this.tcsAmt() || 0) - (+this.bankCharge() || 0),
+      // GST inpar bhi lagta hai (TCS chhod kar — wo khud tax hai) — backend wahi hisaab kare
+      taxableExtras: this.sweetLs() + this.interestAmt() + this.packingSigned()
+                   + (+this.insuranceAmt() || 0) - (+this.bankCharge() || 0),
       cdType: this.cdType(),
       roundOff: this.roundOff(),
       notes: notes || undefined,

@@ -252,10 +252,10 @@ interface PMsg {
           @if (attachOpen()) {
             <div class="pc-attmenu">
               <button (click)="pickFile('camera')" class="pc-att"><span class="pc-att-ico" style="background:#DC2626">📷</span>Camera</button>
-              <button (click)="pickFile('gallery')" class="pc-att"><span class="pc-att-ico" style="background:#7C3AED">🖼️</span>Gallery</button>
+              <button (click)="pickFile('gallery')" class="pc-att"><span class="pc-att-ico" style="background:#E8A33D"><svg viewBox="0 0 24 24" width="22" height="22" fill="none"><rect x="3" y="4.5" width="18" height="15" rx="2" fill="#fff"/><rect x="5" y="6.5" width="14" height="11" rx="1" fill="#7FB2D9"/><circle cx="16" cy="9.6" r="1.5" fill="#FFD84D"/><path d="M5.6 17.5 10 11.6l3.2 4 2.1-2.4 3.1 4.3z" fill="#4A5568"/></svg></span>Gallery</button>
               <button (click)="pickFile('doc')" class="pc-att"><span class="pc-att-ico" style="background:#2563EB">📄</span>Document</button>
-              <button (click)="sendLocation()" class="pc-att"><span class="pc-att-ico" style="background:#059669">📍</span>Location</button>
-              <button (click)="sendContact()" class="pc-att"><span class="pc-att-ico" style="background:#0EA5E9">👤</span>Contact</button>
+              <button (click)="sendLocation()" class="pc-att"><span class="pc-att-ico" style="background:#DC2626"><svg viewBox="0 0 24 24" width="22" height="22"><path d="M12 2.2c-3.9 0-7 3.1-7 7 0 5 7 12.6 7 12.6s7-7.6 7-12.6c0-3.9-3.1-7-7-7z" fill="#fff"/><circle cx="12" cy="9.2" r="2.9" fill="#DC2626"/></svg></span>Location</button>
+              <button (click)="sendContact()" class="pc-att"><span class="pc-att-ico" style="background:#F6C744"><svg viewBox="0 0 24 24" width="22" height="22"><rect x="3.5" y="3.5" width="14" height="17" rx="2.5" fill="#EDEDE6" stroke="#5B4636" stroke-width="1.4"/><rect x="17.5" y="5.5" width="3" height="3.4" fill="#4A90E2"/><rect x="17.5" y="9.4" width="3" height="3.4" fill="#F5A623"/><rect x="17.5" y="13.3" width="3" height="3.4" fill="#4CAF50"/><circle cx="10.5" cy="9.6" r="2.3" fill="none" stroke="#5B4636" stroke-width="1.4"/><path d="M6.8 16.6c.6-2 2-3 3.7-3s3.1 1 3.7 3" fill="none" stroke="#5B4636" stroke-width="1.4" stroke-linecap="round"/></svg></span>Contact</button>
             </div>
           }
           <button (click)="toggleAttach()" class="pc-plus">➕</button>

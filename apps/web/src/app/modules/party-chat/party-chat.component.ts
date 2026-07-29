@@ -277,7 +277,7 @@ import { PhotoLightboxComponent } from '../../shared/photo-lightbox.component';
                   <button (click)="sendContact()" class="pc-att"><span class="pc-att-ico" style="background:#0EA5E9">👤</span>Contact</button>
                 </div>
               }
-              <button (click)="attachOpen.set(!attachOpen())" class="text-2xl px-2 text-[#1B2E5C]" title="Attach">➕</button>
+              <button (click)="toggleAttach()" class="text-2xl px-2 text-[#1B2E5C]" title="Attach">➕</button>
               <input #fileInput type="file" class="hidden" (change)="fileChosen($event)">
               <textarea [(ngModel)]="draft" (keydown)="onEnter($event)" rows="1"
                         placeholder="Message likho… (Enter = send)"
@@ -418,6 +418,14 @@ export class PartyChatComponent {
   busy = signal(false);
   draft = '';
   attachOpen = signal(false);
+  private attachTimer: any;
+  /** ➕ menu: 10 second me khud band (galti se khula reh jaye to raste me na aaye) */
+  toggleAttach() {
+    clearTimeout(this.attachTimer);
+    const open = !this.attachOpen();
+    this.attachOpen.set(open);
+    if (open) this.attachTimer = setTimeout(() => this.attachOpen.set(false), 10000);
+  }
 
   // Attachment URL relative aata hai (/api/...) — poora banao
   fileUrl(u: string) { return u.startsWith('http') ? u : environment.apiUrl + u; }

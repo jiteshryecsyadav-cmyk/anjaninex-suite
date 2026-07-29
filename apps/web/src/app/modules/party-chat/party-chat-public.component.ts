@@ -258,7 +258,7 @@ interface PMsg {
               <button (click)="sendContact()" class="pc-att"><span class="pc-att-ico" style="background:#0EA5E9">👤</span>Contact</button>
             </div>
           }
-          <button (click)="attachOpen.set(!attachOpen())" class="pc-plus">➕</button>
+          <button (click)="toggleAttach()" class="pc-plus">➕</button>
           <input #fileInput type="file" style="display:none" (change)="fileChosen($event)">
           <textarea [(ngModel)]="draft" (keydown)="onEnter($event)" rows="1"
                     placeholder="Message likho…"
@@ -430,6 +430,14 @@ export class PartyChatPublicComponent {
   private sanitizer = inject(DomSanitizer);
   @ViewChild('fileInput') fileInput!: ElementRef<HTMLInputElement>;
   attachOpen = signal(false);
+  private attachTimer: any;
+  /** ➕ menu: 10 second me khud band */
+  toggleAttach() {
+    clearTimeout(this.attachTimer);
+    const open = !this.attachOpen();
+    this.attachOpen.set(open);
+    if (open) this.attachTimer = setTimeout(() => this.attachOpen.set(false), 10000);
+  }
 
   fileUrl(u: string) { return u.startsWith('http') ? u : environment.apiUrl + u; }
 

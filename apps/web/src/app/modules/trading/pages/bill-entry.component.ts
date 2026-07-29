@@ -609,6 +609,22 @@ interface LineRow {
               </div>
             </div>
 
+            <div *fld="'bill_entry.packing'">
+              <label class="lbl">{{ fl('packing') }}</label>
+              <div style="display:flex;gap:6px;align-items:center">
+                <!-- + = bill me JUD jayega · − = bill me se GHAT jayega -->
+                <button type="button" (click)="packingAdd.set(!packingAdd())"
+                        [style.background]="packingAdd() ? '#dcfce7' : '#fee2e2'"
+                        [style.color]="packingAdd() ? '#15803d' : '#b91c1c'"
+                        [style.borderColor]="packingAdd() ? '#86efac' : '#fca5a5'"
+                        style="border:1.5px solid;border-radius:8px;font-weight:800;width:38px;height:38px;font-size:18px;flex-shrink:0"
+                        [title]="packingAdd() ? 'Bill me JUDEGA (+)' : 'Bill me se GHATEGA (−)'">
+                  {{ packingAdd() ? '+' : '−' }}
+                </button>
+                <input [ngModel]="packingAmt()" (ngModelChange)="packingAmt.set(+$event || 0)"
+                       type="number" step="0.01" class="ip" placeholder="0">
+              </div>
+            </div>
             <div *fld="'bill_entry.sweet_ls'">
               <label class="lbl">{{ fl('sweet_ls') }}</label>
               <input [ngModel]="sweetLs()" (ngModelChange)="sweetLs.set(+$event || 0)" type="number" step="0.01" class="ip">
@@ -813,6 +829,12 @@ interface LineRow {
               <div class="sum-row">
                 <span>Exhibition Disc</span>
                 <span class="font-mono text-red-600">- ₹ {{ discExhAmt() | number:'1.2-2' }}</span>
+              </div>
+            }
+            @if (packingAmt()) {
+              <div class="sum-row">
+                <span>Packing {{ packingAdd() ? '(+)' : '(−)' }}</span>
+                <span class="font-mono">{{ packingAdd() ? '' : '− ' }}₹ {{ packingAmt() | number:'1.2-2' }}</span>
               </div>
             }
             <div class="sum-row">
@@ -2117,6 +2139,11 @@ export class BillEntryComponent {
   // Additive charges — SIGNALS (computed eInvoiceAmt/taxableAfterCd inhe track kare,
   // warna value badalne par net amount recompute nahi hota tha — wahi bug tha).
   sweetLs = signal(0);
+  // PACKING — bill me judne/ghatne wala kharcha (+/− toggle). Notes me save hota hai.
+  packingAmt = signal(0);
+  packingAdd = signal(true);
+  /** Signed packing — + hone par jodta hai, − hone par ghatata hai */
+  packingSigned = computed(() => (this.packingAdd() ? 1 : -1) * (+this.packingAmt() || 0));
   interestAmt = signal(0);
   insuranceAmt = signal(0);   // INSURANCE — additive charge (taxable me jud kar net me)
   bankCharge = signal(0);     // BANK CHARGE — net me MINUS hota hai (GST par asar nahi)
@@ -2316,6 +2343,7 @@ export class BillEntryComponent {
   }
   taxableAfterCd = computed(() => {
     return this.grossAmt() - this.foldAmt() - this.allDiscAmt() + this.sweetLs() + this.interestAmt()
+         + this.packingSigned()
          + (+this.insuranceAmt() || 0) - (+this.bankCharge() || 0);
   });
   sgstTotal = computed(() => {
@@ -2349,7 +2377,7 @@ export class BillEntryComponent {
   eInvoiceAmt = computed(() => {
     if (this.cdType() === 'after') {
       // GST (fold ke baad) poore par, discount total par
-      return this.baseAfterFold() + this.sweetLs() + this.interestAmt() + (+this.insuranceAmt() || 0)
+      return this.baseAfterFold() + this.sweetLs() + this.interestAmt() + this.packingSigned() + (+this.insuranceAmt() || 0)
            + this.effSgst() + this.effCgst() + this.effIgst() + (+this.tcsAmt() || 0)
            - this.allDiscAmt() - (+this.bankCharge() || 0);
     }
@@ -2497,6 +2525,12 @@ export class BillEntryComponent {
           // Sweet/L.S, Interest, TCS
           const sweetMatch = notes.match(/Sweet\/L\.S:\s*₹?([\d.]+)/);
           if (sweetMatch) this.sweetLs.set(+sweetMatch[1] || 0);
+          const packMatch = notes.match(/Packing:\s*₹?(-?[\d.]+)/);
+          if (packMatch) {
+            const pv = +packMatch[1] || 0;
+            this.packingAdd.set(pv >= 0);
+            this.packingAmt.set(Math.abs(pv));
+          }
           const bankMatch = notes.match(/Bank Charge:\s*₹?([\d.]+)/);
           if (bankMatch) this.bankCharge.set(+bankMatch[1] || 0);
           const caseMatch = notes.match(/Case\/Parcel:\s*([\d.]+)/);
@@ -3171,6 +3205,7 @@ export class BillEntryComponent {
       this.discNormalAmt() > 0 ? `Normal Disc ${this.discNormalPct()}% = ₹${this.discNormalAmt().toFixed(2)}` : '',
       this.discExhAmt() > 0 ? `Exhibition Disc ${this.discExhPct()}% = ₹${this.discExhAmt().toFixed(2)}` : '',
       this.sweetLs() ? `Sweet/L.S: ₹${this.sweetLs()}` : '',
+      this.packingAmt() ? `Packing: ₹${this.packingSigned()}` : '',
       this.bankCharge() ? `Bank Charge: ₹${this.bankCharge()}` : '',
       this.caseParcel ? `Case/Parcel/Bale: ${this.caseParcel}` : '',
       this.interestAmt() ? `Interest: ₹${this.interestAmt()}` : '',

@@ -72,6 +72,7 @@ export const FIELD_REGISTRY: ScreenDef[] = [
       { key: 'cd',              label: 'CD % + Amount' },
       { key: 'normal_disc',     label: 'Normal Disc % + Amount' },
       { key: 'exhibition_disc', label: 'Exhibition Disc % + Amount', defaultOff: true },
+      { key: 'packing',         label: 'Packing (+/− toggle)', hint: 'Packing/theli ka kharcha — bill me jode ya ghataye' },
       { key: 'sweet_ls',        label: 'Sweet / L.S',       defaultOff: true },
       { key: 'fold',            label: 'Fold Less % + Amount', defaultOff: true, hint: 'Textile — gross se less' },
       { key: 'bank_charge',     label: 'Bank Charge',       defaultOff: true },

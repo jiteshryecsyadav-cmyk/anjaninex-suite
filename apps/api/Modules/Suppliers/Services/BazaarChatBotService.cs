@@ -113,9 +113,14 @@ public class BazaarChatBotService : IBazaarChatBotService
                 }
             }
 
-            // BUYER path — quoted message me ORDER code hai
+            // BUYER path — quoted message me ORDER code hai.
+            // ⚠️ SUPPLIER wale states (order accept / rate ka mol-bhav) me haath NAHI lagana:
+            // supplier apni hi photo/order ko quote karke "Yes" likhta hai — pehle isse
+            // "naya buyer-order" samajh kar state UDA di jati thi aur uska Yes kho jata tha.
+            var supplierSideState = state is "ORDER_ACCEPT" or "ORDER_BARGAIN_SUP" or "ORDER_BARGAIN_WAIT";
             var quotedCode = FindTrackCode(quotedBody);
-            if (quotedCode != null && state != "ASK_RATE"
+            if (quotedCode != null && state != "ASK_RATE" && !supplierSideState
+                && await FindBuyerByPhone(firmId, phone10) is not null   // sirf REGISTERED buyer hi order shuru kare
                 && !string.Equals(quotedCode, CtxStr(ctx, "track_code"), StringComparison.OrdinalIgnoreCase))
             {
                 await ClearState(threadId);

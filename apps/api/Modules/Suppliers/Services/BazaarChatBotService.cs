@@ -880,7 +880,8 @@ public class BazaarChatBotService : IBazaarChatBotService
             await BotReply(threadId, firmId,
                 $"✅ Aapka order ({orderCode}) bhej diya.\n{catName ?? "Fabric"} — {qty:0.##} {unit} @ ₹{rate:0.##} = ₹{amount:0.##}\n\n" +
                 (notified ? "Supplier ke confirmation ka wait karein. ⏳"
-                          : "Firm aapse aage ki baat ke liye sampark karegi. ⏳"));
+                          : "Firm aapse aage ki baat ke liye sampark karegi. ⏳") +
+                "\n\n💡 Aur koi photo pasand ho to uske neeche wala 🛒 ORDER button dabaein — ek-ek karke sab le sakte hain.");
             return;
         }
 

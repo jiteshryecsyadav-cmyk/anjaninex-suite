@@ -183,7 +183,7 @@ import { environment } from '../../../environments/environment';
             @if (features.flag('party_chat')) {
               <a routerLink="/party-chat" routerLinkActive="!bg-anjaninex-red !text-white"
                  class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-semibold text-white/75 hover:text-white hover:bg-white/10">
-                <span class="w-5 text-center">💬</span> Party Chat
+                <span class="w-5 text-center" style="display:inline-flex;align-items:center;justify-content:center"><svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true"><rect x="1.5" y="1.5" width="21" height="21" rx="6" fill="#25D366"/><path d="M6.2 6.6h11.6c.9 0 1.6.7 1.6 1.6v6.1c0 .9-.7 1.6-1.6 1.6h-5.3L8 19v-3.1H6.2c-.9 0-1.6-.7-1.6-1.6V8.2c0-.9.7-1.6 1.6-1.6z" fill="#fff"/><text x="12" y="13.6" text-anchor="middle" font-size="7.4" font-weight="700" font-family="system-ui,Segoe UI,Arial" fill="#25D366">₹</text></svg></span> Party Chat
                 @if (pcUnread() > 0) {
                   <span class="unread-badge">{{ pcUnread() > 99 ? '99+' : pcUnread() }}</span>
                 }

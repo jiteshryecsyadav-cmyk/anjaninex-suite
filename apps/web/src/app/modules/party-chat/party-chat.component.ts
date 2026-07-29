@@ -40,7 +40,9 @@ import { PhotoLightboxComponent } from '../../shared/photo-lightbox.component';
     <div class="max-w-6xl mx-auto p-4">
       <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
         <div>
-          <h2 class="font-display font-black text-2xl text-[#1B2E5C]">💬 Party Chat</h2>
+          <h2 class="font-display font-black text-2xl text-[#1B2E5C]" style="display:flex;align-items:center;gap:8px">
+            <svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true"><rect x="1.5" y="1.5" width="21" height="21" rx="6" fill="#25D366"/><path d="M6.2 6.6h11.6c.9 0 1.6.7 1.6 1.6v6.1c0 .9-.7 1.6-1.6 1.6h-5.3L8 19v-3.1H6.2c-.9 0-1.6-.7-1.6-1.6V8.2c0-.9.7-1.6 1.6-1.6z" fill="#fff"/><text x="12" y="13.6" text-anchor="middle" font-size="7.4" font-weight="700" font-family="system-ui,Segoe UI,Arial" fill="#25D366">₹</text></svg>
+            Party Chat</h2>
           <p class="text-sm text-gray-500">Apni parties se seedha baat — unhe login nahi chahiye, mobile OTP se khulti hai</p>
         </div>
         <div class="flex gap-2">

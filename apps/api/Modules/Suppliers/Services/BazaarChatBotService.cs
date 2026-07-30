@@ -220,6 +220,75 @@ public class BazaarChatBotService : IBazaarChatBotService
             }
         }
 
+        // 🔁 SUPPLIER ke PENDING ORDER — chahe uski yaaddasht (state) kho gayi ho ya kai
+        // order ek saath aa gaye hon. Pehle sirf AAKHRI order ka jawab liya jata tha aur
+        // baki hamesha ke liye "supplier baki" me atak jate the. Ab DB se pakadte hain:
+        //   ek hi pending ho → wahi · kai hon → code poochho ("yes ORD-000011")
+        var ordMatch = Regex.Match(text, @"ORD-0*(\d{1,8})", RegexOptions.IgnoreCase);
+        var textNoCode = ordMatch.Success ? text.Replace(ordMatch.Value, " ").Trim() : text;
+        var lowNoCode = textNoCode.ToLowerInvariant();
+        if (state == "IDLE" && (IsYes(lowNoCode) || IsNo(lowNoCode) || SmartNumber(textNoCode) > 0 || ordMatch.Success))
+        {
+            var pend = new List<Dictionary<string, object?>>();
+            await using (var pc = await Cmd(@"
+                SELECT id, order_code, quantity, rate, rate_unit, amount, category_name,
+                       buyer_thread_id, buyer_name, track_code
+                  FROM wa.orders
+                 WHERE firm_id = @f AND status = 'pending_supplier' AND supplier_thread_id = @t
+                 ORDER BY created_at"))
+            {
+                pc.Parameters.Add(new NpgsqlParameter("f", firmId));
+                pc.Parameters.Add(new NpgsqlParameter("t", threadId));
+                await using var pr = await pc.ExecuteReaderAsync();
+                while (await pr.ReadAsync())
+                    pend.Add(new Dictionary<string, object?>
+                    {
+                        ["order_id"] = pr.GetGuid(0),
+                        ["order_code"] = pr.IsDBNull(1) ? null : pr.GetString(1),
+                        ["quantity"] = pr.IsDBNull(2) ? 0m : pr.GetDecimal(2),
+                        ["rate"] = pr.IsDBNull(3) ? 0m : pr.GetDecimal(3),
+                        ["rate_unit"] = pr.IsDBNull(4) ? "mtr" : pr.GetString(4),
+                        ["amount"] = pr.IsDBNull(5) ? 0m : pr.GetDecimal(5),
+                        ["category_name"] = pr.IsDBNull(6) ? null : pr.GetString(6),
+                        ["buyer_thread_id"] = pr.IsDBNull(7) ? null : pr.GetGuid(7),
+                        ["buyer_name"] = pr.IsDBNull(8) ? null : pr.GetString(8),
+                        ["track_code"] = pr.IsDBNull(9) ? null : pr.GetString(9)
+                    });
+            }
+
+            if (pend.Count > 0)
+            {
+                Dictionary<string, object?>? pick = null;
+                if (ordMatch.Success)
+                {
+                    var want = "ORD-" + ordMatch.Groups[1].Value.PadLeft(6, '0');
+                    pick = pend.FirstOrDefault(o => string.Equals(o["order_code"] as string, want, StringComparison.OrdinalIgnoreCase));
+                    if (pick is null)
+                    {
+                        await BotReply(threadId, firmId, $"Order {want} pending nahi mila. Pending: " +
+                            string.Join(", ", pend.Select(o => o["order_code"])));
+                        return;
+                    }
+                }
+                else if (pend.Count == 1) pick = pend[0];
+
+                if (pick is null)
+                {
+                    var lines = pend.Select(o =>
+                        $"• {o["order_code"]} — {(decimal)(o["quantity"] ?? 0m):0.##} {o["rate_unit"]} @ ₹{(decimal)(o["rate"] ?? 0m):0.##}");
+                    await BotReply(threadId, firmId,
+                        "Aapke paas ye order pending hain:\n" + string.Join("\n", lines) +
+                        "\n\nKaunsa? Aise likhein: *yes ORD-000011* (ya no / qty ke saath bhi).");
+                    return;
+                }
+
+                var rebuilt = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(
+                    JsonSerializer.Serialize(pick))!;
+                await HandleOrderReply(threadId, firmId, textNoCode, "ORDER_ACCEPT", rebuilt);
+                return;
+            }
+        }
+
         var code = FindTrackCode(text);
         if (code != null)
         { await StartBuyerOrder(threadId, firmId, partyName, phone10, code); return; }

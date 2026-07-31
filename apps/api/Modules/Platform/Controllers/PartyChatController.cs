@@ -628,14 +628,14 @@ public class PartyChatPublicController : ControllerBase
         if (firms.Count == 0)
             return BadRequest(new { error = "Ye number kisi bhi agency ke Party Master me nahi mila — apni agency se number judwayein" });
 
-        // 🔐 FLOOD ki rok — 15 min me 3 se zyada OTP nahi
+        // 🔐 FLOOD ki rok — 15 min me 6 se zyada OTP nahi
         await using (var fc = await CmdAsync(@"
             SELECT sends FROM platform.party_portal_otps
             WHERE phone = @ph AND created_at > now() - interval '15 minutes'"))
         {
             fc.Parameters.Add(new NpgsqlParameter("ph", phone));
-            if (await fc.ExecuteScalarAsync() is int prev && prev >= 3)
-                return BadRequest(new { error = "Bahut baar OTP manga — 15 minute baad dobara try karein" });
+            if (await fc.ExecuteScalarAsync() is int prev && prev >= 6)
+                return BadRequest(new { error = "Bahut baar OTP manga — 15 minute baad dobara try karein (ya firm se sampark karein)" });
         }
 
         var otp = RandomNumberGenerator.GetInt32(100000, 999999).ToString();
@@ -881,15 +881,16 @@ public class PartyChatPublicController : ControllerBase
             firmName = (await fc.ExecuteScalarAsync()) as string;
         }
 
-        // 🔐 FLOOD ki rok — 15 min me 3 se zyada OTP nahi (na spam, na anginat guess-rounds)
+        // 🔐 FLOOD ki rok — 15 min me 6 se zyada OTP nahi (spam se bachao, par asli user's
+        // dobara-koshish na ruke: message na aaye to 2-3 baar to koi bhi try karega)
         await using (var fc = await CmdAsync(@"
             SELECT sends FROM platform.party_chat_otps
             WHERE firm_id = @f AND phone = @ph AND created_at > now() - interval '15 minutes'"))
         {
             fc.Parameters.Add(new NpgsqlParameter("f", dto.FirmId));
             fc.Parameters.Add(new NpgsqlParameter("ph", phone));
-            if (await fc.ExecuteScalarAsync() is int prev && prev >= 3)
-                return BadRequest(new { error = "Bahut baar OTP manga — 15 minute baad dobara try karein" });
+            if (await fc.ExecuteScalarAsync() is int prev && prev >= 6)
+                return BadRequest(new { error = "Bahut baar OTP manga — 15 minute baad dobara try karein (ya firm se sampark karein)" });
         }
 
         var otp = RandomNumberGenerator.GetInt32(100000, 999999).ToString();

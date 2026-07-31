@@ -293,7 +293,13 @@ interface LineRow {
           <div class="section-head no-border">
             <span class="sec-ico">📦</span> ITEM DETAILS
           </div>
-          <button type="button" (click)="addLine()" class="btn-add-item">+ Add Item</button>
+          <div style="display:flex;align-items:center;gap:8px">
+            <ng-container *fld="'order_entry.case_parcel'">
+              <label class="lbl" style="margin:0;white-space:nowrap">📦 {{ fl('case_parcel') }}</label>
+              <input [(ngModel)]="caseParcel" type="number" min="0" placeholder="0" class="ip" style="width:90px">
+            </ng-container>
+            <button type="button" (click)="addLine()" class="btn-add-item">+ Add Item</button>
+          </div>
         </div>
 
         @if (reconcileNote()) {
@@ -1722,6 +1728,7 @@ export class OrderEntryComponent {
   paymentTerms = '';
   orderStatus = 'pending';
   remark = '';
+  caseParcel: number | null = null;   // 📦 poore order ka total case/parcel count
   insuranceAmt = signal(0);   // INSURANCE — additive charge (net me jud kar). SIGNAL taaki netTotal computed track kare.
   transporterId = '';
   transporters = signal<Transporter[]>([]);
@@ -2031,7 +2038,10 @@ export class OrderEntryComponent {
           this.discExhPct.set(exM ? +exM[1] || 0 : 0);
           this.discNormalOverride.set(null);
           this.discExhOverride.set(null);
+          const caseM = n.match(/Case\/Parcel:\s*([\d.]+)/);
+          this.caseParcel = caseM ? (+caseM[1] || null) : null;
           this.remark = n
+            .replace(/\s*\|?\s*Case\/Parcel:\s*[\d.]+/, '')
             .replace(/\s*\|?\s*Insurance:\s*₹?[\d.]+/, '')
             .replace(/\s*\|?\s*Normal Disc\s+[\d.]+%\s*=\s*₹?[\d.]+/, '')
             .replace(/\s*\|?\s*Exhibition Disc\s+[\d.]+%\s*=\s*₹?[\d.]+/, '')
@@ -2301,6 +2311,7 @@ export class OrderEntryComponent {
       status: this.orderStatus,
       notes: [
         this.remark,
+        this.caseParcel ? `Case/Parcel: ${this.caseParcel}` : '',
         this.insuranceAmt() ? `Insurance: ₹${this.insuranceAmt()}` : '',
         this.discNormalAmt() > 0 ? `Normal Disc ${this.discNormalPct()}% = ₹${this.discNormalAmt().toFixed(2)}` : '',
         this.discExhAmt() > 0 ? `Exhibition Disc ${this.discExhPct()}% = ₹${this.discExhAmt().toFixed(2)}` : ''

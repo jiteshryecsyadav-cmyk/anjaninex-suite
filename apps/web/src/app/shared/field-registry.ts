@@ -95,6 +95,7 @@ export const FIELD_REGISTRY: ScreenDef[] = [
     name: 'Order Entry',
     fields: [
       { key: 'supplier_info',   label: 'Supplier GSTIN/PAN/Address box' },
+      { key: 'case_parcel',     label: 'Case/Parcel/Bale' },
       { key: 'buyer_info',      label: 'Buyer GSTIN/PAN/Address box' },
       { key: 'cd',              label: 'CD % + Amount' },
       { key: 'normal_disc',     label: 'Normal Disc % + Amount' },

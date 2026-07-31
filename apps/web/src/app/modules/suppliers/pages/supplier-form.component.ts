@@ -403,7 +403,10 @@ export class SupplierFormComponent {
   selectedCategoryIds = signal<string[]>([]);
 
   // Common fields lock tabhi jab edit + linked contact (Phase 2).
-  lockCommon = () => !!(this.editingId && this.contactId);
+  // Pehle edit me naam/phone/GST LOCK the (sirf Core Master se badalte the) — user ko
+  // wahin se mobile theek karna hota hai. Ab backend in fields ko sahi se save karta
+  // hai aur badlav Core Master/Trading/Chat sab jagah pahunchta hai, isliye khula hai.
+  lockCommon = () => false;
 
   form = this.fb.nonNullable.group({
     displayName: ['', [Validators.required, Validators.minLength(2)]],

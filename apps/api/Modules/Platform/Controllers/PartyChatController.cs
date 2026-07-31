@@ -925,9 +925,19 @@ public class PartyChatPublicController : ControllerBase
         try
         {
             string? baseUrl = null, apiKey = null; bool enabled = false;
-            await using (var cmd = await CmdAsync("SELECT base_url, api_key, enabled FROM platform.wa_provider_settings WHERE id = 1"))
+            string? tplName = null, tplLang = "en"; bool tplButton = true;
+            await using (var cmd = await CmdAsync(
+                "SELECT base_url, api_key, enabled, otp_template_name, otp_template_lang, otp_template_button " +
+                "FROM platform.wa_provider_settings WHERE id = 1"))
             await using (var r = await cmd.ExecuteReaderAsync())
-                if (await r.ReadAsync()) { baseUrl = r["base_url"] as string; apiKey = r["api_key"] as string; enabled = r["enabled"] is bool b && b; }
+                if (await r.ReadAsync())
+                {
+                    baseUrl = r["base_url"] as string; apiKey = r["api_key"] as string;
+                    enabled = r["enabled"] is bool b && b;
+                    tplName = r["otp_template_name"] as string;
+                    tplLang = (r["otp_template_lang"] as string) ?? "en";
+                    tplButton = r["otp_template_button"] is not bool tb || tb;
+                }
             if (!enabled || string.IsNullOrWhiteSpace(baseUrl) || string.IsNullOrWhiteSpace(apiKey)) return false;
 
             string? sender = null;
@@ -936,17 +946,56 @@ public class PartyChatPublicController : ControllerBase
                 sender = (await cmd.ExecuteScalarAsync()) as string;
             if (string.IsNullOrWhiteSpace(sender)) return false;
 
-            var msg = $"{firmName} aapse Vyapaar Setu par baat karna chahti hai.\nChat kholne ka OTP: {otp} (10 min me expire)";
-            var bodyJson = JsonSerializer.Serialize(new
+            // 🇮🇳 COUNTRY CODE ke saath — provider ne bataya ki 91 ke bina message
+            // jata hi nahi (10-digit par error milta tha)
+            var to = toDigits.Length == 10 ? "91" + toDigits : toDigits;
+            string bodyJson;
+
+            if (!string.IsNullOrWhiteSpace(tplName))
             {
-                messaging_product = "whatsapp",
-                recipient_type = "individual",
-                // 🇮🇳 COUNTRY CODE ke saath — provider ne bataya ki 91 ke bina message
-                // jata hi nahi (10-digit par error milta tha)
-                to = toDigits.Length == 10 ? "91" + toDigits : toDigits,
-                type = "text",
-                text = new { body = msg }
-            });
+                // ✅ TEMPLATE wala tarika — Meta ka asli niyam.
+                // Free-form text sirf tab jata hai jab grahak ne pehle message kiya ho
+                // (24-ghante ki window). OTP to PEHLA message hota hai, isliye
+                // approved AUTHENTICATION template hi chalega.
+                var comps = new List<object>
+                {
+                    new { type = "body", parameters = new[] { new { type = "text", text = otp } } }
+                };
+                if (tplButton)
+                    comps.Add(new
+                    {
+                        type = "button",
+                        sub_type = "url",
+                        index = "0",
+                        parameters = new[] { new { type = "text", text = otp } }
+                    });
+
+                bodyJson = JsonSerializer.Serialize(new
+                {
+                    messaging_product = "whatsapp",
+                    recipient_type = "individual",
+                    to,
+                    type = "template",
+                    template = new
+                    {
+                        name = tplName,
+                        language = new { code = tplLang },
+                        components = comps
+                    }
+                });
+            }
+            else
+            {
+                var msg = $"{firmName} aapse Vyapaar Setu par baat karna chahti hai.\nChat kholne ka OTP: {otp} (10 min me expire)";
+                bodyJson = JsonSerializer.Serialize(new
+                {
+                    messaging_product = "whatsapp",
+                    recipient_type = "individual",
+                    to,
+                    type = "text",
+                    text = new { body = msg }
+                });
+            }
             var url = baseUrl!.TrimEnd('/') + "/wrapper/waba/message";
             using var req = new HttpRequestMessage(HttpMethod.Post, url);
             req.Headers.TryAddWithoutValidation("key", apiKey);

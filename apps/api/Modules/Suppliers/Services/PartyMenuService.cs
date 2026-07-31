@@ -24,6 +24,10 @@ public class PartyMenuService
 
     private const string Foot = "\n────────────────\n0 ⟵ Peeche · 9 ⌂ Menu";
 
+    /// Kaam khatam hone wale message ke neeche lagne wali patti — party ko
+    /// dobara "hi" likhna na pade, seedha number daba kar aage badh jaye.
+    public const string Hint = "\n────────────────\nAur kuch? 1 💰 Khata · 2 📦 Orders · 3 🛍️ Bazaar · 9 ⌂ Menu";
+
     public static bool IsMenuTrigger(string text)
     {
         var t = text.Trim().ToLowerInvariant();

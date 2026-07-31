@@ -237,7 +237,9 @@ public class BazaarChatBotService : IBazaarChatBotService
         var ordMatch = Regex.Match(text, @"ORD-0*(\d{1,8})", RegexOptions.IgnoreCase);
         var textNoCode = ordMatch.Success ? text.Replace(ordMatch.Value, " ").Trim() : text;
         var lowNoCode = textNoCode.ToLowerInvariant();
-        if (state == "IDLE" && (IsYes(lowNoCode) || IsNo(lowNoCode) || SmartNumber(textNoCode) > 0 || ordMatch.Success))
+        // QUIET (firm se baat wala chup-waqt) bhi IDLE jaisa hi — supplier ka pending
+        // order us dauran bhi utna hi zaroori hai.
+        if (state is "IDLE" or "QUIET" && (IsYes(lowNoCode) || IsNo(lowNoCode) || SmartNumber(textNoCode) > 0 || ordMatch.Success))
         {
             var pend = new List<Dictionary<string, object?>>();
             await using (var pc = await Cmd(@"
@@ -355,8 +357,36 @@ public class BazaarChatBotService : IBazaarChatBotService
         // Buyer search — "Cotton 100-150" jaisa saaf pattern ho tabhi
         if ((RangeRx.IsMatch(text) || FabricRx.IsMatch(text))
             && await FindBuyerByPhone(firmId, phone10) is not null)
-            await BuyerSearch(threadId, firmId, text);
-        // warna CHUP — ye firm↔party ki aam chat hai
+        { await BuyerSearch(threadId, firmId, text); return; }
+
+        // ========== 🆘 AAKHRI SAHARA — bot ab CHUP nahi rahega ==========
+        // Pehle yahan se bot bina jawab ke lautt jata tha. Natija: order pakka hone ke
+        // baad party "Ok" / "1" / "11" likhti rahi aur uske paas sannata — usko lagta
+        // hai chat mar gayi. Ab samajh na aaye to seedha MENU de do.
+        await ShowMenuFallback(threadId, firmId, partyId, partyName, state, ctx);
+    }
+
+    /// Samajh na aane par menu — par "firm se baat" wale chup-waqt me nahi.
+    private async Task ShowMenuFallback(Guid threadId, Guid firmId, Guid partyId, string partyName,
+                                        string state, Dictionary<string, JsonElement> ctx)
+    {
+        if (!await FlagOn(firmId, "party_menu")) return;
+        if (state == "QUIET" && QuietTill(ctx) > DateTime.UtcNow) return;   // aadmi baat kar raha hai
+
+        var menu = new PartyMenuService(Cmd);
+        await SetState(threadId, "MENU_MAIN", new Dictionary<string, object?>());
+        await LogMenu(firmId, threadId, partyName, "fallback");
+        await BotReply(threadId, firmId,
+            "Samajh nahi aaya 🙏\n\n" + menu.MainMenu(await FirmName(firmId), partyName));
+    }
+
+    /// QUIET state ka waqt — jab tak bot ko beech me nahi bolna.
+    private static DateTime QuietTill(Dictionary<string, JsonElement> ctx)
+    {
+        var s = CtxStr(ctx, "quiet_till");
+        return DateTime.TryParse(s, null, System.Globalization.DateTimeStyles.AdjustToUniversal
+                                        | System.Globalization.DateTimeStyles.AssumeUniversal, out var d)
+            ? d : DateTime.MinValue;
     }
 
     // ---------------- KAI ITEM KA ORDER (ek order, kai line) ----------------
@@ -663,7 +693,10 @@ public class BazaarChatBotService : IBazaarChatBotService
                     await BotReply(threadId, firmId, await menu.StockAsync(firmId));
                     return true;
                 case "4":
-                    await ClearState(threadId);
+                    // 🤫 Ab aadmi baat karega — bot 30 minute ke liye peeche hat jaye,
+                    // warna party ki har baat par menu thok dega aur wo chidh jayegi.
+                    await SetState(threadId, "QUIET", new Dictionary<string, object?>
+                    { ["quiet_till"] = DateTime.UtcNow.AddMinutes(30).ToString("o") });
                     await BotReply(threadId, firmId, menu.TalkToFirm());
                     return true;
                 default:
@@ -1005,7 +1038,8 @@ public class BazaarChatBotService : IBazaarChatBotService
                 await ClearState(threadId);
                 await BotReply(threadId, firmId,
                     $"✅ Order {pCode} ab {offerQty:0.##} {pUnit} ka ho gaya.\n" +
-                    $"₹{pRate:0.##}/{pUnit} × {offerQty:0.##} = ₹{pAmt:0.##}\n\n🕐 Ab AGENCY ki aakhri manzoori baki hai — muhar lagte hi pakka.");
+                    $"₹{pRate:0.##}/{pUnit} × {offerQty:0.##} = ₹{pAmt:0.##}\n\n🕐 Ab AGENCY ki aakhri manzoori baki hai — muhar lagte hi pakka."
+                    + PartyMenuService.Hint);
                 if (supThread != Guid.Empty)
                     await BotReply(supThread, firmId,
                         $"🎉 Buyer maan gaya! Order {pCode} ab {offerQty:0.##} {pUnit} ka.\n🕐 AGENCY ki manzoori ka intezar — approve hote hi DISPATCH ka message milega.");
@@ -1362,7 +1396,8 @@ public class BazaarChatBotService : IBazaarChatBotService
                     await BotReply(bt, firmId,
                         $"🎉 Supplier ne aapka order *{CtxStr(ctx, "order_code")}* ACCEPT kar liya!\n" +
                         $"{CtxStr(ctx, "category_name") ?? "Fabric"} — {CtxDec(ctx, "quantity"):0.##} {CtxStr(ctx, "rate_unit") ?? "mtr"} " +
-                        $"@ ₹{CtxDec(ctx, "rate"):0.##} = ₹{CtxDec(ctx, "amount"):0.##}\n\n🕐 Ab AGENCY ki aakhri manzoori baki hai — muhar lagte hi pakka.");
+                        $"@ ₹{CtxDec(ctx, "rate"):0.##} = ₹{CtxDec(ctx, "amount"):0.##}\n\n🕐 Ab AGENCY ki aakhri manzoori baki hai — muhar lagte hi pakka."
+                        + PartyMenuService.Hint);
                 await BotReply(threadId, firmId,
                     $"✅ Order {CtxStr(ctx, "order_code")} accept ho gaya!\n🕐 AGENCY ki manzoori ka intezar — approve hote hi DISPATCH ka message milega.");
             }

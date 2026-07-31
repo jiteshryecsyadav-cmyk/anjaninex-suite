@@ -211,7 +211,8 @@ public class BazaarOrdersController : ControllerBase
             $"{o.CategoryName ?? "Fabric"} — {o.Quantity:0.##} {o.RateUnit} @ ₹{o.Rate:0.##} = ₹{o.Amount:0.##}\n" +
             $"Trading Order: {created.OrderNo}");
         await ChatMsg(o.BuyerThreadId,
-            $"🎉 Agency ne bhi muhar laga di — order {o.OrderCode} PAKKA!\nMaal jald ravana hoga. 🚚");
+            $"🎉 Agency ne bhi muhar laga di — order {o.OrderCode} PAKKA!\nMaal jald ravana hoga. 🚚"
+            + Services.PartyMenuService.Hint);
 
         return Ok(new { ok = true, tradingOrderNo = created.OrderNo, tradingOrderId = created.Id });
     }

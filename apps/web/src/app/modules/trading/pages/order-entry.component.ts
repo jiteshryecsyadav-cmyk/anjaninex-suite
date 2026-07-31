@@ -1511,6 +1511,8 @@ export class OrderEntryComponent {
     // Order/PO par jo number chhapa hai (invoice.number) wo supplier order no me — warna PO number
     if (data.invoice?.number || data.invoice?.poNumber)
       this.supplierOrderNo = data.invoice.number || data.invoice.poNumber || this.supplierOrderNo;
+    // 📦 CASE/PARCEL/BALE — scan se packing count auto-fill (Bill jaisa)
+    { const c = +((data.invoice as any)?.cases ?? 0); if (c > 0) this.caseParcel = c; }
 
     // ============ TAX TYPE — IGST vs CGST/SGST, scan se reliably decide ============
     {

@@ -181,7 +181,8 @@ public class BazaarChatBotService : IBazaarChatBotService
         }
 
         if (state is "ORDER_CONFIRM" or "ORDER_QTY" or "ORDER_ACCEPT" or "ORDER_PARTIAL"
-                  or "ORDER_BARGAIN_SUP" or "ORDER_BARGAIN_BUY" or "ORDER_BARGAIN_WAIT" or "MULTI_QTY")
+                  or "ORDER_BARGAIN_SUP" or "ORDER_BARGAIN_BUY" or "ORDER_BARGAIN_WAIT" or "MULTI_QTY"
+                  or "ORDER_NUM_ASK")
         { await HandleOrderReply(threadId, firmId, text, state, ctx); return; }
 
         if (state == "ASK_RATE")
@@ -608,7 +609,8 @@ public class BazaarChatBotService : IBazaarChatBotService
                 });
                 await BotReply(supThread, firmId,
                     $"\U0001F6D2 *Naya Order!* ({orderCode}) \u2014 {grp.Count()} item\n{lines}" +
-                    $"\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nTotal: \u20b9{totalAmt:0.##}\n\nIs order ko accept karte ho? (reply: yes / no)");
+                    $"\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nTotal: \u20b9{totalAmt:0.##}\n\nIs order ko accept karte ho? (reply: yes / no)"
+                    + "\n[[QR:yes=\u2705 ACCEPT|no=\u274c NAHI]]");
             }
         }
 
@@ -898,6 +900,53 @@ public class BazaarChatBotService : IBazaarChatBotService
               "(sirf number bhejein, jaise 699 — ya hisab ke saath: 699 kg)");
     }
 
+    /// "50" ka do matlab — maal ki ginti ya bhav. Andaza lagane se buyer ka
+    /// order galat mud jata tha, isliye do tap-button me poochh lete hain.
+    private static string NumAsk(decimal num, string unit) =>
+        $"Aapne *{num:0.##}* likha — ye kya hai?\n" +
+        $"1  📦 QUANTITY ({num:0.##} {unit} maal chahiye)\n" +
+        $"2  💰 RATE / bhav (₹{num:0.##} me maangte hain)" +
+        $"\n[[QR:qty=📦 {num:0.##} {unit} MAAL|rate=💰 ₹{num:0.##} ka BHAV]]";
+
+    /// Buyer ka bhav supplier tak — dono taraf ka intezar wala state saath me.
+    private async Task StartRateBargain(Guid threadId, Guid firmId, Dictionary<string, object?> baseCtx, decimal rateOffer)
+    {
+        var ctx = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(JsonSerializer.Serialize(baseCtx))!;
+        var listedRate = CtxDec(ctx, "rate");
+        var unit3 = CtxStr(ctx, "rate_unit") ?? "mtr";
+
+        // PEHLE photo wali chat (pakka sahi supplier) — phone se tabhi dhundo jab wo na ho
+        // (ek number kai parties par ho to phone-lookup galat party pakad leta tha)
+        var supThread3 = CtxGuid(ctx, "supplier_thread_id");
+        if (supThread3 == Guid.Empty)
+        {
+            var supPhone2 = CtxStr(ctx, "supplier_phone");
+            var supParty2 = string.IsNullOrEmpty(supPhone2) ? null : await FindPartyByPhone(firmId, Last10(supPhone2));
+            if (supParty2 is null)
+            {
+                await BotReply(threadId, firmId,
+                    "Supplier abhi Party Chat me nahi hai — rate ki baat firm se karein, ya listed rate par yes bhejein.");
+                return;
+            }
+            supThread3 = await UpsertThread(firmId, supParty2.Value.id, supParty2.Value.name, Last10(supPhone2!));
+        }
+
+        var supCtx = new Dictionary<string, object?>(baseCtx)
+        { ["offer_rate"] = rateOffer, ["orig_rate"] = listedRate, ["other_thread_id"] = threadId };
+        await SetState(supThread3, "ORDER_BARGAIN_SUP", supCtx);
+
+        var waitCtx2 = new Dictionary<string, object?>(baseCtx)
+        { ["offer_rate"] = rateOffer, ["orig_rate"] = listedRate, ["other_thread_id"] = supThread3 };
+        await SetState(threadId, "ORDER_BARGAIN_WAIT", waitCtx2);
+
+        await BotReply(threadId, firmId,
+            $"🕐 Aapka ₹{rateOffer:0.##}/{unit3} ka offer supplier ko bhej diya — jawab ka intezar karein.");
+        await BotReply(supThread3, firmId,
+            $"💬 {CtxStr(ctx, "category_name") ?? "Fabric"} ({CtxStr(ctx, "track_code")}): buyer *₹{rateOffer:0.##}/{unit3}* bol raha hai (listed ₹{listedRate:0.##}).\n" +
+            $"Manzoor hai? (reply: yes / no / ya apna rate likhein, jaise 975)" +
+            $"\n[[QR:yes=✅ MANZOOR|no=❌ NAHI]]");
+    }
+
     // Rate kis hisab se — kapde me meter, thaan/piece aur kg teeno chalte hain.
     // Pehle sab kuch "mtr" maan liya jata tha, isliye kg wale maal ka bhav galat
     // dikhta tha. Ab likha ho to wahin se le lo, na likha ho to poochh lo.
@@ -1124,7 +1173,8 @@ public class BazaarChatBotService : IBazaarChatBotService
             ["buyer_name"] = partyName, ["buyer_id"] = buyer.Value.id, ["buyer_phone"] = phone10
         });
         await BotReply(threadId, firmId,
-            $"📦 {catName ?? "Fabric"} · ₹{rate:0.##}/{rateUnit ?? "mtr"}\nCode: {trackCode}\n\nOrder confirm karna hai? (reply: yes / no)");
+            $"📦 {catName ?? "Fabric"} · ₹{rate:0.##}/{rateUnit ?? "mtr"}\nCode: {trackCode}\n\nOrder confirm karna hai? (reply: yes / no)"
+            + "\n[[QR:yes=✅ HAAN, order karo|no=❌ NAHI]]");
     }
 
     private static readonly string[] YesWords = { "yes", "haan", "ha", "ok", "okay", "confirm", "accept", "y" };
@@ -1341,55 +1391,44 @@ public class BazaarChatBotService : IBazaarChatBotService
                 await BotReply(threadId, firmId, "Kitni quantity chahiye? (sirf number bhejein, jaise 500)");
                 return;
             }
-            // BUYER ne NUMBER likha = rate ka mol-bhav ("₹999 nahi, 950 me do")
-            var rateOffer = SmartNumber(text);
-            var listedRate = CtxDec(ctx, "rate");
-            if (rateOffer > 0 && listedRate > 0)
+            // ⚖️ AKELA NUMBER ka do matlab hota hai — "50" ka matlab 50 mtr maal bhi ho
+            // sakta hai aur ₹50 ka bhav bhi. Pehle bot use hamesha BHAV samajh leta tha,
+            // isliye jo buyer maal ki ginti likhta tha uska mol-bhav shuru ho jata tha.
+            // Ab andaza nahi — seedha poochh lete hain (tap-button se).
+            var askNum = SmartNumber(text);
+            if (askNum > 0 && CtxDec(ctx, "rate") > 0)
             {
-                if (rateOffer >= listedRate)
-                {
-                    // Wahi ya zyada rate = haan hi hai
-                    await SetState(threadId, "ORDER_QTY", ToObjDict(ctx));
-                    await BotReply(threadId, firmId, "Kitni quantity chahiye? (sirf number bhejein, jaise 500)");
-                    return;
-                }
-                // PEHLE photo wali chat (pakka sahi supplier) — phone se tabhi dhundo jab wo na ho
-                // (ek number kai parties par ho to phone-lookup galat party pakad leta tha)
-                var supThread3 = CtxGuid(ctx, "supplier_thread_id");
-                if (supThread3 == Guid.Empty)
-                {
-                    var supPhone2 = CtxStr(ctx, "supplier_phone");
-                    var supParty2 = string.IsNullOrEmpty(supPhone2) ? null : await FindPartyByPhone(firmId, Last10(supPhone2));
-                    if (supParty2 is null)
-                    {
-                        await BotReply(threadId, firmId,
-                            "Supplier abhi Party Chat me nahi hai — rate ki baat firm se karein, ya listed rate par yes bhejein.");
-                        return;
-                    }
-                    supThread3 = await UpsertThread(firmId, supParty2.Value.id, supParty2.Value.name, Last10(supPhone2!));
-                }
-                var unit3 = CtxStr(ctx, "rate_unit") ?? "mtr";
-
-                var supCtx = ToObjDict(ctx);
-                supCtx["offer_rate"] = rateOffer;
-                supCtx["orig_rate"] = listedRate;
-                supCtx["other_thread_id"] = threadId;
-                await SetState(supThread3, "ORDER_BARGAIN_SUP", supCtx);
-
-                var waitCtx2 = ToObjDict(ctx);
-                waitCtx2["offer_rate"] = rateOffer;
-                waitCtx2["orig_rate"] = listedRate;
-                waitCtx2["other_thread_id"] = supThread3;
-                await SetState(threadId, "ORDER_BARGAIN_WAIT", waitCtx2);
-
-                await BotReply(threadId, firmId,
-                    $"🕐 Aapka ₹{rateOffer:0.##}/{unit3} ka offer supplier ko bhej diya — jawab ka intezar karein.");
-                await BotReply(supThread3, firmId,
-                    $"💬 {CtxStr(ctx, "category_name") ?? "Fabric"} ({CtxStr(ctx, "track_code")}): buyer *₹{rateOffer:0.##}/{unit3}* bol raha hai (listed ₹{listedRate:0.##}).\n" +
-                    $"Manzoor hai? (reply: yes / no / ya apna rate likhein, jaise 975)");
+                var askCtx = ToObjDict(ctx);
+                askCtx["num"] = askNum;
+                await SetState(threadId, "ORDER_NUM_ASK", askCtx);
+                await BotReply(threadId, firmId, NumAsk(askNum, CtxStr(ctx, "rate_unit") ?? "mtr"));
                 return;
             }
-            await BotReply(threadId, firmId, "Reply karein: yes (order karna hai) · no (cancel) · ya apna rate likhein (jaise 950).");
+            await BotReply(threadId, firmId,
+                "Order confirm karna hai? (reply: yes / no)\n[[QR:yes=✅ HAAN|no=❌ NAHI]]");
+            return;
+        }
+
+        // ⚖️ "50 kya hai?" ka jawab — maal ki ginti ya bhav
+        if (state == "ORDER_NUM_ASK")
+        {
+            var num = CtxDec(ctx, "num");
+            var baseCtx = ToObjDict(ctx); baseCtx.Remove("num");
+            var lowNum = text.Trim().ToLowerInvariant();
+
+            if (lowNum is "qty" or "1" || Regex.IsMatch(lowNum, @"quant|maal|ginti|meter|mtr|piece|pcs|kg"))
+            {
+                await SetState(threadId, "ORDER_QTY", baseCtx);
+                var (st, c2) = await GetState(threadId);
+                await HandleOrderReply(threadId, firmId, num.ToString("0.##"), st, c2);
+                return;
+            }
+            if (lowNum is "rate" or "2" || Regex.IsMatch(lowNum, @"rate|bhav|bhaav|bid|daam|price"))
+            {
+                await StartRateBargain(threadId, firmId, baseCtx, num);
+                return;
+            }
+            await BotReply(threadId, firmId, "Samajh nahi aaya 🙏\n\n" + NumAsk(num, CtxStr(ctx, "rate_unit") ?? "mtr"));
             return;
         }
 
@@ -1476,7 +1515,8 @@ public class BazaarChatBotService : IBazaarChatBotService
                     });
                     await InsertBotMsg(supThread,
                         $"🛒 *Naya Order!* ({orderCode})\n{catName ?? "Fabric"} · ₹{rate:0.##}/{unit}\n" +
-                        $"Qty: {qty:0.##} {unit}\nTotal: ₹{amount:0.##}\n\nIs order ko accept karte ho? (reply: yes / no)",
+                        $"Qty: {qty:0.##} {unit}\nTotal: ₹{amount:0.##}\n\nIs order ko accept karte ho? (reply: yes / no)"
+                        + "\n[[QR:yes=✅ ACCEPT|no=❌ NAHI]]",
                         null, null, null);
                     await TouchNotify(supThread, firmId);
                     notified = true;

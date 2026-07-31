@@ -187,6 +187,9 @@ public class BazaarChatBotService : IBazaarChatBotService
         if (state == "ASK_RATE")
         { await HandleRateReply(threadId, firmId, partyName, phone10, text, ctx); return; }
 
+        if (state == "ASK_UNIT")
+        { await HandleUnitReply(threadId, firmId, partyName, phone10, text, ctx); return; }
+
         // SUPPLIER: "BZ-XXXXXX 1050" — Photo-ID ke saath rate (kai photos me bhi zero confusion).
         // ID ke andar ke ank rate na ban jayein isliye ID hata kar number padhte hain.
         var idm = Regex.Match(text, @"\b(?:BZ|NAM)-([0-9A-Za-z]{6})\b", RegexOptions.IgnoreCase);
@@ -883,25 +886,84 @@ public class BazaarChatBotService : IBazaarChatBotService
             : $"📷 Photo mil gayi! (Photo ID: {newId})\nIs fabric ka *rate* kya hai?\n(sirf number bhejein, jaise 699)");
     }
 
+    // Rate kis hisab se — kapde me meter, thaan/piece aur kg teeno chalte hain.
+    // Pehle sab kuch "mtr" maan liya jata tha, isliye kg wale maal ka bhav galat
+    // dikhta tha. Ab likha ho to wahin se le lo, na likha ho to poochh lo.
+    private static string? ParseUnit(string text)
+    {
+        var t = " " + text.ToLowerInvariant().Replace("/", " ").Replace(".", " ") + " ";
+        if (Regex.IsMatch(t, @"\b(kg|kgs|kilo|kilos)\b")) return "kg";
+        if (Regex.IsMatch(t, @"\b(pcs|pc|piece|pieces|than|thaan|thān|nag)\b")) return "pcs";
+        if (Regex.IsMatch(t, @"\b(mtr|mtrs|meter|meters|metre|metres|mt|mtr\.)\b")) return "mtr";
+        return null;
+    }
+
+    // [[QR:...]] = quick-reply. Party Chat ki screen ise chhupa kar TAP-BUTTON bana
+    // deti hai (supplier ko number type na karna pade); jahan buttons na ho wahan
+    // aadmi number likh kar bhi jawab de sakta hai.
+    private const string UnitAsk =
+        "Rate kis hisab se hai?\n1  📏 Per METER\n2  🧵 Per PIECE / THAAN\n3  ⚖️ Per KG" +
+        "\n[[QR:1=📏 Per METER|2=🧵 Per PIECE|3=⚖️ Per KG]]";
+
+    private async Task HandleUnitReply(Guid threadId, Guid firmId, string partyName, string phone10,
+                                       string text, Dictionary<string, JsonElement> ctx)
+    {
+        var t = text.Trim().ToLowerInvariant();
+        var unit = t switch { "1" => "mtr", "2" => "pcs", "3" => "kg", _ => ParseUnit(t) };
+        if (unit is null)
+        {
+            await BotReply(threadId, firmId, "Samajh nahi aaya 🙏\n\n" + UnitAsk);
+            return;
+        }
+        await FinalizeRate(threadId, firmId, partyName, phone10,
+                           CtxGuid(ctx, "incoming_id"), CtxDec(ctx, "rate"), unit);
+    }
+
     private async Task HandleRateReply(Guid threadId, Guid firmId, string partyName, string phone10, string text, Dictionary<string, JsonElement> ctx)
     {
         var rate = SmartNumber(text);
         if (rate <= 0) { await BotReply(threadId, firmId, "Sirf number bhejein, jaise 699"); return; }
 
-        var incId = CtxGuid(ctx, "incoming_id");
-        string? imagePath = null, unitDb = null, catName = null; Guid? catId = null;
+        var incIdEarly = CtxGuid(ctx, "incoming_id");
+        var saidUnit = ParseUnit(text);
+        if (saidUnit is null)
+        {
+            // Unit likhi hi nahi — bhav galat na lag jaye, isliye poochh lete hain.
+            string? dbUnit = null;
+            if (incIdEarly != Guid.Empty)
+                await using (var uc = await Cmd("SELECT rate_unit FROM wa.incoming WHERE id = @i"))
+                {
+                    uc.Parameters.Add(new NpgsqlParameter("i", incIdEarly));
+                    dbUnit = (await uc.ExecuteScalarAsync()) as string;
+                }
+            if (string.IsNullOrWhiteSpace(dbUnit))      // caption/AI se bhi nahi mili
+            {
+                await SetState(threadId, "ASK_UNIT", new Dictionary<string, object?>
+                { ["incoming_id"] = incIdEarly.ToString(), ["rate"] = rate });
+                await BotReply(threadId, firmId, $"✅ Rate ₹{rate:0.##} note kar liya.\n\n" + UnitAsk);
+                return;
+            }
+            saidUnit = dbUnit;
+        }
+        await FinalizeRate(threadId, firmId, partyName, phone10, incIdEarly, rate, saidUnit);
+    }
+
+    private async Task FinalizeRate(Guid threadId, Guid firmId, string partyName, string phone10,
+                                    Guid incIdIn, decimal rate, string unit)
+    {
+        var incId = incIdIn;
+        string? imagePath = null, catName = null; Guid? catId = null;
         if (incId != Guid.Empty)
             await using (var cmd = await Cmd(
-                "SELECT image_path, rate_unit, category_id, category_name FROM wa.incoming WHERE id = @i"))
+                "SELECT image_path, category_id, category_name FROM wa.incoming WHERE id = @i"))
             {
                 cmd.Parameters.Add(new NpgsqlParameter("i", incId));
                 await using var r = await cmd.ExecuteReaderAsync();
                 if (await r.ReadAsync())
                 {
                     imagePath = r.IsDBNull(0) ? null : r.GetString(0);
-                    unitDb = r.IsDBNull(1) ? null : r.GetString(1);
-                    catId = r.IsDBNull(2) ? null : r.GetGuid(2);
-                    catName = r.IsDBNull(3) ? null : r.GetString(3);
+                    catId = r.IsDBNull(1) ? null : r.GetGuid(1);
+                    catName = r.IsDBNull(2) ? null : r.GetString(2);
                 }
             }
         if (imagePath is null || !File.Exists(imagePath))
@@ -913,12 +975,15 @@ public class BazaarChatBotService : IBazaarChatBotService
 
         var supplier = await FindSupplierByPhone(firmId, phone10);
         var res = await Finalize(threadId, firmId, incId, supplier?.name ?? partyName, phone10,
-                                 imagePath, rate, unitDb ?? "mtr", catId, catName);
+                                 imagePath, rate, unit, catId, catName);
         await ClearState(threadId);
         await BotReply(threadId, firmId,
-            $"✅ Rate ₹{rate:0.##} set ho gaya!\nCode: {res.code}\n{res.sent} matching buyer(s) ko photo bhej di" +
+            $"✅ Rate ₹{rate:0.##}/{UnitLabel(unit)} set ho gaya!\nCode: {res.code}\n{res.sent} matching buyer(s) ko photo bhej di" +
             (res.noChat > 0 ? $" ({res.noChat} ke paas Party Chat nahi)." : "."));
     }
+
+    private static string UnitLabel(string u) => u switch
+    { "kg" => "kg", "pcs" => "pcs", _ => "mtr" };
 
     // Photo finalize: code do, watermark karo, buyers ke Party Chat me bhejo.
     private async Task<(string code, int sent, int noChat)> Finalize(

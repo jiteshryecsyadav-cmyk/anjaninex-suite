@@ -214,7 +214,16 @@ interface PMsg {
                 } @else if (m.attachmentType === 'document') {
                   <a [href]="fileUrl(m.attachmentUrl!)" target="_blank" class="pc-doc">📄 {{ m.attachmentName || 'Document' }}</a>
                 }
-                @if (m.body) { <div class="whitespace-pre-wrap break-words" [innerHTML]="linkify(m.body)"></div> }
+                @if (m.body) { <div class="whitespace-pre-wrap break-words" [innerHTML]="linkify(visibleBody(m.body))"></div> }
+                <!-- ☑ TAP-BUTTON — bot ne jo chunav bheja (jaise meter/piece/kg), tap se jawab -->
+                @if (quickReplies(m); as qr) {
+                  <div class="pc-qrow">
+                    @for (q of qr; track q.val) {
+                      <button class="pc-qbtn" [disabled]="busy()"
+                              (click)="sendQuick(q.val); $event.stopPropagation()">{{ q.label }}</button>
+                    }
+                  </div>
+                }
                 <!-- 🛒 ORDER button — bot ki stock-photo ke neeche, tap = code khud chala jayega -->
                 @if (m.sender === 'firm' && orderCode(m); as oc) {
                   <div class="pc-orderrow">
@@ -325,6 +334,13 @@ interface PMsg {
     .pc-pick-go { background:#fff; color:#1B2E5C; font-weight:800; border-radius:10px;
       padding:8px 14px; font-size:15px; }
     .pc-pick-go:disabled { opacity:.5; }
+    /* ☑ Bot ke sawal ke tap-button (meter / piece / kg jaise chunav) */
+    .pc-qrow { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+    .pc-qbtn { flex:1 1 auto; min-width:96px; padding:9px 12px; background:#fff;
+      color:#1B2E5C; border:1.5px solid #1B2E5C; border-radius:10px;
+      font-weight:700; font-size:15px; }
+    .pc-qbtn:active { background:#1B2E5C; color:#fff; }
+    .pc-qbtn:disabled { opacity:.5; }
     /* 🛒 ORDER button — stock-photo ke neeche */
     .pc-orderbtn { display:block; width:100%; margin-top:8px; padding:10px 12px;
       background:#1B2E5C; color:#fff; font-weight:700; font-size:16px; border-radius:10px; }
@@ -876,6 +892,35 @@ export class PartyChatPublicComponent {
       next: () => { this.busy.set(false); this.picked.set(new Set()); this.loadMsgs(true); },
       error: (e) => { this.busy.set(false); alert('⚠️ ' + (e?.error?.error ?? 'Order shuru nahi hua')); }
     });
+  }
+
+  // ---- ☑ QUICK-REPLY (tap-button) ----
+  // Bot message ke aakhir me [[QR:1=Per METER|2=Per KG]] aata hai. Wo screen par
+  // dikhta nahi — uski jagah button ban jate hain. Buttons sirf SABSE NAYE bot
+  // message par, warna purane sawal ke button bhi dabaye ja sakte the.
+  private static QR_RX = /\[\[QR:([^\]]+)\]\]/;
+
+  visibleBody(body: string): string {
+    return body.replace(PartyChatPublicComponent.QR_RX, '').trimEnd();
+  }
+
+  quickReplies(m: PMsg): { val: string; label: string }[] | null {
+    if (m.sender !== 'firm' || !m.body) return null;
+    const list = this.msgs();
+    if (list.length === 0 || list[list.length - 1].id !== m.id) return null;   // sirf aakhri par
+    const mt = m.body.match(PartyChatPublicComponent.QR_RX);
+    if (!mt) return null;
+    return mt[1].split('|').map(p => {
+      const i = p.indexOf('=');
+      return i < 0 ? { val: p.trim(), label: p.trim() }
+                   : { val: p.slice(0, i).trim(), label: p.slice(i + 1).trim() };
+    }).filter(q => q.val.length > 0);
+  }
+
+  sendQuick(val: string) {
+    if (this.busy()) return;
+    this.replyTo.set(null);
+    this.sendText(val);
   }
 
   /** 🛒 button — ORDER <code> khud bhej do, typing ki zaroorat nahi */

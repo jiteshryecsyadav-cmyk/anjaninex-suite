@@ -435,7 +435,10 @@ export class PartyChatComponent {
   // Body me links clickable — CACHED! Har render par naya object banane se
   // change-detection ka anant loop banta tha (Page Unresponsive bug).
   private linkCache = new Map<string, SafeHtml>();
-  linkify(body: string): SafeHtml {
+  linkify(bodyIn: string): SafeHtml {
+    // [[QR:...]] party ki screen par tap-button banta hai — firm ki taraf wo
+    // sirf shor hai, isliye yahan hata dete hain.
+    const body = bodyIn.replace(/\[\[QR:[^\]]+\]\]/, '').trimEnd();
     let v = this.linkCache.get(body);
     if (!v) {
       // 🔐 QUOTES bhi escape — warna link ke andar onmouseover=... daal kar script chal

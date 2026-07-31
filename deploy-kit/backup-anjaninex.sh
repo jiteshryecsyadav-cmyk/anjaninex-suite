@@ -45,11 +45,11 @@ echo "$LOG_PREFIX daily OK ($(numfmt --to=iec $SIZE))"
 
 # ---------- 1b. CHAT PHOTOS/FILES bhi (Party Chat uploads) ----------
 # DB me sirf raste hain — asli photos uploads/ me hain. Wo bina backup ke thin!
-UPLOADS_DIR="/var/www/anjaninex/api-out/uploads"
+UPLOADS_DIR="/var/www/anjaninex/uploads-data"   # deploy-folder ke BAHAR — api-out/uploads sirf symlink hai (deploy uda na de)
 UFILE=""; USIZE=0
 if [ -d "$UPLOADS_DIR" ]; then
     UFILE="$BASE/daily/uploads-$STAMP.tgz"
-    tar -czf "$UFILE.tmp" -C "$(dirname "$UPLOADS_DIR")" uploads && mv "$UFILE.tmp" "$UFILE"
+    tar -czf "$UFILE.tmp" -C "$(dirname "$UPLOADS_DIR")" "$(basename "$UPLOADS_DIR")" && mv "$UFILE.tmp" "$UFILE"
     USIZE=$(stat -c%s "$UFILE")
     echo "$LOG_PREFIX uploads OK ($(numfmt --to=iec "$USIZE"))"
     # Hafte me ek uploads-copy weekly me bhi (photos ka GFS halka rakha hai)

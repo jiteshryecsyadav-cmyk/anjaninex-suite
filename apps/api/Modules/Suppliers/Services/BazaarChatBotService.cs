@@ -80,7 +80,7 @@ public class BazaarChatBotService : IBazaarChatBotService
             await cmd.ExecuteNonQueryAsync();
         }
 
-        if (!await FlagOn(firmId)) return;
+        var botOn = await FlagOn(firmId);
 
         var phone10 = Last10(phone);
         var (state, ctx) = await GetState(threadId);
@@ -89,10 +89,17 @@ public class BazaarChatBotService : IBazaarChatBotService
 
         if (isImage)
         {
-            await HandlePhoto(threadId, firmId, partyName, phone10, text, attachFile!, state);
+            if (botOn) await HandlePhoto(threadId, firmId, partyName, phone10, text, attachFile!, state);
             return;
         }
         if (text.Length == 0) return;
+
+        // ========== 📋 PARTY MENU (self-service) ==========
+        // Bot sirf menu-shabd par jaagta hai; menu khula ho to numbers samajhta hai.
+        // Baki har message par CHUP — firm ki asli baat-cheet me dakhal nahi.
+        if (await HandleMenu(threadId, firmId, partyId, partyName, phone10, text, state, ctx)) return;
+
+        if (!botOn) return;   // bazaar-bot band ho to aage kuch nahi
 
         // 📌 PHOTO PAR REPLY (quote) — reply hi photo ki PEHCHAN hai:
         //   • BUYER broadcast-photo par reply kare ("700"/"order") → usi photo ka order/bhav
@@ -347,6 +354,110 @@ public class BazaarChatBotService : IBazaarChatBotService
             && await FindBuyerByPhone(firmId, phone10) is not null)
             await BuyerSearch(threadId, firmId, text);
         // warna CHUP — ye firm↔party ki aam chat hai
+    }
+
+    // ---------------- 📋 PARTY MENU ----------------
+    // true lauta = message menu ne sambhal liya (aage bot ko dena nahi hai)
+    private async Task<bool> HandleMenu(Guid threadId, Guid firmId, Guid partyId, string partyName,
+                                        string phone10, string text, string state,
+                                        Dictionary<string, JsonElement> ctx)
+    {
+        if (!await FlagOn(firmId, "party_menu")) return false;
+
+        var menu = new PartyMenuService(Cmd);
+        var t = text.Trim();
+        var inMenu = state.StartsWith("MENU");
+
+        // Trigger: "hi/menu/namaste..." — chahe kahin bhi ho
+        if (PartyMenuService.IsMenuTrigger(t))
+        {
+            await SetState(threadId, "MENU_MAIN", new Dictionary<string, object?>());
+            await LogMenu(firmId, threadId, partyName, "menu");
+            await BotReply(threadId, firmId, menu.MainMenu(await FirmName(firmId), partyName));
+            return true;
+        }
+        if (!inMenu) return false;                       // menu khula nahi — bot ko dedo
+
+        // Menu ke andar sirf CHHOTE number chalte hain (0/9 navigation)
+        if (!Regex.IsMatch(t, @"^[0-9]$"))
+        {
+            // Number nahi — menu band karke aam chat (ya bot) ko dedo
+            await ClearState(threadId);
+            return false;
+        }
+        await LogMenu(firmId, threadId, partyName, (inMenu ? state + ">" : "") + t);
+
+        if (t == "9" || (t == "0" && state == "MENU_KHATA"))
+        {
+            await SetState(threadId, "MENU_MAIN", new Dictionary<string, object?>());
+            await BotReply(threadId, firmId, menu.MainMenu(await FirmName(firmId), partyName));
+            return true;
+        }
+        if (t == "0")
+        {
+            await SetState(threadId, "MENU_MAIN", new Dictionary<string, object?>());
+            await BotReply(threadId, firmId, menu.MainMenu(await FirmName(firmId), partyName));
+            return true;
+        }
+
+        if (state == "MENU_MAIN")
+        {
+            switch (t)
+            {
+                case "1":
+                    await SetState(threadId, "MENU_KHATA", new Dictionary<string, object?>());
+                    await BotReply(threadId, firmId, menu.KhataMenu());
+                    return true;
+                case "2":
+                    await BotReply(threadId, firmId, await menu.OrdersAsync(firmId, partyId, phone10));
+                    return true;
+                case "3":
+                    await BotReply(threadId, firmId, await menu.StockAsync(firmId));
+                    return true;
+                case "4":
+                    await ClearState(threadId);
+                    await BotReply(threadId, firmId, menu.TalkToFirm());
+                    return true;
+                default:
+                    await BotReply(threadId, firmId, "Ye number menu me nahi hai.\n\n" + menu.MainMenu(await FirmName(firmId), partyName));
+                    return true;
+            }
+        }
+
+        if (state == "MENU_KHATA")
+        {
+            switch (t)
+            {
+                case "1": await BotReply(threadId, firmId, await menu.BakayaAsync(firmId, partyId)); return true;
+                case "2": await BotReply(threadId, firmId, await menu.StatementAsync(firmId, partyId)); return true;
+                case "3": await BotReply(threadId, firmId, await menu.PaymentsAsync(firmId, partyId)); return true;
+                default:  await BotReply(threadId, firmId, "Ye number is menu me nahi hai.\n\n" + menu.KhataMenu()); return true;
+            }
+        }
+        return false;
+    }
+
+    private async Task<string> FirmName(Guid firmId)
+    {
+        await using var cmd = await Cmd("SELECT name FROM platform.firms WHERE id = @f");
+        cmd.Parameters.Add(new NpgsqlParameter("f", firmId));
+        return (await cmd.ExecuteScalarAsync()) as string ?? "Vyapaar Setu";
+    }
+
+    private async Task LogMenu(Guid firmId, Guid threadId, string partyName, string choice)
+    {
+        try
+        {
+            await using var cmd = await Cmd(@"
+                INSERT INTO platform.party_menu_log (firm_id, thread_id, party_name, choice)
+                VALUES (@f, @t, @n, @c)");
+            cmd.Parameters.Add(new NpgsqlParameter("f", firmId));
+            cmd.Parameters.Add(new NpgsqlParameter("t", threadId));
+            cmd.Parameters.Add(new NpgsqlParameter("n", partyName));
+            cmd.Parameters.Add(new NpgsqlParameter("c", choice));
+            await cmd.ExecuteNonQueryAsync();
+        }
+        catch { /* log fail ho to menu rukna nahi chahiye */ }
     }
 
     // ---------------- photo ----------------
@@ -1060,13 +1171,14 @@ public class BazaarChatBotService : IBazaarChatBotService
 
     // ---------------- lookups (match.js port) ----------------
 
-    private async Task<bool> FlagOn(Guid firmId)
+    private async Task<bool> FlagOn(Guid firmId, string key = "bazaar_chat_bot")
     {
         await using var cmd = await Cmd(@"
             SELECT 1 FROM platform.feature_flags ff
-            WHERE ff.key = 'bazaar_chat_bot' AND (ff.enabled_all
+            WHERE ff.key = @k AND (ff.enabled_all
                OR EXISTS (SELECT 1 FROM platform.feature_flag_firms x
-                           WHERE x.flag_key = 'bazaar_chat_bot' AND x.firm_id = @f))");
+                           WHERE x.flag_key = @k AND x.firm_id = @f))");
+        cmd.Parameters.Add(new NpgsqlParameter("k", key));
         cmd.Parameters.Add(new NpgsqlParameter("f", firmId));
         return await cmd.ExecuteScalarAsync() != null;
     }

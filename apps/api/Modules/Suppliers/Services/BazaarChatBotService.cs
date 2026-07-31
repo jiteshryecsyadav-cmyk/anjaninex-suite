@@ -841,7 +841,7 @@ public class BazaarChatBotService : IBazaarChatBotService
             cmd.Parameters.Add(new NpgsqlParameter("p", path));
             cmd.Parameters.Add(new NpgsqlParameter("c", (object?)NullIfEmpty(caption) ?? DBNull.Value));
             cmd.Parameters.Add(new NpgsqlParameter("r", rate));
-            cmd.Parameters.Add(new NpgsqlParameter("u", unit));
+            cmd.Parameters.Add(new NpgsqlParameter("u", (object?)unit ?? DBNull.Value));
             cmd.Parameters.Add(new NpgsqlParameter("cid", (object?)catId ?? DBNull.Value));
             cmd.Parameters.Add(new NpgsqlParameter("cn", (object?)catName ?? DBNull.Value));
             cmd.Parameters.Add(new NpgsqlParameter("st", rate > 0 ? "processing" : "awaiting_rate"));
@@ -849,13 +849,24 @@ public class BazaarChatBotService : IBazaarChatBotService
             incId = (Guid)(await cmd.ExecuteScalarAsync())!;
         }
 
-        if (rate > 0)
+        if (rate > 0 && unit is not null)
         {
             var res = await Finalize(threadId, firmId, incId, supplier.Value.name, phone10, path, rate, unit, catId, catName);
             await BotReply(threadId, firmId,
                 $"✅ Photo save ho gayi!\nRate: ₹{rate:0.##}/{unit}{(catName != null ? " · " + catName : "")}\n" +
                 $"Code: {res.code}\n{res.sent} matching buyer(s) ko bhej di" +
                 (res.noChat > 0 ? $" ({res.noChat} ke paas Party Chat nahi)." : "."));
+            return;
+        }
+
+        // Caption me rate to mila par HISAB nahi (meter? kg? thaan?) — buyer ko galat
+        // bhav na jaye isliye ek sawal aur.
+        if (rate > 0)
+        {
+            await SetState(threadId, "ASK_UNIT", new Dictionary<string, object?>
+            { ["incoming_id"] = incId.ToString(), ["rate"] = rate });
+            await BotReply(threadId, firmId,
+                $"📷 Photo mil gayi! Rate ₹{rate:0.##} note kar liya.\n\n" + UnitAsk);
             return;
         }
 
@@ -882,8 +893,9 @@ public class BazaarChatBotService : IBazaarChatBotService
             ? $"📷 Nayi photo mil gayi! (Photo ID: {newId})\n" +
               $"Rate ke intezar me: {string.Join(", ", pendingIds)}\n\n" +
               $"Har photo ka rate aise bhejein:\n{newId} 850\n" +
-              "(ya akela number = sabse NAYI photo ka rate)\n💡 Caption me \"Rate 699\" likho to poochhna hi nahi padega."
-            : $"📷 Photo mil gayi! (Photo ID: {newId})\nIs fabric ka *rate* kya hai?\n(sirf number bhejein, jaise 699)");
+              "(ya akela number = sabse NAYI photo ka rate)\n💡 Caption me \"Rate 699 kg\" likho to poochhna hi nahi padega."
+            : $"📷 Photo mil gayi! (Photo ID: {newId})\nIs fabric ka *rate* kya hai?\n" +
+              "(sirf number bhejein, jaise 699 — ya hisab ke saath: 699 kg)");
     }
 
     // Rate kis hisab se — kapde me meter, thaan/piece aur kg teeno chalte hain.
@@ -1717,7 +1729,7 @@ public class BazaarChatBotService : IBazaarChatBotService
     private static bool IsNo(string low) => Regex.IsMatch(low,
         @"^(no|nahi|nahin|nhi|na|mat|cancel|reset|reject|ruko|band|rehne do)\b");
 
-    private async Task<(decimal rate, string unit, Guid? catId, string? catName)> ExtractRate(Guid firmId, string? caption)
+    private async Task<(decimal rate, string? unit, Guid? catId, string? catName)> ExtractRate(Guid firmId, string? caption)
     {
         decimal rate = 0;
         if (!string.IsNullOrEmpty(caption))
@@ -1732,12 +1744,10 @@ public class BazaarChatBotService : IBazaarChatBotService
                 if (sn >= 10) rate = sn;
             }
         }
-        var unit = "mtr";
-        if (!string.IsNullOrEmpty(caption))
-        {
-            if (Regex.IsMatch(caption, "pc|piece|pcs", RegexOptions.IgnoreCase)) unit = "pcs";
-            else if (Regex.IsMatch(caption, "kg|kilo", RegexOptions.IgnoreCase)) unit = "kg";
-        }
+        // ⚠️ Unit ka andaza MAT lagao. Pehle yahan default "mtr" tha, isliye har maal
+        // meter ka ban jata tha aur kg/thaan wale ka bhav galat jata tha. Caption me
+        // saaf likha ho tabhi lo — warna null, aur bot khud poochh lega.
+        var unit = string.IsNullOrEmpty(caption) ? null : ParseUnit(caption);
 
         Guid? catId = null; string? catName = null;
         if (!string.IsNullOrEmpty(caption))

@@ -941,7 +941,9 @@ public class PartyChatPublicController : ControllerBase
             {
                 messaging_product = "whatsapp",
                 recipient_type = "individual",
-                to = toDigits,
+                // 🇮🇳 COUNTRY CODE ke saath — provider ne bataya ki 91 ke bina message
+                // jata hi nahi (10-digit par error milta tha)
+                to = toDigits.Length == 10 ? "91" + toDigits : toDigits,
                 type = "text",
                 text = new { body = msg }
             });
@@ -951,9 +953,20 @@ public class PartyChatPublicController : ControllerBase
             req.Headers.TryAddWithoutValidation("wabaNumber", sender);
             req.Content = new StringContent(bodyJson, Encoding.UTF8, "application/json");
             var resp = await Http.SendAsync(req);
-            return resp.IsSuccessStatusCode;
+            var respText = await resp.Content.ReadAsStringAsync();
+            // ⚠️ Provider HTTP 200 ke saath bhi error bhej deta hai (jaise
+            // "WhatsappRateNotAssigned") — isliye jawab ke ANDAR bhi dekho, warna
+            // OTP gaya hi nahi aur hum "bhej diya" bolte rehte hain.
+            var failed = respText.Contains("errorCode", StringComparison.OrdinalIgnoreCase)
+                      || respText.Contains("errorDescription", StringComparison.OrdinalIgnoreCase);
+            if (!resp.IsSuccessStatusCode || failed)
+            {
+                Console.WriteLine($"[wa-otp] FAIL {(int)resp.StatusCode}: {respText}");
+                return false;
+            }
+            return true;
         }
-        catch { return false; }
+        catch (Exception ex) { Console.WriteLine($"[wa-otp] EX: {ex.Message}"); return false; }
     }
 
     // ---- 2) OTP verify → session token + thread ----

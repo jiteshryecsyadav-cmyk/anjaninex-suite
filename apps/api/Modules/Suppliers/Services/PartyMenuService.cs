@@ -209,4 +209,96 @@ public class PartyMenuService
     public string TalkToFirm() =>
         "💬 FIRM SE BAAT\n────────────────\nApna sawal yahin likh dein — firm ka aadmi jawab dega.\n" +
         "(Menu dobara kholne ke liye 'menu' likhein.)";
+
+    // ======================= SUPPLIER ka apna menu =======================
+    // Supplier ko "Bazaar — naya stock" ya "khareed ke orders" ka koi matlab
+    // nahi. Uske kaam alag hain: photo bhejna, pending order ka jawab dena,
+    // apni bheji photo ka hisab dekhna.
+
+    /// Menu ki lines number ke saath bana kar deta hai (list role ke hisab se aati hai).
+    public string Render(string firmName, string partyName, IReadOnlyList<string> labels)
+    {
+        var sb = new StringBuilder($"🏢 {firmName.ToUpperInvariant()}\n👤 {partyName} ji\n────────────────\n");
+        for (int i = 0; i < labels.Count; i++) sb.Append($"{i + 1}  {labels[i]}\n");
+        sb.Append("────────────────\nNumber bhejein (jaise 1)");
+        return sb.ToString();
+    }
+
+    /// 📸 Naya stock kaise bhejein — naye supplier ko yahi sabse zyada poochna padta hai.
+    public string SendStockHelp() =>
+        "📸 NAYA STOCK BHEJEIN\n────────────────\n" +
+        "Bas photo yahin bhej dein — saath me rate likh dein.\n\n" +
+        "Jaise: photo ke caption me *Cotton 250*\n" +
+        "(ya photo bhej kar agle message me sirf *250*)\n\n" +
+        "Photo par apni firm ka naam apne aap lag jayega, phir wo\n" +
+        "sirf matching buyers ko hi jayegi. 👍" + Foot;
+
+    /// 🕐 Jin orders par supplier ka jawab baki hai — yahi sabse zyada atakta hai.
+    public async Task<string> SupPendingOrdersAsync(Guid firmId, Guid threadId)
+    {
+        var sb = new StringBuilder("🕐 PENDING ORDER (aapka jawab baki)\n────────────────\n");
+        int n = 0;
+        await using (var c = await _cmd(@"
+            SELECT order_code, quantity, rate_unit, rate, amount, category_name, buyer_name, created_at
+              FROM wa.orders
+             WHERE firm_id = @f AND status = 'pending_supplier' AND supplier_thread_id = @t
+             ORDER BY created_at"))
+        {
+            c.Parameters.Add(new NpgsqlParameter("f", firmId));
+            c.Parameters.Add(new NpgsqlParameter("t", threadId));
+            await using var r = await c.ExecuteReaderAsync();
+            while (await r.ReadAsync())
+            {
+                n++;
+                var code = r.IsDBNull(0) ? "—" : r.GetString(0);
+                var qty = r.IsDBNull(1) ? 0m : r.GetDecimal(1);
+                var unit = r.IsDBNull(2) ? "mtr" : r.GetString(2);
+                var rate = r.IsDBNull(3) ? 0m : r.GetDecimal(3);
+                var amt = r.IsDBNull(4) ? 0m : r.GetDecimal(4);
+                var cat = r.IsDBNull(5) ? "Fabric" : r.GetString(5);
+                var dt = r.IsDBNull(7) ? "" : r.GetDateTime(7).ToLocalTime().ToString("dd-MMM HH:mm");
+                sb.Append($"• {code} — {cat}\n  {qty:0.##} {unit} @ ₹{rate:0.##} = ₹{amt:0.##}\n  {dt}\n");
+            }
+        }
+        if (n == 0) return "🕐 PENDING ORDER\n────────────────\n✅ Koi order jawab ka intezar nahi kar raha." + Foot;
+        sb.Append("\nJawab aise dein:\n*yes ORD-000011*  (manzoor)\n*no ORD-000011*  (mana)\n" +
+                  "Kam maal hai to sirf quantity: *300 ORD-000011*");
+        return sb + Foot;
+    }
+
+    /// 🧾 Supplier ne jo photos bheji — unka rate laga ya nahi, kitne buyers tak gayi.
+    public async Task<string> MyPhotosAsync(Guid firmId, Guid threadId)
+    {
+        var sb = new StringBuilder("🧾 MERI BHEJI PHOTO (aakhri 8)\n────────────────\n");
+        int n = 0;
+        await using (var c = await _cmd(@"
+            SELECT i.track_code, i.rate, i.rate_unit, i.status, i.created_at,
+                   (SELECT COUNT(*) FROM wa.forwards f WHERE f.incoming_id = i.id)
+              FROM wa.incoming i
+             WHERE i.firm_id = @f AND i.pchat_thread_id = @t
+             ORDER BY i.created_at DESC LIMIT 8"))
+        {
+            c.Parameters.Add(new NpgsqlParameter("f", firmId));
+            c.Parameters.Add(new NpgsqlParameter("t", threadId));
+            await using var r = await c.ExecuteReaderAsync();
+            while (await r.ReadAsync())
+            {
+                n++;
+                var code = r.IsDBNull(0) ? "—" : r.GetString(0);
+                var rate = r.IsDBNull(1) ? 0m : r.GetDecimal(1);
+                var unit = r.IsDBNull(2) ? "mtr" : r.GetString(2);
+                var st = r.IsDBNull(3) ? "" : r.GetString(3);
+                var dt = r.IsDBNull(4) ? "" : r.GetDateTime(4).ToLocalTime().ToString("dd-MMM HH:mm");
+                var fwd = r.IsDBNull(5) ? 0L : r.GetInt64(5);
+                var halat = st switch
+                {
+                    "awaiting_rate" => "⏳ Rate baki — number bhej dein",
+                    "processed" => $"✅ ₹{rate:0.##}/{unit} · {fwd} buyer tak gayi",
+                    _ => st
+                };
+                sb.Append($"• {code} — {dt}\n  {halat}\n");
+            }
+        }
+        return (n == 0 ? "🧾 MERI BHEJI PHOTO\n────────────────\nAbhi tak koi photo nahi bheji." : sb.ToString()) + Foot;
+    }
 }

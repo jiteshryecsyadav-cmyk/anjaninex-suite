@@ -363,21 +363,19 @@ public class BazaarChatBotService : IBazaarChatBotService
         // Pehle yahan se bot bina jawab ke lautt jata tha. Natija: order pakka hone ke
         // baad party "Ok" / "1" / "11" likhti rahi aur uske paas sannata — usko lagta
         // hai chat mar gayi. Ab samajh na aaye to seedha MENU de do.
-        await ShowMenuFallback(threadId, firmId, partyId, partyName, state, ctx);
+        await ShowMenuFallback(threadId, firmId, partyName, phone10, state, ctx);
     }
 
     /// Samajh na aane par menu — par "firm se baat" wale chup-waqt me nahi.
-    private async Task ShowMenuFallback(Guid threadId, Guid firmId, Guid partyId, string partyName,
+    private async Task ShowMenuFallback(Guid threadId, Guid firmId, string partyName, string phone10,
                                         string state, Dictionary<string, JsonElement> ctx)
     {
         if (!await FlagOn(firmId, "party_menu")) return;
         if (state == "QUIET" && QuietTill(ctx) > DateTime.UtcNow) return;   // aadmi baat kar raha hai
 
-        var menu = new PartyMenuService(Cmd);
-        await SetState(threadId, "MENU_MAIN", new Dictionary<string, object?>());
         await LogMenu(firmId, threadId, partyName, "fallback");
-        await BotReply(threadId, firmId,
-            "Samajh nahi aaya 🙏\n\n" + menu.MainMenu(await FirmName(firmId), partyName));
+        await ShowMainMenu(threadId, firmId, partyName, phone10,
+                           new PartyMenuService(Cmd), "Samajh nahi aaya 🙏\n\n");
     }
 
     /// QUIET state ka waqt — jab tak bot ko beech me nahi bolna.
@@ -649,9 +647,8 @@ public class BazaarChatBotService : IBazaarChatBotService
         // Trigger: "hi/menu/namaste..." — chahe kahin bhi ho
         if (PartyMenuService.IsMenuTrigger(t))
         {
-            await SetState(threadId, "MENU_MAIN", new Dictionary<string, object?>());
+            await ShowMainMenu(threadId, firmId, partyName, phone10, menu);
             await LogMenu(firmId, threadId, partyName, "menu");
-            await BotReply(threadId, firmId, menu.MainMenu(await FirmName(firmId), partyName));
             return true;
         }
         if (!inMenu) return false;                       // menu khula nahi — bot ko dedo
@@ -665,44 +662,56 @@ public class BazaarChatBotService : IBazaarChatBotService
         }
         await LogMenu(firmId, threadId, partyName, (inMenu ? state + ">" : "") + t);
 
-        if (t == "9" || (t == "0" && state == "MENU_KHATA"))
+        if (t == "9" || t == "0")
         {
-            await SetState(threadId, "MENU_MAIN", new Dictionary<string, object?>());
-            await BotReply(threadId, firmId, menu.MainMenu(await FirmName(firmId), partyName));
-            return true;
-        }
-        if (t == "0")
-        {
-            await SetState(threadId, "MENU_MAIN", new Dictionary<string, object?>());
-            await BotReply(threadId, firmId, menu.MainMenu(await FirmName(firmId), partyName));
+            await ShowMainMenu(threadId, firmId, partyName, phone10, menu);
             return true;
         }
 
         if (state == "MENU_MAIN")
         {
-            switch (t)
+            // Menu ki lines role ke hisab se banti hain, isliye "number kya karta hai"
+            // bhi wahin se aata hai (state me kaam ki list rakhi hai).
+            var acts = CtxList(ctx, "acts");
+            if (acts.Count == 0) acts = (await BuildMenu(firmId, phone10)).acts;
+            var idx = int.Parse(t) - 1;
+            if (idx < 0 || idx >= acts.Count)
             {
-                case "1":
+                await BotReply(threadId, firmId, "Ye number menu me nahi hai.\n\n"
+                    + (await BuildMenuText(firmId, partyName, phone10, menu)).text);
+                return true;
+            }
+
+            switch (acts[idx])
+            {
+                case "khata":
                     await SetState(threadId, "MENU_KHATA", new Dictionary<string, object?>());
                     await BotReply(threadId, firmId, menu.KhataMenu());
                     return true;
-                case "2":
+                case "orders":
                     await BotReply(threadId, firmId, await menu.OrdersAsync(firmId, partyId, phone10));
                     return true;
-                case "3":
+                case "bazaar":
                     await BotReply(threadId, firmId, await menu.StockAsync(firmId));
                     return true;
-                case "4":
+                case "send":
+                    await BotReply(threadId, firmId, menu.SendStockHelp());
+                    return true;
+                case "pending":
+                    await BotReply(threadId, firmId, await menu.SupPendingOrdersAsync(firmId, threadId));
+                    return true;
+                case "photos":
+                    await BotReply(threadId, firmId, await menu.MyPhotosAsync(firmId, threadId));
+                    return true;
+                case "talk":
                     // 🤫 Ab aadmi baat karega — bot 30 minute ke liye peeche hat jaye,
                     // warna party ki har baat par menu thok dega aur wo chidh jayegi.
                     await SetState(threadId, "QUIET", new Dictionary<string, object?>
                     { ["quiet_till"] = DateTime.UtcNow.AddMinutes(30).ToString("o") });
                     await BotReply(threadId, firmId, menu.TalkToFirm());
                     return true;
-                default:
-                    await BotReply(threadId, firmId, "Ye number menu me nahi hai.\n\n" + menu.MainMenu(await FirmName(firmId), partyName));
-                    return true;
             }
+            return true;
         }
 
         if (state == "MENU_KHATA")
@@ -716,6 +725,61 @@ public class BazaarChatBotService : IBazaarChatBotService
             }
         }
         return false;
+    }
+
+    // ---------------- ROLE ke hisab se MENU ----------------
+    // Supplier ko buyer wala menu dena bekaar hai (usko "bazaar ka naya stock" nahi
+    // chahiye, usko apni photo aur pending order chahiye). Isliye menu banta hai
+    // is baat par ki ye number kis roop me darj hai — supplier, buyer, ya dono.
+    private static readonly (string act, string label)[] SupplierRows =
+    {
+        ("send",    "📸 Naya stock bhejein"),
+        ("pending", "🕐 Mere pending order (jinpe jawab dena hai)"),
+        ("photos",  "🧾 Meri bheji photo ka status"),
+    };
+    private static readonly (string act, string label)[] BuyerRows =
+    {
+        ("orders",  "📦 Mere Orders"),
+        ("bazaar",  "🛍️ Bazaar — naya stock"),
+    };
+
+    private async Task<(List<string> acts, List<string> labels)> BuildMenu(Guid firmId, string phone10)
+    {
+        var isSup = await FindSupplierByPhone(firmId, phone10) is not null;
+        var isBuy = await FindBuyerByPhone(firmId, phone10) is not null;
+        if (!isSup && !isBuy) isBuy = true;              // pehchan na ho to buyer wala hi
+
+        var rows = new List<(string act, string label)>();
+        if (isSup) rows.AddRange(SupplierRows);
+        rows.Add(("khata", "💰 Khata / Account"));
+        if (isBuy) rows.AddRange(BuyerRows);
+        rows.Add(("talk", "💬 Firm se baat karni hai"));
+
+        return (rows.Select(r => r.act).ToList(), rows.Select(r => r.label).ToList());
+    }
+
+    private async Task<(string text, List<string> acts)> BuildMenuText(
+        Guid firmId, string partyName, string phone10, PartyMenuService menu)
+    {
+        var (acts, labels) = await BuildMenu(firmId, phone10);
+        return (menu.Render(await FirmName(firmId), partyName, labels), acts);
+    }
+
+    private async Task ShowMainMenu(Guid threadId, Guid firmId, string partyName, string phone10,
+                                    PartyMenuService menu, string? prefix = null)
+    {
+        var (text, acts) = await BuildMenuText(firmId, partyName, phone10, menu);
+        await SetState(threadId, "MENU_MAIN", new Dictionary<string, object?> { ["acts"] = acts });
+        await BotReply(threadId, firmId, (prefix ?? "") + text);
+    }
+
+    private static List<string> CtxList(Dictionary<string, JsonElement> ctx, string key)
+    {
+        var list = new List<string>();
+        if (ctx.TryGetValue(key, out var el) && el.ValueKind == JsonValueKind.Array)
+            foreach (var it in el.EnumerateArray())
+                if (it.ValueKind == JsonValueKind.String) list.Add(it.GetString()!);
+        return list;
     }
 
     private async Task<string> FirmName(Guid firmId)

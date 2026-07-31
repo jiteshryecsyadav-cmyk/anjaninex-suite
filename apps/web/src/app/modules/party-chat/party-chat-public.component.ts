@@ -217,7 +217,14 @@ interface PMsg {
                 @if (m.body) { <div class="whitespace-pre-wrap break-words" [innerHTML]="linkify(m.body)"></div> }
                 <!-- 🛒 ORDER button — bot ki stock-photo ke neeche, tap = code khud chala jayega -->
                 @if (m.sender === 'firm' && orderCode(m); as oc) {
-                  <button (click)="quickOrder(oc)" [disabled]="busy()" class="pc-orderbtn">🛒 ORDER KAREIN</button>
+                  <div class="pc-orderrow">
+                    <!-- ☑ TICK — kai photo ek saath chun kar EK order (asli bill jaisa) -->
+                    <label class="pc-tick" (click)="$event.stopPropagation()">
+                      <input type="checkbox" [checked]="picked().has(oc)" (change)="togglePick(oc)">
+                      <span>Chuno</span>
+                    </label>
+                    <button (click)="quickOrder(oc)" [disabled]="busy()" class="pc-orderbtn">🛒 ORDER</button>
+                  </div>
                 }
                 <div class="pc-meta">
                   {{ m.createdAt | date:'h:mm a' }}
@@ -238,6 +245,15 @@ interface PMsg {
             </div>
           }
         </div>
+        <!-- 🛒 Chune hue photos ki patti — ek saath order -->
+        @if (picked().size > 0) {
+          <div class="pc-pickbar">
+            <span class="flex-1">🛒 <b>{{ picked().size }}</b> photo chuni</span>
+            <button (click)="clearPicks()" class="pc-pick-x">Hatao</button>
+            <button (click)="orderPicked()" [disabled]="busy()" class="pc-pick-go">Order karein</button>
+          </div>
+        }
+
         <!-- Reply-quote bar (WhatsApp jaisa) — kis message ka jawab likh rahe ho -->
         @if (replyTo(); as r) {
           <div class="pc-replybar">
@@ -296,6 +312,19 @@ interface PMsg {
     .pc-agn-badge { background:#16A34A; color:#fff; font-size:12px; font-weight:800;
       min-width:22px; height:22px; border-radius:999px; display:flex;
       align-items:center; justify-content:center; padding:0 6px; flex-shrink:0; }
+    /* ☑ tick + ORDER ki jodi */
+    .pc-orderrow { display:flex; gap:8px; align-items:center; margin-top:8px; }
+    .pc-tick { display:flex; align-items:center; gap:6px; font-size:15px; font-weight:700;
+      color:#1B2E5C; background:rgba(27,46,92,.08); border-radius:10px; padding:8px 10px; cursor:pointer; }
+    .pc-tick input { width:20px; height:20px; accent-color:#1B2E5C; }
+    .pc-orderrow .pc-orderbtn { margin-top:0; flex:1; }
+    /* Chune hue photos ki patti */
+    .pc-pickbar { display:flex; align-items:center; gap:8px; background:#1B2E5C; color:#fff;
+      padding:10px 12px; font-size:15px; }
+    .pc-pick-x { color:#fff; opacity:.8; font-size:14px; padding:6px 10px; }
+    .pc-pick-go { background:#fff; color:#1B2E5C; font-weight:800; border-radius:10px;
+      padding:8px 14px; font-size:15px; }
+    .pc-pick-go:disabled { opacity:.5; }
     /* 🛒 ORDER button — stock-photo ke neeche */
     .pc-orderbtn { display:block; width:100%; margin-top:8px; padding:10px 12px;
       background:#1B2E5C; color:#fff; font-weight:700; font-size:16px; border-radius:10px; }
@@ -831,6 +860,24 @@ export class PartyChatPublicComponent {
     const match = m.body.match(/ORDER\s+((?:NAM|BZ)-\S+)/i);
     return match ? match[1].replace(/[.,;]+$/, '') : null;
   }
+  // ☑ kai photo chun kar EK order (ek order, kai item)
+  picked = signal<Set<string>>(new Set());
+  clearPicks() { this.picked.set(new Set<string>()); }
+  togglePick(code: string) {
+    const s = new Set(this.picked());
+    s.has(code) ? s.delete(code) : s.add(code);
+    this.picked.set(s);
+  }
+  orderPicked() {
+    const codes = [...this.picked()];
+    if (!codes.length || this.busy()) return;
+    this.busy.set(true);
+    this.http.post(`${this.base}/multi-order`, { token: this.token, codes }).subscribe({
+      next: () => { this.busy.set(false); this.picked.set(new Set()); this.loadMsgs(true); },
+      error: (e) => { this.busy.set(false); alert('⚠️ ' + (e?.error?.error ?? 'Order shuru nahi hua')); }
+    });
+  }
+
   /** 🛒 button — ORDER <code> khud bhej do, typing ki zaroorat nahi */
   quickOrder(code: string) {
     if (this.busy()) return;

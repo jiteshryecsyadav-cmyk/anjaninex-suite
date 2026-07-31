@@ -131,17 +131,44 @@ public class BazaarOrdersController : ControllerBase
         // TRADING ORDER — remark me bazaar order no + date-time (user ki maang)
         var ist = o.CreatedAt.ToOffset(TimeSpan.FromMinutes(330));
         var remark = $"Bazaar Link order {o.OrderCode} · {ist:dd-MMM-yyyy h:mm tt} · photo {o.TrackCode}";
-        var line = new OrderLineDto(
-            null, null,
-            ItemName: $"Fabric — {o.TrackCode}",
-            Description: o.CategoryName,
-            HsnSac: null,
-            Qty: o.Quantity, Unit: o.RateUnit, Rate: o.Rate, Rd: 0,
-            SgstPct: 0, CgstPct: 0,
-            TaxableAmount: o.Amount, TaxAmount: 0, TotalAmount: o.Amount,
-            Pcs: string.Equals(o.RateUnit, "pcs", StringComparison.OrdinalIgnoreCase) ? o.Quantity : null,
-            Meters: string.Equals(o.RateUnit, "mtr", StringComparison.OrdinalIgnoreCase) ? o.Quantity : null,
-            RateBasis: string.Equals(o.RateUnit, "pcs", StringComparison.OrdinalIgnoreCase) ? "PCS" : "MTR");
+        // Order me jitne ITEM hain utni LINE (kai photo ka ek order — asli bill jaisa).
+        // Purane single-photo order me bhi ek line item table me pehle se hai (migration 110).
+        var lines = new List<OrderLineDto>();
+        await using (var lc = await Cmd(@"
+            SELECT track_code, category_name, rate, rate_unit, quantity, amount
+              FROM wa.order_items WHERE order_id = @o ORDER BY sort_order, created_at"))
+        {
+            lc.Parameters.Add(new NpgsqlParameter("o", id));
+            await using var lr = await lc.ExecuteReaderAsync();
+            while (await lr.ReadAsync())
+            {
+                var tc = lr.IsDBNull(0) ? o.TrackCode : lr.GetString(0);
+                var cat = lr.IsDBNull(1) ? o.CategoryName : lr.GetString(1);
+                var rt = lr.IsDBNull(2) ? 0m : lr.GetDecimal(2);
+                var un = lr.IsDBNull(3) ? o.RateUnit : lr.GetString(3);
+                var qt = lr.IsDBNull(4) ? 0m : lr.GetDecimal(4);
+                var am = lr.IsDBNull(5) ? 0m : lr.GetDecimal(5);
+                var isPcs = string.Equals(un, "pcs", StringComparison.OrdinalIgnoreCase);
+                lines.Add(new OrderLineDto(
+                    null, null,
+                    ItemName: $"Fabric — {tc}", Description: cat, HsnSac: null,
+                    Qty: qt, Unit: un, Rate: rt, Rd: 0, SgstPct: 0, CgstPct: 0,
+                    TaxableAmount: am, TaxAmount: 0, TotalAmount: am,
+                    Pcs: isPcs ? qt : null, Meters: isPcs ? null : qt,
+                    RateBasis: isPcs ? "PCS" : "MTR"));
+            }
+        }
+        if (lines.Count == 0)   // purana order jisme items table me kuch nahi
+        {
+            var isPcs0 = string.Equals(o.RateUnit, "pcs", StringComparison.OrdinalIgnoreCase);
+            lines.Add(new OrderLineDto(
+                null, null,
+                ItemName: $"Fabric — {o.TrackCode}", Description: o.CategoryName, HsnSac: null,
+                Qty: o.Quantity, Unit: o.RateUnit, Rate: o.Rate, Rd: 0, SgstPct: 0, CgstPct: 0,
+                TaxableAmount: o.Amount, TaxAmount: 0, TotalAmount: o.Amount,
+                Pcs: isPcs0 ? o.Quantity : null, Meters: isPcs0 ? null : o.Quantity,
+                RateBasis: isPcs0 ? "PCS" : "MTR"));
+        }
         var dto = new CreateOrderDto(
             OrderType: "sales",
             OrderDate: DateOnly.FromDateTime(DateTime.UtcNow.AddMinutes(330)),
@@ -152,7 +179,7 @@ public class BazaarOrdersController : ControllerBase
             PaymentTerms: null,
             Status: "pending",
             Notes: remark,
-            Lines: new List<OrderLineDto> { line });
+            Lines: lines);
         var created = await _orders.Create(dto, CurrentFirmId, CurrentBranchId, CurrentUserId);
 
         // 📷 Bazaar ki STOCK-PHOTO Trading order ke document me — dhundhni na pade

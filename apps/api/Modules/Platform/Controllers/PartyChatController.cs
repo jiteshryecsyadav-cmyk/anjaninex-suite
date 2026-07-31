@@ -1154,6 +1154,21 @@ public class PartyChatPublicController : ControllerBase
         return Ok(new { ok = true });
     }
 
+    public record PchatMultiOrderDto(string Token, List<string> Codes);
+
+    // ---- Party (buyer): kai photo TICK karke EK SAATH order (ek order, kai item) ----
+    [HttpPost("multi-order")]
+    public async Task<IActionResult> MultiOrder([FromBody] PchatMultiOrderDto dto)
+    {
+        var threadId = await ThreadFromToken(dto.Token);
+        if (threadId is null) return Unauthorized(new { error = "Session expire — dobara OTP se kholo" });
+        if (dto.Codes is null || dto.Codes.Count == 0) return BadRequest(new { error = "Koi photo nahi chuni" });
+        if (dto.Codes.Count > 20) return BadRequest(new { error = "Ek baar me 20 se zyada nahi" });
+
+        var (ok, err) = await _bot.StartMultiOrderAsync(threadId.Value, dto.Codes);
+        return ok ? Ok(new { ok = true }) : BadRequest(new { error = err ?? "Order shuru nahi hua" });
+    }
+
     public record PchatDelMsgDto(string Token, Guid MessageId, string Mode);   // Mode: "everyone" | "me"
 
     // ---- Party: message delete — everyone (sirf apne bheje) ya me (koi bhi, sirf apni taraf chhupe) ----

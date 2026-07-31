@@ -29,6 +29,9 @@ public interface IBazaarChatBotService
     /// Party (public side) ka message aane ke BAAD call hota hai. Kabhi throw nahi karta.
     /// replyToId = jis message par quote-reply hua (photo par reply → wahi photo ki baat).
     Task HandlePartyMessageAsync(Guid threadId, string? body, string? attachmentFileName, string? attachmentType, Guid? replyToId = null);
+
+    /// Buyer ne kai photo TICK karke "order" dabaya — ek saath (ek order, kai item).
+    Task<(bool ok, string? error)> StartMultiOrderAsync(Guid threadId, List<string> codes);
 }
 
 public class BazaarChatBotService : IBazaarChatBotService
@@ -178,7 +181,7 @@ public class BazaarChatBotService : IBazaarChatBotService
         }
 
         if (state is "ORDER_CONFIRM" or "ORDER_QTY" or "ORDER_ACCEPT" or "ORDER_PARTIAL"
-                  or "ORDER_BARGAIN_SUP" or "ORDER_BARGAIN_BUY" or "ORDER_BARGAIN_WAIT")
+                  or "ORDER_BARGAIN_SUP" or "ORDER_BARGAIN_BUY" or "ORDER_BARGAIN_WAIT" or "MULTI_QTY")
         { await HandleOrderReply(threadId, firmId, text, state, ctx); return; }
 
         if (state == "ASK_RATE")
@@ -355,6 +358,251 @@ public class BazaarChatBotService : IBazaarChatBotService
             await BuyerSearch(threadId, firmId, text);
         // warna CHUP — ye firm↔party ki aam chat hai
     }
+
+    // ---------------- KAI ITEM KA ORDER (ek order, kai line) ----------------
+    public async Task<(bool ok, string? error)> StartMultiOrderAsync(Guid threadId, List<string> codes)
+    {
+        try
+        {
+            Guid firmId = Guid.Empty; string partyName = "", phone = "";
+            await using (var cmd = await Cmd(
+                "SELECT firm_id, party_name, phone FROM platform.party_chat_threads WHERE id = @t"))
+            {
+                cmd.Parameters.Add(new NpgsqlParameter("t", threadId));
+                await using var r = await cmd.ExecuteReaderAsync();
+                if (!await r.ReadAsync()) return (false, "Chat nahi mili");
+                firmId = r.GetGuid(0); partyName = r.GetString(1); phone = r.GetString(2);
+            }
+            await using (var sc = await Cmd("SELECT set_config('app.current_firm_id', @f, false)"))
+            { sc.Parameters.Add(new NpgsqlParameter("f", firmId.ToString())); await sc.ExecuteNonQueryAsync(); }
+
+            if (!await FlagOn(firmId)) return (false, "Bazaar bot abhi band hai");
+            var phone10 = Last10(phone);
+            var buyer = await FindBuyerByPhone(firmId, phone10);
+            if (buyer is null)
+                return (false, "Order ke liye aapka BUYER register hona zaroori hai - firm se baat karke apna number judwayein.");
+
+            var items = new List<Dictionary<string, object?>>();
+            foreach (var raw in codes.Distinct())
+            {
+                var code = (raw ?? "").Trim();
+                if (code.Length == 0) continue;
+                await using var q = await Cmd(@"
+                    SELECT id, rate, rate_unit, category_name, image_path, supplier_id, from_phone, pchat_thread_id, track_code
+                      FROM wa.incoming
+                     WHERE firm_id = @f AND track_code = @tc AND status = 'processed'
+                     ORDER BY created_at DESC LIMIT 1");
+                q.Parameters.Add(new NpgsqlParameter("f", firmId));
+                q.Parameters.Add(new NpgsqlParameter("tc", code));
+                await using var rr = await q.ExecuteReaderAsync();
+                if (await rr.ReadAsync())
+                    items.Add(new Dictionary<string, object?>
+                    {
+                        ["incoming_id"]    = rr.GetGuid(0),
+                        ["rate"]           = rr.IsDBNull(1) ? 0m : rr.GetDecimal(1),
+                        ["rate_unit"]      = rr.IsDBNull(2) ? "mtr" : rr.GetString(2),
+                        ["category_name"]  = rr.IsDBNull(3) ? null : rr.GetString(3),
+                        ["image_path"]     = rr.IsDBNull(4) ? null : rr.GetString(4),
+                        ["supplier_id"]    = rr.IsDBNull(5) ? (Guid?)null : rr.GetGuid(5),
+                        ["supplier_phone"] = rr.IsDBNull(6) ? null : rr.GetString(6),
+                        ["sup_thread"]     = rr.IsDBNull(7) ? (Guid?)null : rr.GetGuid(7),
+                        ["track_code"]     = rr.IsDBNull(8) ? code : rr.GetString(8),
+                        ["qty"]            = 0m
+                    });
+            }
+            if (items.Count == 0) return (false, "Ye photos ab available nahi hain");
+
+            await SetState(threadId, "MULTI_QTY", new Dictionary<string, object?>
+            {
+                ["items"] = items, ["idx"] = 0,
+                ["buyer_id"] = buyer.Value.id, ["buyer_name"] = partyName, ["buyer_phone"] = phone10
+            });
+            await AskMultiQty(threadId, firmId, items.Select(d => d.ToDictionary(k => k.Key, v => v.Value)).ToList(), 0);
+            return (true, null);
+        }
+        catch (Exception ex)
+        {
+            _log.LogWarning(ex, "Multi-order start fail (thread {T})", threadId);
+            return (false, "Order shuru nahi hua - dobara try karein");
+        }
+    }
+
+    private async Task AskMultiQty(Guid threadId, Guid firmId, List<Dictionary<string, object?>> items, int idx)
+    {
+        var it = items[idx];
+        await BotReply(threadId, firmId,
+            $"\U0001F4E6 {idx + 1}/{items.Count} \u2014 {JsonStr(it["category_name"]) ?? "Fabric"} \u00b7 \u20b9{JsonNum(it["rate"]):0.##}/{JsonStr(it["rate_unit"])}\n" +
+            $"Code: {JsonStr(it["track_code"])}\n\nKitni quantity chahiye? (sirf number bhejein)\n" +
+            "(is item ko chhodna ho to 0 bhejein)");
+    }
+
+    private async Task HandleMultiQty(Guid threadId, Guid firmId, string text, Dictionary<string, JsonElement> ctx)
+    {
+        var t = text.Trim();
+        if (IsNo(t.ToLowerInvariant()))
+        {
+            await ClearState(threadId);
+            await BotReply(threadId, firmId, "Theek hai, order cancel kar diya.");
+            return;
+        }
+        if (!Regex.IsMatch(t, @"^\d+(\.\d+)?$"))
+        {
+            await BotReply(threadId, firmId, "Sirf number bhejein (jaise 500) \u2014 is item ko chhodna ho to 0.");
+            return;
+        }
+        var qty = decimal.Parse(t);
+
+        var items = JsonSerializer.Deserialize<List<Dictionary<string, JsonElement>>>(ctx["items"].GetRawText())!;
+        var idx = ctx.TryGetValue("idx", out var iv) ? iv.GetInt32() : 0;
+        var mutable = items.Select(d => d.ToDictionary(k => k.Key, k => (object?)k.Value)).ToList();
+        mutable[idx]["qty"] = qty;
+
+        if (idx + 1 < mutable.Count)
+        {
+            var nctx = ToObjDict(ctx);
+            nctx["items"] = mutable; nctx["idx"] = idx + 1;
+            await SetState(threadId, "MULTI_QTY", nctx);
+            await AskMultiQty(threadId, firmId, mutable, idx + 1);
+            return;
+        }
+
+        await ClearState(threadId);
+        var chosen = mutable.Where(m => JsonNum(m["qty"]) > 0).ToList();
+        if (chosen.Count == 0)
+        {
+            await BotReply(threadId, firmId, "Koi item nahi chuna \u2014 order nahi bana.");
+            return;
+        }
+
+        var buyerId = CtxGuid(ctx, "buyer_id");
+        var buyerName = CtxStr(ctx, "buyer_name");
+        var buyerPhone = CtxStr(ctx, "buyer_phone");
+        var madeCodes = new List<string>();
+        decimal grand = 0;
+
+        foreach (var grp in chosen.GroupBy(m => JsonStr(m["supplier_phone"]) ?? ""))
+        {
+            var first = grp.First();
+            var supPhone = JsonStr(first["supplier_phone"]);
+            var supThread = JsonGuid(first["sup_thread"]);
+            if (supThread == Guid.Empty && !string.IsNullOrEmpty(supPhone))
+            {
+                var sp = await FindPartyByPhone(firmId, Last10(supPhone));
+                if (sp is not null) supThread = await UpsertThread(firmId, sp.Value.id, sp.Value.name, Last10(supPhone));
+            }
+            string? supplierName = null;
+            var supId = JsonGuid(first["supplier_id"]);
+            if (supId != Guid.Empty)
+            {
+                await using var sc2 = await Cmd(@"
+                    SELECT c.display_name FROM suppliers.supplier_profiles sp
+                    JOIN core.contacts c ON c.id = sp.contact_id WHERE sp.id = @s");
+                sc2.Parameters.Add(new NpgsqlParameter("s", supId));
+                supplierName = (await sc2.ExecuteScalarAsync()) as string;
+            }
+
+            var totalAmt = grp.Sum(m => JsonNum(m["qty"]) * JsonNum(m["rate"]));
+            var totalQty = grp.Sum(m => JsonNum(m["qty"]));
+            grand += totalAmt;
+
+            Guid orderId; string orderCode;
+            await using (var cmd = await Cmd(@"
+                INSERT INTO wa.orders
+                  (firm_id, order_code, incoming_id, track_code, buyer_phone, buyer_id, buyer_name,
+                   supplier_phone, supplier_id, supplier_name, category_name,
+                   rate, rate_unit, quantity, amount, image_path, status, source,
+                   buyer_thread_id, supplier_thread_id)
+                VALUES (@f, 'ORD-' || lpad(nextval('wa.order_code_seq')::text, 6, '0'),
+                        @inc, @tc, @bph, @bid, @bn, @sph, @sid, @sn, @cn,
+                        @r, @u, @q, @a, @img, 'pending_supplier', 'pchat', @bt, @st)
+                RETURNING id, order_code"))
+            {
+                cmd.Parameters.Add(new NpgsqlParameter("f", firmId));
+                cmd.Parameters.Add(new NpgsqlParameter("inc", NullableGuid(JsonGuid(first["incoming_id"]))));
+                cmd.Parameters.Add(new NpgsqlParameter("tc", (object?)JsonStr(first["track_code"]) ?? DBNull.Value));
+                cmd.Parameters.Add(new NpgsqlParameter("bph", (object?)buyerPhone ?? DBNull.Value));
+                cmd.Parameters.Add(new NpgsqlParameter("bid", NullableGuid(buyerId)));
+                cmd.Parameters.Add(new NpgsqlParameter("bn", (object?)buyerName ?? DBNull.Value));
+                cmd.Parameters.Add(new NpgsqlParameter("sph", (object?)supPhone ?? DBNull.Value));
+                cmd.Parameters.Add(new NpgsqlParameter("sid", NullableGuid(supId)));
+                cmd.Parameters.Add(new NpgsqlParameter("sn", (object?)supplierName ?? DBNull.Value));
+                cmd.Parameters.Add(new NpgsqlParameter("cn", (object?)JsonStr(first["category_name"]) ?? DBNull.Value));
+                cmd.Parameters.Add(new NpgsqlParameter("r", JsonNum(first["rate"])));
+                cmd.Parameters.Add(new NpgsqlParameter("u", JsonStr(first["rate_unit"]) ?? "mtr"));
+                cmd.Parameters.Add(new NpgsqlParameter("q", totalQty));
+                cmd.Parameters.Add(new NpgsqlParameter("a", totalAmt));
+                cmd.Parameters.Add(new NpgsqlParameter("img", (object?)JsonStr(first["image_path"]) ?? DBNull.Value));
+                cmd.Parameters.Add(new NpgsqlParameter("bt", threadId));
+                cmd.Parameters.Add(new NpgsqlParameter("st", NullableGuid(supThread)));
+                await using var rr2 = await cmd.ExecuteReaderAsync();
+                await rr2.ReadAsync();
+                orderId = rr2.GetGuid(0); orderCode = rr2.GetString(1);
+            }
+
+            int sort = 0;
+            var lines = new StringBuilder();
+            foreach (var m in grp)
+            {
+                var q = JsonNum(m["qty"]);
+                var rt = JsonNum(m["rate"]);
+                await using var ic = await Cmd(@"
+                    INSERT INTO wa.order_items
+                      (order_id, incoming_id, track_code, category_name, rate, rate_unit, quantity, amount, image_path, sort_order)
+                    VALUES (@o, @inc, @tc, @cn, @r, @u, @q, @a, @img, @s)");
+                ic.Parameters.Add(new NpgsqlParameter("o", orderId));
+                ic.Parameters.Add(new NpgsqlParameter("inc", NullableGuid(JsonGuid(m["incoming_id"]))));
+                ic.Parameters.Add(new NpgsqlParameter("tc", (object?)JsonStr(m["track_code"]) ?? DBNull.Value));
+                ic.Parameters.Add(new NpgsqlParameter("cn", (object?)JsonStr(m["category_name"]) ?? DBNull.Value));
+                ic.Parameters.Add(new NpgsqlParameter("r", rt));
+                ic.Parameters.Add(new NpgsqlParameter("u", JsonStr(m["rate_unit"]) ?? "mtr"));
+                ic.Parameters.Add(new NpgsqlParameter("q", q));
+                ic.Parameters.Add(new NpgsqlParameter("a", Math.Round(q * rt, 2, MidpointRounding.AwayFromZero)));
+                ic.Parameters.Add(new NpgsqlParameter("img", (object?)JsonStr(m["image_path"]) ?? DBNull.Value));
+                ic.Parameters.Add(new NpgsqlParameter("s", sort++));
+                await ic.ExecuteNonQueryAsync();
+                lines.Append($"\u2022 {JsonStr(m["category_name"]) ?? "Fabric"} ({JsonStr(m["track_code"])}) \u2014 {q:0.##} {JsonStr(m["rate_unit"])} @ \u20b9{rt:0.##} = \u20b9{q * rt:0.##}\n");
+            }
+            madeCodes.Add(orderCode);
+
+            if (supThread != Guid.Empty)
+            {
+                await SetState(supThread, "ORDER_ACCEPT", new Dictionary<string, object?>
+                {
+                    ["order_id"] = orderId, ["order_code"] = orderCode,
+                    ["buyer_thread_id"] = threadId, ["buyer_name"] = buyerName,
+                    ["quantity"] = totalQty, ["rate"] = JsonNum(first["rate"]),
+                    ["rate_unit"] = JsonStr(first["rate_unit"]) ?? "mtr",
+                    ["category_name"] = JsonStr(first["category_name"]), ["amount"] = totalAmt,
+                    ["multi"] = grp.Count() > 1
+                });
+                await BotReply(supThread, firmId,
+                    $"\U0001F6D2 *Naya Order!* ({orderCode}) \u2014 {grp.Count()} item\n{lines}" +
+                    $"\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\nTotal: \u20b9{totalAmt:0.##}\n\nIs order ko accept karte ho? (reply: yes / no)");
+            }
+        }
+
+        await BotReply(threadId, firmId,
+            $"\u2705 Aapka order bhej diya: {string.Join(", ", madeCodes)}\n" +
+            $"Kul {chosen.Count} item \u00b7 \u20b9{grand:0.##}\n\nSupplier ke confirmation ka wait karein. \u23f3");
+    }
+
+    // JsonElement / seedhi value dono se nikalne wale chhote helper
+    private static decimal JsonNum(object? v) => v switch
+    {
+        JsonElement je when je.ValueKind == JsonValueKind.Number => je.GetDecimal(),
+        decimal d => d, int i => i, double db => (decimal)db,
+        _ => 0m
+    };
+    private static string? JsonStr(object? v) => v switch
+    {
+        JsonElement je => je.ValueKind == JsonValueKind.String ? je.GetString() : null,
+        string s => s, _ => null
+    };
+    private static Guid JsonGuid(object? v) => v switch
+    {
+        JsonElement je when je.ValueKind == JsonValueKind.String && Guid.TryParse(je.GetString(), out var g) => g,
+        Guid g2 => g2, _ => Guid.Empty
+    };
 
     // ---------------- 📋 PARTY MENU ----------------
     // true lauta = message menu ne sambhal liya (aage bot ko dena nahi hai)
@@ -711,6 +959,9 @@ public class BazaarChatBotService : IBazaarChatBotService
     private async Task HandleOrderReply(Guid threadId, Guid firmId, string text, string state, Dictionary<string, JsonElement> ctx)
     {
         var low = text.ToLowerInvariant();
+
+        // 🛒 KAI ITEM ka order — har item ki qty baari-baari (1/3, 2/3, ...)
+        if (state == "MULTI_QTY") { await HandleMultiQty(threadId, firmId, text, ctx); return; }
 
         // Buyer ne beech-baat me DOOSRI photo ka ORDER code bhej diya? → purani baat
         // chhod kar nayi photo par aao. (Warna code ke numbers rate/qty samjhe jate the!)

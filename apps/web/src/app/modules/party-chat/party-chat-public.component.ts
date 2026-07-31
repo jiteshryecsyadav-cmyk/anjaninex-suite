@@ -1,4 +1,4 @@
-import { Component, ElementRef, ViewChild, inject, signal } from '@angular/core';
+import { Component, ElementRef, ViewChild, computed, inject, signal } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
@@ -38,10 +38,13 @@ interface PMsg {
         @if (portalMode && step() === 'chat') {
           <button (click)="goHome()" class="pc-logout" title="Saari agencies" style="font-size:22px">←</button>
         }
-        <div class="pc-avatar" [style.background]="step() === 'chat' || !portalMode ? avColor(firmName() || 'V') : '#1B2E5C'">
+        <!-- Chat me naam/DP par tap = MEDIA (saari photos ek jagah) — WhatsApp jaisa -->
+        <div class="pc-avatar" [style.background]="step() === 'chat' || !portalMode ? avColor(firmName() || 'V') : '#1B2E5C'"
+             [style.cursor]="step() === 'chat' ? 'pointer' : ''" (click)="step() === 'chat' && openMedia()">
           {{ step() === 'firms' ? '💬' : (firmName() || 'V').charAt(0) }}
         </div>
-        <div class="flex-1 min-w-0">
+        <div class="flex-1 min-w-0" [style.cursor]="step() === 'chat' ? 'pointer' : ''"
+             (click)="step() === 'chat' && openMedia()">
           <div class="pc-title">{{ step() === 'firms' ? 'Meri Chats' : (firmName() || 'Vyapaar Setu') }}</div>
           <div class="pc-sub">{{ step() === 'chat' ? ('Aap: ' + partyName()) : step() === 'firms' ? 'Saari agencies ek jagah' : 'Party Chat — Vyapaar Setu' }} · {{ BUILD }}</div>
         </div>
@@ -72,6 +75,35 @@ interface PMsg {
               }
               <button (click)="doDeleteSelected('me')" style="color:#1B2E5C;text-align:left;background:none;border:0;padding:10px 6px">Delete for me</button>
               <button (click)="showDelDialog.set(false)" style="color:#888;text-align:left;background:none;border:0;padding:10px 6px">Cancel</button>
+            </div>
+          </div>
+        </div>
+      }
+
+      <!-- 🖼️ MEDIA — 10-15 photo aane par chat me dhoondhna mushkil tha. Ab agency ke
+           naam par tap = saari photos ek grid me; kisi par tap = seedha usi message
+           par (order wahin se de sakein). -->
+      @if (mediaOpen()) {
+        <div class="pc-media">
+          <div class="pc-media-top">
+            <button (click)="mediaOpen.set(false)" class="pc-logout" style="font-size:22px">←</button>
+            <div class="flex-1 min-w-0">
+              <div class="pc-title">{{ firmName() }}</div>
+              <div class="pc-sub">{{ mediaList().length }} photo</div>
+            </div>
+          </div>
+          <div class="pc-media-body">
+            @if (mediaList().length === 0) {
+              <div class="text-center text-gray-500 mt-12">Abhi koi photo nahi aayi.</div>
+            }
+            <div class="pc-media-grid">
+              @for (m of mediaList(); track m.id) {
+                <div class="pc-media-cell" (click)="jumpTo(m)">
+                  <img [src]="fileUrl(m.attachmentUrl!)" alt="photo" loading="lazy">
+                  @if (orderCode(m); as oc) { <span class="pc-media-tag">🛒</span> }
+                  <span class="pc-media-day">{{ m.createdAt | date:'d MMM' }}</span>
+                </div>
+              }
             </div>
           </div>
         </div>
@@ -191,6 +223,7 @@ interface PMsg {
               <div class="pc-datepill"><span>{{ dateLabel(m.createdAt) }}</span></div>
             }
             <div class="flex mb-1.5 px-3 items-center" [class.justify-end]="m.sender === 'party'"
+                 [attr.id]="'pcm-' + m.id" [class.pc-flash]="flashId() === m.id"
                  [style.background]="selected().has(m.id) ? 'rgba(27,46,92,.12)' : ''"
                  (click)="selectMode() && toggleSel(m)">
               @if (selectMode()) {
@@ -334,6 +367,24 @@ interface PMsg {
     .pc-pick-go { background:#fff; color:#1B2E5C; font-weight:800; border-radius:10px;
       padding:8px 14px; font-size:15px; }
     .pc-pick-go:disabled { opacity:.5; }
+    /* 🖼️ MEDIA — poori screen par photos ka grid */
+    .pc-media { position:fixed; inset:0; z-index:70; background:#fff; display:flex; flex-direction:column; }
+    .pc-media-top { display:flex; align-items:center; gap:10px; padding:10px 12px;
+      background:#1B2E5C; color:#fff; }
+    .pc-media-top .pc-title { color:#fff; }
+    .pc-media-top .pc-sub { color:#C7D2E8; }
+    .pc-media-body { flex:1; overflow-y:auto; padding:4px; }
+    .pc-media-grid { display:grid; grid-template-columns:repeat(3, 1fr); gap:3px; }
+    .pc-media-cell { position:relative; aspect-ratio:1; overflow:hidden; background:#EEE; cursor:pointer; }
+    .pc-media-cell img { width:100%; height:100%; object-fit:cover; display:block; }
+    .pc-media-cell:active img { opacity:.7; }
+    .pc-media-tag { position:absolute; top:4px; right:4px; font-size:15px;
+      background:rgba(255,255,255,.9); border-radius:6px; padding:0 4px; }
+    .pc-media-day { position:absolute; left:0; right:0; bottom:0; font-size:11px; color:#fff;
+      background:linear-gradient(transparent, rgba(0,0,0,.55)); padding:8px 4px 2px; text-align:center; }
+    /* Media se aaye message par 2 sec ki chamak */
+    .pc-flash { animation: pcflash 2s ease-out; border-radius:12px; }
+    @keyframes pcflash { 0%,60% { background:rgba(255,214,0,.45); } 100% { background:transparent; } }
     /* ☑ Bot ke sawal ke tap-button (meter / piece / kg jaise chunav) */
     .pc-qrow { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
     .pc-qbtn { flex:1 1 auto; min-width:96px; padding:9px 12px; background:#fff;
@@ -892,6 +943,28 @@ export class PartyChatPublicComponent {
       next: () => { this.busy.set(false); this.picked.set(new Set()); this.loadMsgs(true); },
       error: (e) => { this.busy.set(false); alert('⚠️ ' + (e?.error?.error ?? 'Order shuru nahi hua')); }
     });
+  }
+
+  // ---- 🖼️ MEDIA (saari photos ek jagah) ----
+  mediaOpen = signal(false);
+  flashId = signal<string | null>(null);
+
+  /** Chat ki saari photos — nayi sabse pehle (WhatsApp ki tarah). */
+  mediaList = computed(() =>
+    this.msgs().filter(m => m.attachmentType === 'image' && m.attachmentUrl).slice().reverse());
+
+  openMedia() { if (this.step() === 'chat') this.mediaOpen.set(true); }
+
+  /** Photo par tap = media band, chat me usi message par, 2 sec ke liye chamak. */
+  jumpTo(m: PMsg) {
+    this.mediaOpen.set(false);
+    setTimeout(() => {
+      const el = document.getElementById('pcm-' + m.id);
+      if (!el) return;
+      el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      this.flashId.set(m.id);
+      setTimeout(() => this.flashId.set(null), 2000);
+    }, 60);
   }
 
   // ---- ☑ QUICK-REPLY (tap-button) ----

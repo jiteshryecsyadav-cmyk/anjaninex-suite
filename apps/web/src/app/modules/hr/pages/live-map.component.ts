@@ -36,7 +36,9 @@ declare const google: any;
           @if (mode()==='trails') {
             <input [(ngModel)]="selectedDate" type="date" (change)="loadTrails()" class="input w-44">
           }
-          <button (click)="refresh()" class="btn-primary text-sm">↻ Refresh</button>
+          <button (click)="refresh()" [disabled]="refreshing()" class="btn-primary text-sm">
+            {{ refreshing() ? '⏳ …' : '↻ Refresh' }}
+          </button>
         </div>
       </div>
 
@@ -123,6 +125,7 @@ export class LiveMapComponent implements AfterViewInit, OnDestroy {
   private svc = inject(HrService);
 
   loading = signal(true);
+  refreshing = signal(false);
   mapReady = signal(false);
   noKey = signal(false);
   mode = signal<'live' | 'trails'>('live');
@@ -419,5 +422,16 @@ export class LiveMapComponent implements AfterViewInit, OnDestroy {
   }
   private clearLiveMarkers() { for (const [, m] of this.markers) this.removeMarker(m); this.markers.clear(); }
 
-  refresh() { this.mode() === 'live' ? this.pollLive() : this.loadTrails(); }
+  // Refresh = naya data + map ko markers par wapas le jao. Pehle sirf data aata
+  // tha, map apni jagah khada rehta tha — lagta tha button kharab hai.
+  async refresh() {
+    this.refreshing.set(true);
+    if (this.mode() === 'live') {
+      this.firstFit = true;        // poll ke baad markers par zoom ho
+      await this.pollLive();
+    } else {
+      this.loadTrails();
+    }
+    setTimeout(() => this.refreshing.set(false), 400);
+  }
 }

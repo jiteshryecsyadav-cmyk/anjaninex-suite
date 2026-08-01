@@ -666,7 +666,7 @@ public class PartyChatPublicController : ControllerBase
             cmd.Parameters.Add(new NpgsqlParameter("h", Hash(otp)));
             await cmd.ExecuteNonQueryAsync();
         }
-        var sent = await TrySendOtpWhatsApp(phone, otp, "Vyapaar Setu");
+        var sent = await TrySendOtp(phone, otp, "Vyapaar Setu");
         // 🔐 OTP sirf DEV me dikhta hai — production me kabhi nahi (warna koi bhi kisi ki chat khol le)
         return Ok(new { otpSent = sent, firmsCount = firms.Count,
                         otpPreview = (!sent && _env.IsDevelopment()) ? otp : null });
@@ -923,7 +923,7 @@ public class PartyChatPublicController : ControllerBase
             await cmd.ExecuteNonQueryAsync();
         }
 
-        var sent = await TrySendOtpWhatsApp(phone, otp, firmName ?? "Firm");
+        var sent = await TrySendOtp(phone, otp, firmName ?? "Firm");
         return Ok(new
         {
             otpSent = sent,
@@ -933,6 +933,71 @@ public class PartyChatPublicController : ControllerBase
             // 🔐 OTP sirf DEV me — production me kabhi screen par nahi
             otpPreview = (!sent && _env.IsDevelopment()) ? otp : null
         });
+    }
+
+    /// 📱 OTP bhejne ki poori koshish — pehle WhatsApp, na jaye to SMS.
+    /// Dono na jayein to false, aur firm 🔑 se dekh kar party ko bata deti hai.
+    private async Task<bool> TrySendOtp(string toDigits, string otp, string firmName)
+    {
+        if (await TrySendOtpWhatsApp(toDigits, otp, firmName)) return true;
+        return await TrySendOtpSms(toDigits, otp);
+    }
+
+    /// SMS — kisi ek company se bandhe nahi. Settings me URL ka saancha hota hai
+    /// ({key}/{otp}/{to10}/{to91}/{msg}), isliye Fast2SMS, MSG91, ya koi bhi
+    /// provider bina code badle chal jata hai.
+    private async Task<bool> TrySendOtpSms(string toDigits, string otp)
+    {
+        try
+        {
+            string? url = null, key = null, method = "GET", body = null, msgTpl = null;
+            bool enabled = false;
+            await using (var cmd = await CmdAsync(
+                "SELECT url_template, api_key, http_method, body_template, msg_template, enabled " +
+                "FROM platform.sms_provider_settings WHERE id = 1"))
+            await using (var r = await cmd.ExecuteReaderAsync())
+                if (await r.ReadAsync())
+                {
+                    url = r["url_template"] as string; key = r["api_key"] as string;
+                    method = (r["http_method"] as string) ?? "GET";
+                    body = r["body_template"] as string;
+                    msgTpl = r["msg_template"] as string;
+                    enabled = r["enabled"] is bool b && b;
+                }
+            if (!enabled || string.IsNullOrWhiteSpace(url)) return false;
+
+            var to10 = toDigits.Length > 10 ? toDigits[^10..] : toDigits;
+            var msg = (msgTpl ?? "Vyapaar Setu ka OTP {otp} hai.").Replace("{otp}", otp);
+
+            string Fill(string s) => s
+                .Replace("{key}", key ?? "")
+                .Replace("{otp}", otp)
+                .Replace("{to10}", to10)
+                .Replace("{to91}", "91" + to10)
+                .Replace("{msg}", Uri.EscapeDataString(msg));
+
+            var finalUrl = Fill(url!);
+            using var req = new HttpRequestMessage(
+                method.Equals("POST", StringComparison.OrdinalIgnoreCase) ? HttpMethod.Post : HttpMethod.Get,
+                finalUrl);
+            if (!string.IsNullOrWhiteSpace(body))
+                req.Content = new StringContent(Fill(body!), Encoding.UTF8, "application/json");
+
+            var resp = await Http.SendAsync(req);
+            var text = await resp.Content.ReadAsStringAsync();
+            // Kai provider HTTP 200 ke saath bhi "error" bhej dete hain — jawab ke andar bhi dekho
+            var failed = text.Contains("\"error\"", StringComparison.OrdinalIgnoreCase)
+                      || text.Contains("errorCode", StringComparison.OrdinalIgnoreCase)
+                      || text.Contains("\"return\":false", StringComparison.OrdinalIgnoreCase);
+            if (!resp.IsSuccessStatusCode || failed)
+            {
+                Console.WriteLine($"[sms-otp] FAIL {(int)resp.StatusCode}: {text}");
+                return false;
+            }
+            Console.WriteLine($"[sms-otp] OK -> {to10}");
+            return true;
+        }
+        catch (Exception ex) { Console.WriteLine($"[sms-otp] EX: {ex.Message}"); return false; }
     }
 
     private async Task<bool> TrySendOtpWhatsApp(string toDigits, string otp, string firmName)

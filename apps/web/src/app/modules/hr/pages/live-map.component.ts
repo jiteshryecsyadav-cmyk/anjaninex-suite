@@ -79,19 +79,26 @@ declare const google: any;
       @if (mode()==='live' && mapReady()) {
         @if (liveStaff().length > 0) {
           <div class="mt-4 grid grid-cols-2 md:grid-cols-3 gap-3">
-            @for (s of liveStaff(); track s.employeeId; let i = $index) {
+            @for (s of liveStaff(); track s.employeeId) {
               <button (click)="focus(s)" class="card text-left flex items-center gap-3 hover:shadow-md transition">
-                <span class="w-3 h-3 rounded-full shrink-0" [style.background]="colorFor(i)"></span>
+                <span class="w-3 h-3 rounded-full shrink-0" [style.background]="colorOfStatus(statusOf(s))"></span>
                 <div class="min-w-0">
                   <div class="font-bold text-sm truncate">{{ s.name }}</div>
-                  <div class="text-xs" [class.text-green-600]="s.minutesAgo <= 3" [class.text-gray-500]="s.minutesAgo > 3">
-                    {{ s.minutesAgo <= 1 ? 'abhi' : s.minutesAgo + ' min pehle' }}
+                  <div class="text-xs" [style.color]="colorOfStatus(statusOf(s))">
+                    {{ labelOfStatus(statusOf(s)) }}
+                    <span class="text-gray-500">· {{ s.minutesAgo <= 1 ? 'abhi' : s.minutesAgo + ' min pehle' }}</span>
                     <!-- Trail nahi mila to ye check-in wali jagah hai, chalta-firta nahi -->
                     @if (s.source === 'checkin') { <span class="text-[#6b3fa0]">· 📍 check-in par</span> }
                   </div>
                 </div>
               </button>
             }
+          </div>
+          <!-- Rang ka matlab — malik ko ek nazar me samajh aaye -->
+          <div class="flex flex-wrap gap-x-4 gap-y-1 mt-3 text-xs text-gray-600">
+            <span><span class="inline-block w-2.5 h-2.5 rounded-full align-middle" style="background:#16a34a"></span> chal raha hai</span>
+            <span><span class="inline-block w-2.5 h-2.5 rounded-full align-middle" style="background:#f59e0b"></span> ek jagah khada</span>
+            <span><span class="inline-block w-2.5 h-2.5 rounded-full align-middle" style="background:#dc2626"></span> location band (3 min se ping nahi)</span>
           </div>
         } @else if (!loading()) {
           <div class="card mt-4 text-center text-gray-500">
@@ -117,8 +124,25 @@ declare const google: any;
   `,
   styles: [`
     .lm-marker { display:flex; flex-direction:column; align-items:center; cursor:pointer; }
-    .lm-dot { width:18px; height:18px; border-radius:50%; border:3px solid #fff; box-shadow:0 1px 5px rgba(0,0,0,.35); }
+    /* Google Maps jaisa: gol point, chalte waqt teer (arrow) aur pheelti hui laher */
+    .lm-pin { position:relative; display:flex; align-items:center; justify-content:center; width:22px; height:22px; }
+    .lm-pulse { position:absolute; inset:0; border-radius:50%; opacity:0; }
+    .lm-dot { position:relative; width:20px; height:20px; border-radius:50%; border:3px solid #fff;
+      box-shadow:0 1px 5px rgba(0,0,0,.35); display:flex; align-items:center; justify-content:center;
+      background:#9ca3af; transition:background .35s ease; }
+    .lm-arrow { display:none; width:0; height:0; border-left:4px solid transparent;
+      border-right:4px solid transparent; border-bottom:8px solid #fff; transition:transform .6s ease; }
     .lm-tag { margin-top:2px; background:#fff; color:#1f2937; font-size:11px; font-weight:700; padding:1px 6px; border-radius:8px; box-shadow:0 1px 3px rgba(0,0,0,.25); white-space:nowrap; }
+
+    /* 🟢 chal raha · 🟠 khada hai · 🔴 location band */
+    .lm-marker[data-status="move"] .lm-dot { background:#16a34a; }
+    .lm-marker[data-status="move"] .lm-arrow { display:block; }
+    .lm-marker[data-status="move"] .lm-pulse { background:rgba(22,163,74,.45); animation:lm-pulse 1.6s ease-out infinite; }
+    .lm-marker[data-status="idle"] .lm-dot { background:#f59e0b; }
+    .lm-marker[data-status="idle"] .lm-pulse { background:rgba(245,158,11,.35); animation:lm-pulse 2.8s ease-out infinite; }
+    .lm-marker[data-status="off"] .lm-dot { background:#dc2626; }
+    .lm-marker[data-status="off"] .lm-tag { opacity:.7; }
+    @keyframes lm-pulse { 0% { transform:scale(1); opacity:.65; } 100% { transform:scale(3.2); opacity:0; } }
   `]
 })
 export class LiveMapComponent implements AfterViewInit, OnDestroy {
@@ -146,6 +170,39 @@ export class LiveMapComponent implements AfterViewInit, OnDestroy {
   private colors = ['#5c1a8b', '#f57c00', '#16a34a', '#dc2626', '#0891b2', '#9333ea', '#ea580c', '#2563eb'];
 
   colorFor(i: number) { return this.colors[i % this.colors.length]; }
+
+  // ---- 🚦 STAFF KI HAALAT (Google Maps jaisa rang) ----
+  // 🟢 chal raha · 🟠 ek jagah khada · 🔴 location band (ping aana ruk gayi)
+  // Poll har 5 sec chalta hai par ping har 45 sec aati hai — isliye chalna/rukna
+  // sirf NAYI ping par tay hota hai, warna har poll par rang bhadakta rehta.
+  private liveState = new Map<string, { lng: number; lat: number; at: string; heading: number; moving: boolean }>();
+
+  statusOf(s: LiveStaff): 'move' | 'idle' | 'off' {
+    if (s.minutesAgo > 3) return 'off';                 // 45-sec wali ping ruk gayi
+    return this.liveState.get(s.employeeId)?.moving ? 'move' : 'idle';
+  }
+  colorOfStatus(st: 'move' | 'idle' | 'off') {
+    return st === 'move' ? '#16a34a' : st === 'idle' ? '#f59e0b' : '#dc2626';
+  }
+  labelOfStatus(st: 'move' | 'idle' | 'off') {
+    return st === 'move' ? 'chal raha hai' : st === 'idle' ? 'ek jagah khada' : 'location band';
+  }
+
+  /** Do point ke beech ki doori (meter) — chal raha hai ya nahi, yahi batata hai. */
+  private distM(lng1: number, lat1: number, lng2: number, lat2: number) {
+    const R = 6371000, rad = (d: number) => d * Math.PI / 180;
+    const dLat = rad(lat2 - lat1), dLng = rad(lng2 - lng1);
+    const a = Math.sin(dLat / 2) ** 2 + Math.cos(rad(lat1)) * Math.cos(rad(lat2)) * Math.sin(dLng / 2) ** 2;
+    return 2 * R * Math.asin(Math.sqrt(a));
+  }
+
+  /** Kis disha me ja raha hai (0-360) — teer isi taraf ghoomta hai. */
+  private bearing(lng1: number, lat1: number, lng2: number, lat2: number) {
+    const rad = (d: number) => d * Math.PI / 180, deg = (r: number) => r * 180 / Math.PI;
+    const y = Math.sin(rad(lng2 - lng1)) * Math.cos(rad(lat2));
+    const x = Math.cos(rad(lat1)) * Math.sin(rad(lat2)) - Math.sin(rad(lat1)) * Math.cos(rad(lat2)) * Math.cos(rad(lng2 - lng1));
+    return (deg(Math.atan2(y, x)) + 360) % 360;
+  }
   totalPoints() { return this.trails().reduce((s, t) => s + t.points.length, 0); }
   providerLabel() { return this.provider === 'google' ? 'Google Maps' : this.provider === 'ola' ? 'Ola Maps' : 'OpenStreetMap'; }
 
@@ -270,17 +327,31 @@ export class LiveMapComponent implements AfterViewInit, OnDestroy {
       this.liveStaff.set(staff);
       const seen = new Set<string>();
       const pts: [number, number][] = [];
-      let idx = 0;
       for (const s of staff) {
         seen.add(s.employeeId);
         const lng = +s.longitude, lat = +s.latitude;
         pts.push([lng, lat]);
-        const color = this.colorFor(idx++);
+
+        // NAYI ping aayi tabhi chalna/rukna aur disha dobara naapo
+        const prev = this.liveState.get(s.employeeId);
+        let heading = prev?.heading ?? 0;
+        let moving = prev?.moving ?? false;
+        if (!prev) {
+          moving = (+(s.speed ?? 0)) > 0.7;
+        } else if (prev.at !== s.capturedAt) {
+          const moved = this.distM(prev.lng, prev.lat, lng, lat);
+          if (moved > 8) heading = this.bearing(prev.lng, prev.lat, lng, lat);
+          moving = moved > 12 || (+(s.speed ?? 0)) > 0.7;   // GPS ka jitter 12m tak chhodo
+        }
+        this.liveState.set(s.employeeId, { lng, lat, at: s.capturedAt, heading, moving });
+
+        const status = this.statusOf(s);
         let m = this.markers.get(s.employeeId);
-        if (!m) { m = this.createLiveMarker(s, lng, lat, color); this.markers.set(s.employeeId, m); }
+        if (!m) { m = this.createLiveMarker(s, lng, lat, this.colorOfStatus(status)); this.markers.set(s.employeeId, m); }
         else { this.moveMarker(m, lng, lat); }
+        this.applyStatus(m, status, heading);
       }
-      for (const [id, m] of this.markers) { if (!seen.has(id)) { this.removeMarker(m); this.markers.delete(id); } }
+      for (const [id, m] of this.markers) { if (!seen.has(id)) { this.removeMarker(m); this.markers.delete(id); this.liveState.delete(id); } }
       if (this.firstFit && pts.length > 0) { this.fitBounds(pts); this.firstFit = false; }
     } catch (e) { console.error('live poll failed', e); }
   }
@@ -301,7 +372,10 @@ export class LiveMapComponent implements AfterViewInit, OnDestroy {
     }
     const el = document.createElement('div');
     el.className = 'lm-marker';
-    el.innerHTML = `<span class="lm-dot" style="background:${color}"></span><span class="lm-tag">${this.firstName(s.name)}</span>`;
+    el.innerHTML =
+      `<div class="lm-pin"><span class="lm-pulse"></span>` +
+      `<span class="lm-dot"><i class="lm-arrow"></i></span></div>` +
+      `<span class="lm-tag">${this.firstName(s.name)}</span>`;
     const marker = new maplibregl.Marker({ element: el, anchor: 'bottom' }).setLngLat([lng, lat]).addTo(this.map);
     el.addEventListener('click', () => {
       const cur = this.liveStaff().find(x => x.employeeId === s.employeeId) || s;
@@ -310,6 +384,24 @@ export class LiveMapComponent implements AfterViewInit, OnDestroy {
         .addTo(this.map);
     });
     return marker;
+  }
+
+  /** Marker ka rang + teer ki disha har poll par taaza karo. */
+  private applyStatus(marker: any, status: 'move' | 'idle' | 'off', heading: number) {
+    const color = this.colorOfStatus(status);
+    if (this.engine === 'google') {
+      marker.setIcon(status === 'move'
+        ? { path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW, scale: 5, rotation: heading,
+            fillColor: color, fillOpacity: 1, strokeColor: '#fff', strokeWeight: 2 }
+        : { path: google.maps.SymbolPath.CIRCLE, scale: 9,
+            fillColor: color, fillOpacity: 1, strokeColor: '#fff', strokeWeight: 3 });
+      return;
+    }
+    const el: HTMLElement = marker.getElement();
+    if (!el) return;
+    el.dataset['status'] = status;
+    const arrow = el.querySelector('.lm-arrow') as HTMLElement | null;
+    if (arrow) arrow.style.transform = `rotate(${heading}deg)`;
   }
 
   private moveMarker(marker: any, lng: number, lat: number) {

@@ -610,10 +610,25 @@ public class PartyChatPublicController : ControllerBase
     private async Task<string?> PhoneFromPortalToken(string? token)
     {
         if (string.IsNullOrEmpty(token)) return null;
-        await using var cmd = await CmdAsync(
-            "SELECT phone FROM platform.party_portal_sessions WHERE token = @t AND expires_at > now()");
-        cmd.Parameters.Add(new NpgsqlParameter("t", token));
-        return (await cmd.ExecuteScalarAsync()) as string;
+        string? phone;
+        await using (var cmd = await CmdAsync(
+            "SELECT phone FROM platform.party_portal_sessions WHERE token = @t AND expires_at > now()"))
+        {
+            cmd.Parameters.Add(new NpgsqlParameter("t", token));
+            phone = (await cmd.ExecuteScalarAsync()) as string;
+        }
+        if (phone is null) return null;
+
+        // ♻️ Portal ka session bhi chalte rehne par khud aage badhta hai (dekho ThreadFromToken)
+        await using (var ren = await CmdAsync(@"
+            UPDATE platform.party_portal_sessions
+               SET expires_at = now() + interval '90 days'
+             WHERE token = @t AND expires_at < now() + interval '89 days'"))
+        {
+            ren.Parameters.Add(new NpgsqlParameter("t", token));
+            await ren.ExecuteNonQueryAsync();
+        }
+        return phone;
     }
 
     // ---- PORTAL 1) OTP bhejo (bina firm) ----
@@ -690,7 +705,7 @@ public class PartyChatPublicController : ControllerBase
         var token = Convert.ToHexString(RandomNumberGenerator.GetBytes(32)).ToLowerInvariant();
         await using (var cmd = await CmdAsync(@"
             INSERT INTO platform.party_portal_sessions (token, phone, expires_at)
-            VALUES (@t, @ph, now() + interval '7 days')"))
+            VALUES (@t, @ph, now() + interval '90 days')"))
         {
             cmd.Parameters.Add(new NpgsqlParameter("t", token));
             cmd.Parameters.Add(new NpgsqlParameter("ph", phone));
@@ -764,7 +779,7 @@ public class PartyChatPublicController : ControllerBase
         var sessionToken = Convert.ToHexString(RandomNumberGenerator.GetBytes(32)).ToLowerInvariant();
         await using (var cmd = await CmdAsync(@"
             INSERT INTO platform.party_chat_sessions (token, thread_id, expires_at)
-            VALUES (@t, @th, now() + interval '7 days')"))
+            VALUES (@t, @th, now() + interval '90 days')"))
         {
             cmd.Parameters.Add(new NpgsqlParameter("t", sessionToken));
             cmd.Parameters.Add(new NpgsqlParameter("th", threadId));
@@ -1074,7 +1089,7 @@ public class PartyChatPublicController : ControllerBase
         var token = Convert.ToHexString(RandomNumberGenerator.GetBytes(32)).ToLowerInvariant();
         await using (var cmd = await CmdAsync(@"
             INSERT INTO platform.party_chat_sessions (token, thread_id, expires_at)
-            VALUES (@t, @th, now() + interval '7 days')"))
+            VALUES (@t, @th, now() + interval '90 days')"))
         {
             cmd.Parameters.Add(new NpgsqlParameter("t", token));
             cmd.Parameters.Add(new NpgsqlParameter("th", threadId));
@@ -1130,6 +1145,18 @@ public class PartyChatPublicController : ControllerBase
             del.Parameters.Add(new NpgsqlParameter("t", token ?? ""));
             await del.ExecuteNonQueryAsync();
             return null;
+        }
+
+        // ♻️ CHALTA SESSION KHUD BADHTA HAI — jo party chat use karti rehti hai usko
+        // dobara OTP maangna hi na pade (WhatsApp jaisa). Session 7 din ka tha, isliye
+        // har hafte OTP ka jhanjhat aata tha. Ab har baar 90 din aage.
+        await using (var ren = await CmdAsync(@"
+            UPDATE platform.party_chat_sessions
+               SET expires_at = now() + interval '90 days'
+             WHERE token = @t AND expires_at < now() + interval '89 days'"))
+        {
+            ren.Parameters.Add(new NpgsqlParameter("t", token ?? ""));
+            await ren.ExecuteNonQueryAsync();
         }
         return threadId;
     }

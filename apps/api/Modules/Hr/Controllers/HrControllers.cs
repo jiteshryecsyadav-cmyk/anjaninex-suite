@@ -275,15 +275,22 @@ public class LocationController : HrControllerBase
         await using var r = await cmd.ExecuteReaderAsync();
         while (await r.ReadAsync())
         {
-            var cap = (DateTimeOffset)r["captured_at"];
+            // UNION me timestamptz kabhi DateTime ban kar aata hai — dono roop sambhalo,
+            // warna poora endpoint 400 girta tha aur map par "0 staff" dikhta tha.
+            var cap = r["captured_at"] switch
+            {
+                DateTimeOffset dto => dto,
+                DateTime dt => new DateTimeOffset(DateTime.SpecifyKind(dt, DateTimeKind.Utc)),
+                _ => DateTimeOffset.UtcNow
+            };
             list.Add(new
             {
                 employeeId = (Guid)r["employee_id"],
                 name = r["emp_name"] as string,
-                latitude = (decimal)r["latitude"],
-                longitude = (decimal)r["longitude"],
+                latitude = Convert.ToDecimal(r["latitude"]),
+                longitude = Convert.ToDecimal(r["longitude"]),
                 capturedAt = cap,
-                speed = r["speed"] is DBNull ? (decimal?)null : (decimal?)r["speed"],
+                speed = r["speed"] is DBNull ? (decimal?)null : Convert.ToDecimal(r["speed"]),
                 // 'live' = chalta-firta (app se), 'checkin' = check-in wali jagah
                 source = r["src"] as string,
                 minutesAgo = (int)System.Math.Round((DateTimeOffset.Now - cap).TotalMinutes)

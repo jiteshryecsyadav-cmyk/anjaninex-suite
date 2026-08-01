@@ -2,6 +2,7 @@ import { Component, inject, signal, OnDestroy } from '@angular/core';
 import { CommonModule, DecimalPipe } from '@angular/common';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { HrService, AttendanceLog } from '../services/hr.service';
+import { LiveTrackService } from '../services/live-track.service';
 import { BackButtonComponent } from '../../../shared/back-button.component';
 
 @Component({
@@ -139,6 +140,7 @@ import { BackButtonComponent } from '../../../shared/back-button.component';
 })
 export class CheckInComponent implements OnDestroy {
   private svc = inject(HrService);
+  private tracker = inject(LiveTrackService);
 
   todayLog = signal<AttendanceLog | null>(null);
   loading = signal(true);
@@ -161,9 +163,19 @@ export class CheckInComponent implements OnDestroy {
 
   loadToday() {
     this.svc.todayAttendance().subscribe({
-      next: (log) => { this.todayLog.set(log); this.loading.set(false); },
+      next: (log) => {
+        this.todayLog.set(log);
+        this.loading.set(false);
+        this.syncTracking(log);
+      },
       error: () => this.loading.set(false)
     });
+  }
+
+  /** 📡 Checked-in (checkout baki) → live tracking APNE AAP chalu; warna band. */
+  private syncTracking(log: AttendanceLog | null) {
+    if (log?.checkInAt && !log.checkOutAt) this.tracker.start();
+    else this.tracker.stop();
   }
 
   formatTime(iso: string): string {
@@ -240,7 +252,8 @@ export class CheckInComponent implements OnDestroy {
         next: (log) => {
           this.todayLog.set(log);
           this.processing.set(false);
-          this.status.set({ type: 'info', msg: `✓ ${this.currentAction === 'check-in' ? 'Checked in' : 'Checked out'} successfully!` });
+          this.status.set({ type: 'info', msg: `✓ ${this.currentAction === 'check-in' ? 'Checked in — live tracking chalu 📡' : 'Checked out'} successfully!` });
+          this.syncTracking(log);   // check-in → tracking ON · check-out → OFF
         },
         error: (e) => {
           this.status.set({ type: 'error', msg: e?.error?.error ?? 'Failed to submit' });

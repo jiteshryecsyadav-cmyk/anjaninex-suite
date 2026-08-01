@@ -111,6 +111,8 @@ export interface LiveStaff {
   longitude: number;
   capturedAt: string;
   speed: number | null;
+  /** 'live' = app se aata chalta-firta location · 'checkin' = check-in wali jagah */
+  source?: 'live' | 'checkin';
   minutesAgo: number;
 }
 

@@ -84,6 +84,8 @@ declare const google: any;
                   <div class="font-bold text-sm truncate">{{ s.name }}</div>
                   <div class="text-xs" [class.text-green-600]="s.minutesAgo <= 3" [class.text-gray-500]="s.minutesAgo > 3">
                     {{ s.minutesAgo <= 1 ? 'abhi' : s.minutesAgo + ' min pehle' }}
+                    <!-- Trail nahi mila to ye check-in wali jagah hai, chalta-firta nahi -->
+                    @if (s.source === 'checkin') { <span class="text-[#6b3fa0]">· 📍 check-in par</span> }
                   </div>
                 </div>
               </button>
@@ -91,7 +93,9 @@ declare const google: any;
           </div>
         } @else if (!loading()) {
           <div class="card mt-4 text-center text-gray-500">
-            Abhi koi staff live nahi hai. Field staff ko app se check-in / location tracking chalu karni hogi (last 30 min).
+            Abhi koi staff map par nahi hai. Aaj ka check-in ho aur uske saath location aayi ho
+            tabhi staff yahan dikhta hai; chalta-firta (moving) marker sirf mobile app ke
+            location-tracking se banta hai.
           </div>
         }
       }

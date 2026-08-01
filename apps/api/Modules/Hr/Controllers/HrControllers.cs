@@ -240,15 +240,36 @@ public class LocationController : HrControllerBase
         var conn = (NpgsqlConnection)_db.Database.GetDbConnection();
         if (conn.State != ConnectionState.Open) await conn.OpenAsync();
         await using var cmd = conn.CreateCommand();
-        cmd.CommandText = @"SELECT DISTINCT ON (lt.employee_id)
-                   lt.employee_id, lt.latitude, lt.longitude, lt.captured_at, lt.speed,
+        // Chalta-firta location sirf NATIVE app bhejti hai (background tracking).
+        // Jo staff PWA/browser se check-in karta hai uska koi trail nahi banta —
+        // pehle aisa staff map par dikhta hi nahi tha ("0 staff") jabki wo present tha.
+        // Ab trail na ho to uske CHECK-IN wale location par hi dikha dete hain.
+        cmd.CommandText = @"
+            WITH trail AS (
+                SELECT DISTINCT ON (lt.employee_id)
+                       lt.employee_id, lt.latitude, lt.longitude, lt.captured_at, lt.speed,
+                       'live' AS src
+                  FROM hr.location_trails lt
+                 WHERE lt.firm_id = @firm
+                   AND lt.captured_at >= now() - interval '30 minutes'
+                 ORDER BY lt.employee_id, lt.captured_at DESC
+            ),
+            checkin AS (
+                SELECT al.employee_id, al.check_in_lat AS latitude, al.check_in_lng AS longitude,
+                       al.check_in_at AS captured_at, NULL::numeric AS speed,
+                       'checkin' AS src
+                  FROM hr.attendance_logs al
+                 WHERE al.firm_id = @firm
+                   AND al.log_date = CURRENT_DATE
+                   AND al.check_in_at IS NOT NULL AND al.check_out_at IS NULL
+                   AND al.check_in_lat IS NOT NULL AND al.check_in_lng IS NOT NULL
+                   AND NOT EXISTS (SELECT 1 FROM trail t WHERE t.employee_id = al.employee_id)
+            )
+            SELECT x.employee_id, x.latitude, x.longitude, x.captured_at, x.speed, x.src,
                    COALESCE(c.display_name, ep.employee_code, 'Staff') AS emp_name
-            FROM hr.location_trails lt
-            JOIN hr.employee_profiles ep ON ep.id = lt.employee_id
-            LEFT JOIN core.contacts c ON c.id = ep.contact_id
-            WHERE lt.firm_id = @firm
-              AND lt.captured_at >= now() - interval '30 minutes'
-            ORDER BY lt.employee_id, lt.captured_at DESC";
+              FROM (SELECT * FROM trail UNION ALL SELECT * FROM checkin) x
+              JOIN hr.employee_profiles ep ON ep.id = x.employee_id
+              LEFT JOIN core.contacts c ON c.id = ep.contact_id";
         cmd.Parameters.Add(new NpgsqlParameter("firm", CurrentFirmId));
         var list = new List<object>();
         await using var r = await cmd.ExecuteReaderAsync();
@@ -263,6 +284,8 @@ public class LocationController : HrControllerBase
                 longitude = (decimal)r["longitude"],
                 capturedAt = cap,
                 speed = r["speed"] is DBNull ? (decimal?)null : (decimal?)r["speed"],
+                // 'live' = chalta-firta (app se), 'checkin' = check-in wali jagah
+                source = r["src"] as string,
                 minutesAgo = (int)System.Math.Round((DateTimeOffset.Now - cap).TotalMinutes)
             });
         }

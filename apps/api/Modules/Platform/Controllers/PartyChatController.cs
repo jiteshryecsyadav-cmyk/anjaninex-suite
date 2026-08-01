@@ -1037,6 +1037,9 @@ public class PartyChatPublicController : ControllerBase
                 // Free-form text sirf tab jata hai jab grahak ne pehle message kiya ho
                 // (24-ghante ki window). OTP to PEHLA message hota hai, isliye
                 // approved AUTHENTICATION template hi chalega.
+                // ⚠️ Provider ke panel ("CURL Request") wala HU-BA-HU saancha:
+                //    index NUMBER hai (string nahi), language me policy bhi hai,
+                //    aur messaging_product/recipient_type wo khud lagata hai.
                 var comps = new List<object>
                 {
                     new { type = "body", parameters = new[] { new { type = "text", text = otp } } }
@@ -1044,24 +1047,22 @@ public class PartyChatPublicController : ControllerBase
                 if (tplButton)
                     comps.Add(new
                     {
-                        type = "button",
                         sub_type = "url",
-                        index = "0",
+                        index = 0,
+                        type = "button",
                         parameters = new[] { new { type = "text", text = otp } }
                     });
 
                 bodyJson = JsonSerializer.Serialize(new
                 {
-                    messaging_product = "whatsapp",
-                    recipient_type = "individual",
-                    to,
-                    type = "template",
                     template = new
                     {
+                        components = comps,
                         name = tplName,
-                        language = new { code = tplLang },
-                        components = comps
-                    }
+                        language = new { code = tplLang, policy = "deterministic" }
+                    },
+                    to,
+                    type = "template"
                 });
             }
             else

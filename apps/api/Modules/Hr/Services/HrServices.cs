@@ -300,7 +300,11 @@ public class EmployeeService : IEmployeeService
         emp.Department = dto.Department;
         emp.JoiningDate = dto.JoiningDate;
         emp.UserId = dto.UserId;
-        emp.SalaryStructureId = dto.SalaryStructureId;
+
+        // ⚠️ Structure ka link SIRF tab badlo jab naya diya ho. Pehle bina-poochhe null
+        // kar diya jata tha, isliye har edit par purani CTC-structure toot kar NAYI ban
+        // jati thi (ek hi aadmi ki do-do "— CTC" rows) aur payroll purani par chalti rehti.
+        if (dto.SalaryStructureId.HasValue) emp.SalaryStructureId = dto.SalaryStructureId;
 
         // CTC update: linked structure ho to uska CTC badlo, warna naya banao
         if (dto.MonthlyCtc is decimal ctc && ctc > 0)
@@ -328,16 +332,22 @@ public class EmployeeService : IEmployeeService
                     CreatedAt = DateTimeOffset.UtcNow
                 };
                 _db.SalaryStructures.Add(st);
+                // Structure PEHLE bane, tabhi employee usko point kare — warna EF ulte
+                // kram me chal kar salary_structure_id ka FK tod deta tha (23503:
+                // "Selected party/item/account valid nahi hai" wala message).
+                await _db.SaveChangesAsync();
                 emp.SalaryStructureId = st.Id;
             }
         }
 
-        emp.BranchId = dto.BranchId;
+        // Form me ye khaane hain hi nahi — na bheje jayein to PURANI value rehne do,
+        // warna har chhoti si edit par bank/PF/ESI/branch chup-chaap mit jate the.
+        if (dto.BranchId.HasValue) emp.BranchId = dto.BranchId;
         emp.PanNumber = dto.PanNumber;
-        emp.PfNumber = dto.PfNumber;
-        emp.EsiNumber = dto.EsiNumber;
-        emp.BankName = dto.BankName;
-        emp.BankIfsc = dto.BankIfsc;
+        if (dto.PfNumber is not null) emp.PfNumber = dto.PfNumber;
+        if (dto.EsiNumber is not null) emp.EsiNumber = dto.EsiNumber;
+        if (dto.BankName is not null) emp.BankName = dto.BankName;
+        if (dto.BankIfsc is not null) emp.BankIfsc = dto.BankIfsc;
         emp.UpdatedAt = DateTimeOffset.UtcNow;
 
         await _db.SaveChangesAsync();

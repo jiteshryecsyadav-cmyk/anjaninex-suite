@@ -469,16 +469,30 @@ export class LiveMapComponent implements AfterViewInit, OnDestroy {
   private removeMarker(marker: any) { if (this.engine === 'google') marker.setMap(null); else marker.remove(); }
 
   private fitBounds(pts: [number, number][]) {
+    // Ek hi staff / ek hi jagah ho to fitBounds map ko itna zoom kar deta tha ki
+    // sirf khali salaiti khane dikhte the. Aise me seedha center + tay zoom.
+    if (pts.length === 1 || this.sameSpot(pts)) {
+      const [lng, lat] = pts[0];
+      if (this.engine === 'google') { this.map.setCenter({ lat, lng }); this.map.setZoom(16); }
+      else this.map.easeTo({ center: [lng, lat], zoom: 16, duration: 600 });
+      return;
+    }
     if (this.engine === 'google') {
       const b = new google.maps.LatLngBounds();
       pts.forEach(p => b.extend({ lng: p[0], lat: p[1] }));
       this.map.fitBounds(b);
-      if (pts.length === 1) this.map.setZoom(15);
     } else {
       const b = new maplibregl.LngLatBounds();
       pts.forEach(p => b.extend(p));
       this.map.fitBounds(b, { padding: 60, maxZoom: 16, duration: 600 });
     }
+  }
+
+  /** Saare point ek hi jagah (~50m ke andar) hain? Tab zoom bandhna padta hai. */
+  private sameSpot(pts: [number, number][]) {
+    if (pts.length < 2) return true;
+    const [lng0, lat0] = pts[0];
+    return pts.every(p => Math.abs(p[0] - lng0) < 0.0005 && Math.abs(p[1] - lat0) < 0.0005);
   }
 
   private firstName(name: string) { return (name || 'Staff').split(' ')[0]; }

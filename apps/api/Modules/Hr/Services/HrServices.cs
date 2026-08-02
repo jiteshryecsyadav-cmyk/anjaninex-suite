@@ -617,6 +617,8 @@ public class LocationService : ILocationService
     private readonly AppDbContext _db;
     public LocationService(AppDbContext db) => _db = db;
 
+    private static readonly TimeSpan IST = new TimeSpan(5, 30, 0);
+
     public async Task RecordPing(Guid employeeId, LocationPingDto dto, Guid firmId)
     {
         _db.LocationTrails.Add(new LocationTrail
@@ -655,10 +657,18 @@ public class LocationService : ILocationService
         await _db.SaveChangesAsync();
     }
 
+    /// Din ka IST-wala 00:00 se 24:00 — par Postgres ko HAMESHA UTC me.
+    /// Server ki ghadi IST par hai, isliye seedha "Local" bhejne par Npgsql
+    /// "only offset 0 (UTC) is supported" bol kar poora Trails hi tod deta tha.
+    private static (DateTimeOffset from, DateTimeOffset to) IstDayRange(DateOnly date)
+    {
+        var from = new DateTimeOffset(date.ToDateTime(TimeOnly.MinValue), IST).ToUniversalTime();
+        return (from, from.AddDays(1));
+    }
+
     public async Task<List<LocationPointDto>> EmployeeTrail(Guid employeeId, DateOnly date)
     {
-        var from = date.ToDateTime(TimeOnly.MinValue, DateTimeKind.Local);
-        var to = from.AddDays(1);
+        var (from, to) = IstDayRange(date);
         var points = await _db.LocationTrails
             .Where(l => l.EmployeeId == employeeId
                      && l.CapturedAt >= from && l.CapturedAt < to)
@@ -671,8 +681,7 @@ public class LocationService : ILocationService
 
     public async Task<Dictionary<Guid, List<LocationPointDto>>> AllStaffTrails(DateOnly date, Guid firmId)
     {
-        var from = date.ToDateTime(TimeOnly.MinValue, DateTimeKind.Local);
-        var to = from.AddDays(1);
+        var (from, to) = IstDayRange(date);
         var points = await _db.LocationTrails
             .Where(l => l.FirmId == firmId
                      && l.CapturedAt >= from && l.CapturedAt < to)
@@ -687,7 +696,7 @@ public class LocationService : ILocationService
 
     public async Task<List<LocationPointDto>> LiveLast15Min()
     {
-        var since = DateTimeOffset.Now.AddMinutes(-15);
+        var since = DateTimeOffset.UtcNow.AddMinutes(-15);   // Postgres ko hamesha UTC
         var points = await _db.LocationTrails
             .Where(l => l.CapturedAt >= since)
             .OrderByDescending(l => l.CapturedAt)

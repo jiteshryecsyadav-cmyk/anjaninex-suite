@@ -11,6 +11,7 @@ import { TrialBannerComponent } from '../../modules/subscription/trial-banner.co
 import { SuspendedLockoutComponent } from '../../modules/subscription/suspended-lockout.component';
 import { FeatureService } from '../../shared/feature.service';
 import { NativeTrackingService } from '../../shared/native-tracking.service';
+import { LiveTrackService } from '../../modules/hr/services/live-track.service';
 import { UpgradeNudgeComponent } from '../../shared/upgrade-nudge.component';
 import { WalletIconComponent } from '../../shared/wallet-icon.component';
 import { AnjiHelpComponent } from '../../shared/help/anji-help.component';
@@ -587,6 +588,7 @@ export class ShellComponent {
   subscription = inject(SubscriptionService);
   features = inject(FeatureService);
   private nativeTracking = inject(NativeTrackingService);
+  private liveTrack = inject(LiveTrackService);
   private http = inject(HttpClient);
   menuOpen = signal(false);
   private menuCloseTimer: any = null;
@@ -974,7 +976,14 @@ export class ShellComponent {
             return;   // native me web-ping ki zaroorat nahi
           }
 
-          // BROWSER/PWA: app khuli ho tabhi — har 5 min ka ping
+          // BROWSER/PWA: ab tracker POORI APP me chalta hai — pehle wo sirf
+          // "My Attendance" page par chalu hota tha, staff kisi aur page par
+          // chala jaye to rasta tootne lagta tha.
+          if (checkedIn) this.liveTrack.start(); else this.liveTrack.stop();
+
+          // Upar wala 25m/45s ka tracker hi asli kaam karta hai; ye 5-minute wala
+          // ping uske peeche jaal (safety net) hai — wo kisi wajah se na chale to
+          // bhi staff ki jagah ka pata chalta rahe.
           if (checkedIn && navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(pos => {
               this.http.post(`${environment.apiUrl}/api/hr/location/ping`, {

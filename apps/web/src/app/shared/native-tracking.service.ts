@@ -1,4 +1,4 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../environments/environment';
 
@@ -32,11 +32,25 @@ export class NativeTrackingService {
     }
   }
 
+  /**
+   * 📡 Haalat — screen par dikhane ke liye. Pehle har gadbad chup-chaap nigal li
+   * jati thi (catch {}), isliye background tracking na chale to pata hi nahi
+   * chalta tha ki permission ki dikkat hai, plugin ki, ya kuch aur.
+   */
+  status = signal<string>('—');
+  lastPointAt = signal<string | null>(null);
+  sentCount = signal(0);
+
   /** Background watcher start — check-in ke baad call karo. Do baar call safe hai. */
   async startTracking(): Promise<void> {
     if (this.watcherId) return;   // already chal raha hai
     try {
-      const { registerPlugin } = await import('@capacitor/core');
+      const { Capacitor, registerPlugin } = await import('@capacitor/core');
+      if (!Capacitor.isNativePlatform()) {
+        this.status.set('Browser me hain — background tracking sirf APK me chalti hai');
+        return;
+      }
+      this.status.set('Chalu kar rahe hain…');
       const BackgroundGeolocation: any = registerPlugin('BackgroundGeolocation');
 
       this.watcherId = await BackgroundGeolocation.addWatcher(
@@ -49,6 +63,9 @@ export class NativeTrackingService {
         },
         (location: any, error: any) => {
           if (error) {
+            this.status.set(error.code === 'NOT_AUTHORIZED'
+              ? '⚠️ Location permission nahi mili — "Allow all the time" dijiye'
+              : '⚠️ ' + (error.code || error.message || 'location error'));
             // Location off ho to settings kholne ka native prompt
             if (error.code === 'NOT_AUTHORIZED' &&
                 confirm('Location permission chahiye attendance tracking ke liye. Settings kholein?')) {
@@ -57,6 +74,8 @@ export class NativeTrackingService {
             return;
           }
           if (!location) return;
+          this.status.set('✅ Background tracking CHALU');
+          this.lastPointAt.set(new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true }));
           this.buffer.push({
             latitude: +location.latitude.toFixed(6),
             longitude: +location.longitude.toFixed(6),
@@ -68,10 +87,13 @@ export class NativeTrackingService {
         }
       );
 
+      this.status.set('✅ Watcher laga diya — point ka intezar');
       // Har 60s me jama points server ko bhejo
       this.flushTimer = setInterval(() => this.flush(), 60_000);
-    } catch {
-      // Browser/PWA ya plugin missing — koi baat nahi, web wala 5-min ping chalta rahega
+    } catch (e: any) {
+      // Browser/PWA ya plugin missing — web wala ping chalta rahega, par ab
+      // gadbad chhupti nahi: screen par saaf dikhegi.
+      this.status.set('⚠️ Chalu nahi hua: ' + (e?.message || e?.code || 'plugin nahi mila'));
     }
   }
 
@@ -93,8 +115,11 @@ export class NativeTrackingService {
     if (this.buffer.length === 0) return;
     const points = this.buffer.splice(0, this.buffer.length);
     this.http.post(`${environment.apiUrl}/api/hr/location/batch`, points).subscribe({
-      next: () => {},
-      error: () => { this.buffer.unshift(...points.slice(-20)); }   // fail hua to last 20 wapas buffer me
+      next: () => this.sentCount.update(n => n + points.length),
+      error: (e) => {
+        this.buffer.unshift(...points.slice(-20));   // fail hua to last 20 wapas buffer me
+        this.status.set('⚠️ Point bheje nahi ja rahe: ' + (e?.status || 'network'));
+      }
     });
   }
 }

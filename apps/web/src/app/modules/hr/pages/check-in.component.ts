@@ -3,6 +3,7 @@ import { CommonModule, DecimalPipe } from '@angular/common';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { HrService, AttendanceLog } from '../services/hr.service';
 import { LiveTrackService } from '../services/live-track.service';
+import { NativeTrackingService } from '../../../shared/native-tracking.service';
 import { BackButtonComponent } from '../../../shared/back-button.component';
 
 @Component({
@@ -56,6 +57,23 @@ import { BackButtonComponent } from '../../../shared/back-button.component';
                 </div>
               }
             </div>
+          </div>
+        }
+
+        <!-- 📡 Background tracking ki HAALAT — pehle sab kuch chup-chaap fail hota
+             tha aur pata hi nahi chalta tha ki permission ki dikkat hai ya kuch aur -->
+        @if (todayLog()?.checkInAt && !todayLog()?.checkOutAt) {
+          <div class="card mb-4 text-sm">
+            <div class="font-bold text-[#5c1a8b] mb-1">📡 Location tracking</div>
+            <div>{{ tracker.status() }}</div>
+            @if (tracker.lastPointAt()) {
+              <div class="text-xs text-gray-500 mt-1">
+                Aakhri point: {{ tracker.lastPointAt() }} · Bheje gaye: {{ tracker.sentCount() }}
+              </div>
+            }
+            <button (click)="retryTracking()" class="mt-2 px-3 py-1.5 text-xs rounded bg-[#5c1a8b] text-white">
+              ↻ Dobara koshish karo
+            </button>
           </div>
         }
 
@@ -148,7 +166,14 @@ import { BackButtonComponent } from '../../../shared/back-button.component';
 })
 export class CheckInComponent implements OnDestroy {
   private svc = inject(HrService);
-  private tracker = inject(LiveTrackService);
+  private liveTrack = inject(LiveTrackService);
+  /** Native (APK) background tracking — haalat screen par dikhane ke liye public */
+  tracker = inject(NativeTrackingService);
+
+  /** Permission theek karne ke baad bina check-out kiye dobara koshish */
+  async retryTracking() {
+    await this.tracker.startTracking();
+  }
 
   todayLog = signal<AttendanceLog | null>(null);
   loading = signal(true);
@@ -180,10 +205,12 @@ export class CheckInComponent implements OnDestroy {
     });
   }
 
-  /** 📡 Checked-in (checkout baki) → live tracking APNE AAP chalu; warna band. */
+  /** 📡 Checked-in (checkout baki) → tracking APNE AAP chalu; warna band.
+   *  APK me native background watcher bhi, taaki app band ho tab bhi chale. */
   private syncTracking(log: AttendanceLog | null) {
-    if (log?.checkInAt && !log.checkOutAt) this.tracker.start();
-    else this.tracker.stop();
+    const on = !!(log?.checkInAt && !log.checkOutAt);
+    if (on) { this.liveTrack.start(); this.tracker.startTracking(); }
+    else { this.liveTrack.stop(); this.tracker.stopTracking(); }
   }
 
   formatTime(iso: string): string {

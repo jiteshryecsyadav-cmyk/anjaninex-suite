@@ -225,7 +225,26 @@ public class LocationController : HrControllerBase
     public async Task<IActionResult> AllTrails([FromQuery] DateOnly? date)
     {
         var trails = await _svc.AllStaffTrails(date ?? DateOnly.FromDateTime(DateTime.Now), CurrentFirmId);
-        return Ok(trails.Select(kv => new { employeeId = kv.Key, points = kv.Value }));
+
+        // Naam bhi saath do — playback ke dropdown me "Staff" ki jagah asli naam dikhe
+        var names = new Dictionary<Guid, string>();
+        await using (var cmd = ((NpgsqlConnection)_db.Database.GetDbConnection()).CreateCommand())
+        {
+            cmd.CommandText = @"SELECT ep.id, COALESCE(c.display_name, ep.employee_code, 'Staff')
+                                  FROM hr.employee_profiles ep
+                                  LEFT JOIN core.contacts c ON c.id = ep.contact_id
+                                 WHERE ep.firm_id = @f";
+            cmd.Parameters.Add(new NpgsqlParameter("f", CurrentFirmId));
+            await using var r = await cmd.ExecuteReaderAsync();
+            while (await r.ReadAsync()) names[r.GetGuid(0)] = r.GetString(1);
+        }
+
+        return Ok(trails.Select(kv => new
+        {
+            employeeId = kv.Key,
+            name = names.GetValueOrDefault(kv.Key, "Staff"),
+            points = kv.Value
+        }));
     }
 
     [HttpGet("live")]

@@ -1,4 +1,4 @@
-import { Component, inject, signal, AfterViewInit, OnDestroy } from '@angular/core';
+import { Component, inject, signal, computed, AfterViewInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -110,6 +110,46 @@ declare const google: any;
       }
 
       @if (mode()==='trails') {
+        <!-- ▶ PLAYBACK — din ka rasta chalta hua dekho (Google Timeline jaisa) -->
+        @if (pbPoints().length > 1) {
+          <div class="card mt-4">
+            <div class="flex items-center gap-3 flex-wrap">
+              <button (click)="pbToggle()" class="btn-primary text-sm w-24">
+                {{ pbPlaying() ? '⏸ Rok' : '▶ Chalao' }}
+              </button>
+
+              @if (trails().length > 1) {
+                <select [ngModel]="pbStaff()" (ngModelChange)="pbPickStaff($event)" class="input w-44 text-sm">
+                  @for (t of trails(); track t.employeeId) {
+                    <option [value]="t.employeeId">{{ staffName(t.employeeId) }}</option>
+                  }
+                </select>
+              }
+
+              <div class="flex gap-1">
+                @for (sp of [1, 2, 4, 8]; track sp) {
+                  <button (click)="pbSpeed.set(sp)"
+                          class="px-2 py-1 text-xs rounded border"
+                          [class.bg-\[#5c1a8b\]]="pbSpeed() === sp"
+                          [class.text-white]="pbSpeed() === sp">{{ sp }}x</button>
+                }
+              </div>
+
+              <div class="text-sm font-bold text-[#5c1a8b] ml-auto">
+                🕐 {{ pbTimeLabel() }}
+                <span class="text-gray-500 font-normal">· {{ pbIndex() + 1 }}/{{ pbPoints().length }}</span>
+              </div>
+            </div>
+
+            <input type="range" class="w-full mt-3" min="0" [max]="pbPoints().length - 1"
+                   [value]="pbIndex()" (input)="pbSeek($any($event.target).value)">
+            <div class="flex justify-between text-xs text-gray-500">
+              <span>{{ pbLabelAt(0) }}</span>
+              <span>{{ pbLabelAt(pbPoints().length - 1) }}</span>
+            </div>
+          </div>
+        }
+
         @if (trails().length > 0) {
           <div class="mt-4 grid grid-cols-3 gap-3">
             <div class="card text-center"><div class="text-2xl mb-1">👥</div><div class="text-xl font-bold">{{ trails().length }}</div><div class="text-xs text-gray-500">Staff Tracked</div></div>
@@ -154,7 +194,7 @@ export class LiveMapComponent implements AfterViewInit, OnDestroy {
   noKey = signal(false);
   mode = signal<'live' | 'trails'>('live');
   liveStaff = signal<LiveStaff[]>([]);
-  trails = signal<{ employeeId: string; points: LocationPoint[] }[]>([]);
+  trails = signal<{ employeeId: string; name?: string; points: LocationPoint[] }[]>([]);
   selectedDate = new Date().toISOString().split('T')[0];
 
   private provider = 'osm';
@@ -466,6 +506,10 @@ export class LiveMapComponent implements AfterViewInit, OnDestroy {
     try {
       const trails = await firstValueFrom(this.svc.allTrails(this.selectedDate));
       this.trails.set(trails);
+      // Playback nayi tareekh ke liye shuru se
+      this.pbReset();
+      if (trails.length > 0 && !trails.some(t => t.employeeId === this.pbStaff()))
+        this.pbStaff.set(trails[0].employeeId);
       const pts: [number, number][] = [];
       let colorIdx = 0, i = 0;
       for (const trail of trails) {
@@ -480,6 +524,112 @@ export class LiveMapComponent implements AfterViewInit, OnDestroy {
       if (pts.length > 0) this.fitBounds(pts);
     } catch (e) { console.error('Failed to load trails', e); }
     finally { this.loading.set(false); }
+  }
+
+  // ======================= ▶ PLAYBACK =======================
+  // Din ka rasta chalta hua — marker point-dar-point aage badhta hai, saath me
+  // us waqt ka time. Do point ke beech ka gap chhota rakha hai (asli 45 sec ko
+  // 1.2 sec me dikhate hain), warna 6 ghante ki duty dekhne me 6 ghante lagte.
+  pbPlaying = signal(false);
+  pbIndex = signal(0);
+  pbSpeed = signal(1);
+  pbStaff = signal<string>('');
+  private pbTimer: any = null;
+  private pbMarker: any = null;
+
+  /** Chune hue staff ke us din ke saare point (time ke kram me). */
+  pbPoints = computed(() => {
+    const id = this.pbStaff();
+    const t = this.trails().find(x => x.employeeId === id) ?? this.trails()[0];
+    return t?.points ?? [];
+  });
+
+  staffName(employeeId: string) {
+    return this.trails().find(t => t.employeeId === employeeId)?.name
+        ?? this.liveStaff().find(s => s.employeeId === employeeId)?.name
+        ?? 'Staff';
+  }
+
+  pbLabelAt(i: number) {
+    const p = this.pbPoints()[i];
+    if (!p) return '—';
+    return new Date(p.capturedAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+  }
+  pbTimeLabel() { return this.pbLabelAt(this.pbIndex()); }
+
+  pbPickStaff(id: string) {
+    this.pbStop();
+    this.pbStaff.set(id);
+    this.pbIndex.set(0);
+    this.pbShow(0);
+  }
+
+  pbToggle() { this.pbPlaying() ? this.pbStop() : this.pbPlay(); }
+
+  private pbPlay() {
+    const pts = this.pbPoints();
+    if (pts.length < 2) return;
+    if (this.pbIndex() >= pts.length - 1) this.pbIndex.set(0);   // ant par ho to shuru se
+    this.pbPlaying.set(true);
+    const tick = () => {
+      if (!this.pbPlaying()) return;
+      const i = this.pbIndex() + 1;
+      if (i >= this.pbPoints().length) { this.pbStop(); return; }
+      this.pbIndex.set(i);
+      this.pbShow(i);
+      this.pbTimer = setTimeout(tick, 1200 / this.pbSpeed());
+    };
+    this.pbTimer = setTimeout(tick, 1200 / this.pbSpeed());
+  }
+
+  private pbStop() {
+    this.pbPlaying.set(false);
+    if (this.pbTimer) { clearTimeout(this.pbTimer); this.pbTimer = null; }
+  }
+
+  pbSeek(v: string | number) {
+    this.pbStop();
+    const i = Math.max(0, Math.min(this.pbPoints().length - 1, +v));
+    this.pbIndex.set(i);
+    this.pbShow(i);
+  }
+
+  /** Playback ka marker us point par le jao (aur map usko peechha kare). */
+  private pbShow(i: number) {
+    const p = this.pbPoints()[i];
+    if (!p || !this.map) return;
+    const lng = +p.longitude, lat = +p.latitude;
+
+    if (!this.pbMarker) {
+      if (this.engine === 'google') {
+        this.pbMarker = new google.maps.Marker({
+          position: { lat, lng }, map: this.map, zIndex: 9999,
+          icon: { path: google.maps.SymbolPath.CIRCLE, scale: 10, fillColor: '#5c1a8b',
+                  fillOpacity: 1, strokeColor: '#fff', strokeWeight: 3 }
+        });
+      } else {
+        const el = document.createElement('div');
+        el.className = 'lm-marker';
+        el.innerHTML = `<div class="lm-pin"><span class="lm-pulse" style="background:rgba(92,26,139,.45);animation:lm-pulse 1.6s ease-out infinite"></span>` +
+                       `<span class="lm-dot" style="background:#5c1a8b"></span></div>`;
+        this.pbMarker = new maplibregl.Marker({ element: el, anchor: 'bottom' }).setLngLat([lng, lat]).addTo(this.map);
+      }
+    } else {
+      this.moveMarker(this.pbMarker, lng, lat);
+    }
+
+    // Marker screen se bahar na jaye — dheere se peechha karo
+    if (this.engine === 'google') this.map.panTo({ lat, lng });
+    else this.map.easeTo({ center: [lng, lat], duration: 600 });
+  }
+
+  private pbReset() {
+    this.pbStop();
+    this.pbIndex.set(0);
+    if (this.pbMarker) {
+      if (this.engine === 'google') this.pbMarker.setMap(null); else this.pbMarker.remove();
+      this.pbMarker = null;
+    }
   }
 
   private drawLine(id: string, coords: [number, number][], color: string) {

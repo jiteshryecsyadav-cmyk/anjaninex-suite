@@ -224,7 +224,7 @@ export class HrService {
     return this.http.get<LocationPoint[]>(`${this.base}/location/trail/${empId}`, { params: { date } });
   }
   allTrails(date: string) {
-    return this.http.get<{ employeeId: string; points: LocationPoint[] }[]>(`${this.base}/location/all-trails`, { params: { date } });
+    return this.http.get<{ employeeId: string; name?: string; points: LocationPoint[] }[]>(`${this.base}/location/all-trails`, { params: { date } });
   }
   liveLocations() { return this.http.get<LocationPoint[]>(`${this.base}/location/live`); }
   // Ola/Rapido style: per-staff latest position (last 30 min) for live moving markers.

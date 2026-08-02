@@ -407,7 +407,9 @@ public class AttendanceService : IAttendanceService
         // nikalta hai. Pehle ek hi baar chalta tha, jo asli kaam se mel nahi khata.
         // Rok firm ki policy me hai (max_checkins_per_day) — badalne ke liye deploy
         // nahi, bas ek SQL. Testing ke daur me isse bada rakh sakte hain.
-        var maxPerDay = policy?.MaxCheckinsPerDay > 0 ? policy.MaxCheckinsPerDay : (short)3;
+        // ⚠️ TESTING KE DAUR me 20 — user ke kehne par 3 kar dena hai (ek line).
+        // Firm ki policy row ho to wahi chalti hai, ye sirf tab jab koi policy na ho.
+        var maxPerDay = policy?.MaxCheckinsPerDay > 0 ? policy.MaxCheckinsPerDay : (short)20;
         if (existing != null && existing.CheckInAt != null)
         {
             if (existing.CheckOutAt == null)

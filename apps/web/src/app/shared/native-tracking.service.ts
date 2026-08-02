@@ -87,12 +87,16 @@ export class NativeTrackingService {
             // ek hi waqt lag jata aur rasta galat kram me banta
             capturedAt: new Date(location.time ?? Date.now()).toISOString()
           });
+          this.saveBuffer();   // har point turant pakki jagah me — app mar bhi jaye to bacha rahe
         }
       );
 
       this.status.set('✅ Watcher laga diya — point ka intezar');
+      // Pichhli baar ke ruke hue points (app band ho gayi thi / network nahi tha)
+      this.loadBuffer();
       // Har 60s me jama points server ko bhejo
       this.flushTimer = setInterval(() => this.flush(), 60_000);
+      setTimeout(() => this.flush(), 3_000);   // ruke hue points turant bhej do
     } catch (e: any) {
       // Browser/PWA ya plugin missing — web wala ping chalta rahega, par ab
       // gadbad chhupti nahi: screen par saaf dikhegi.
@@ -114,14 +118,48 @@ export class NativeTrackingService {
     } catch { /* no-op */ }
   }
 
+  /**
+   * 💾 Points phone ki PAKKI jagah me bhi likhte hain.
+   * Pehle ye sirf RAM me the — network gaya ya app band hui to gum. Aur fail hone
+   * par sirf aakhri 20 bachte the, baki rasta hamesha ke liye kho jata tha.
+   * Ab: sab kuch localStorage me, network aate hi khud chala jayega, aur har
+   * point apna ASLI waqt saath leke jata hai — isliye der se pahunche to bhi
+   * rasta sahi kram me banta hai.
+   */
+  private static BUF_KEY = 'vs_track_buffer';
+  private static BUF_MAX = 1000;   // ~2 ghante ka rasta
+
+  private saveBuffer() {
+    try {
+      const keep = this.buffer.slice(-NativeTrackingService.BUF_MAX);
+      localStorage.setItem(NativeTrackingService.BUF_KEY, JSON.stringify(keep));
+    } catch { /* storage bhara ho to chhodo — RAM wala buffer chalta rahega */ }
+  }
+
+  private loadBuffer() {
+    try {
+      const raw = localStorage.getItem(NativeTrackingService.BUF_KEY);
+      if (raw) {
+        const saved = JSON.parse(raw);
+        if (Array.isArray(saved) && saved.length) this.buffer.unshift(...saved);
+      }
+    } catch { /* kharab data — chhodo */ }
+  }
+
   private flush() {
     if (this.buffer.length === 0) return;
     const points = this.buffer.splice(0, this.buffer.length);
     this.http.post(`${environment.apiUrl}/api/hr/location/batch`, points).subscribe({
-      next: () => this.sentCount.update(n => n + points.length),
+      next: () => {
+        this.sentCount.update(n => n + points.length);
+        this.saveBuffer();                      // bhej diye — pakki jagah bhi saaf
+        if (this.buffer.length === 0) this.status.set('✅ Background tracking CHALU');
+      },
       error: (e) => {
-        this.buffer.unshift(...points.slice(-20));   // fail hua to last 20 wapas buffer me
-        this.status.set('⚠️ Point bheje nahi ja rahe: ' + (e?.status || 'network'));
+        // ⚠️ EK BHI POINT MAT PHENKO — network wapas aate hi sab chale jayenge
+        this.buffer.unshift(...points);
+        this.saveBuffer();
+        this.status.set(`⚠️ ${this.buffer.length} point ruke hain (${e?.status || 'network'}) — apne aap dobara jayenge`);
       }
     });
   }

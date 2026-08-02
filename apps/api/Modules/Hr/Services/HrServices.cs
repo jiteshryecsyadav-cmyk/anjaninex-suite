@@ -654,8 +654,21 @@ public class LocationService : ILocationService
 
     private static readonly TimeSpan IST = new TimeSpan(5, 30, 0);
 
+    // GPS na pakde to phone mobile-tower/IP se andaza deta hai — uska "accuracy"
+    // 20-50 KILOMETER tak hota hai. Do dikkatein isse aati thin:
+    //   1. accuracy ka khaana numeric(6,2) hai (9999.99 tak) → "numeric field
+    //      overflow" → poori ping 400 par gir jati thi (rasta beech me tootta tha)
+    //   2. aisa point nakshe par poore shehar ke paar lakeer khinch deta hai
+    // Isliye: 2 km se kharab point lete hi nahi, aur baki ko khaane me fit karte hain.
+    private const decimal MaxUsefulAccuracy = 2000m;   // meter
+    private static bool TooVague(decimal? accuracy) => accuracy is decimal a && a > MaxUsefulAccuracy;
+    private static decimal? Fit(decimal? v, decimal max) =>
+        v is decimal d ? Math.Round(Math.Clamp(d, -max, max), 2) : null;
+
     public async Task RecordPing(Guid employeeId, LocationPingDto dto, Guid firmId)
     {
+        if (TooVague(dto.Accuracy)) return;   // itna dhundhla point rasta bigaad dega
+
         _db.LocationTrails.Add(new LocationTrail
         {
             FirmId = firmId,
@@ -663,8 +676,8 @@ public class LocationService : ILocationService
             CapturedAt = DateTimeOffset.UtcNow,   // Npgsql timestamptz = sirf UTC
             Latitude = dto.Latitude,
             Longitude = dto.Longitude,
-            Accuracy = dto.Accuracy,
-            Speed = dto.Speed,
+            Accuracy = Fit(dto.Accuracy, 9999.99m),
+            Speed = Fit(dto.Speed, 9999.99m),
             BatteryPct = dto.BatteryPct,
             IsBackground = dto.IsBackground
         });
@@ -685,18 +698,18 @@ public class LocationService : ILocationService
         for (int i = 0; i < n; i++)
         {
             var p = pings[i];
+            if (TooVague(p.Accuracy)) continue;   // dhundhla point chhod do (upar dekho)
             var at = p.CapturedAt?.ToUniversalTime()
                      ?? now.AddSeconds(-(n - 1 - i) * (60.0 / Math.Max(n, 1)));
             _db.LocationTrails.Add(new LocationTrail
             {
-
                 FirmId = firmId,
                 EmployeeId = employeeId,
                 CapturedAt = at,
                 Latitude = p.Latitude,
                 Longitude = p.Longitude,
-                Accuracy = p.Accuracy,
-                Speed = p.Speed,
+                Accuracy = Fit(p.Accuracy, 9999.99m),
+                Speed = Fit(p.Speed, 9999.99m),
                 BatteryPct = p.BatteryPct,
                 IsBackground = p.IsBackground
             });

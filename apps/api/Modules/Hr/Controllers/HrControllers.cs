@@ -235,41 +235,51 @@ public class LocationController : HrControllerBase
     {
         if (points is null || points.Count < 2) return Ok(new { snapped = false, points });
 
-        // OSRM ek baar me 100 point leta hai — zyada hon to chhaant kar barabar faasle se
-        var use = points;
-        if (use.Count > 100)
+        // OSRM ka muft server ek baar me thode hi point leta hai ("Too many trace
+        // coordinates"), isliye rasta CHHOTE TUKDON me bhejte hain aur jodte jate hain.
+        const int chunk = 20;
+        var line = new List<object>();
+        var anySnapped = false;
+
+        for (int start = 0; start < points.Count; start += chunk - 1)   // -1 = tukde jude rahein
         {
-            var step = (double)use.Count / 100;
-            use = Enumerable.Range(0, 100).Select(i => points[(int)(i * step)]).ToList();
+            var seg = points.Skip(start).Take(chunk).ToList();
+            if (seg.Count < 2) break;
+            try
+            {
+                var coords = string.Join(";", seg.Select(p =>
+                    p.Longitude.ToString(System.Globalization.CultureInfo.InvariantCulture) + "," +
+                    p.Latitude.ToString(System.Globalization.CultureInfo.InvariantCulture)));
+                // radiuses = har point ke aas-paas kitne meter tak sadak dhoondhe
+                var radii = string.Join(";", seg.Select(_ => "40"));
+                var url = $"https://router.project-osrm.org/match/v1/driving/{coords}" +
+                          $"?geometries=geojson&overview=full&radiuses={radii}&tidy=true";
+
+                var resp = await SnapHttp.GetAsync(url);
+                if (!resp.IsSuccessStatusCode) { AddRaw(seg); continue; }
+
+                using var doc = JsonDocument.Parse(await resp.Content.ReadAsStringAsync());
+                if (!doc.RootElement.TryGetProperty("matchings", out var matchings)
+                    || matchings.GetArrayLength() == 0) { AddRaw(seg); continue; }
+
+                var before = line.Count;
+                foreach (var m in matchings.EnumerateArray())
+                foreach (var c in m.GetProperty("geometry").GetProperty("coordinates").EnumerateArray())
+                    line.Add(new { longitude = c[0].GetDouble(), latitude = c[1].GetDouble() });
+
+                if (line.Count > before) anySnapped = true; else AddRaw(seg);
+            }
+            catch { AddRaw(seg); }   // ek tukda na bane to uske kachche point hi lagao
         }
 
-        try
+        void AddRaw(List<SnapPointDto> seg)
         {
-            var coords = string.Join(";", use.Select(p =>
-                p.Longitude.ToString(System.Globalization.CultureInfo.InvariantCulture) + "," +
-                p.Latitude.ToString(System.Globalization.CultureInfo.InvariantCulture)));
-            // radiuses = har point ke aas-paas kitne meter tak sadak dhoondhe
-            var radii = string.Join(";", use.Select(_ => "35"));
-            var url = $"https://router.project-osrm.org/match/v1/driving/{coords}" +
-                      $"?geometries=geojson&overview=full&radiuses={radii}&tidy=true";
-
-            var resp = await SnapHttp.GetAsync(url);
-            if (!resp.IsSuccessStatusCode) return Ok(new { snapped = false, points });
-
-            using var doc = JsonDocument.Parse(await resp.Content.ReadAsStringAsync());
-            if (!doc.RootElement.TryGetProperty("matchings", out var matchings) || matchings.GetArrayLength() == 0)
-                return Ok(new { snapped = false, points });
-
-            var line = new List<object>();
-            foreach (var m in matchings.EnumerateArray())
-            foreach (var c in m.GetProperty("geometry").GetProperty("coordinates").EnumerateArray())
-                line.Add(new { longitude = c[0].GetDouble(), latitude = c[1].GetDouble() });
-
-            return line.Count < 2
-                ? Ok(new { snapped = false, points })
-                : Ok(new { snapped = true, points = line });
+            foreach (var p in seg) line.Add(new { longitude = (double)p.Longitude, latitude = (double)p.Latitude });
         }
-        catch { return Ok(new { snapped = false, points }); }
+
+        return line.Count < 2
+            ? Ok(new { snapped = false, points })
+            : Ok(new { snapped = anySnapped, points = line });
     }
 
     public record SnapPointDto(double Latitude, double Longitude);

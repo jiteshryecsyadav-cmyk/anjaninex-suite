@@ -1,4 +1,5 @@
 using System.Data;
+using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -219,6 +220,59 @@ public class LocationController : HrControllerBase
     [HasPermission("hr.attendance.view.firm")]
     public async Task<IActionResult> Trail(Guid employeeId, [FromQuery] DateOnly? date)
         => Ok(await _svc.EmployeeTrail(employeeId, date ?? DateOnly.FromDateTime(DateTime.Now)));
+
+    // 🛣️ ROAD SNAPPING — GPS ke point sadak par bithao.
+    // GPS ki apni galti 5-10 meter hoti hai, isliye seedhe point jodne par line
+    // makaanon ke beech se nikalti dikhti hai aur galiyon ke mod kat jate hain.
+    // OSRM (OpenStreetMap ka map-matching) unhe asli road par chipka deta hai —
+    // MUFT hai, koi API bill nahi. Na chale to hum chup-chaap kachche point hi
+    // lauta dete hain (rasta dikhna band nahi hona chahiye).
+    private static readonly HttpClient SnapHttp = new HttpClient { Timeout = TimeSpan.FromSeconds(12) };
+
+    [HttpPost("snap")]
+    [HasPermission("hr.attendance.view.firm")]
+    public async Task<IActionResult> Snap([FromBody] List<SnapPointDto> points)
+    {
+        if (points is null || points.Count < 2) return Ok(new { snapped = false, points });
+
+        // OSRM ek baar me 100 point leta hai — zyada hon to chhaant kar barabar faasle se
+        var use = points;
+        if (use.Count > 100)
+        {
+            var step = (double)use.Count / 100;
+            use = Enumerable.Range(0, 100).Select(i => points[(int)(i * step)]).ToList();
+        }
+
+        try
+        {
+            var coords = string.Join(";", use.Select(p =>
+                p.Longitude.ToString(System.Globalization.CultureInfo.InvariantCulture) + "," +
+                p.Latitude.ToString(System.Globalization.CultureInfo.InvariantCulture)));
+            // radiuses = har point ke aas-paas kitne meter tak sadak dhoondhe
+            var radii = string.Join(";", use.Select(_ => "35"));
+            var url = $"https://router.project-osrm.org/match/v1/driving/{coords}" +
+                      $"?geometries=geojson&overview=full&radiuses={radii}&tidy=true";
+
+            var resp = await SnapHttp.GetAsync(url);
+            if (!resp.IsSuccessStatusCode) return Ok(new { snapped = false, points });
+
+            using var doc = JsonDocument.Parse(await resp.Content.ReadAsStringAsync());
+            if (!doc.RootElement.TryGetProperty("matchings", out var matchings) || matchings.GetArrayLength() == 0)
+                return Ok(new { snapped = false, points });
+
+            var line = new List<object>();
+            foreach (var m in matchings.EnumerateArray())
+            foreach (var c in m.GetProperty("geometry").GetProperty("coordinates").EnumerateArray())
+                line.Add(new { longitude = c[0].GetDouble(), latitude = c[1].GetDouble() });
+
+            return line.Count < 2
+                ? Ok(new { snapped = false, points })
+                : Ok(new { snapped = true, points = line });
+        }
+        catch { return Ok(new { snapped = false, points }); }
+    }
+
+    public record SnapPointDto(double Latitude, double Longitude);
 
     [HttpGet("all-trails")]
     [HasPermission("hr.attendance.view.firm")]

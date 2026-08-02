@@ -220,6 +220,11 @@ export class HrService {
       latitude: lat, longitude: lng, accuracy, speed: null, batteryPct: null, isBackground: false
     });
   }
+  /** 🛣️ GPS point sadak par bithao (OSRM map-matching) — na chale to wahi point wapas */
+  snapToRoad(points: { latitude: number; longitude: number }[]) {
+    return this.http.post<{ snapped: boolean; points: { latitude: number; longitude: number }[] }>(
+      `${this.base}/location/snap`, points);
+  }
   employeeTrail(empId: string, date: string) {
     return this.http.get<LocationPoint[]>(`${this.base}/location/trail/${empId}`, { params: { date } });
   }

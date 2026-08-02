@@ -48,15 +48,20 @@ export class LiveTrackService {
   /**
    * 🛣️ Rasta asli lage, iske liye CHALTE waqt zyada point.
    * Sirf 45-sec wale point se gaadi par aadha-aadha kilometer ka faasla ban jata
-   * tha aur galiyon ke mod kat kar seedhi lakeer ban jati thi. Ab jaise hi 40
-   * meter khiske, wahin point bhej dete hain (10 sec se jaldi nahi — battery aur
+   * tha aur galiyon ke mod kat kar seedhi lakeer ban jati thi. Ab jaise hi 25
+   * meter khiske, wahin point bhej dete hain (5 sec se jaldi nahi — battery aur
    * data dono bache).
+   *
+   * Har-second wali ping jaan-boojh kar NAHI: GPS ki apni galti 5-10 meter hoti
+   * hai, to har second ke point me chalna kam aur jhol zyada aata hai — line
+   * seedhi hone ki jagah kaanpne lagti hai, aur battery din bhar nahi chalti.
+   * Rasta sadak par bithane ka kaam server par map-matching karta hai.
    */
   private maybeSendOnMove() {
     if (!this.last) return;
     const now = Date.now();
-    if (now - this.lastSentAt < 10_000) return;
-    if (this.sentPos && this.distM(this.sentPos.lat, this.sentPos.lng, this.last.lat, this.last.lng) < 40) return;
+    if (now - this.lastSentAt < 5_000) return;
+    if (this.sentPos && this.distM(this.sentPos.lat, this.sentPos.lng, this.last.lat, this.last.lng) < 25) return;
     this.send();
   }
 

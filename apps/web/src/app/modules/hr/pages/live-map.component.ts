@@ -147,6 +147,11 @@ declare const google: any;
               <span>{{ pbLabelAt(0) }}</span>
               <span>{{ pbLabelAt(pbPoints().length - 1) }}</span>
             </div>
+            <p class="text-xs mt-2" [class.text-green-700]="snappedAny()" [class.text-gray-500]="!snappedAny()">
+              {{ snappedAny()
+                  ? '🛣️ Rasta asli sadak par bithaya gaya hai'
+                  : '📍 Kachche GPS point — do point ke beech seedhi lakeer hai, asli rasta thoda alag ho sakta hai' }}
+            </p>
           </div>
         }
 
@@ -512,14 +517,30 @@ export class LiveMapComponent implements AfterViewInit, OnDestroy {
         this.pbStaff.set(trails[0].employeeId);
       const pts: [number, number][] = [];
       let colorIdx = 0, i = 0;
+      this.snappedAny.set(false);
       for (const trail of trails) {
         const color = this.colorFor(colorIdx++);
         if (trail.points.length < 1) continue;
-        const coords: [number, number][] = trail.points.map(p => [+p.longitude, +p.latitude]);
-        coords.forEach(c => pts.push(c));
-        if (coords.length >= 2) this.drawLine(`trail-${i++}`, coords, color);
-        this.trailMarkers.push(this.dotMarker(coords[0], '#16a34a'));
-        this.trailMarkers.push(this.dotMarker(coords[coords.length - 1], '#dc2626'));
+        const raw: [number, number][] = trail.points.map(p => [+p.longitude, +p.latitude]);
+        raw.forEach(c => pts.push(c));
+
+        // 🛣️ Line ko ASLI SADAK par bithao — warna do point ke beech seedhi lakeer
+        // makaanon ke beech se nikalti dikhti hai. Na ho paye to kachchi line hi.
+        let coords = raw;
+        if (raw.length >= 2) {
+          try {
+            const r = await firstValueFrom(this.svc.snapToRoad(
+              trail.points.map(p => ({ latitude: +p.latitude, longitude: +p.longitude }))));
+            if (r?.snapped && r.points?.length >= 2) {
+              coords = r.points.map(p => [+p.longitude, +p.latitude]);
+              this.snappedAny.set(true);
+            }
+          } catch { /* snap na ho to kachchi line — rasta dikhna band nahi hona chahiye */ }
+          this.drawLine(`trail-${i++}`, coords, color);
+        }
+        // Shuruaat/ant ke nishan hamesha ASLI point par (snap ki hui line par nahi)
+        this.trailMarkers.push(this.dotMarker(raw[0], '#16a34a'));
+        this.trailMarkers.push(this.dotMarker(raw[raw.length - 1], '#dc2626'));
       }
       if (pts.length > 0) this.fitBounds(pts);
     } catch (e) { console.error('Failed to load trails', e); }
@@ -530,6 +551,7 @@ export class LiveMapComponent implements AfterViewInit, OnDestroy {
   // Din ka rasta chalta hua — marker point-dar-point aage badhta hai, saath me
   // us waqt ka time. Do point ke beech ka gap chhota rakha hai (asli 45 sec ko
   // 1.2 sec me dikhate hain), warna 6 ghante ki duty dekhne me 6 ghante lagte.
+  snappedAny = signal(false);   // line asli sadak par bithai gayi ya kachchi hai
   pbPlaying = signal(false);
   pbIndex = signal(0);
   pbSpeed = signal(1);

@@ -72,6 +72,7 @@ export interface AttendanceLog {
   status: string | null;
   isLate: boolean;
   isEarlyOut: boolean;
+  checkInCount?: number;   // aaj kitne chakkar ho chuke
 }
 
 export interface LeaveBalance {

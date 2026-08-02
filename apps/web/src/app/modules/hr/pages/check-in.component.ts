@@ -71,8 +71,16 @@ import { BackButtonComponent } from '../../../shared/back-button.component';
             @if (processing()) { ⏳ Capturing... } @else { 🚪 Check Out Now }
           </button>
         } @else {
-          <div class="card text-center bg-blue-50 border-blue-200 text-blue-900">
-            ✓ Attendance complete for today. See you tomorrow!
+          <!-- Check-out ke baad bhi din khatam nahi — aadmi maal dekar wapas aa
+               sakta hai. Isliye "phir se Check In" ka button, aur saath me ye
+               bhi ki aaj kitne chakkar ho chuke. -->
+          <button (click)="action('check-in')" [disabled]="processing()"
+                  class="w-full py-6 bg-gradient-to-r from-green-500 to-green-700 text-white rounded-2xl font-bold text-lg shadow-lg active:scale-95 transition">
+            @if (processing()) { ⏳ Capturing... } @else { 📸 Phir se Check In }
+          </button>
+          <div class="card text-center bg-blue-50 border-blue-200 text-blue-900 mt-3">
+            ✓ Aaj ka {{ todayLog()?.checkInCount || 1 }} chakkar poora hua.
+            Dobara bahar jaana ho to upar wala button dabaiye.
           </div>
         }
 

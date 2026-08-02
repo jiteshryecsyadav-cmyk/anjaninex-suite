@@ -14,6 +14,8 @@ public class AttendancePolicy
     public int LateGraceMin { get; set; } = 15;
     public int HalfDayThresholdMin { get; set; } = 240;
     public int FullDayMin { get; set; } = 480;
+    /// Din me kitni baar check-in — badalne ke liye deploy ki zaroorat nahi
+    public short MaxCheckinsPerDay { get; set; } = 3;
 
     [Column(TypeName = "jsonb")] public string WeekendDays { get; set; } = "[0]";
     [Column(TypeName = "jsonb")] public string HalfDayWeekends { get; set; } = "[]";
@@ -98,6 +100,10 @@ public class AttendanceLog
     [Column(TypeName = "numeric(6,2)")] public decimal? CheckOutAccuracy { get; set; }
 
     public int? TotalMinutes { get; set; }
+    /// Chalu chakkar kab shuru hua — din me kai baar in/out ke liye
+    public DateTimeOffset? SessionStartAt { get; set; }
+    /// Aaj kitni baar check-in kiya (3 se zyada nahi)
+    public short? CheckInCount { get; set; }
     [MaxLength(20)] public string? Status { get; set; }
     public bool IsLate { get; set; }
     public bool IsEarlyOut { get; set; }

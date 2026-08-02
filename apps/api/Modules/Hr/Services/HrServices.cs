@@ -53,7 +53,8 @@ public record AttendanceLogDto(
     decimal? CheckOutLat, decimal? CheckOutLng,
     string? CheckInSelfieUrl, string? CheckOutSelfieUrl,
     string? CheckInAddress, string? CheckOutAddress,
-    int? TotalMinutes, string? Status, bool IsLate, bool IsEarlyOut);
+    int? TotalMinutes, string? Status, bool IsLate, bool IsEarlyOut,
+    short? CheckInCount = null);   // aaj kitne chakkar ho chuke
 
 public record CheckInOutDto(
     decimal Latitude, decimal Longitude, decimal? Accuracy, string? Address,
@@ -398,12 +399,22 @@ public class AttendanceService : IAttendanceService
         var existing = await _db.AttendanceLogs
             .FirstOrDefaultAsync(a => a.EmployeeId == employeeId && a.LogDate == today);
 
-        if (existing != null && existing.CheckInAt != null)
-            throw new InvalidOperationException("Already checked in today");
-
         var policy = await _db.AttendancePolicies
             .Where(p => p.FirmId == firmId && p.IsActive)
             .FirstOrDefaultAsync();
+
+        // Din me kai chakkar — aadmi maal dene nikalta hai, wapas aata hai, phir
+        // nikalta hai. Pehle ek hi baar chalta tha, jo asli kaam se mel nahi khata.
+        // Rok firm ki policy me hai (max_checkins_per_day) — badalne ke liye deploy
+        // nahi, bas ek SQL. Testing ke daur me isse bada rakh sakte hain.
+        var maxPerDay = policy?.MaxCheckinsPerDay > 0 ? policy.MaxCheckinsPerDay : (short)3;
+        if (existing != null && existing.CheckInAt != null)
+        {
+            if (existing.CheckOutAt == null)
+                throw new InvalidOperationException("Aap abhi check-in hi hain — pehle check-out karein");
+            if ((existing.CheckInCount ?? 1) >= maxPerDay)
+                throw new InvalidOperationException($"Aaj {maxPerDay} baar check-in ho chuka hai — kal phir");
+        }
 
         var nowIst = NowIst();                 // late calc IST me
         var now = DateTimeOffset.UtcNow;       // DB me UTC hi jayega
@@ -419,13 +430,29 @@ public class AttendanceService : IAttendanceService
         if (existing != null)
         {
             log = existing;
-            log.CheckInAt = now;
-            log.CheckInLat = dto.Latitude;
-            log.CheckInLng = dto.Longitude;
-            log.CheckInAccuracy = dto.Accuracy;
-            log.CheckInAddress = dto.Address;
-            log.CheckInSelfieUrl = dto.SelfieUrl;
-            log.IsLate = isLate;
+            var dobara = log.CheckInAt != null;   // aaj ka doosra/teesra chakkar
+
+            // Pehla aana kabhi mat badlo — register me "kitne baje aaya" wahi rehna
+            // chahiye, warna doosre chakkar par aane ka waqt aage khisak jata aur
+            // late/on-time ka hisab hi ulta ho jata.
+            if (!dobara)
+            {
+                log.CheckInAt = now;
+                log.CheckInLat = dto.Latitude;
+                log.CheckInLng = dto.Longitude;
+                log.CheckInAccuracy = dto.Accuracy;
+                log.CheckInAddress = dto.Address;
+                log.CheckInSelfieUrl = dto.SelfieUrl;
+                log.IsLate = isLate;
+            }
+
+            log.SessionStartAt = now;                       // naya chakkar shuru
+            log.CheckOutAt = null;                          // "duty par" wapas
+            log.CheckOutLat = null; log.CheckOutLng = null;
+            log.CheckOutAccuracy = null; log.CheckOutAddress = null;
+            log.CheckOutSelfieUrl = null;
+            log.IsEarlyOut = false;
+            log.CheckInCount = (short)((log.CheckInCount ?? (dobara ? (short)1 : (short)0)) + 1);
             log.UpdatedAt = now;
         }
         else
@@ -442,6 +469,8 @@ public class AttendanceService : IAttendanceService
                 CheckInAccuracy = dto.Accuracy,
                 CheckInAddress = dto.Address,
                 CheckInSelfieUrl = dto.SelfieUrl,
+                SessionStartAt = now,
+                CheckInCount = 1,
                 Status = "present",
                 IsLate = isLate,
                 CreatedAt = now,
@@ -497,7 +526,10 @@ public class AttendanceService : IAttendanceService
         log.CheckOutAccuracy = dto.Accuracy;
         log.CheckOutAddress = dto.Address;
         log.CheckOutSelfieUrl = dto.SelfieUrl;
-        log.TotalMinutes = (int)(now - log.CheckInAt.Value).TotalMinutes;
+        // Har chakkar ka samay JUDTA jata hai — warna doosre chakkar par pehle wale
+        // ghante gayab ho jate (ya poora din ginn liya jata jabki wo bahar tha).
+        var sessionStart = log.SessionStartAt ?? log.CheckInAt.Value;
+        log.TotalMinutes = (log.TotalMinutes ?? 0) + (int)(now - sessionStart).TotalMinutes;
         log.UpdatedAt = now;
 
         // Compute status based on total minutes
@@ -578,7 +610,7 @@ public class AttendanceService : IAttendanceService
             log.CheckOutLat, log.CheckOutLng,
             log.CheckInSelfieUrl, log.CheckOutSelfieUrl,
             log.CheckInAddress, log.CheckOutAddress,
-            log.TotalMinutes, log.Status, log.IsLate, log.IsEarlyOut);
+            log.TotalMinutes, log.Status, log.IsLate, log.IsEarlyOut, log.CheckInCount);
     }
 
     private async Task<List<AttendanceLogDto>> ToDtos(List<AttendanceLog> logs)

@@ -12,7 +12,8 @@ using Namokara.Api.Modules.Platform.Services;
 
 namespace Namokara.Api.Modules.Core.Services;
 
-public record LoginRequest(string Identifier, string Password, Guid? FirmId = null);
+public record LoginRequest(string Identifier, string Password, Guid? FirmId = null,
+    bool Remember = false);   // "Mujhe yaad rakho" — session lamba, app band hone par bhi bacha rahe
 public record FirmChoiceDto(Guid FirmId, string FirmName);
 public record LoginResponse(
     string AccessToken,
@@ -132,11 +133,11 @@ public class AuthService : IAuthService
 
         if (!user.IsActive) throw new AuthFailedException("Account is inactive");
 
-        return await IssueFor(user, ip, userAgent);
+        return await IssueFor(user, ip, userAgent, req.Remember);
     }
 
     // Session + tokens banao — Login aur SwitchFirm dono yahi use karte hain
-    private async Task<LoginResponse> IssueFor(User user, string? ip, string? userAgent)
+    private async Task<LoginResponse> IssueFor(User user, string? ip, string? userAgent, bool remember = false)
     {
         user.LastLoginAt = DateTimeOffset.UtcNow;
 
@@ -149,7 +150,10 @@ public class AuthService : IAuthService
             IpAddress = ip,
             UserAgent = userAgent,
             LastSeenAt = DateTimeOffset.UtcNow,
-            ExpiresAt = DateTimeOffset.UtcNow.AddDays(_config.GetValue<int>("Jwt:RefreshTokenDays", 7)),
+            // "Mujhe yaad rakho" par 90 din — field staff roz-roz id/password nahi
+            // daal sakta. Bina remember ke pehle jaisa (7 din).
+            ExpiresAt = DateTimeOffset.UtcNow.AddDays(
+                remember ? 90 : _config.GetValue<int>("Jwt:RefreshTokenDays", 7)),
             CreatedAt = DateTimeOffset.UtcNow
         };
         _db.Sessions.Add(session);

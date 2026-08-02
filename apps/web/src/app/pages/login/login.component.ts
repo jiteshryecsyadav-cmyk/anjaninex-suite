@@ -57,7 +57,7 @@ import { environment } from '../../../environments/environment';
 
           <div class="lx-row">
             <label class="lx-remember">
-              <input type="checkbox" formControlName="remember"> Remember me
+              <input type="checkbox" formControlName="remember"> Mujhe yaad rakho (90 din)
             </label>
             <a href="#" class="lx-forgot">Forgot password?</a>
           </div>
@@ -218,7 +218,7 @@ export class LoginComponent {
   ];
 
   form = this.fb.nonNullable.group({
-    identifier: ['', [Validators.required, Validators.minLength(3)]],
+    identifier: [AuthService.lastUsername(), [Validators.required, Validators.minLength(3)]],
     password: ['', [Validators.required, Validators.minLength(6)]],
     remember: [true]
   });
@@ -233,9 +233,9 @@ export class LoginComponent {
     this.loading.set(true);
 
     try {
-      const { identifier, password } = this.form.getRawValue();
+      const { identifier, password, remember } = this.form.getRawValue();
       // MULTI-FIRM: same login kai firms me ho to firms list aati hai — picker dikhao
-      const firms = await this.auth.login(identifier, password, this.chosenFirmId || undefined);
+      const firms = await this.auth.login(identifier, password, this.chosenFirmId || undefined, remember);
       if (firms) {
         this.firmChoices.set(firms);
         this.loading.set(false);

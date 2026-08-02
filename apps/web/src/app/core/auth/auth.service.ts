@@ -40,8 +40,17 @@ export class AuthService {
   accessToken = this._accessToken.asReadonly();
   isAuthenticated = computed(() => this._accessToken() !== null);
 
-  // App background/band me itni der se zyada raha to auto-logout (mobile security)
+  // App background/band me itni der se zyada raha to auto-logout (mobile security).
+  // ⚠️ "Mujhe yaad rakho" lagaya ho to ye niyam LAGTA HI NAHI — field staff phone
+  // jeb me rakh kar ghanton kaam karta hai, har baar id/password nahi daal sakta.
   private static readonly BG_LOGOUT_MS = 10 * 60 * 1000; // 10 minute
+  private static remembered(): boolean {
+    try { return localStorage.getItem('ax_remember') === '1'; } catch { return false; }
+  }
+  /** Login page pichhla username bhar sake — password kabhi nahi rakhte. */
+  static lastUsername(): string {
+    try { return localStorage.getItem('ax_last_user') || ''; } catch { return ''; }
+  }
 
   constructor() {
     if (typeof document !== 'undefined') {
@@ -51,8 +60,9 @@ export class AuthService {
         } else {
           const bg = +(localStorage.getItem('ax_bg') || 0);     // wapas aaya
           localStorage.removeItem('ax_bg');
-          if (this.isAuthenticated() && bg && Date.now() - bg > AuthService.BG_LOGOUT_MS) {
-            this.logout();                                      // 2 min+ → logout
+          if (!AuthService.remembered()
+              && this.isAuthenticated() && bg && Date.now() - bg > AuthService.BG_LOGOUT_MS) {
+            this.logout();                                      // der tak band raha → logout
           }
         }
       });
@@ -63,14 +73,26 @@ export class AuthService {
    * Login. MULTI-FIRM: agar same login kai firms me hai to session set NAHI hota —
    * firms ki list return hoti hai; UI firm chunwa ke firmId ke saath dobara call kare.
    */
-  async login(identifier: string, password: string, firmId?: string): Promise<FirmChoice[] | null> {
+  async login(identifier: string, password: string, firmId?: string, remember = true): Promise<FirmChoice[] | null> {
     const res = await firstValueFrom(
       this.http.post<LoginResponse>(`${environment.apiUrl}/api/auth/login`, {
         identifier,
         password,
-        firmId: firmId ?? null
+        firmId: firmId ?? null,
+        remember
       })
     );
+    // "Mujhe yaad rakho" — ye do cheezein yaad rakhte hain: (1) auto-logout mat
+    // karo, (2) agli baar username bhara-bhara mile. Password kabhi nahi rakhte.
+    try {
+      if (remember) {
+        localStorage.setItem('ax_remember', '1');
+        localStorage.setItem('ax_last_user', identifier);
+      } else {
+        localStorage.removeItem('ax_remember');
+        localStorage.removeItem('ax_last_user');
+      }
+    } catch {}
     if (res.firms && res.firms.length > 1) return res.firms;   // firm chunni padegi
     this.setSession(res);
     return null;
@@ -153,9 +175,10 @@ export class AuthService {
    *   4. session restored
    */
   async restoreSession(): Promise<void> {
-    // 2-min rule: app background/band me 2 min+ raha to session restore mat karo — logout rakho
+    // App band/background me der tak raha to session restore mat karo — par
+    // "Mujhe yaad rakho" wale par ye niyam nahi lagta (upar dekho).
     const bg = +(localStorage.getItem('ax_bg') || 0);
-    if (bg && Date.now() - bg > AuthService.BG_LOGOUT_MS) {
+    if (!AuthService.remembered() && bg && Date.now() - bg > AuthService.BG_LOGOUT_MS) {
       localStorage.removeItem('ax_bg');
       this.clearSession();
       return;

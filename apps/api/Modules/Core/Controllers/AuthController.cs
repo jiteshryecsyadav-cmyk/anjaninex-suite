@@ -22,14 +22,41 @@ public class AuthController : ControllerBase
     private const string RefreshCookieName = "nmk_refresh";
 
     /// <summary>P0-13: standard secure cookie options for refresh token.</summary>
-    private CookieOptions RefreshCookieOptions(int days) => new()
+    /// <param name="remember">
+    /// "Mujhe yaad rakho" — cookie ko PAKKA (persistent) banao taaki app band hone
+    /// par bhi bachi rahe. Bina iske ye SESSION cookie hai: APK band hote hi ud
+    /// jati thi aur staff ko har baar poora id/password daalna padta tha.
+    /// </param>
+    private CookieOptions RefreshCookieOptions(int days, bool remember) => new()
     {
         HttpOnly = true,         // JS cannot read — defeats XSS exfiltration
         Secure = !HttpContext.Request.Host.Host.StartsWith("localhost"),
         SameSite = SameSiteMode.Strict,
         IsEssential = true,
-        Path = "/api/auth"       // SESSION cookie (no Expires): app band hote hi session khatam -> reopen pe login
+        Path = "/api/auth",
+        Expires = remember ? DateTimeOffset.UtcNow.AddDays(days) : null
     };
+
+    /// Refresh/switch ke waqt bhi "yaad rakho" wali baat pata honi chahiye, warna
+    /// pehli hi refresh par cookie session-cookie ban kar wapas gir jati.
+    /// Isme koi raaz nahi — sirf haan/na ka nishan hai.
+    private const string RememberCookieName = "nmk_rm";
+    private bool WasRemembered() => Request.Cookies[RememberCookieName] == "1";
+    private void MarkRemembered(bool remember)
+    {
+        if (remember)
+            Response.Cookies.Append(RememberCookieName, "1", new CookieOptions
+            {
+                HttpOnly = false,
+                Secure = !HttpContext.Request.Host.Host.StartsWith("localhost"),
+                SameSite = SameSiteMode.Strict,
+                IsEssential = true,
+                Path = "/api/auth",
+                Expires = DateTimeOffset.UtcNow.AddDays(90)
+            });
+        else
+            Response.Cookies.Delete(RememberCookieName, new CookieOptions { Path = "/api/auth" });
+    }
 
     /// <summary>
     /// Login with username/email/phone + password.
@@ -49,7 +76,8 @@ public class AuthController : ControllerBase
             var result = await _auth.Login(req, ip, ua);
 
             // Set refresh token as HttpOnly cookie
-            Response.Cookies.Append(RefreshCookieName, result.RefreshToken, RefreshCookieOptions(7));
+            Response.Cookies.Append(RefreshCookieName, result.RefreshToken, RefreshCookieOptions(90, req.Remember));
+            MarkRemembered(req.Remember);
 
             // Strip refresh token from response body — client only needs access token
             var safeResult = result with { RefreshToken = "" };
@@ -78,7 +106,7 @@ public class AuthController : ControllerBase
         {
             var result = await _auth.Refresh(token);
             // Rotate refresh cookie
-            Response.Cookies.Append(RefreshCookieName, result.RefreshToken, RefreshCookieOptions(7));
+            Response.Cookies.Append(RefreshCookieName, result.RefreshToken, RefreshCookieOptions(90, WasRemembered()));
             var safeResult = result with { RefreshToken = "" };
             return Ok(safeResult);
         }
@@ -99,6 +127,7 @@ public class AuthController : ControllerBase
             await _auth.Logout(sessionId);
         }
         Response.Cookies.Delete(RefreshCookieName, new CookieOptions { Path = "/api/auth" });
+        MarkRemembered(false);   // khud logout kiya hai to yaad bhi mat rakho
         return NoContent();
     }
 
@@ -124,7 +153,7 @@ public class AuthController : ControllerBase
             var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
             var ua = Request.Headers.UserAgent.ToString();
             var result = await _auth.SwitchFirm(userId, req.FirmId, ip, ua);
-            Response.Cookies.Append(RefreshCookieName, result.RefreshToken, RefreshCookieOptions(7));
+            Response.Cookies.Append(RefreshCookieName, result.RefreshToken, RefreshCookieOptions(90, WasRemembered()));
             return Ok(result with { RefreshToken = "" });
         }
         catch (AuthFailedException ex)

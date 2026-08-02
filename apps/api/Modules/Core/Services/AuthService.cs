@@ -69,13 +69,24 @@ public class AuthService : IAuthService
     public async Task<LoginResponse> Login(LoginRequest req, string? ip, string? userAgent)
     {
         // MULTI-FIRM: same username/email/phone kai firms me ho sakta hai — SAB candidates lao
+        //
+        // ⚠️ Chhote-bade akshar ka farq MAT dekho. Mobile keyboard pehla akshar khud
+        // bada kar deta hai, isliye staff "Jitesh" likhta tha aur "jitesh" se match
+        // na hone par login hi nahi hota tha — password sahi hone par bhi.
+        // Aage-peeche ki khali jagah bhi hata do (copy-paste me aa jati hai).
+        var ident = (req.Identifier ?? "").Trim();
+        var identLower = ident.ToLowerInvariant();
         var candidates = await _db.Users
-            .Where(u => u.Username == req.Identifier
-                     || u.Email == req.Identifier
-                     || u.Phone == req.Identifier)
+            .Where(u => u.Username.ToLower() == identLower
+                     || (u.Email != null && u.Email.ToLower() == identLower)
+                     || u.Phone == ident)
             .ToListAsync();
 
-        if (candidates.Count == 0) throw new AuthFailedException("Invalid credentials");
+        if (candidates.Count == 0)
+        {
+            _log.LogWarning("Login: koi user nahi mila identifier {Identifier} ke liye, IP {IP}", ident, ip);
+            throw new AuthFailedException("Invalid credentials");
+        }
 
         // Password jin par lagta hai wahi asli matches
         var matched = candidates.Where(u => BCrypt.Net.BCrypt.Verify(req.Password, u.PasswordHash)).ToList();

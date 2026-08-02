@@ -19,7 +19,7 @@ import { environment } from '../../environments/environment';
 export class NativeTrackingService {
   private http = inject(HttpClient);
   private watcherId: string | null = null;
-  private buffer: { latitude: number; longitude: number; accuracy: number | null; speed: number | null; batteryPct: number | null; isBackground: boolean }[] = [];
+  private buffer: { latitude: number; longitude: number; accuracy: number | null; speed: number | null; batteryPct: number | null; isBackground: boolean; capturedAt?: string }[] = [];
   private flushTimer: any = null;
 
   /** Capacitor native app me chal rahe hain? (browser me false) */
@@ -82,7 +82,10 @@ export class NativeTrackingService {
             accuracy: location.accuracy != null ? Math.round(location.accuracy) : null,
             speed: location.speed != null ? +(+location.speed).toFixed(2) : null,
             batteryPct: null,
-            isBackground: true
+            isBackground: true,
+            // Asli waqt phone se — batch 60 sec me jata hai, warna sab points par
+            // ek hi waqt lag jata aur rasta galat kram me banta
+            capturedAt: new Date(location.time ?? Date.now()).toISOString()
           });
         }
       );

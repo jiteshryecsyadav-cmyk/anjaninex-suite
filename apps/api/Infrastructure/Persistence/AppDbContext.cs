@@ -251,6 +251,11 @@ public class AppDbContext : DbContext
         {
             e.ToTable("location_trails", "hr");
             e.HasKey(x => new { x.Id, x.CapturedAt });
+            // Id DB ka sequence deta hai. Composite key hone ki wajah se EF ise
+            // apne aap "generated" nahi maanta tha — natija: batch ke saare points
+            // par Id = 0, aur EF "same key already tracked" bol kar poora batch
+            // gira deta tha (APK ka background tracking isi wajah se 400 khata tha).
+            e.Property(x => x.Id).ValueGeneratedOnAdd();
         });
         modelBuilder.Entity<Selfie>().ToTable("selfies", "hr");
         modelBuilder.Entity<LeaveBalance>(e =>

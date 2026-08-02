@@ -72,7 +72,8 @@ public record ApplyLeaveDto(
 
 public record LeaveBalanceDto(string LeaveType, decimal TotalAllocated, decimal Used, decimal Available);
 
-public record LocationPingDto(decimal Latitude, decimal Longitude, decimal? Accuracy, decimal? Speed, short? BatteryPct, bool IsBackground);
+public record LocationPingDto(decimal Latitude, decimal Longitude, decimal? Accuracy, decimal? Speed, short? BatteryPct, bool IsBackground,
+    DateTimeOffset? CapturedAt = null);   // phone se asli waqt — batch me rasta sahi banane ke liye
 
 public record LocationPointDto(DateTimeOffset CapturedAt, decimal Latitude, decimal Longitude, decimal? Accuracy);
 
@@ -204,7 +205,7 @@ public class EmployeeService : IEmployeeService
 
             var contact = new Contact
             {
-                Id = Guid.NewGuid(),
+
                 FirmId = firmId,
                 DisplayName = Namokara.Api.Common.Text.NameCase.TitleCase(dto.FullName),
                 EntityType = "individual",
@@ -224,7 +225,7 @@ public class EmployeeService : IEmployeeService
             {
                 var st = new SalaryStructure
                 {
-                    Id = Guid.NewGuid(),
+    
                     FirmId = firmId,
                     Name = $"{dto.FullName} — CTC",
                     MonthlyCtc = ctc,
@@ -245,7 +246,7 @@ public class EmployeeService : IEmployeeService
 
             var emp = new EmployeeProfile
             {
-                Id = Guid.NewGuid(),
+
                 FirmId = firmId,
                 ContactId = contact.Id,
                 UserId = dto.UserId,
@@ -321,7 +322,7 @@ public class EmployeeService : IEmployeeService
             {
                 st = new SalaryStructure
                 {
-                    Id = Guid.NewGuid(),
+    
                     FirmId = emp.FirmId,
                     Name = $"{dto.FullName} — CTC",
                     MonthlyCtc = ctc,
@@ -461,7 +462,7 @@ public class AttendanceService : IAttendanceService
         {
             log = new AttendanceLog
             {
-                Id = Guid.NewGuid(),
+
                 FirmId = firmId,
                 EmployeeId = employeeId,
                 LogDate = today,
@@ -486,7 +487,7 @@ public class AttendanceService : IAttendanceService
         {
             _db.Selfies.Add(new Selfie
             {
-                Id = Guid.NewGuid(),
+
                 FirmId = firmId,
                 EmployeeId = employeeId,
                 StorageUrl = dto.SelfieUrl,
@@ -543,7 +544,7 @@ public class AttendanceService : IAttendanceService
         {
             _db.Selfies.Add(new Selfie
             {
-                Id = Guid.NewGuid(),
+
                 FirmId = log.FirmId,
                 EmployeeId = employeeId,
                 StorageUrl = dto.SelfieUrl,
@@ -672,14 +673,26 @@ public class LocationService : ILocationService
 
     public async Task RecordPingsBatch(Guid employeeId, List<LocationPingDto> pings, Guid firmId)
     {
+        // ⚠️ Yahan do gadbadein thin, jinki wajah se APK ka background wala poora
+        // batch 400 par gir jata tha (isliye background se ek bhi point nahi aata tha):
+        //   1. Id set hi nahi hoti thi → sab rows ki key {Id, CapturedAt} ek jaisi
+        //      → EF: "another instance with the same key value is already tracked"
+        //   2. Sab points par EK hi waqt lagta tha → rasta bhi galat banta
+        // Ab har row ki apni Id, aur waqt phone se aaya ho to wahi (warna
+        // pichhle 60 sec me barabar failaa dete hain — batch itni der me hi banta hai).
         var now = DateTimeOffset.UtcNow;   // Npgsql timestamptz = sirf UTC
-        foreach (var p in pings)
+        var n = pings.Count;
+        for (int i = 0; i < n; i++)
         {
+            var p = pings[i];
+            var at = p.CapturedAt?.ToUniversalTime()
+                     ?? now.AddSeconds(-(n - 1 - i) * (60.0 / Math.Max(n, 1)));
             _db.LocationTrails.Add(new LocationTrail
             {
+
                 FirmId = firmId,
                 EmployeeId = employeeId,
-                CapturedAt = now,
+                CapturedAt = at,
                 Latitude = p.Latitude,
                 Longitude = p.Longitude,
                 Accuracy = p.Accuracy,

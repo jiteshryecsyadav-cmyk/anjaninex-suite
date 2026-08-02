@@ -76,18 +76,8 @@ export class NativeTrackingService {
           if (!location) return;
           this.status.set('✅ Background tracking CHALU');
           this.lastPointAt.set(new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true }));
-          this.buffer.push({
-            latitude: +location.latitude.toFixed(6),
-            longitude: +location.longitude.toFixed(6),
-            accuracy: location.accuracy != null ? Math.round(location.accuracy) : null,
-            speed: location.speed != null ? +(+location.speed).toFixed(2) : null,
-            batteryPct: null,
-            isBackground: true,
-            // Asli waqt phone se — batch 60 sec me jata hai, warna sab points par
-            // ek hi waqt lag jata aur rasta galat kram me banta
-            capturedAt: new Date(location.time ?? Date.now()).toISOString()
-          });
-          this.saveBuffer();   // har point turant pakki jagah me — app mar bhi jaye to bacha rahe
+          this.lastLoc = location;
+          this.push(location, new Date(location.time ?? Date.now()));
         }
       );
 
@@ -97,6 +87,16 @@ export class NativeTrackingService {
       // Har 60s me jama points server ko bhejo
       this.flushTimer = setInterval(() => this.flush(), 60_000);
       setTimeout(() => this.flush(), 3_000);   // ruke hue points turant bhej do
+
+      // 💓 DHADKAN — watcher sirf 30 meter CHALNE par jaagta hai. Aadmi ek jagah
+      // baitha ho to ghanton koi point nahi banta aur map par wo "gayab" lagta hai.
+      // Isliye har 3 minute me aakhri maloom jagah bhej dete hain: din bhar ka
+      // record poora rehta hai aur battery bhi nahi jalti (naya GPS fix nahi lete).
+      this.beatTimer = setInterval(() => {
+        if (!this.lastLoc) return;
+        if (Date.now() - this.lastPushMs < 150_000) return;   // abhi-abhi point gaya hai
+        this.push(this.lastLoc, new Date());
+      }, 180_000);
     } catch (e: any) {
       // Browser/PWA ya plugin missing — web wala ping chalta rahega, par ab
       // gadbad chhupti nahi: screen par saaf dikhegi.
@@ -108,6 +108,8 @@ export class NativeTrackingService {
   async stopTracking(): Promise<void> {
     try {
       if (this.flushTimer) { clearInterval(this.flushTimer); this.flushTimer = null; }
+      if (this.beatTimer) { clearInterval(this.beatTimer); this.beatTimer = null; }
+      this.lastLoc = null;
       await this.flush();   // bache hue points bhej do
       if (this.watcherId) {
         const { registerPlugin } = await import('@capacitor/core');
@@ -128,6 +130,27 @@ export class NativeTrackingService {
    */
   private static BUF_KEY = 'vs_track_buffer';
   private static BUF_MAX = 1000;   // ~2 ghante ka rasta
+
+  private lastLoc: any = null;      // aakhri maloom jagah (dhadkan ke liye)
+  private lastPushMs = 0;
+  private beatTimer: any = null;
+
+  /** Ek point buffer me + phone ki pakki jagah me. */
+  private push(location: any, at: Date) {
+    this.buffer.push({
+      latitude: +location.latitude.toFixed(6),
+      longitude: +location.longitude.toFixed(6),
+      accuracy: location.accuracy != null ? Math.round(location.accuracy) : null,
+      speed: location.speed != null ? +(+location.speed).toFixed(2) : null,
+      batteryPct: null,
+      isBackground: true,
+      // Asli waqt — batch 60 sec me jata hai, warna sab points par ek hi waqt
+      // lag jata aur rasta galat kram me banta
+      capturedAt: at.toISOString()
+    });
+    this.lastPushMs = Date.now();
+    this.saveBuffer();   // app mar bhi jaye to point bacha rahe
+  }
 
   private saveBuffer() {
     try {

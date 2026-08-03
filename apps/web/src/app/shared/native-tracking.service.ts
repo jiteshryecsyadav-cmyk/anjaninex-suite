@@ -104,6 +104,42 @@ export class NativeTrackingService {
     }
   }
 
+  /**
+   * 🔧 EK BUTTON SE SETUP.
+   * Android kisi app ko apni permission KHUD nahi lene deta (security ka niyam) —
+   * par hum dono kaam kar sakte hain: (1) permission ka dialog khol dein,
+   * (2) seedha usi settings page par pahuncha dein jahan OEM ki rok hai.
+   * Staff ko sirf "Allow" dabana hai, dhoondhna kuch nahi.
+   */
+  async askPermissions(): Promise<void> {
+    try {
+      const { registerPlugin } = await import('@capacitor/core');
+      const BackgroundGeolocation: any = registerPlugin('BackgroundGeolocation');
+      // Watcher chalu karna hi permission ka dialog laata hai (requestPermissions: true)
+      await this.stopTracking();
+      await this.startTracking();
+      // Android 13+ par notification ki alag permission
+      try {
+        const anyWin: any = window;
+        if (anyWin.Notification?.requestPermission) await anyWin.Notification.requestPermission();
+      } catch {}
+      void BackgroundGeolocation;
+    } catch (e: any) {
+      this.status.set('⚠️ ' + (e?.message || 'permission nahi maang paye'));
+    }
+  }
+
+  /** Phone ki app-settings seedha khol do (battery/auto-start wali rok wahin hai). */
+  async openAppSettings(): Promise<void> {
+    try {
+      const { registerPlugin } = await import('@capacitor/core');
+      const BackgroundGeolocation: any = registerPlugin('BackgroundGeolocation');
+      await BackgroundGeolocation.openSettings();
+    } catch {
+      this.status.set('⚠️ Settings khud kholein: Settings → Apps → Vyapaar Setu');
+    }
+  }
+
   /** Check-out ya logout par tracking band. */
   async stopTracking(): Promise<void> {
     try {

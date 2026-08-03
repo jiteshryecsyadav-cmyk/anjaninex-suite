@@ -71,7 +71,30 @@ import { BackButtonComponent } from '../../../shared/back-button.component';
                 Aakhri point: {{ tracker.lastPointAt() }} · Bheje gaye: {{ tracker.sentCount() }}
               </div>
             }
-            <button (click)="retryTracking()" class="mt-2 px-3 py-1.5 text-xs rounded bg-[#5c1a8b] text-white">
+
+            <!-- 🔧 EK BUTTON SETUP — Android khud permission nahi de sakta, par
+                 dialog khol sakte hain aur seedha settings page tak pahuncha sakte hain -->
+            <button (click)="setupTracking()" [disabled]="setupBusy()"
+                    class="w-full mt-3 py-3 rounded-xl bg-[#5c1a8b] text-white font-bold">
+              {{ setupBusy() ? '⏳ Chalu kar rahe hain…' : '🔧 Tracking chalu karo (ek tap)' }}
+            </button>
+
+            @if (showSteps()) {
+              <div class="mt-3 p-3 rounded-lg bg-amber-50 border border-amber-200 text-[13px] leading-relaxed">
+                <div class="font-bold text-amber-900 mb-1">Phone ki 3 rok — ek baar khol dijiye</div>
+                <ol class="list-decimal ml-4 space-y-1 text-amber-900">
+                  <li><b>Recent apps</b> me Vyapaar Setu ke card par neeche swipe → <b>🔒 Lock</b></li>
+                  <li>Settings me <b>Auto launch / Allow background activity</b> → ON</li>
+                  <li><b>Unrestricted data usage</b> → ON</li>
+                </ol>
+                <button (click)="tracker.openAppSettings()"
+                        class="mt-2 px-3 py-2 rounded-lg bg-amber-600 text-white font-bold text-xs">
+                  ⚙️ Settings kholo
+                </button>
+              </div>
+            }
+
+            <button (click)="retryTracking()" class="mt-2 px-3 py-1.5 text-xs rounded border border-[#5c1a8b] text-[#5c1a8b]">
               ↻ Dobara koshish karo
             </button>
           </div>
@@ -173,6 +196,25 @@ export class CheckInComponent implements OnDestroy {
   /** Permission theek karne ke baad bina check-out kiye dobara koshish */
   async retryTracking() {
     await this.tracker.startTracking();
+  }
+
+  setupBusy = signal(false);
+  showSteps = signal(false);
+
+  /**
+   * 🔧 Ek tap me jitna ho sake utna khud kar do:
+   * location + notification ke dialog khol do, watcher chalu kar do. Jo Android
+   * hume nahi karne deta (battery/auto-start ki OEM rok), uske liye seedha
+   * settings ka rasta aur 3 chhote kadam dikha do.
+   */
+  async setupTracking() {
+    this.setupBusy.set(true);
+    try {
+      await this.tracker.askPermissions();
+      this.showSteps.set(true);
+    } finally {
+      this.setupBusy.set(false);
+    }
   }
 
   todayLog = signal<AttendanceLog | null>(null);

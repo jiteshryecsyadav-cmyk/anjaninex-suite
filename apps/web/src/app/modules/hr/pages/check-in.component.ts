@@ -79,19 +79,41 @@ import { BackButtonComponent } from '../../../shared/back-button.component';
               {{ setupBusy() ? '⏳ Chalu kar rahe hain…' : '🔧 Tracking chalu karo (ek tap)' }}
             </button>
 
+            <!-- 🪜 EK-EK KARKE — har kadam ka apna button, "Ho gaya" par agla -->
             @if (showSteps()) {
-              <div class="mt-3 p-3 rounded-lg bg-amber-50 border border-amber-200 text-[13px] leading-relaxed">
-                <div class="font-bold text-amber-900 mb-1">Phone ki 3 rok — ek baar khol dijiye</div>
-                <ol class="list-decimal ml-4 space-y-1 text-amber-900">
-                  <li><b>Recent apps</b> me Vyapaar Setu ke card par neeche swipe → <b>🔒 Lock</b></li>
-                  <li>Settings me <b>Auto launch / Allow background activity</b> → ON</li>
-                  <li><b>Unrestricted data usage</b> → ON</li>
-                </ol>
-                <button (click)="tracker.openAppSettings()"
-                        class="mt-2 px-3 py-2 rounded-lg bg-amber-600 text-white font-bold text-xs">
-                  ⚙️ Settings kholo
-                </button>
-              </div>
+              @if (step() <= SETUP.length) {
+                <div class="mt-3 p-3 rounded-xl bg-amber-50 border border-amber-200">
+                  <div class="text-xs font-bold text-amber-700 mb-1">
+                    Kadam {{ step() }} / {{ SETUP.length }}
+                  </div>
+                  <div class="font-bold text-amber-900 text-[15px]">{{ SETUP[step()-1].title }}</div>
+                  <div class="text-[13px] text-amber-900 mt-1 leading-relaxed">{{ SETUP[step()-1].how }}</div>
+
+                  <div class="flex gap-2 mt-3">
+                    @if (SETUP[step()-1].opens) {
+                      <button (click)="tracker.openAppSettings()"
+                              class="flex-1 py-2.5 rounded-lg bg-amber-600 text-white font-bold text-sm">
+                        ⚙️ Ye screen kholo
+                      </button>
+                    }
+                    <button (click)="nextStep()"
+                            class="flex-1 py-2.5 rounded-lg bg-[#5c1a8b] text-white font-bold text-sm">
+                      ✓ Ho gaya — agla
+                    </button>
+                  </div>
+                  <button (click)="showSteps.set(false)" class="mt-2 w-full text-xs text-gray-500 underline">
+                    baad me karunga
+                  </button>
+                </div>
+              } @else {
+                <div class="mt-3 p-3 rounded-xl bg-green-50 border border-green-200 text-green-900 text-[13px]">
+                  ✅ Setup poora! Ab phone jeb me rakhiye — check-out tak location apne aap jati rahegi.
+                  <button (click)="retryTracking(); showSteps.set(false)"
+                          class="mt-2 w-full py-2 rounded-lg bg-green-700 text-white font-bold text-sm">
+                    Theek hai
+                  </button>
+                </div>
+              }
             }
 
             <button (click)="retryTracking()" class="mt-2 px-3 py-1.5 text-xs rounded border border-[#5c1a8b] text-[#5c1a8b]">
@@ -200,6 +222,45 @@ export class CheckInComponent implements OnDestroy {
 
   setupBusy = signal(false);
   showSteps = signal(false);
+  step = signal(1);
+
+  /**
+   * Phone ki wo rokein jo Android app ko KHUD nahi kholne deta (OEM ki apni
+   * settings). Isliye ek-ek karke dikhate hain: screen khol do, staff toggle
+   * daba de, "Ho gaya" par agla kadam.
+   */
+  readonly SETUP = [
+    {
+      title: '1. Location — "Allow all the time"',
+      how: 'Permissions → Location → "Allow all the time" chuniye. "Only while using the app" se jeb me tracking band ho jati hai.',
+      opens: true
+    },
+    {
+      title: '2. Battery — "Don\'t optimize"',
+      how: 'Battery → "Don\'t optimize" chuniye. Isse Android app ko background me band nahi karega.',
+      opens: true
+    },
+    {
+      title: '3. Auto-launch / background activity',
+      how: 'Isi screen par "Allow auto launch" ya "Allow background activity" mile to ON kar dijiye. OnePlus/Oppo/Vivo/Xiaomi me ye alag rok hoti hai.',
+      opens: true
+    },
+    {
+      title: '4. Unrestricted data usage',
+      how: 'Mobile data & Wi-Fi → "Unrestricted data usage" → ON. Data Saver background me data rok deta hai.',
+      opens: true
+    },
+    {
+      title: '5. Recent apps me 🔒 taala lagaiye',
+      how: 'Recent apps (square button) → Vyapaar Setu ke card par neeche swipe (ya dabaye rakhiye) → 🔒 Lock. Taala laga app Android saaf nahi karta — OnePlus par sabse zyada asar isi ka hai.',
+      opens: false
+    }
+  ];
+
+  nextStep() {
+    this.step.update(s => s + 1);
+    if (this.step() > this.SETUP.length) this.retryTracking();
+  }
 
   /**
    * 🔧 Ek tap me jitna ho sake utna khud kar do:
@@ -210,8 +271,9 @@ export class CheckInComponent implements OnDestroy {
   async setupTracking() {
     this.setupBusy.set(true);
     try {
-      await this.tracker.askPermissions();
-      this.showSteps.set(true);
+      await this.tracker.askPermissions();   // jo dialog app khud khol sakti hai
+      this.step.set(1);
+      this.showSteps.set(true);              // baki ek-ek karke
     } finally {
       this.setupBusy.set(false);
     }

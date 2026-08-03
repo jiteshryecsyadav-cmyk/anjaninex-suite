@@ -329,13 +329,20 @@ public class LocationController : HrControllerBase
         // Ab trail na ho to uske CHECK-IN wale location par hi dikha dete hain.
         cmd.CommandText = @"
             WITH trail AS (
+                -- ⚠️ Sirf sabse-naya point mat lo. Laptop/tower wala dhundhla point
+                -- (100m+) kabhi phone ke saaf point se 5 second naya nikal aata hai aur
+                -- map par staff ko galat jagah dhakel deta hai. Isliye pehle SAAF point
+                -- (accuracy 100m tak) dekho, usme se sabse naya; saaf koi na ho tabhi
+                -- dhundhla lo.
                 SELECT DISTINCT ON (lt.employee_id)
                        lt.employee_id, lt.latitude, lt.longitude, lt.captured_at, lt.speed,
                        'live' AS src
                   FROM hr.location_trails lt
                  WHERE lt.firm_id = @firm
                    AND lt.captured_at >= now() - interval '30 minutes'
-                 ORDER BY lt.employee_id, lt.captured_at DESC
+                 ORDER BY lt.employee_id,
+                          (lt.accuracy IS NOT NULL AND lt.accuracy > 100),   -- saaf pehle
+                          lt.captured_at DESC
             ),
             checkin AS (
                 SELECT al.employee_id, al.check_in_lat AS latitude, al.check_in_lng AS longitude,

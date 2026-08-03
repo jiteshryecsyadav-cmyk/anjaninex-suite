@@ -984,7 +984,12 @@ export class ShellComponent {
           // Upar wala 25m/45s ka tracker hi asli kaam karta hai; ye 5-minute wala
           // ping uske peeche jaal (safety net) hai — wo kisi wajah se na chale to
           // bhi staff ki jagah ka pata chalta rahe.
-          if (checkedIn && navigator.geolocation) {
+          // 💻 Laptop/desktop se location bhejna bekaar hai (GPS hai hi nahi,
+          // WiFi/IP ka 100-150m ka andaza aata hai) aur wo phone ke sacche rasta
+          // ko ganda karta hai — isliye sirf mobile se.
+          const onMobile = (navigator.maxTouchPoints ?? 0) > 0
+            && /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+          if (checkedIn && onMobile && navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(pos => {
               this.http.post(`${environment.apiUrl}/api/hr/location/ping`, {
                 latitude: +pos.coords.latitude.toFixed(6),

@@ -24,9 +24,24 @@ export class LiveTrackService {
 
   get running() { return this.timer !== null; }
 
+  /**
+   * 💻 LAPTOP/DESKTOP par tracking NAHI.
+   * Computer ke browser ke paas GPS hota hi nahi — wo WiFi/IP se andaza deta hai
+   * (100-150 meter). Malik apne laptop par usi staff ke login se app khole to
+   * laptop bhi har 45 second me apni jagah bhejne lagta tha, aur wo phone ke
+   * sacche rasta me mil kar use ganda kar deta tha. Field tracking sirf phone se.
+   */
+  private isMobile(): boolean {
+    try {
+      return (navigator.maxTouchPoints ?? 0) > 0
+          && /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+    } catch { return false; }
+  }
+
   /** Check-in page kholte / check-in karte hi bulao — checked-in ho to shuru. */
   start() {
     if (this.running || !navigator.geolocation) return;
+    if (!this.isMobile()) return;   // laptop/desktop — upar dekho
 
     // watchPosition: GPS khud taaza position deta rehta hai (battery-friendly)
     this.watchId = navigator.geolocation.watchPosition(

@@ -207,10 +207,18 @@ export class CheckInComponent implements OnDestroy {
 
   /** 📡 Checked-in (checkout baki) → tracking APNE AAP chalu; warna band.
    *  APK me native background watcher bhi, taaki app band ho tab bhi chale. */
-  private syncTracking(log: AttendanceLog | null) {
+  private async syncTracking(log: AttendanceLog | null) {
     const on = !!(log?.checkInAt && !log.checkOutAt);
-    if (on) { this.liveTrack.start(); this.tracker.startTracking(); }
-    else { this.liveTrack.stop(); this.tracker.stopTracking(); }
+    // APK me NATIVE hi asli tracker hai. Dono ek saath chalane par web wala jeb me
+    // jaate hi purani jagah dobara bhej deta tha aur rasta jhootha ho jata tha.
+    const native = await this.tracker.isNative();
+    if (on) {
+      this.tracker.startTracking();
+      if (!native) this.liveTrack.start();
+    } else {
+      this.tracker.stopTracking();
+      this.liveTrack.stop();
+    }
   }
 
   formatTime(iso: string): string {

@@ -18,6 +18,7 @@ export class LiveTrackService {
   private watchId: number | null = null;
   private timer: ReturnType<typeof setInterval> | null = null;
   private last: { lat: number; lng: number; acc: number | null } | null = null;
+  private lastAt = 0;   // ye jagah kab mili thi — BAASI jagah bhejna mana hai
   private sentPos: { lat: number; lng: number } | null = null;   // aakhri BHEJI hui jagah
   private lastSentAt = 0;
 
@@ -31,6 +32,7 @@ export class LiveTrackService {
     this.watchId = navigator.geolocation.watchPosition(
       p => {
         this.last = { lat: p.coords.latitude, lng: p.coords.longitude, acc: p.coords.accuracy ?? null };
+        this.lastAt = Date.now();
         this.maybeSendOnMove();
       },
       () => {},   // deny/timeout par chup — check-in flow apna error khud dikhata hai
@@ -67,6 +69,11 @@ export class LiveTrackService {
 
   private send() {
     if (!this.last) return;
+    // ⚠️ BAASI JAGAH KABHI MAT BHEJO. Phone jeb me jaate hi browser GPS band kar
+    // deta hai par ye timer chalta rehta hai — pehle wo purani yaad ki hui jagah
+    // NAYE waqt ke saath bhej deta tha, jisse nakshe par aadmi 250 meter peechhe
+    // kood kar wapas aata dikhta tha (jhoothi tikoni lakeer).
+    if (Date.now() - this.lastAt > 90_000) return;
     this.lastSentAt = Date.now();
     this.sentPos = { lat: this.last.lat, lng: this.last.lng };
     this.svc.ping(this.last.lat, this.last.lng, this.last.acc).subscribe({ error: () => {} });

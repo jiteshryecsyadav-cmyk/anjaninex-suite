@@ -161,6 +161,61 @@ export const routes: Routes = [
         ]
       },
 
+      // ── FIRM & SEWA ──
+      // Wallet, Plans, Credil, Party Chat, Complaint Box — ye paanch firm-level
+      // hain, trading module se nahi bandhi. Screen aur API dono wahi jo agency
+      // app me chalti hain. Permission nahi lagayi: manufacturer ko bhi wallet
+      // bharna, plan badalna aur shikayat likhna aata hi hona chahiye.
+      {
+        path: 'firm', data: { section: 'firm' }, loadComponent: shell,
+        children: [
+          { path: '', pathMatch: 'full', canActivate: [sectionLanding], children: [] },
+          {
+            path: 'wallet',
+            loadComponent: () =>
+              import('./modules/wallet/wallet-page.component').then(m => m.WalletPageComponent)
+          },
+          {
+            path: 'plans',
+            loadComponent: () =>
+              import('./modules/plans/plans-page.component').then(m => m.PlansPageComponent)
+          },
+          {
+            path: 'credil',
+            loadComponent: () =>
+              import('./modules/credil/credil-page.component').then(m => m.CredilPageComponent)
+          },
+          {
+            path: 'party-chat',
+            loadComponent: () =>
+              import('./modules/party-chat/party-chat.component').then(m => m.PartyChatComponent)
+          },
+          {
+            path: 'complaints',
+            loadComponent: () =>
+              import('./modules/complaints/complaint-box.component').then(m => m.ComplaintBoxComponent)
+          }
+        ]
+      },
+
+      // ── HR · BAZAAR LINK · ONLINE DUKAN ──
+      // Ye teen apne aap me poore module hain — andar apni hi navigation hai,
+      // isliye SectionShell ki patti nahi lagayi (do patti ek saath ulti lagti).
+      {
+        path: 'hr',
+        canActivate: [requirePermission('hr.attendance.viewown.self')],
+        loadChildren: () => import('./modules/hr/hr.routes').then(m => m.hrRoutes)
+      },
+      {
+        path: 'suppliers',
+        canActivate: [requirePermission('suppliers.directory.view.firm')],
+        loadChildren: () => import('./modules/suppliers/suppliers.routes').then(m => m.suppliersRoutes)
+      },
+      {
+        path: 'dukan/admin',
+        loadChildren: () => import('./modules/dukan/dukan.routes').then(m => m.dukanAdminRoutes)
+      },
+
       // Anjaan rasta landing par hi jaye, kisi fix screen par nahi.
       { path: '**', pathMatch: 'full', canActivate: [landingRedirect], children: [] }
     ]

@@ -83,8 +83,41 @@ export const SECTIONS: NavSection[] = [
       { path: '/reports/stock',       icon: '📦', label: 'Stock report',    perm: 'reports.stock.view.firm',       soon: true },
       { path: '/reports/outstanding', icon: '💰', label: 'Bakaya / udhaar', perm: 'reports.outstanding.view.firm', soon: true }
     ]
+  },
+  {
+    // Ye paanch firm-level cheezein hain — trading module se nahi bandhi.
+    // Wahi screen, wahi API jo agency app me chalti hai; manufacturer ko bhi
+    // wallet bharna hota hai, plan badalna hota hai aur Credil dekhna hota hai.
+    // Permission par nahi baandha — ye har user ke apne kaam ki hain.
+    key: 'firm', title: 'Firm & Sewa', icon: '⭐', path: '/firm',
+    tabs: [
+      { path: '/firm/wallet',     icon: '👛', label: 'Wallet',        perm: '' },
+      { path: '/firm/plans',      icon: '💼', label: 'Plans',         perm: '' },
+      { path: '/firm/credil',     icon: '📈', label: 'CREDIL',        perm: '' },
+      { path: '/firm/party-chat', icon: '💬', label: 'Party Chat',    perm: '' },
+      { path: '/firm/complaints', icon: '📢', label: 'Complaint Box', perm: '' }
+    ]
+  },
+  // Ye teen apne aap me poore module hain (andar apni hi navigation hai),
+  // isliye sidebar me seedhi line — patti ke andar nahi thoosa.
+  {
+    key: 'hr', title: 'HR / Staff', icon: '👨‍💼', path: '/hr',
+    tabs: [{ path: '/hr', icon: '👨‍💼', label: 'HR', perm: 'hr.attendance.viewown.self' }]
+  },
+  {
+    key: 'bazaar', title: 'Bazaar Link', icon: '🛍️', path: '/suppliers',
+    tabs: [{ path: '/suppliers', icon: '🛍️', label: 'Bazaar Link', perm: 'suppliers.directory.view.firm' }]
+  },
+  {
+    key: 'dukan', title: 'Online Dukan', icon: '🏪', path: '/dukan/admin',
+    tabs: [{ path: '/dukan/admin', icon: '🏪', label: 'Online Dukan', perm: '' }]
   }
 ];
+
+/** Khali `perm` ka matlab — ye pardah sabke liye khula hai. */
+export function tabKhulta(t: NavTab, can: (p: string) => boolean): boolean {
+  return !t.perm || can(t.perm);
+}
 
 export function findSection(key: string): NavSection | undefined {
   return SECTIONS.find(s => s.key === key);

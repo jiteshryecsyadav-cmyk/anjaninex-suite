@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, ViewEncapsulation, computed, inject
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService } from '../core/auth.service';
-import { findSection } from '../core/nav';
+import { findSection, tabKhulta } from '../core/nav';
 
 /**
  * Har hisse (Sales, Purchase, Production, Stock, Masters, Reports) ka common
@@ -76,6 +76,6 @@ export class SectionShellComponent {
   tabs = computed(() => {
     const key = this.route.snapshot.data['section'] as string | undefined;
     const sec = key ? findSection(key) : undefined;
-    return (sec?.tabs ?? []).filter(t => this.auth.can(t.perm));
+    return (sec?.tabs ?? []).filter(t => tabKhulta(t, p => this.auth.can(p)));
   });
 }

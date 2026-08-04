@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { AuthService } from '../core/auth.service';
-import { SECTIONS } from '../core/nav';
+import { SECTIONS, tabKhulta } from '../core/nav';
 import { environment } from '../../environments/environment';
 
 /** Sidebar ki ek line = poora ek hissa. Andar ke pardah patti me khulte hain. */
@@ -33,11 +33,19 @@ interface NavLine {
   template: `
     <div class="flex h-screen overflow-hidden">
 
-      <!-- ── SIDEBAR — agency app jaisa navy ── -->
-      <aside class="bg-anjaninex-navy text-white w-56 shrink-0 flex flex-col
-                    overflow-y-auto overflow-x-hidden transition-all duration-200
-                    max-md:fixed max-md:inset-y-0 max-md:z-40 max-md:shadow-2xl"
-             [class.max-md:-translate-x-full]="!sideOpen()">
+      <!-- mobile par sidebar khule to peeche ka parda -->
+      @if (sideOpen()) {
+        <div class="sidebar-backdrop" (click)="sideOpen.set(false)"></div>
+      }
+
+      <!-- ── SIDEBAR — agency app jaisa navy ──
+           Chaudai se khulta-bandh hota hai (translate se nahi). Pehle sirf
+           translate tha, isliye desktop par ☰ dabane se kuch hota hi nahi tha —
+           sidebar apni jagah 224px ghere baitha rehta tha. -->
+      <aside class="app-sidebar bg-anjaninex-navy text-white shrink-0 flex flex-col
+                    overflow-y-auto overflow-x-hidden transition-all duration-200"
+             [class.w-56]="sideOpen()" [class.w-0]="!sideOpen()"
+             (click)="navDabaya($event)">
 
         <nav class="flex-1 p-2 flex flex-col gap-1">
           @for (l of lines(); track l.path) {
@@ -70,12 +78,6 @@ interface NavLine {
           <span class="logout-txt">LOGOUT</span>
         </button>
       </aside>
-
-      <!-- mobile par sidebar khule to peeche ka parda -->
-      @if (sideOpen()) {
-        <div class="fixed inset-0 bg-black/40 z-30 md:hidden"
-             (click)="sideOpen.set(false)"></div>
-      }
 
       <!-- ── CONTENT ── -->
       <div class="flex-1 flex flex-col min-w-0">
@@ -141,6 +143,19 @@ interface NavLine {
     </div>
   `,
   styles: [`
+    /* ===== MOBILE (phone) — sidebar upar chadh kar aata hai ===== */
+    .sidebar-backdrop { display: none; }
+    @media (max-width: 767px) {
+      .app-sidebar {
+        position: fixed; top: 0; left: 0; bottom: 0; z-index: 60;
+        box-shadow: 4px 0 24px rgba(0,0,0,.35);
+      }
+      .sidebar-backdrop {
+        display: block; position: fixed; inset: 0; z-index: 55;
+        background: rgba(0,0,0,.45);
+      }
+    }
+
     /* Glossy LOGOUT — agency app se hu-ba-hu, taaki dono app ek hi lagen */
     .logout-btn {
       position: relative; overflow: hidden;
@@ -169,7 +184,16 @@ interface NavLine {
 })
 export class ShellComponent {
   auth = inject(AuthService);
-  sideOpen = signal(false);
+
+  /** Desktop par khula, phone par band — phone ki chhoti screen sidebar kha jati hai. */
+  sideOpen = signal(window.innerWidth >= 768);
+
+  /** Phone par link dabate hi sidebar band — warna wo pardah dhak kar khada rehta. */
+  navDabaya(e: Event) {
+    if (window.innerWidth >= 768) return;
+    const t = e.target as HTMLElement;
+    if (t.closest('a') || t.closest('button')) this.sideOpen.set(false);
+  }
 
   /** index.html me build ke waqt bhara jata hai (scripts/gen-version.js). */
   version = (window as any).__APP_VERSION__ ?? '0.0.0';
@@ -208,7 +232,7 @@ export class ShellComponent {
         if (s.tabs.length === 0)
           return { title: s.title, icon: s.icon, path: s.path, soon: false, koiHai: true };
 
-        const mile = s.tabs.filter(t => this.auth.can(t.perm));
+        const mile = s.tabs.filter(t => tabKhulta(t, p => this.auth.can(p)));
         return {
           title: s.title, icon: s.icon, path: s.path,
           soon: !mile.some(t => !t.soon),

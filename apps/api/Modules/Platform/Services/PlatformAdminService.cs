@@ -620,7 +620,13 @@ public class PlatformAdminService : IPlatformAdminService
             ["production"]   = mfg,
             ["stock"]        = mfg,
             ["masters"]      = mfg,
-            ["reports"]      = true
+            ["reports"]      = true,
+            // Ye teen dono tarah ki firm ko chalte hain — manufacturer app me
+            // bhi wahi screen lagi hain jo agency me. Chhod dete to nayi MFG
+            // firm me HR/Bazaar/Dukan khulte hi 403 aata (db/init/124).
+            ["hr"]               = true,
+            ["active_directory"] = true,
+            ["online_dukan"]     = true
         });
     }
 

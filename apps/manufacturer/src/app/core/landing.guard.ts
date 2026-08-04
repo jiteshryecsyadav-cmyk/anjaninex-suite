@@ -1,7 +1,7 @@
 import { inject } from '@angular/core';
 import { ActivatedRouteSnapshot, CanActivateFn, Router } from '@angular/router';
 import { AuthService } from './auth.service';
-import { findSection } from './nav';
+import { findSection, tabKhulta } from './nav';
 
 /**
  * App khulte hi kahan jaana hai.
@@ -49,7 +49,7 @@ export const sectionLanding: CanActivateFn = (route: ActivatedRouteSnapshot) => 
   const router = inject(Router);
 
   const sec = findSection(route.data['section'] as string ?? '');
-  const hit = sec?.tabs.find(t => !t.soon && auth.can(t.perm));
+  const hit = sec?.tabs.find(t => !t.soon && tabKhulta(t, p => auth.can(p)));
   if (hit) return router.createUrlTree([hit.path]);
 
   return router.createUrlTree(['/no-access'], {

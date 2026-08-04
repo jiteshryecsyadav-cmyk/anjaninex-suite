@@ -1,0 +1,111 @@
+import { Injectable, inject } from '@angular/core';
+import { HrService } from './hr.service';
+
+/**
+ * 📡 CHECK-IN ke baad live tracking APNE AAP.
+ * Staff check-in kare → jab tak checkout nahi hota (aur app/tab khula hai),
+ * har ~45 sec me location ping jati hai → malik ke Live Map par chalta-firta
+ * marker banta hai. Checkout hote hi band.
+ *
+ * Seema (browser ka niyam): tab/app band ya screen lock ho to browser
+ * location dena rok deta hai — poora background-tracking sirf native app
+ * (Capacitor + background-geolocation) me hota hai. App khula ho tab ke liye
+ * ye kaafi hai.
+ */
+@Injectable({ providedIn: 'root' })
+export class LiveTrackService {
+  private svc = inject(HrService);
+  private watchId: number | null = null;
+  private timer: ReturnType<typeof setInterval> | null = null;
+  private last: { lat: number; lng: number; acc: number | null } | null = null;
+  private lastAt = 0;   // ye jagah kab mili thi — BAASI jagah bhejna mana hai
+  private sentPos: { lat: number; lng: number } | null = null;   // aakhri BHEJI hui jagah
+  private lastSentAt = 0;
+
+  get running() { return this.timer !== null; }
+
+  /**
+   * 💻 LAPTOP/DESKTOP par tracking NAHI.
+   * Computer ke browser ke paas GPS hota hi nahi — wo WiFi/IP se andaza deta hai
+   * (100-150 meter). Malik apne laptop par usi staff ke login se app khole to
+   * laptop bhi har 45 second me apni jagah bhejne lagta tha, aur wo phone ke
+   * sacche rasta me mil kar use ganda kar deta tha. Field tracking sirf phone se.
+   */
+  private isMobile(): boolean {
+    try {
+      return (navigator.maxTouchPoints ?? 0) > 0
+          && /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+    } catch { return false; }
+  }
+
+  /** Check-in page kholte / check-in karte hi bulao — checked-in ho to shuru. */
+  start() {
+    if (this.running || !navigator.geolocation) return;
+    if (!this.isMobile()) return;   // laptop/desktop — upar dekho
+
+    // watchPosition: GPS khud taaza position deta rehta hai (battery-friendly)
+    this.watchId = navigator.geolocation.watchPosition(
+      p => {
+        this.last = { lat: p.coords.latitude, lng: p.coords.longitude, acc: p.coords.accuracy ?? null };
+        this.lastAt = Date.now();
+        this.maybeSendOnMove();
+      },
+      () => {},   // deny/timeout par chup — check-in flow apna error khud dikhata hai
+      { enableHighAccuracy: true, maximumAge: 5_000, timeout: 20_000 }
+    );
+
+    // 💓 DHADKAN — khada ho ya chal raha ho, har 45 sec me ek point zaroor
+    // (isse "wo waqt kahan tha" ka record kabhi tootta nahi)
+    this.timer = setInterval(() => this.send(), 45_000);
+
+    // Pehli ping turant (45 sec ka intezar na ho)
+    setTimeout(() => this.send(), 3_000);
+  }
+
+  /**
+   * 🛣️ Rasta asli lage, iske liye CHALTE waqt zyada point.
+   * Sirf 45-sec wale point se gaadi par aadha-aadha kilometer ka faasla ban jata
+   * tha aur galiyon ke mod kat kar seedhi lakeer ban jati thi. Ab jaise hi 25
+   * meter khiske, wahin point bhej dete hain (5 sec se jaldi nahi — battery aur
+   * data dono bache).
+   *
+   * Har-second wali ping jaan-boojh kar NAHI: GPS ki apni galti 5-10 meter hoti
+   * hai, to har second ke point me chalna kam aur jhol zyada aata hai — line
+   * seedhi hone ki jagah kaanpne lagti hai, aur battery din bhar nahi chalti.
+   * Rasta sadak par bithane ka kaam server par map-matching karta hai.
+   */
+  private maybeSendOnMove() {
+    if (!this.last) return;
+    const now = Date.now();
+    if (now - this.lastSentAt < 5_000) return;
+    if (this.sentPos && this.distM(this.sentPos.lat, this.sentPos.lng, this.last.lat, this.last.lng) < 25) return;
+    this.send();
+  }
+
+  private send() {
+    if (!this.last) return;
+    // ⚠️ BAASI JAGAH KABHI MAT BHEJO. Phone jeb me jaate hi browser GPS band kar
+    // deta hai par ye timer chalta rehta hai — pehle wo purani yaad ki hui jagah
+    // NAYE waqt ke saath bhej deta tha, jisse nakshe par aadmi 250 meter peechhe
+    // kood kar wapas aata dikhta tha (jhoothi tikoni lakeer).
+    if (Date.now() - this.lastAt > 90_000) return;
+    this.lastSentAt = Date.now();
+    this.sentPos = { lat: this.last.lat, lng: this.last.lng };
+    this.svc.ping(this.last.lat, this.last.lng, this.last.acc).subscribe({ error: () => {} });
+  }
+
+  /** Do jagah ke beech ki doori — meter me. */
+  private distM(lat1: number, lng1: number, lat2: number, lng2: number) {
+    const R = 6371000, rad = (d: number) => d * Math.PI / 180;
+    const dLat = rad(lat2 - lat1), dLng = rad(lng2 - lng1);
+    const a = Math.sin(dLat / 2) ** 2 + Math.cos(rad(lat1)) * Math.cos(rad(lat2)) * Math.sin(dLng / 2) ** 2;
+    return 2 * R * Math.asin(Math.sqrt(a));
+  }
+
+  /** Checkout par (ya logout par) band. */
+  stop() {
+    if (this.watchId !== null) { navigator.geolocation.clearWatch(this.watchId); this.watchId = null; }
+    if (this.timer) { clearInterval(this.timer); this.timer = null; }
+    this.last = null; this.sentPos = null; this.lastSentAt = 0;
+  }
+}

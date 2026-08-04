@@ -26,8 +26,9 @@ import { findSection, tabKhulta } from '../core/nav';
       <div class="mfg-sub-nav">
         @for (t of tabs(); track t.path) {
           @if (t.soon) {
+            <!-- Sidebar jaisa hi — halka rang kaafi hai, thappa nahi chahiye -->
             <span class="tn-link tn-soon" title="Ye abhi bana nahi hai">
-              {{ t.icon }} {{ t.label }} <span class="tn-chip">aage</span>
+              {{ t.icon }} {{ t.label }}
             </span>
           } @else {
             <a [routerLink]="t.path" routerLinkActive="tn-active" class="tn-link">
@@ -56,10 +57,6 @@ import { findSection, tabKhulta } from '../core/nav';
       background: var(--anjaninex-navy, #1B2E5C) !important; color: #fff !important;
     }
     .mfg-sub-nav .tn-soon { color: #9AA5BC; cursor: not-allowed; }
-    .mfg-sub-nav .tn-chip {
-      font-size: 9.5px; font-weight: 800; letter-spacing: .04em;
-      background: #EEF1F6; color: #9AA5BC; padding: 1px 5px; border-radius: 4px;
-    }
     @media (max-width: 640px) {
       .mfg-sub-nav .tn-link { padding: 8px 10px; font-size: 12px; }
     }

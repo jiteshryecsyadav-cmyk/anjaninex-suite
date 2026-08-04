@@ -50,11 +50,13 @@ interface NavLine {
         <nav class="flex-1 p-2 flex flex-col gap-1">
           @for (l of lines(); track l.path) {
             @if (l.soon) {
+              <!-- Halka rang aur cursor hi bata dete hain ki abhi nahi khulta —
+                   "aage" ka thappa bekaar shor tha -->
               <div class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm
-                          font-semibold text-white/30 cursor-not-allowed">
+                          font-semibold text-white/30 cursor-not-allowed"
+                   title="Ye abhi bana nahi hai">
                 <span class="w-5 text-center">{{ l.icon }}</span>
                 <span class="flex-1">{{ l.title }}</span>
-                <span class="chip bg-white/10 text-white/40">aage</span>
               </div>
             } @else {
               <a [routerLink]="l.path"

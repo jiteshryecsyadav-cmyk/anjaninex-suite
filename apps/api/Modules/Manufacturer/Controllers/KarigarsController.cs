@@ -58,9 +58,14 @@ public class KarigarsController : ControllerBase
 
         // Majoori baki — view se (db/init/118). Ek hi query me jodte hain,
         // warna 50 karigar par 50 alag query chalti.
+        //
+        // ⚠️ Column ke naam snake_case me hi rakhne hain. DbContext par
+        // snake_case naming convention lagi hai, isliye EF `KarigarId` property
+        // ke liye `karigar_id` column dhoondhta hai — PascalCase alias dene par
+        // "required column 'karigar_id' was not present" aata hai.
         var pending = await _db.Database.SqlQueryRaw<KarigarDue>(
-                @"SELECT karigar_id AS ""KarigarId"",
-                         COALESCE(SUM(majoori_bani), 0) AS ""Majoori""
+                @"SELECT karigar_id,
+                         COALESCE(SUM(majoori_bani), 0)::numeric AS majoori
                     FROM mfg.v_karigar_pending
                    GROUP BY karigar_id")
             .ToListAsync();

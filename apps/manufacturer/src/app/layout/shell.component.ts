@@ -164,8 +164,8 @@ export class ShellComponent {
     ]},
     { title: '👥 Masters', items: [
       { label: 'Karigars',          icon: '🧑‍🏭', path: '/masters/karigars', perm: 'masters.karigar.view.firm' },
-      { label: 'Customers',         icon: '🏢', path: '/masters/customers', perm: 'masters.customer.view.firm', soon: true },
-      { label: 'Suppliers',         icon: '🚛', path: '/masters/suppliers', perm: 'masters.supplier.view.firm', soon: true },
+      { label: 'Customers',         icon: '🏢', path: '/masters/customers', perm: 'masters.customer.view.firm' },
+      { label: 'Suppliers',         icon: '🚛', path: '/masters/suppliers', perm: 'masters.supplier.view.firm' },
       { label: 'Agents',            icon: '🤝', path: '/masters/agents',    perm: 'masters.agent.view.firm' },
       { label: 'Offices / Godowns', icon: '🏬', path: '/masters/godowns',   perm: 'masters.office.view.firm' },
       { label: 'Team & Role',       icon: '🧑‍💼', path: '/masters/team',     perm: 'masters.team.view.firm',     soon: true }

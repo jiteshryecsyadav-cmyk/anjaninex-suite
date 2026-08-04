@@ -29,7 +29,8 @@ const LANDING: { perm: string; path: string }[] = [
  * par bhejte hain, warna 404 par pahunch jayega.
  */
 const READY = new Set<string>([
-  '/masters/karigars', '/masters/agents', '/masters/godowns'
+  '/masters/karigars', '/masters/agents', '/masters/godowns',
+  '/masters/customers', '/masters/suppliers'
 ]);
 
 export const landingRedirect: CanActivateFn = () => {

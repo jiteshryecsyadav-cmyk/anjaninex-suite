@@ -37,6 +37,21 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./modules/masters/godowns.component').then(m => m.GodownsComponent)
       },
+      {
+        path: 'masters/customers',
+        canActivate: [requirePermission('masters.customer.view.firm')],
+        // `kind` component ka input hai — withComponentInputBinding se data se aata hai
+        data: { kind: 'customer' },
+        loadComponent: () =>
+          import('./modules/masters/parties.component').then(m => m.PartiesComponent)
+      },
+      {
+        path: 'masters/suppliers',
+        canActivate: [requirePermission('masters.supplier.view.firm')],
+        data: { kind: 'supplier' },
+        loadComponent: () =>
+          import('./modules/masters/parties.component').then(m => m.PartiesComponent)
+      },
       // Baaki screen aage — sidebar me "aage" likha dikhta hai.
       // Anjaan rasta bhi landing par hi jaye, kisi fix screen par nahi.
       { path: '**', pathMatch: 'full', canActivate: [landingRedirect], children: [] }

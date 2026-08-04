@@ -25,6 +25,18 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./modules/masters/karigars.component').then(m => m.KarigarsComponent)
       },
+      {
+        path: 'masters/agents',
+        canActivate: [requirePermission('masters.agent.view.firm')],
+        loadComponent: () =>
+          import('./modules/masters/agents.component').then(m => m.AgentsComponent)
+      },
+      {
+        path: 'masters/godowns',
+        canActivate: [requirePermission('masters.office.view.firm')],
+        loadComponent: () =>
+          import('./modules/masters/godowns.component').then(m => m.GodownsComponent)
+      },
       // Baaki screen aage — sidebar me "aage" likha dikhta hai.
       // Anjaan rasta bhi landing par hi jaye, kisi fix screen par nahi.
       { path: '**', pathMatch: 'full', canActivate: [landingRedirect], children: [] }

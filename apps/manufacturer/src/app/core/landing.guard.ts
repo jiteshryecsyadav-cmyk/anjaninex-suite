@@ -28,7 +28,9 @@ const LANDING: { perm: string; path: string }[] = [
  * jab tak wo na banein, tab tak jo bhi mile usme se sirf banayi hui screen
  * par bhejte hain, warna 404 par pahunch jayega.
  */
-const READY = new Set<string>(['/masters/karigars']);
+const READY = new Set<string>([
+  '/masters/karigars', '/masters/agents', '/masters/godowns'
+]);
 
 export const landingRedirect: CanActivateFn = () => {
   const auth = inject(AuthService);

@@ -59,6 +59,24 @@ export const routes: Routes = [
           import('./modules/stock/items.component').then(m => m.ItemsComponent)
       },
       {
+        path: 'purchase/po',
+        canActivate: [requirePermission('purchase.po.view.place')],
+        loadComponent: () =>
+          import('./modules/purchase/purchase-orders.component').then(m => m.PurchaseOrdersComponent)
+      },
+      {
+        path: 'purchase/inward',
+        canActivate: [requirePermission('purchase.inward.view.place')],
+        loadComponent: () =>
+          import('./modules/purchase/inwards.component').then(m => m.InwardsComponent)
+      },
+      {
+        path: 'purchase/return',
+        canActivate: [requirePermission('purchase.preturn.view.place')],
+        loadComponent: () =>
+          import('./modules/purchase/purchase-returns.component').then(m => m.PurchaseReturnsComponent)
+      },
+      {
         path: 'production/jobslip',
         canActivate: [requirePermission('production.jobslip.view.place')],
         loadComponent: () =>

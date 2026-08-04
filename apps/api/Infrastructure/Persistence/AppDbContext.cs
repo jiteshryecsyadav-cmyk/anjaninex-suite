@@ -146,6 +146,18 @@ public class AppDbContext : DbContext
         => Set<Namokara.Api.Modules.Manufacturer.Entities.Taka>();
     public DbSet<Namokara.Api.Modules.Manufacturer.Entities.StockLedgerEntry> StockLedger
         => Set<Namokara.Api.Modules.Manufacturer.Entities.StockLedgerEntry>();
+    public DbSet<Namokara.Api.Modules.Manufacturer.Entities.PurchaseOrder> MfgPurchaseOrders
+        => Set<Namokara.Api.Modules.Manufacturer.Entities.PurchaseOrder>();
+    public DbSet<Namokara.Api.Modules.Manufacturer.Entities.PurchaseOrderLine> MfgPurchaseOrderLines
+        => Set<Namokara.Api.Modules.Manufacturer.Entities.PurchaseOrderLine>();
+    public DbSet<Namokara.Api.Modules.Manufacturer.Entities.PurchaseInward> MfgPurchaseInwards
+        => Set<Namokara.Api.Modules.Manufacturer.Entities.PurchaseInward>();
+    public DbSet<Namokara.Api.Modules.Manufacturer.Entities.PurchaseInwardLine> MfgPurchaseInwardLines
+        => Set<Namokara.Api.Modules.Manufacturer.Entities.PurchaseInwardLine>();
+    public DbSet<Namokara.Api.Modules.Manufacturer.Entities.PurchaseReturn> MfgPurchaseReturns
+        => Set<Namokara.Api.Modules.Manufacturer.Entities.PurchaseReturn>();
+    public DbSet<Namokara.Api.Modules.Manufacturer.Entities.PurchaseReturnLine> MfgPurchaseReturnLines
+        => Set<Namokara.Api.Modules.Manufacturer.Entities.PurchaseReturnLine>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -375,6 +387,20 @@ public class AppDbContext : DbContext
                 e.ToTable("stock_ledger", "mfg");
                 e.Property(x => x.Id).ValueGeneratedOnAdd();
             });
+
+            // ── Purchase — db/init/122 ──
+            modelBuilder.Entity<Namokara.Api.Modules.Manufacturer.Entities.PurchaseOrder>()
+                .ToTable("purchase_orders", "mfg");
+            modelBuilder.Entity<Namokara.Api.Modules.Manufacturer.Entities.PurchaseOrderLine>()
+                .ToTable("purchase_order_lines", "mfg");
+            modelBuilder.Entity<Namokara.Api.Modules.Manufacturer.Entities.PurchaseInward>()
+                .ToTable("purchase_inwards", "mfg");
+            modelBuilder.Entity<Namokara.Api.Modules.Manufacturer.Entities.PurchaseInwardLine>()
+                .ToTable("purchase_inward_lines", "mfg");
+            modelBuilder.Entity<Namokara.Api.Modules.Manufacturer.Entities.PurchaseReturn>()
+                .ToTable("purchase_returns", "mfg");
+            modelBuilder.Entity<Namokara.Api.Modules.Manufacturer.Entities.PurchaseReturnLine>()
+                .ToTable("purchase_return_lines", "mfg");
         }
     }
 }

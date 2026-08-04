@@ -148,9 +148,9 @@ export class ShellComponent {
       { label: 'Sales Return',     icon: '↩️', path: '/sales/return',   perm: 'sales.sreturn.view.place', soon: true }
     ]},
     { title: '🛒 Purchase & Inwards', items: [
-      { label: 'Purchase Order',   icon: '🛍️', path: '/purchase/po',     perm: 'purchase.po.view.place',     soon: true },
-      { label: 'Purchase Inward',  icon: '📥', path: '/purchase/inward', perm: 'purchase.inward.view.place', soon: true },
-      { label: 'Purchase Return',  icon: '↪️', path: '/purchase/return', perm: 'purchase.preturn.view.place',soon: true }
+      { label: 'Purchase Order',   icon: '🛍️', path: '/purchase/po',     perm: 'purchase.po.view.place' },
+      { label: 'Purchase Inward',  icon: '📥', path: '/purchase/inward', perm: 'purchase.inward.view.place' },
+      { label: 'Purchase Return',  icon: '↪️', path: '/purchase/return', perm: 'purchase.preturn.view.place' }
     ]},
     { title: '🏭 Manage Production', items: [
       { label: 'Job Slips',          icon: '✂️', path: '/production/jobslip', perm: 'production.jobslip.view.place' },

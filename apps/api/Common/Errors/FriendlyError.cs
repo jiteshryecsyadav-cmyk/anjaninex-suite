@@ -131,8 +131,20 @@ public static class FriendlyError
             case "57014":
                 return "Operation me zyada time lag gaya (timeout). Dobara try karein.";
 
-            // ── 42501: insufficient_privilege (RLS / row-level security block) ──
+            // ── 42501: insufficient_privilege ──
+            // Do bilkul alag baatein ek hi code me aati hain:
+            //   (a) RLS ne row roki — user ki firm ka data nahi hai. Ye user
+            //       ki galti ho sakti hai, logout-login se theek ho sakta hai.
+            //   (b) schema/table par app ka haq hi nahi — ye SETUP ki galti hai.
+            //       Isme logout-login karne se kuch nahi hoga, aur user ko wahi
+            //       kehna usko ghumaata rehta hai (mfg schema par yahi hua tha).
             case "42501":
+                var msg = pg.MessageText ?? "";
+                if (msg.Contains("permission denied for schema", StringComparison.OrdinalIgnoreCase) ||
+                    msg.Contains("permission denied for table",  StringComparison.OrdinalIgnoreCase) ||
+                    msg.Contains("permission denied for relation", StringComparison.OrdinalIgnoreCase))
+                    return $"Ye hissa abhi poori tarah lagaya nahi gaya hai — support ko batayein. ({msg})";
+
                 return "Security policy ne ye save block kiya (firm permission). Ek baar logout-login karke try karein; phir bhi ho to support ko batayein. (code 42501)";
 
             // ── P0001: custom trigger error (raise exception) — usually a clear message ──

@@ -204,5 +204,13 @@ public class AuthController : ControllerBase
     }
 }
 
-public record RefreshRequest(string RefreshToken);
+/// <summary>
+/// Refresh ka body. Token yahan JAAN-BOOJH KAR optional hai — asli token
+/// HttpOnly cookie me aata hai aur JS use padh hi nahi sakta.
+///
+/// Pehle ye `string RefreshToken` (zaroori) tha, isliye khali `{}` bhejne par
+/// ASP.NET cookie padhne se PEHLE hi 400 de deta tha. Manufacturer app cookie
+/// se chup-chaap andar aane ki koshish karta hai — usme yahi rukawat aa rahi thi.
+/// </summary>
+public record RefreshRequest(string? RefreshToken = null);
 public record SwitchFirmRequest(Guid FirmId);

@@ -294,6 +294,18 @@ public class JobSlipsController : ControllerBase
         return null;
     }
 
+    /// <summary>
+    /// ⚠️ Har parent ke baad SaveChanges — jaan-boojh kar.
+    ///
+    /// In entity par navigation property nahi hai (jaan-boojh kar: raw table
+    /// jaisa dhaancha padhna aasaan hai). Uska nateeja ye ki EF ko pata hi
+    /// nahi chalta ki program pehle jana chahiye aur uske size baad me — wo
+    /// apni marzi se kram lagata hai aur FK toot jati hai
+    /// (job_slip_program_sizes_program_id_fkey).
+    ///
+    /// Sab kuch ek transaction ke andar hai, isliye beech me fail hone par
+    /// poora wapas ho jata hai.
+    /// </summary>
     private async Task WriteLines(Guid firmId, Guid slipId, SaveJobSlipDto dto)
     {
         foreach (var m in dto.Materials ?? new())
@@ -305,8 +317,10 @@ public class JobSlipsController : ControllerBase
                 Unit = string.IsNullOrWhiteSpace(m.Unit) ? "Meter" : m.Unit
             };
             _db.JobSlipMaterials.Add(line);
+            await _db.SaveChangesAsync();          // line pehle — taka uspar tikta hai
 
             if (m.Takas is { Length: > 0 })
+            {
                 for (var i = 0; i < m.Takas.Length; i++)
                     _db.Takas.Add(new Taka
                     {
@@ -314,6 +328,8 @@ public class JobSlipsController : ControllerBase
                         OwnerType = "jobslip_material", OwnerId = line.Id,
                         Seq = i + 1, Meters = m.Takas[i]
                     });
+                await _db.SaveChangesAsync();
+            }
         }
 
         foreach (var p in dto.Programs)
@@ -326,6 +342,7 @@ public class JobSlipsController : ControllerBase
                 RateUnit = string.IsNullOrWhiteSpace(p.RateUnit) ? "Pcs" : p.RateUnit
             };
             _db.JobSlipPrograms.Add(prog);
+            await _db.SaveChangesAsync();          // program pehle — ratio/size uspar tikte hain
 
             foreach (var r in p.Ratios ?? new())
                 _db.JobSlipRatios.Add(new JobSlipRatio
@@ -340,8 +357,9 @@ public class JobSlipsController : ControllerBase
                     Id = Guid.NewGuid(), FirmId = firmId, ProgramId = prog.Id,
                     Size = s.Size, Colour = s.Colour, Qty = s.Qty
                 });
+
+            await _db.SaveChangesAsync();
         }
-        await _db.SaveChangesAsync();
     }
 
     private async Task<int> PlannedPieces(Guid firmId, Guid slipId)

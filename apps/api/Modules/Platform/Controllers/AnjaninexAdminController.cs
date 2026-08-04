@@ -137,7 +137,10 @@ public class AnjaninexAdminController : ControllerBase
                 "(jaise: riddhi, samabhav-ent). Space aur . nahi chalte.");
 
         // Kuch naam system ke hain — firm ko nahi de sakte
-        var reserved = new[] { "www", "api", "admin", "app", "mail", "minio", "vyaparsetu" };
+        // "mfg" manufacturer app ka apna pata hai (mfg.vyaparsetu.anjaninex.com).
+        // Kisi firm ko de diya to uska login page manufacturer app khol dega.
+        var reserved = new[] { "www", "api", "admin", "app", "mail", "minio",
+                               "vyaparsetu", "mfg", "transport", "buyer" };
         if (reserved.Contains(sub))
             throw new ArgumentException($"\"{sub}\" system ka naam hai — koi aur chunein.");
 

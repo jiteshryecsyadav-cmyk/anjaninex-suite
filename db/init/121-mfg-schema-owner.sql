@@ -38,6 +38,12 @@ BEGIN
           JOIN pg_namespace n ON n.oid = c.relnamespace
          WHERE n.nspname = 'mfg'
            AND c.relkind IN ('r','p','v','S')      -- table, partition, view, sequence
+           -- BIGSERIAL wali sequence table se BANDHI hoti hai; uska maalik alag
+           -- se nahi badla ja sakta ("cannot change owner of sequence"). Table
+           -- ka maalik badalte hi wo apne aap badal jati hai — isliye chhod do.
+           AND NOT EXISTS (
+                 SELECT 1 FROM pg_depend d
+                  WHERE d.objid = c.oid AND d.deptype = 'a')
     LOOP
         IF obj.relkind IN ('r','p') THEN
             EXECUTE format('ALTER TABLE mfg.%I OWNER TO %I', obj.relname, app_role);

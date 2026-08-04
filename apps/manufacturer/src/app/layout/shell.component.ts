@@ -3,28 +3,27 @@ import { CommonModule } from '@angular/common';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { AuthService } from '../core/auth.service';
+import { SECTIONS } from '../core/nav';
 import { environment } from '../../environments/environment';
 
-interface NavItem {
-  label: string;
+/** Sidebar ki ek line = poora ek hissa. Andar ke pardah patti me khulte hain. */
+interface NavLine {
+  title: string;
   icon: string;
-  path?: string;
-  /** Ye permission nahi hai to line dikhegi hi nahi. */
-  perm?: string;
-  /** Group wali line (jaise Sales) — inme se koi ek bhi ho to dikhegi. */
-  anyPerm?: string[];
-  /** Abhi bana nahi — dikhta hai par khulta nahi, taaki roadmap saaf rahe. */
-  soon?: boolean;
+  path: string;
+  /** Koi pardah khulta hi nahi (sab "aage" hain) — line dikhe par dabe nahi. */
+  soon: boolean;
 }
-interface NavGroup { title: string; items: NavItem[]; }
 
 /**
- * Manufacturer app ka dhaancha. Sidebar prototype se hi utaara hai
- * (supplier/prototype/supplier-app.html) — wahi 6 group, wahi kram.
+ * Manufacturer app ka dhaancha.
  *
- * Har line par permission bandhi hai: jo aadmi wo kaam nahi kar sakta usko
- * line dikhti hi nahi. Godown wale ko sidebar me sirf 4-5 line dikhengi,
- * malik ko poori.
+ * Sidebar me chhe line — har hisse ki ek. Andar ke pardah upar wali horizontal
+ * patti me khulte hain (trading app jaisa). Pehle har pardah ki apni line thi
+ * to sidebar 20 line ka ho jata tha aur roz ka kaam neeche chhup jata.
+ *
+ * List [core/nav.ts] me hai — sidebar aur patti dono wahi padhte hain, isliye
+ * nayi screen ek hi jagah jodni padti hai.
  */
 @Component({
   selector: 'mfg-shell',
@@ -41,26 +40,22 @@ interface NavGroup { title: string; items: NavItem[]; }
              [class.max-md:-translate-x-full]="!sideOpen()">
 
         <nav class="flex-1 p-2 flex flex-col gap-1">
-          @for (g of visibleGroups(); track g.title) {
-            <div class="px-3 pt-3 pb-1 text-[10px] font-extrabold uppercase
-                        tracking-wider text-white/40">{{ g.title }}</div>
-            @for (it of g.items; track it.label) {
-              @if (it.soon) {
-                <div class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm
-                            font-semibold text-white/30 cursor-not-allowed">
-                  <span class="w-5 text-center">{{ it.icon }}</span>
-                  <span class="flex-1">{{ it.label }}</span>
-                  <span class="chip bg-white/10 text-white/40">aage</span>
-                </div>
-              } @else {
-                <a [routerLink]="it.path"
-                   routerLinkActive="!bg-anjaninex-red !text-white"
-                   class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm
-                          font-semibold text-white/75 hover:text-white hover:bg-white/10">
-                  <span class="w-5 text-center">{{ it.icon }}</span>
-                  <span>{{ it.label }}</span>
-                </a>
-              }
+          @for (l of lines(); track l.path) {
+            @if (l.soon) {
+              <div class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm
+                          font-semibold text-white/30 cursor-not-allowed">
+                <span class="w-5 text-center">{{ l.icon }}</span>
+                <span class="flex-1">{{ l.title }}</span>
+                <span class="chip bg-white/10 text-white/40">aage</span>
+              </div>
+            } @else {
+              <a [routerLink]="l.path"
+                 routerLinkActive="!bg-anjaninex-red !text-white"
+                 class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm
+                        font-semibold text-white/75 hover:text-white hover:bg-white/10">
+                <span class="w-5 text-center">{{ l.icon }}</span>
+                <span>{{ l.title }}</span>
+              </a>
             }
           }
         </nav>
@@ -141,59 +136,25 @@ export class ShellComponent {
     }
   }
 
-  /** Prototype ke sidebar se — wahi 6 group, wahi kram. */
-  private groups: NavGroup[] = [
-    // Sales ek hi line — Order/Challan/Invoice/Return andar horizontal patti me
-    // (trading app jaisa). Chaar alag line se sidebar bhar jata tha.
-    { title: '🧾 Sales & Delivery', items: [
-      { label: 'Sales', icon: '🧾', path: '/sales', anyPerm: [
-        'sales.order.view.place', 'sales.challan.view.place',
-        'sales.invoice.view.place', 'sales.sreturn.view.place'
-      ]}
-    ]},
-    { title: '🛒 Purchase & Inwards', items: [
-      { label: 'Purchase Order',   icon: '🛍️', path: '/purchase/po',     perm: 'purchase.po.view.place' },
-      { label: 'Purchase Inward',  icon: '📥', path: '/purchase/inward', perm: 'purchase.inward.view.place' },
-      { label: 'Purchase Return',  icon: '↪️', path: '/purchase/return', perm: 'purchase.preturn.view.place' }
-    ]},
-    { title: '🏭 Manage Production', items: [
-      { label: 'Job Slips',          icon: '✂️', path: '/production/jobslip', perm: 'production.jobslip.view.place' },
-      { label: 'Karigar Khata Book', icon: '📒', path: '/production/khata',   perm: 'production.khata.view.place',   soon: true },
-      { label: 'Track Jobslip Lots', icon: '🔍', path: '/production/lots',    perm: 'production.jobslip.view.place', soon: true }
-    ]},
-    { title: '📦 Manage Stock', items: [
-      { label: 'Design / Material', icon: '🎨', path: '/stock/items',    perm: 'stock.design.view.firm' },
-      { label: 'Opening Stock',     icon: '🏁', path: '/stock/opening',  perm: 'stock.design.edit.firm', soon: true },
-      { label: 'Stock Transfer',    icon: '🔀', path: '/stock/transfer', perm: 'stock.design.edit.firm', soon: true }
-    ]},
-    { title: '👥 Masters', items: [
-      { label: 'Karigars',          icon: '🧑‍🏭', path: '/masters/karigars', perm: 'masters.karigar.view.firm' },
-      { label: 'Customers',         icon: '🏢', path: '/masters/customers', perm: 'masters.customer.view.firm' },
-      { label: 'Suppliers',         icon: '🚛', path: '/masters/suppliers', perm: 'masters.supplier.view.firm' },
-      { label: 'Agents',            icon: '🤝', path: '/masters/agents',    perm: 'masters.agent.view.firm' },
-      { label: 'Offices / Godowns', icon: '🏬', path: '/masters/godowns',   perm: 'masters.office.view.firm' },
-      { label: 'Team & Role',       icon: '🧑‍💼', path: '/masters/team',     perm: 'masters.team.view.firm',     soon: true }
-    ]},
-    { title: '📊 Reports', items: [
-      { label: 'Bikri ki report', icon: '📈', path: '/reports/sales',       perm: 'reports.sales.view.firm',       soon: true },
-      { label: 'Stock report',    icon: '📦', path: '/reports/stock',       perm: 'reports.stock.view.firm',       soon: true },
-      { label: 'Bakaya / udhaar', icon: '💰', path: '/reports/outstanding', perm: 'reports.outstanding.view.firm', soon: true }
-    ]}
-  ];
-
   /**
-   * Jo line ki permission nahi, wo hatti hai — aur agar poore group me ek bhi
-   * line na bache to group ka heading bhi nahi dikhta. Warna "Masters" likha
-   * dikhta aur neeche kuch nahi hota.
+   * Sidebar ki lines — [core/nav.ts]{@link ../core/nav} se.
+   *
+   * · Jis hisse ka ek bhi pardah nahi khul sakta, wo line hi nahi dikhti
+   *   (Godown wale ko Reports ka naam bhi nahi dikhega).
+   * · Jis hisse ke sare pardah "aage" wale hain (jaise abhi Reports), wo
+   *   dikhta hai par dabta nahi — roadmap saaf rahe, par khali pardah na khule.
    */
-  visibleGroups = computed<NavGroup[]>(() =>
-    this.groups
-      .map(g => ({ ...g, items: g.items.filter(i => this.dikhe(i)) }))
-      .filter(g => g.items.length > 0)
+  lines = computed<NavLine[]>(() =>
+    SECTIONS
+      .map(s => {
+        const mile = s.tabs.filter(t => this.auth.can(t.perm));
+        return {
+          title: s.title, icon: s.icon, path: s.path,
+          soon: !mile.some(t => !t.soon),
+          koiHai: mile.length > 0
+        };
+      })
+      .filter(l => l.koiHai)
+      .map(({ title, icon, path, soon }) => ({ title, icon, path, soon }))
   );
-
-  private dikhe(i: NavItem): boolean {
-    if (i.anyPerm) return i.anyPerm.some(p => this.auth.can(p));
-    return !i.perm || this.auth.can(i.perm);
-  }
 }

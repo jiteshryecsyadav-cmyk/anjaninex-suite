@@ -1,6 +1,7 @@
 import { inject } from '@angular/core';
-import { CanActivateFn, Router } from '@angular/router';
+import { ActivatedRouteSnapshot, CanActivateFn, Router } from '@angular/router';
 import { AuthService } from './auth.service';
+import { findSection } from './nav';
 
 /**
  * App khulte hi kahan jaana hai.
@@ -24,9 +25,8 @@ const LANDING: { perm: string; path: string }[] = [
 ];
 
 /**
- * Abhi sirf Karigars ki screen bani hai — baaki route hain hi nahi. Isliye
- * jab tak wo na banein, tab tak jo bhi mile usme se sirf banayi hui screen
- * par bhejte hain, warna 404 par pahunch jayega.
+ * Kuch screen abhi bani nahi (patti me "aage" likha dikhta hai). Un par bhej
+ * diya to 404 par pahunch jayega — isliye sirf banayi hui screen chunte hain.
  */
 const READY = new Set<string>([
   '/masters/karigars', '/masters/agents', '/masters/godowns',
@@ -37,25 +37,25 @@ const READY = new Set<string>([
 ]);
 
 /**
- * Sales ke andar ka kram — /sales par aate hi pehla khulne wala pardah.
- * Salesman ko Order milta hai, Godown wale ko Challan, Munim ko Invoice.
+ * Kisi bhi hisse ke andar ka pehla khulne wala pardah — /sales, /purchase,
+ * /masters waghera par aate hi.
+ *
+ * Kaunsa hissa hai wo route ke `data.section` se aata hai, aur kram
+ * [core/nav.ts]{@link ../core/nav} me hai. Har hisse ka apna guard likhne se
+ * kram do jagah bat jata tha.
  */
-const SALES: { perm: string; path: string }[] = [
-  { perm: 'sales.order.view.place',   path: '/sales/order' },
-  { perm: 'sales.challan.view.place', path: '/sales/challan' },
-  { perm: 'sales.invoice.view.place', path: '/sales/invoice' },
-  { perm: 'sales.sreturn.view.place', path: '/sales/return' }
-];
-
-export const salesLanding: CanActivateFn = () => {
+export const sectionLanding: CanActivateFn = (route: ActivatedRouteSnapshot) => {
   const auth = inject(AuthService);
   const router = inject(Router);
 
-  const hit = SALES.find(s => auth.can(s.perm));
+  const sec = findSection(route.data['section'] as string ?? '');
+  const hit = sec?.tabs.find(t => !t.soon && auth.can(t.perm));
   if (hit) return router.createUrlTree([hit.path]);
 
   return router.createUrlTree(['/no-access'], {
-    queryParams: { need: 'Sales ka koi bhi hissa — malik se role chalu karwaiye' }
+    queryParams: {
+      need: `${sec?.title ?? 'Is hisse'} ka koi bhi pardah — malik se role chalu karwaiye`
+    }
   });
 };
 

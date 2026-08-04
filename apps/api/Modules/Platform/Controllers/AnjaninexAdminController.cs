@@ -186,8 +186,23 @@ public class AnjaninexAdminController : ControllerBase
 
         var n = await _db.Database.ExecuteSqlRawAsync(
             "UPDATE platform.firms SET business_kind = {0}, updated_at = now() WHERE id = {1}", k, id);
+        if (n == 0) return NotFound();
 
-        return n == 0 ? NotFound() : Ok(new { ok = true, businessKind = k });
+        // Manufacturer bana diya to uske module bhi chalu karo — warna malik
+        // login to kar lega par har screen 403 degi aur wajah kahin nahi dikhegi.
+        if (k is "manufacturer" or "both")
+        {
+            await _db.Database.ExecuteSqlRawAsync(@"
+                UPDATE platform.firms
+                   SET enabled_modules = COALESCE(enabled_modules, '{}'::jsonb)
+                       || '{""manufacturer"":true,""sales"":true,""purchase"":true,
+                            ""production"":true,""stock"":true,""masters"":true,
+                            ""reports"":true}'::jsonb,
+                       updated_at = now()
+                 WHERE id = {0}", id);
+        }
+
+        return Ok(new { ok = true, businessKind = k });
     }
 
     public record ComplaintBoxToggleDto(bool Enabled);

@@ -8,10 +8,6 @@ import { landingRedirect } from './core/landing.guard';
  */
 export const routes: Routes = [
   {
-    path: 'login',
-    loadComponent: () => import('./modules/auth/login.component').then(m => m.LoginComponent)
-  },
-  {
     path: 'no-access',
     loadComponent: () => import('./modules/auth/no-access.component').then(m => m.NoAccessComponent)
   },

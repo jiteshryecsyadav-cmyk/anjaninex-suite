@@ -605,6 +605,25 @@ public class PlatformAdminService : IPlatformAdminService
         };
     }
 
+    /// <summary>
+    /// Firm ke dhandhe ke hisab se shuruaati module. Manufacturer ko apne
+    /// module turant chahiye, warna login ke baad har screen 403 deti hai.
+    /// </summary>
+    private static string ModulesFor(string kind)
+    {
+        var mfg = kind is "manufacturer" or "both";
+        return System.Text.Json.JsonSerializer.Serialize(new Dictionary<string, bool>
+        {
+            ["manufacturer"] = mfg,
+            ["sales"]        = mfg,
+            ["purchase"]     = mfg,
+            ["production"]   = mfg,
+            ["stock"]        = mfg,
+            ["masters"]      = mfg,
+            ["reports"]      = true
+        });
+    }
+
     public async Task<object> CreateFirm(CreateFirmDto dto, Guid byUserId)
     {
         if (string.IsNullOrWhiteSpace(dto.Name)) throw new ArgumentException("Firm naam zaroori hai.");
@@ -639,6 +658,10 @@ public class PlatformAdminService : IPlatformAdminService
                 City = dto.City, State = dto.State,
                 FirmType = string.IsNullOrWhiteSpace(dto.FirmType) ? "proprietorship" : dto.FirmType.Trim(),
                 BusinessKind = NormalizeBusinessKind(dto.BusinessKind),
+                // MFG firm ko manufacturer ke module turant chahiye. Bina iske
+                // malik login to kar leta hai par har screen 403 deti hai aur
+                // sirf "List nahi aa payi" dikhta hai — wajah kahin nahi dikhti.
+                EnabledModules = ModulesFor(NormalizeBusinessKind(dto.BusinessKind)),
                 ContactEmail = dto.ContactEmail.Trim(), ContactPhone = (dto.ContactPhone ?? "").Trim(),
                 BankName = string.IsNullOrWhiteSpace(dto.BankName) ? null : dto.BankName.Trim(),
                 AccountNo = string.IsNullOrWhiteSpace(dto.AccountNo) ? null : dto.AccountNo.Trim(),

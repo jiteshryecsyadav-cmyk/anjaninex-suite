@@ -1,8 +1,8 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Router } from '@angular/router';
-import { map, tap } from 'rxjs';
+import { map } from 'rxjs';
 import { environment } from '../../environments/environment';
+import { goToCentralLogin } from './login-redirect';
 
 /** API ka asli jawab — apps/api/Modules/Core/Services/AuthService.cs se. */
 interface ApiUserInfo {
@@ -43,12 +43,9 @@ export interface Session {
   businessKind: string;
 }
 
-export interface FirmChoice { firmId: string; firmName: string; }
-
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private http = inject(HttpClient);
-  private router = inject(Router);
 
   private static TOKEN = 'mfg_token';
   private static USER  = 'mfg_user';
@@ -61,27 +58,9 @@ export class AuthService {
 
   get token(): string | null { return localStorage.getItem(AuthService.TOKEN); }
 
-  /**
-   * Login. Do tarah ka jawab aata hai:
-   *   · token + user  → seedha andar
-   *   · firms ki list → ek hi id kai firms me hai, pehle firm chunni padegi
-   * Isliye jawab ko waise ka waisa nahi maanta — dono haalat sambhalta hai.
-   */
-  login(username: string, password: string, remember: boolean, firmId?: string) {
-    return this.http.post<ApiLoginResponse>(
-      `${environment.apiUrl}/api/auth/login`,
-      { identifier: username, password, remember, firmId: firmId ?? null }
-    ).pipe(
-      map(r => {
-        if (r.firms?.length && !r.user) {
-          return { kind: 'choose-firm' as const, firms: r.firms };
-        }
-        if (!r.user) throw new Error('Login ka jawab adhoora aaya');
-        return { kind: 'ok' as const, session: this.toSession(r) };
-      }),
-      tap(res => { if (res.kind === 'ok') this.setSession(res.session); })
-    );
-  }
+  // NOTE: is app ka apna login() nahi hai. Login sabka ek hi jagah hota hai
+  // (vyaparsetu.anjaninex.com) — waise hi jaise Super Admin ka. Yahan sirf
+  // cookie se chup-chaap andar aane wala rasta hai (trySilentLogin).
 
   private toSession(r: ApiLoginResponse): Session {
     const u = r.user!;
@@ -158,11 +137,23 @@ export class AuthService {
     this.user.set(next);
   }
 
+  /**
+   * Logout. Server ko bhi batate hain taaki cookie hate — warna agla banda
+   * isi computer par app kholte hi andar pahunch jayega.
+   *
+   * Aakhir me wahi login page jahan se aadmi andar aaya tha. Pehle is app ka
+   * apna login dikhta tha, aur aadmi ko lagta tha ki ye koi teesri hi jagah hai.
+   */
   logout() {
+    this.http.post(`${environment.apiUrl}/api/auth/logout`, {}, { withCredentials: true })
+      .subscribe({ next: () => this.clearAndGo(), error: () => this.clearAndGo() });
+  }
+
+  private clearAndGo() {
     localStorage.removeItem(AuthService.TOKEN);
     localStorage.removeItem(AuthService.USER);
     this.user.set(null);
-    this.router.navigate(['/login']);
+    goToCentralLogin();
   }
 
   /**

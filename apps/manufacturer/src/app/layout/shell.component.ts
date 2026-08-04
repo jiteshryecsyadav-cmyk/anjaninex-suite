@@ -143,7 +143,7 @@ export class ShellComponent {
   private groups: NavGroup[] = [
     { title: '🧾 Sales & Delivery', items: [
       { label: 'Sales Order',      icon: '📄', path: '/sales/order',    perm: 'sales.order.view.place' },
-      { label: 'Delivery Challan', icon: '🚚', path: '/sales/challan',  perm: 'sales.challan.view.place', soon: true },
+      { label: 'Delivery Challan', icon: '🚚', path: '/sales/challan',  perm: 'sales.challan.view.place' },
       { label: 'Tax Invoice',      icon: '🧮', path: '/sales/invoice',  perm: 'sales.invoice.view.place', soon: true },
       { label: 'Sales Return',     icon: '↩️', path: '/sales/return',   perm: 'sales.sreturn.view.place', soon: true }
     ]},

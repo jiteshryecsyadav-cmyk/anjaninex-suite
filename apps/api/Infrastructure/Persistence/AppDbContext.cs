@@ -158,6 +158,14 @@ public class AppDbContext : DbContext
         => Set<Namokara.Api.Modules.Manufacturer.Entities.PurchaseReturn>();
     public DbSet<Namokara.Api.Modules.Manufacturer.Entities.PurchaseReturnLine> MfgPurchaseReturnLines
         => Set<Namokara.Api.Modules.Manufacturer.Entities.PurchaseReturnLine>();
+    public DbSet<Namokara.Api.Modules.Manufacturer.Entities.SalesOrder> MfgSalesOrders
+        => Set<Namokara.Api.Modules.Manufacturer.Entities.SalesOrder>();
+    public DbSet<Namokara.Api.Modules.Manufacturer.Entities.SalesOrderLine> MfgSalesOrderLines
+        => Set<Namokara.Api.Modules.Manufacturer.Entities.SalesOrderLine>();
+    public DbSet<Namokara.Api.Modules.Manufacturer.Entities.DeliveryChallan> MfgDeliveryChallans
+        => Set<Namokara.Api.Modules.Manufacturer.Entities.DeliveryChallan>();
+    public DbSet<Namokara.Api.Modules.Manufacturer.Entities.DeliveryChallanLine> MfgDeliveryChallanLines
+        => Set<Namokara.Api.Modules.Manufacturer.Entities.DeliveryChallanLine>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -401,6 +409,16 @@ public class AppDbContext : DbContext
                 .ToTable("purchase_returns", "mfg");
             modelBuilder.Entity<Namokara.Api.Modules.Manufacturer.Entities.PurchaseReturnLine>()
                 .ToTable("purchase_return_lines", "mfg");
+
+            // ── Sales Order + Delivery Challan — db/init/123 ──
+            modelBuilder.Entity<Namokara.Api.Modules.Manufacturer.Entities.SalesOrder>()
+                .ToTable("sales_orders", "mfg");
+            modelBuilder.Entity<Namokara.Api.Modules.Manufacturer.Entities.SalesOrderLine>()
+                .ToTable("sales_order_lines", "mfg");
+            modelBuilder.Entity<Namokara.Api.Modules.Manufacturer.Entities.DeliveryChallan>()
+                .ToTable("delivery_challans", "mfg");
+            modelBuilder.Entity<Namokara.Api.Modules.Manufacturer.Entities.DeliveryChallanLine>()
+                .ToTable("delivery_challan_lines", "mfg");
         }
     }
 }

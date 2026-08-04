@@ -13,9 +13,18 @@ public class Firm
     [MaxLength(200)]
     public string? LegalName { get; set; }
 
-    // proprietorship | partnership | llp | pvt_ltd
+    // KANOONI DHAANCHA: proprietorship | partnership | llp | pvt_ltd
     [MaxLength(30)]
     public string? FirmType { get; set; }
+
+    /// <summary>
+    /// Firm ka DHANDHA — ye <see cref="FirmType"/> se bilkul alag baat hai.
+    /// agency (khareed-bech) · manufacturer (banati hai) · transport (dhoti hai)
+    /// · buyer (khareedti hai) · both.
+    /// Login ke baad isi se tay hota hai ki kaunsa app khulega.
+    /// </summary>
+    [MaxLength(20)]
+    public string BusinessKind { get; set; } = "agency";
 
     [MaxLength(15)]
     public string? GstNumber { get; set; }

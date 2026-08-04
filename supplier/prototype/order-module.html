@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Supplier App — Order Module (Prototype)</title>
+<style>
+  :root{
+    --navy:#1B2E5C; --purple:#5c1a8b; --muted:#6b3fa0;
+    --line:#e6e1f0; --bg:#f4f2f8; --ok:#16a34a; --warn:#f59e0b; --bad:#dc2626;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
+  body{margin:0; background:#eceaf2; font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; color:#111}
+
+  /* Phone frame — prototype laptop par bhi mobile jaisa dikhe */
+  .wrap{display:flex; gap:24px; justify-content:center; align-items:flex-start; padding:20px; flex-wrap:wrap}
+  .phone{width:390px; max-width:100%; height:800px; background:#fff; border-radius:26px; overflow:hidden;
+         box-shadow:0 12px 40px rgba(0,0,0,.18); display:flex; flex-direction:column; position:relative}
+  .note{width:320px; font-size:13px; line-height:1.6; color:#333}
+  .note h3{margin:0 0 8px; color:var(--purple); font-size:15px}
+  .note ul{margin:6px 0 14px; padding-left:18px}
+  .note li{margin-bottom:4px}
+
+  /* Top bar */
+  .top{background:var(--navy); color:#fff; padding:12px 14px; display:flex; align-items:center; gap:10px; flex-shrink:0}
+  .top .t{font-weight:800; font-size:17px; flex:1}
+  .top button{background:none;border:0;color:#fff;font-size:19px;padding:4px 6px}
+  .body{flex:1; overflow-y:auto; background:var(--bg)}
+  .pad{padding:12px}
+
+  /* Tabs */
+  .tabs{display:flex; background:#fff; border-bottom:1px solid var(--line); flex-shrink:0}
+  .tabs div{flex:1; text-align:center; padding:11px 4px; font-size:13px; font-weight:700; color:#888; border-bottom:3px solid transparent}
+  .tabs div.on{color:var(--purple); border-bottom-color:var(--purple)}
+
+  /* Cards */
+  .card{background:#fff; border-radius:14px; padding:12px; margin-bottom:10px; box-shadow:0 1px 3px rgba(0,0,0,.07)}
+  .row{display:flex; justify-content:space-between; align-items:center; gap:8px}
+  .name{font-weight:800; font-size:15px}
+  .sub{font-size:12px; color:#777; margin-top:2px}
+  .amt{font-weight:800; font-size:16px; color:var(--navy)}
+  .chip{font-size:11px; font-weight:800; padding:3px 9px; border-radius:20px; display:inline-block}
+  .c-new{background:#fff7e6; color:#b45309}
+  .c-ok{background:#e8f7ee; color:#15803d}
+  .c-dis{background:#eef2ff; color:#3730a3}
+  .c-done{background:#eee; color:#555}
+
+  /* Form */
+  label{display:block; font-size:11px; font-weight:800; text-transform:uppercase; color:var(--muted); margin:14px 0 4px}
+  .inp{width:100%; border:0; border-bottom:1.5px solid var(--line); background:#fff; padding:11px 2px; font-size:15px; outline:none}
+  .pick{width:100%; background:#fff; border:0; border-bottom:1.5px solid var(--line); padding:11px 2px;
+        font-size:15px; text-align:left; display:flex; justify-content:space-between; align-items:center; color:#111}
+  .pick.empty{color:#aaa}
+  .sec{font-size:11px; font-weight:800; color:#999; text-transform:uppercase; letter-spacing:.5px; margin:18px 0 2px}
+
+  .btn{width:100%; padding:14px; border:0; border-radius:12px; font-weight:800; font-size:16px; color:#fff; background:var(--purple)}
+  .btn.line{background:#fff; color:var(--purple); border:2px solid var(--purple)}
+  .btn.ok{background:var(--ok)} .btn.bad{background:var(--bad)}
+  .bottombar{flex-shrink:0; display:flex; gap:8px; padding:10px 12px; background:#fff; border-top:1px solid var(--line)}
+
+  /* Search */
+  .search{display:flex; align-items:center; gap:8px; background:#fff; margin:10px; padding:10px 12px; border-radius:12px}
+  .search input{border:0; outline:none; flex:1; font-size:15px}
+
+  /* Stock grid */
+  .grid{display:grid; grid-template-columns:1fr 1fr; gap:8px; padding:10px}
+  .tile{background:#fff; border-radius:12px; overflow:hidden; position:relative; border:2px solid transparent}
+  .tile.sel{border-color:var(--purple)}
+  .tile .ph{height:104px; background:linear-gradient(135deg,#d7cfe8,#b9a8d6); display:flex; align-items:center; justify-content:center; font-size:30px}
+  .tile .meta{padding:7px 8px}
+  .tile .rate{font-size:12px; color:var(--ok); font-weight:800}
+  .tile .code{font-size:12px; font-weight:700; margin-top:1px}
+  .tick{position:absolute; top:6px; right:6px; width:22px; height:22px; border-radius:50%; background:#fff;
+        border:2px solid var(--purple); display:flex; align-items:center; justify-content:center; font-size:13px; color:var(--purple)}
+  .tile:not(.sel) .tick{opacity:.35; border-color:#bbb; color:transparent}
+
+  /* Item rows in order */
+  .item{display:flex; gap:10px; align-items:center; background:#fff; border-radius:12px; padding:10px; margin-bottom:8px}
+  .item .sq{width:46px; height:46px; border-radius:9px; background:linear-gradient(135deg,#d7cfe8,#b9a8d6); flex-shrink:0}
+  .qty{display:flex; gap:6px; align-items:center}
+  .qty input{width:58px; border:1px solid var(--line); border-radius:8px; padding:6px; font-size:14px; text-align:center}
+
+  .tot{background:#fff; border-radius:14px; padding:12px; margin-top:4px}
+  .tot .l{display:flex; justify-content:space-between; padding:4px 0; font-size:14px}
+  .tot .l.big{font-weight:800; font-size:17px; border-top:1px solid var(--line); margin-top:6px; padding-top:8px; color:var(--navy)}
+
+  /* Print sheet */
+  .sheet{background:#fff; padding:16px; font-size:12px}
+  .sheet h4{margin:0; font-size:16px; color:var(--navy)}
+  .sheet table{width:100%; border-collapse:collapse; margin-top:10px}
+  .sheet th,.sheet td{border:1px solid #ddd; padding:5px; text-align:left}
+  .sheet th{background:#f3f0f9; font-size:11px}
+
+  .screen{display:none; flex:1; flex-direction:column; min-height:0}
+  .screen.on{display:flex}
+  .hint{font-size:11px; color:#999; padding:0 12px 10px}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="phone">
+
+    <!-- ══════════ 1. ORDER LIST ══════════ -->
+    <div class="screen on" id="s-list">
+      <div class="top"><span class="t">📦 Orders</span><button onclick="go('s-create')">＋</button></div>
+      <div class="tabs">
+        <div class="on">Naye (2)</div><div>Manzoor</div><div>Dispatch</div><div>Poora</div>
+      </div>
+      <div class="body"><div class="pad">
+
+        <div class="card" onclick="go('s-detail')">
+          <div class="row">
+            <div><div class="name">Riddhi Agency</div><div class="sub">ORD-000021 · 3 Aug, 11:20 am</div></div>
+            <span class="chip c-new">JAWAB DENA HAI</span>
+          </div>
+          <div class="sub" style="margin-top:8px">DES-7234 · 500 mtr @ ₹650</div>
+          <div class="row" style="margin-top:8px">
+            <div class="sub">2 item</div><div class="amt">₹3,42,500</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="row">
+            <div><div class="name">Shivi Agency</div><div class="sub">ORD-000020 · 3 Aug, 09:45 am</div></div>
+            <span class="chip c-new">JAWAB DENA HAI</span>
+          </div>
+          <div class="sub" style="margin-top:8px">DES-Aarohi-2329 · 300 mtr @ ₹750</div>
+          <div class="row" style="margin-top:8px">
+            <div class="sub">1 item</div><div class="amt">₹2,25,000</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="row">
+            <div><div class="name">Riddhi Agency</div><div class="sub">ORD-000018 · 2 Aug</div></div>
+            <span class="chip c-dis">DISPATCH BAKI</span>
+          </div>
+          <div class="row" style="margin-top:8px"><div class="sub">1 item</div><div class="amt">₹99,000</div></div>
+        </div>
+
+        <div class="card">
+          <div class="row">
+            <div><div class="name">Shivi Agency</div><div class="sub">ORD-000014 · 31 Jul</div></div>
+            <span class="chip c-done">POORA</span>
+          </div>
+          <div class="row" style="margin-top:8px"><div class="sub">4 item</div><div class="amt">₹5,10,000</div></div>
+        </div>
+
+      </div></div>
+      <div class="bottombar"><button class="btn" onclick="go('s-create')">＋ Naya Order</button></div>
+    </div>
+
+    <!-- ══════════ 2. CREATE ORDER ══════════ -->
+    <div class="screen" id="s-create">
+      <div class="top"><button onclick="go('s-list')">←</button><span class="t">Naya Order</span></div>
+      <div class="body"><div class="pad">
+
+        <div class="sec">Basic jankari</div>
+
+        <label>Agency / Customer *</label>
+        <button class="pick" id="pk-cust" onclick="go('s-cust')">
+          <span class="empty" id="cust-txt">Agency chuniye</span><span>›</span>
+        </button>
+
+        <label>Agent (optional)</label>
+        <button class="pick" onclick="alert('Agent list — prototype')">
+          <span class="empty">Agent chuniye</span><span>›</span>
+        </button>
+
+        <label>Apna order number</label>
+        <input class="inp" placeholder="jaise SO-118">
+
+        <label>Transport ka naam</label>
+        <input class="inp" placeholder="jaise Gati / VRL">
+
+        <label>Order ki tareekh</label>
+        <input class="inp" type="date" value="2026-08-03">
+
+        <div style="margin:16px 0 4px">
+          <button class="btn line" onclick="go('s-stock')">＋ ITEM JODO</button>
+        </div>
+
+        <div id="picked-wrap" style="display:none">
+          <div class="sec">Chune hue item</div>
+          <div id="picked"></div>
+          <div class="tot">
+            <div class="l"><span>Kul qty</span><span id="t-qty">0</span></div>
+            <div class="l"><span>Kul rakam</span><span id="t-amt">₹0</span></div>
+            <div class="l big"><span>NET</span><span id="t-net">₹0</span></div>
+          </div>
+        </div>
+
+        <div class="sec">Delivery</div>
+        <label>Kab tak chahiye</label>
+        <input class="inp" type="date">
+
+        <label>Note</label>
+        <input class="inp" placeholder="koi khaas baat…">
+
+        <div style="height:14px"></div>
+      </div></div>
+      <div class="bottombar"><button class="btn" onclick="go('s-detail')">ORDER SAVE KARO</button></div>
+    </div>
+
+    <!-- ══════════ 3. CUSTOMER PICKER ══════════ -->
+    <div class="screen" id="s-cust">
+      <div class="top"><button onclick="go('s-create')">←</button><span class="t">Agency chuniye</span></div>
+      <div class="search">🔍<input placeholder="naam ya sheher se dhoondho"></div>
+      <div class="body"><div class="pad">
+        <div class="card" onclick="setCust('Riddhi Agency')">
+          <div class="name">Riddhi Agency</div><div class="sub">Kota · 9511540583</div>
+          <div class="sub" style="color:var(--bad)">Bakaya ₹1,24,500</div>
+        </div>
+        <div class="card" onclick="setCust('Shivi Agency')">
+          <div class="name">Shivi Agency</div><div class="sub">Surat · 8619700368</div>
+          <div class="sub" style="color:var(--ok)">Khata saaf</div>
+        </div>
+        <div class="card" onclick="setCust('Ganga Tex Trendz')">
+          <div class="name">Ganga Tex Trendz</div><div class="sub">Ahmedabad · 9374478285</div>
+          <div class="sub" style="color:var(--bad)">Bakaya ₹51,250</div>
+        </div>
+      </div></div>
+    </div>
+
+    <!-- ══════════ 4. STOCK / DESIGN PICKER ══════════ -->
+    <div class="screen" id="s-stock">
+      <div class="top">
+        <button onclick="go('s-create')">←</button><span class="t">Stock</span>
+        <button onclick="alert('Filter: rate / design / category')">⚙</button>
+        <button onclick="alert('Search')">🔍</button>
+      </div>
+      <div class="tabs"><div class="on">DESIGN</div><div>MATERIAL</div></div>
+      <div class="body">
+        <div class="grid" id="grid"></div>
+        <div class="hint">Tap karke chuniye — kai design ek saath chun sakte hain</div>
+      </div>
+      <div class="bottombar">
+        <button class="btn line" onclick="alert('Naya design jodo')">＋ NAYA DESIGN</button>
+        <button class="btn" onclick="doneStock()">DONE (<span id="cnt">0</span>)</button>
+      </div>
+    </div>
+
+    <!-- ══════════ 5. ORDER DETAIL ══════════ -->
+    <div class="screen" id="s-detail">
+      <div class="top">
+        <button onclick="go('s-list')">←</button><span class="t">ORD-000021</span>
+        <button onclick="go('s-print')">🖨</button>
+      </div>
+      <div class="body"><div class="pad">
+
+        <div class="card">
+          <div class="row"><div class="name">Riddhi Agency</div><span class="chip c-new">JAWAB DENA HAI</span></div>
+          <div class="sub">Kota · 3 Aug 2026, 11:20 am</div>
+          <div class="sub">Transport: Gati · Delivery: 10 Aug</div>
+        </div>
+
+        <div class="sec">Item</div>
+        <div class="item">
+          <div class="sq"></div>
+          <div style="flex:1">
+            <div class="name" style="font-size:14px">DES-7234</div>
+            <div class="sub">500 mtr × ₹650</div>
+          </div>
+          <div class="amt" style="font-size:15px">₹3,25,000</div>
+        </div>
+        <div class="item">
+          <div class="sq"></div>
+          <div style="flex:1">
+            <div class="name" style="font-size:14px">DES-1232-A</div>
+            <div class="sub">50 mtr × ₹350</div>
+          </div>
+          <div class="amt" style="font-size:15px">₹17,500</div>
+        </div>
+
+        <div class="tot">
+          <div class="l"><span>Kul qty</span><span>550 mtr</span></div>
+          <div class="l"><span>Rakam</span><span>₹3,42,500</span></div>
+          <div class="l big"><span>NET</span><span>₹3,42,500</span></div>
+        </div>
+
+        <div class="sec">Note</div>
+        <div class="card sub">Bazaar order BZ-A9E8E3 se · maal jaldi chahiye</div>
+
+        <div style="height:10px"></div>
+      </div></div>
+      <div class="bottombar">
+        <button class="btn bad" onclick="alert('Order mana kar diya')">❌ NA</button>
+        <button class="btn line" onclick="alert('Apna rate/qty bhejo')">💬 MOL-BHAV</button>
+        <button class="btn ok" onclick="alert('Order manzoor! Ab dispatch karein')">✅ MANZOOR</button>
+      </div>
+    </div>
+
+    <!-- ══════════ 6. PRINT ══════════ -->
+    <div class="screen" id="s-print">
+      <div class="top"><button onclick="go('s-detail')">←</button><span class="t">Order print</span></div>
+      <div class="body">
+        <div class="sheet">
+          <h4>AAROHI CREATION</h4>
+          <div style="color:#666">Surat, Gujarat · GSTIN 24ABCDE1234F1Z5</div>
+          <hr>
+          <div class="row">
+            <div><b>SALES ORDER</b><br>No: SO-118<br>Date: 03-Aug-2026</div>
+            <div style="text-align:right"><b>Riddhi Agency</b><br>Kota, Rajasthan<br>9511540583</div>
+          </div>
+          <table>
+            <tr><th>#</th><th>Design</th><th>Qty</th><th>Rate</th><th>Amount</th></tr>
+            <tr><td>1</td><td>DES-7234</td><td>500 mtr</td><td>650</td><td>3,25,000</td></tr>
+            <tr><td>2</td><td>DES-1232-A</td><td>50 mtr</td><td>350</td><td>17,500</td></tr>
+            <tr><td colspan="4" style="text-align:right"><b>Total</b></td><td><b>3,42,500</b></td></tr>
+          </table>
+          <div style="margin-top:10px">Transport: Gati &nbsp;·&nbsp; Delivery: 10-Aug-2026</div>
+          <div style="margin-top:22px; text-align:right">For AAROHI CREATION<br><br>Authorised Signatory</div>
+        </div>
+      </div>
+      <div class="bottombar">
+        <button class="btn line" onclick="alert('PDF banega')">📄 PDF</button>
+        <button class="btn" onclick="alert('WhatsApp par bheja')">📤 SHARE</button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Side note -->
+  <div class="note">
+    <h3>🧪 Prototype — Order module</h3>
+    <p>Ye sirf <b>dikhawa</b> hai (HTML), asli data nahi. Har screen tap karke dekh sakte hain.</p>
+
+    <h3>Screens</h3>
+    <ul>
+      <li><b>Orders</b> — agency se aaye order, status ke tab</li>
+      <li><b>Naya Order</b> — khud order banao</li>
+      <li><b>Agency chuno</b> — bakaya bhi dikhta hai</li>
+      <li><b>Stock</b> — DESIGN/MATERIAL, photo grid, kai chuno</li>
+      <li><b>Order detail</b> — MANZOOR / NA / MOL-BHAV</li>
+      <li><b>Print</b> — PDF + WhatsApp share</li>
+    </ul>
+
+    <h3>VastraApp se kya alag</h3>
+    <ul>
+      <li>Unme supplier <b>khud</b> order banata hai. Aapke yahan order <b>agency se apne aap</b> aata hai (Bazaar bot) — supplier ko sirf ✅/❌/💬 dabana hai</li>
+      <li><b>MOL-BHAV</b> ka button — unme nahi hai</li>
+      <li>Agency ke saath <b>bakaya</b> customer list me hi</li>
+      <li><b>Buyer ka naam kahin nahi</b> — agency ka dhandha surakshit</li>
+    </ul>
+
+    <h3>Abhi tay karna hai</h3>
+    <ul>
+      <li>Supplier khud order bana sakta hai ya sirf jawab de?</li>
+      <li>Design code aapke item master se ya supplier ka apna?</li>
+      <li>Rate list agency-wise alag rakhni hai?</li>
+    </ul>
+  </div>
+</div>
+
+<script>
+// ——— screen switching ———
+function go(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));
+  document.getElementById(id).classList.add('on');
+  document.querySelector('.phone .body').scrollTop = 0;
+}
+
+// ——— customer ———
+function setCust(name){
+  const el = document.getElementById('cust-txt');
+  el.textContent = name; el.classList.remove('empty');
+  go('s-create');
+}
+
+// ——— stock grid ———
+const DESIGNS = [
+  {code:'DES-7234',        rate:650, emo:'🥻'},
+  {code:'DES-1232-A',      rate:350, emo:'🧵'},
+  {code:'DES-Aarohi-2329', rate:750, emo:'👗'},
+  {code:'DES-CB14675',     rate:990, emo:'🧶'},
+  {code:'DES-New Pearl',   rate:220, emo:'🪡'},
+  {code:'DES-Plain Fabric',rate:400, emo:'📦'}
+];
+const picked = new Set();
+
+function drawGrid(){
+  document.getElementById('grid').innerHTML = DESIGNS.map((d,i)=>`
+    <div class="tile ${picked.has(i)?'sel':''}" onclick="tog(${i})">
+      <div class="ph">${d.emo}</div>
+      <div class="tick">✓</div>
+      <div class="meta">
+        <div class="rate">Rate: ₹${d.rate}</div>
+        <div class="code">${d.code}</div>
+      </div>
+    </div>`).join('');
+  document.getElementById('cnt').textContent = picked.size;
+}
+function tog(i){ picked.has(i) ? picked.delete(i) : picked.add(i); drawGrid(); }
+
+// ——— chune hue item order form me ———
+function doneStock(){
+  if(!picked.size){ alert('Kam se kam ek design chuniye'); return; }
+  const wrap = document.getElementById('picked-wrap');
+  wrap.style.display = 'block';
+  document.getElementById('picked').innerHTML = [...picked].map(i=>{
+    const d = DESIGNS[i];
+    return `<div class="item">
+      <div class="sq"></div>
+      <div style="flex:1">
+        <div class="name" style="font-size:14px">${d.code}</div>
+        <div class="qty" style="margin-top:5px">
+          <input value="100" onchange="calc()" data-rate="${d.rate}" class="q"> mtr
+          <span style="color:#777;font-size:13px">× ₹${d.rate}</span>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+  calc();
+  go('s-create');
+}
+
+function calc(){
+  let q=0, a=0;
+  document.querySelectorAll('.q').forEach(el=>{
+    const n = +el.value || 0, r = +el.dataset.rate;
+    q += n; a += n*r;
+  });
+  document.getElementById('t-qty').textContent = q + ' mtr';
+  document.getElementById('t-amt').textContent = '₹' + a.toLocaleString('en-IN');
+  document.getElementById('t-net').textContent = '₹' + a.toLocaleString('en-IN');
+}
+
+drawGrid();
+</script>
+</body>
+</html>

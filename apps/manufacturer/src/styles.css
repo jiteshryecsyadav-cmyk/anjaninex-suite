@@ -1,0 +1,65 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================================
+   MANUFACTURER APP — saanjhi class
+   Agency app me jo naam chal rahe hain (btn-primary, input,
+   page-top-bar) wahi yahan bhi — taaki dono par kaam karte waqt
+   dimaag badalna na pade.
+   ============================================================ */
+@layer components {
+  .btn-primary {
+    @apply bg-brand-purple text-white font-bold rounded-xl px-4 py-2.5
+           text-sm hover:opacity-90 disabled:opacity-50 transition;
+  }
+  .btn-line {
+    @apply bg-white text-brand-purple font-bold rounded-xl px-4 py-2.5
+           text-sm border-2 border-brand-purple hover:bg-brand-bg transition;
+  }
+  .btn-sm { @apply px-3 py-1.5 text-xs rounded-lg; }
+
+  .input {
+    @apply w-full border border-brand-line rounded-xl px-3 py-2.5 text-sm
+           bg-white outline-none focus:border-brand-purple transition;
+  }
+  .label {
+    @apply block text-[11px] font-extrabold tracking-wide uppercase
+           text-brand-muted mb-1.5;
+  }
+
+  .card {
+    @apply bg-white rounded-2xl p-4 shadow-[0_1px_3px_rgba(0,0,0,.06)];
+  }
+  .page-top-bar {
+    @apply flex gap-2.5 flex-wrap items-center mb-3.5;
+  }
+  .chip {
+    @apply text-[10px] font-extrabold px-2 py-0.5 rounded-full;
+  }
+}
+
+/* Print — sidebar/header hata do, sirf kaagaz chhape.
+   Wahi tarika jo agency app me chal raha hai (visibility, position:absolute)
+   kyunki content kai overflow-hidden layer ke andar band hota hai. */
+@media print {
+  body * { visibility: hidden !important; }
+  mfg-shell main, mfg-shell main * { visibility: visible !important; }
+  mfg-shell main {
+    position: absolute !important;
+    left: 0 !important; top: 0 !important;
+    width: 100% !important; height: auto !important;
+    overflow: visible !important;
+    margin: 0 !important; padding: 0 !important;
+    background: #fff !important;
+  }
+  mfg-shell main .no-print,
+  mfg-shell main .page-top-bar,
+  mfg-shell main button { display: none !important; }
+}
+
+html, body { height: 100%; }
+body {
+  @apply bg-brand-bg text-slate-800 font-sans antialiased;
+  margin: 0;
+}

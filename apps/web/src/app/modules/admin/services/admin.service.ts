@@ -30,6 +30,8 @@ export interface FirmListItem {
   mtdSpend: number;
   createdAt: string;
   activatedAt: string | null;
+  /** agency | manufacturer | transport | buyer | both */
+  businessKind: string;
 }
 
 export interface FirmDetail extends FirmListItem {
@@ -105,7 +107,13 @@ export interface FirmReport {
 export interface FirmPartnerReq { fullName: string; username: string; password: string; mobile?: string; whatsapp?: string; }
 export interface CreateFirmReq {
   name: string; legalName?: string; gst?: string; pan?: string; city?: string; state?: string;
-  firmType?: string;   // proprietorship | partnership | llp | pvt_ltd
+  firmType?: string;   // KANOONI dhaancha: proprietorship | partnership | llp | pvt_ltd
+  /**
+   * Firm ka DHANDHA — firmType se alag baat hai. Login ke baad isi se tay
+   * hota hai ki kaunsa app khulega.
+   * agency | manufacturer | transport | buyer | both
+   */
+  businessKind?: string;
   contactEmail: string; contactPhone: string; planId?: string | null;
   bankName?: string; accountNo?: string; ifsc?: string;
   adminFullName: string; adminUsername: string; adminPassword: string; adminMobile?: string; adminWhatsapp?: string;

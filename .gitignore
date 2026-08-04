@@ -78,3 +78,18 @@ bot/.env
 bot/uploads/
 bot/node_modules/
 apps/web/.angular/
+
+# ── Manufacturer app ──
+apps/manufacturer/node_modules/
+apps/manufacturer/dist/
+apps/manufacturer/.angular/
+
+# ── supplier/ reference material ──
+# Bank account number aur personal details isme hain — repo me kabhi nahi
+supplier/prototype/idfc-business-activity-letter.md
+# VastraApp ke reference screenshot (13 MB) — code nahi, sirf dekhne ke liye the
+supplier/order/
+supplier/delivery challan/
+supplier/job silp/
+supplier/purchase order/
+supplier/purchase inward/

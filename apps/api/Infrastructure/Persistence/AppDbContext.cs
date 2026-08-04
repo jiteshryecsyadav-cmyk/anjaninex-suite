@@ -111,6 +111,42 @@ public class AppDbContext : DbContext
     public DbSet<DukanOrderItem> DukanOrderItems => Set<DukanOrderItem>();
     public DbSet<DukanReview> DukanReviews => Set<DukanReview>();
 
+    // Manufacturer schema (mfg) — karkhane ka kaam: karigar, recipe, job slip, stock
+    public DbSet<Namokara.Api.Modules.Manufacturer.Entities.Karigar> Karigars
+        => Set<Namokara.Api.Modules.Manufacturer.Entities.Karigar>();
+    public DbSet<Namokara.Api.Modules.Manufacturer.Entities.MfgAgent> MfgAgents
+        => Set<Namokara.Api.Modules.Manufacturer.Entities.MfgAgent>();
+    public DbSet<Namokara.Api.Modules.Manufacturer.Entities.Godown> Godowns
+        => Set<Namokara.Api.Modules.Manufacturer.Entities.Godown>();
+    public DbSet<Namokara.Api.Modules.Manufacturer.Entities.MfgSize> MfgSizes
+        => Set<Namokara.Api.Modules.Manufacturer.Entities.MfgSize>();
+    public DbSet<Namokara.Api.Modules.Manufacturer.Entities.MfgColour> MfgColours
+        => Set<Namokara.Api.Modules.Manufacturer.Entities.MfgColour>();
+    public DbSet<Namokara.Api.Modules.Manufacturer.Entities.DesignTag> DesignTags
+        => Set<Namokara.Api.Modules.Manufacturer.Entities.DesignTag>();
+    public DbSet<Namokara.Api.Modules.Manufacturer.Entities.ItemTag> ItemTags
+        => Set<Namokara.Api.Modules.Manufacturer.Entities.ItemTag>();
+    public DbSet<Namokara.Api.Modules.Manufacturer.Entities.DesignRecipe> DesignRecipes
+        => Set<Namokara.Api.Modules.Manufacturer.Entities.DesignRecipe>();
+    public DbSet<Namokara.Api.Modules.Manufacturer.Entities.DesignRecipeMaterial> DesignRecipeMaterials
+        => Set<Namokara.Api.Modules.Manufacturer.Entities.DesignRecipeMaterial>();
+    public DbSet<Namokara.Api.Modules.Manufacturer.Entities.JobSlip> JobSlips
+        => Set<Namokara.Api.Modules.Manufacturer.Entities.JobSlip>();
+    public DbSet<Namokara.Api.Modules.Manufacturer.Entities.JobSlipMaterial> JobSlipMaterials
+        => Set<Namokara.Api.Modules.Manufacturer.Entities.JobSlipMaterial>();
+    public DbSet<Namokara.Api.Modules.Manufacturer.Entities.JobSlipProgram> JobSlipPrograms
+        => Set<Namokara.Api.Modules.Manufacturer.Entities.JobSlipProgram>();
+    public DbSet<Namokara.Api.Modules.Manufacturer.Entities.JobSlipRatio> JobSlipRatios
+        => Set<Namokara.Api.Modules.Manufacturer.Entities.JobSlipRatio>();
+    public DbSet<Namokara.Api.Modules.Manufacturer.Entities.JobSlipProgramSize> JobSlipProgramSizes
+        => Set<Namokara.Api.Modules.Manufacturer.Entities.JobSlipProgramSize>();
+    public DbSet<Namokara.Api.Modules.Manufacturer.Entities.JobSlipReceipt> JobSlipReceipts
+        => Set<Namokara.Api.Modules.Manufacturer.Entities.JobSlipReceipt>();
+    public DbSet<Namokara.Api.Modules.Manufacturer.Entities.Taka> Takas
+        => Set<Namokara.Api.Modules.Manufacturer.Entities.Taka>();
+    public DbSet<Namokara.Api.Modules.Manufacturer.Entities.StockLedgerEntry> StockLedger
+        => Set<Namokara.Api.Modules.Manufacturer.Entities.StockLedgerEntry>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -295,5 +331,50 @@ public class AppDbContext : DbContext
             e.ToTable("reviews", "dukan");
             e.HasKey(x => new { x.FirmId, x.OrderId });
         });
+
+        // ── Manufacturer (mfg) — db/init/116-118 ──
+        {
+            modelBuilder.Entity<Namokara.Api.Modules.Manufacturer.Entities.Karigar>()
+                .ToTable("karigars", "mfg");
+            modelBuilder.Entity<Namokara.Api.Modules.Manufacturer.Entities.MfgAgent>()
+                .ToTable("agents", "mfg");
+            modelBuilder.Entity<Namokara.Api.Modules.Manufacturer.Entities.Godown>()
+                .ToTable("godowns", "mfg");
+            modelBuilder.Entity<Namokara.Api.Modules.Manufacturer.Entities.MfgSize>()
+                .ToTable("sizes", "mfg");
+            modelBuilder.Entity<Namokara.Api.Modules.Manufacturer.Entities.MfgColour>()
+                .ToTable("colours", "mfg");
+            modelBuilder.Entity<Namokara.Api.Modules.Manufacturer.Entities.DesignTag>()
+                .ToTable("design_tags", "mfg");
+            modelBuilder.Entity<Namokara.Api.Modules.Manufacturer.Entities.ItemTag>(e =>
+            {
+                e.ToTable("item_tags", "mfg");
+                e.HasKey(x => new { x.ItemId, x.TagId });
+            });
+            modelBuilder.Entity<Namokara.Api.Modules.Manufacturer.Entities.DesignRecipe>()
+                .ToTable("design_recipes", "mfg");
+            modelBuilder.Entity<Namokara.Api.Modules.Manufacturer.Entities.DesignRecipeMaterial>()
+                .ToTable("design_recipe_materials", "mfg");
+            modelBuilder.Entity<Namokara.Api.Modules.Manufacturer.Entities.JobSlip>()
+                .ToTable("job_slips", "mfg");
+            modelBuilder.Entity<Namokara.Api.Modules.Manufacturer.Entities.JobSlipMaterial>()
+                .ToTable("job_slip_materials", "mfg");
+            modelBuilder.Entity<Namokara.Api.Modules.Manufacturer.Entities.JobSlipProgram>()
+                .ToTable("job_slip_programs", "mfg");
+            modelBuilder.Entity<Namokara.Api.Modules.Manufacturer.Entities.JobSlipRatio>()
+                .ToTable("job_slip_ratios", "mfg");
+            modelBuilder.Entity<Namokara.Api.Modules.Manufacturer.Entities.JobSlipProgramSize>()
+                .ToTable("job_slip_program_sizes", "mfg");
+            modelBuilder.Entity<Namokara.Api.Modules.Manufacturer.Entities.JobSlipReceipt>()
+                .ToTable("job_slip_receipts", "mfg");
+            modelBuilder.Entity<Namokara.Api.Modules.Manufacturer.Entities.Taka>()
+                .ToTable("takas", "mfg");
+            // BIGSERIAL — DB khud number deti hai
+            modelBuilder.Entity<Namokara.Api.Modules.Manufacturer.Entities.StockLedgerEntry>(e =>
+            {
+                e.ToTable("stock_ledger", "mfg");
+                e.Property(x => x.Id).ValueGeneratedOnAdd();
+            });
+        }
     }
 }

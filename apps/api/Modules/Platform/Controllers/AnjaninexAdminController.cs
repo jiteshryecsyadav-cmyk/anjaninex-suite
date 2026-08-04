@@ -152,6 +152,41 @@ public class AnjaninexAdminController : ControllerBase
         return n == 0 ? NotFound() : Ok(new { ok = true, subdomain = sub });
     }
 
+    public record BusinessKindDto(string BusinessKind);
+
+    /// <summary>
+    /// Firm ka KAAM badlo — agency / mfg / transport / buyer / dono.
+    ///
+    /// Firm banate waqt to ye chun lete hain, par galti ho jaye ya firm baad me
+    /// khud maal banane lage — tab bina naye firm banaye badalna aana chahiye.
+    /// Isse tay hota hai ki login ke baad kaunsa app khulega, isliye badalte hi
+    /// aadmi ko dobara login karna padega (purana token purane app ka rahega).
+    /// </summary>
+    [HttpPut("firms/{id}/business-kind")]
+    [HasPermission("platform.firm.edit.platform")]
+    public async Task<IActionResult> SetBusinessKind(Guid id, [FromBody] BusinessKindDto dto)
+    {
+        var k = (dto.BusinessKind ?? "").Trim().ToLowerInvariant();
+
+        // Aam bol-chaal ke naam bhi chalein — "mfg", "supplier", "transporter"
+        k = k switch
+        {
+            "mfg" or "supplier" or "mill" or "karkhana" => "manufacturer",
+            "transporter" => "transport",
+            _ => k
+        };
+
+        var allowed = new[] { "agency", "manufacturer", "transport", "buyer", "both" };
+        if (!allowed.Contains(k))
+            throw new ArgumentException(
+                "Firm ka kaam theek se chuniye — Agency / MFG / Transport / Buyer / Dono");
+
+        var n = await _db.Database.ExecuteSqlRawAsync(
+            "UPDATE platform.firms SET business_kind = {0}, updated_at = now() WHERE id = {1}", k, id);
+
+        return n == 0 ? NotFound() : Ok(new { ok = true, businessKind = k });
+    }
+
     public record ComplaintBoxToggleDto(bool Enabled);
 
     /// <summary>Complaint Box per-firm on/off (CREDIL pattern — instant save).</summary>

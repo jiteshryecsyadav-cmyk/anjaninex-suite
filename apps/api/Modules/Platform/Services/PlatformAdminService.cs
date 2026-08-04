@@ -34,7 +34,9 @@ public record FirmListItemDto(
     decimal WalletBalance,
     decimal MtdSpend,
     DateTimeOffset CreatedAt,
-    DateTimeOffset? ActivatedAt);
+    DateTimeOffset? ActivatedAt,
+    // agency | manufacturer | transport | buyer | both — list me nishaan dikhta hai
+    string BusinessKind = "agency");
 
 public record FirmDetailDto(
     Guid Id,
@@ -62,7 +64,9 @@ public record FirmDetailDto(
     int SupplierCount,
     decimal LifetimeSpend,
     decimal LifetimeRevenue,
-    string Theme);
+    string Theme,
+    // agency | manufacturer | transport | buyer | both
+    string BusinessKind = "agency");
 
 public record WalletTxnDto(
     long Id, string TxnType, decimal Amount, decimal BalanceAfter,
@@ -87,12 +91,15 @@ public record CreatePlanDto(
 
 public record CreateFirmDto(
     string Name, string? LegalName, string? Gst, string? Pan, string? City, string? State,
-    string? FirmType,   // proprietorship | partnership | llp | pvt_ltd
+    string? FirmType,   // KANOONI dhaancha: proprietorship | partnership | llp | pvt_ltd
     string ContactEmail, string ContactPhone, Guid? PlanId,
     string AdminFullName, string AdminUsername, string AdminPassword,
     string? BankName = null, string? AccountNo = null, string? Ifsc = null,
     string? AgentCode = null, string? AdminMobile = null, string? AdminWhatsapp = null,
-    List<FirmPartnerDto>? Partners = null);   // extra partner admins (2-4), sab firm_owner
+    List<FirmPartnerDto>? Partners = null,    // extra partner admins (2-4), sab firm_owner
+    // Firm ka DHANDHA — isi se tay hota hai ki login ke baad kaunsa app khulega.
+    // agency | manufacturer | transport | buyer | both
+    string? BusinessKind = null);
 
 // Partner = extra admin login (firm_owner full access). Main admin ke alaava.
 public record FirmPartnerDto(string FullName, string Username, string Password,
@@ -272,7 +279,7 @@ public class PlatformAdminService : IPlatformAdminService
             f.PlanId.HasValue ? planCodes.GetValueOrDefault(f.PlanId.Value, "—") : "—",
             f.Status, f.WalletBalance,
             mtdSpend.GetValueOrDefault(f.Id, 0),
-            f.CreatedAt, f.ActivatedAt)).ToList();
+            f.CreatedAt, f.ActivatedAt, f.BusinessKind)).ToList();
     }
 
     public async Task<FirmDetailDto?> GetFirm(Guid id)
@@ -306,7 +313,8 @@ public class PlatformAdminService : IPlatformAdminService
             firm.TrialEndsAt, firm.ActivatedAt, firm.CreatedAt,
             branchCount, userCount, billCount, voucherCount, supplierCount,
             lifetimeSpend, lifetimeRev,
-            string.IsNullOrWhiteSpace(firm.Theme) ? "classic" : firm.Theme);
+            string.IsNullOrWhiteSpace(firm.Theme) ? "classic" : firm.Theme,
+            firm.BusinessKind);
     }
 
     public async Task<List<WalletTxnDto>> FirmWalletHistory(Guid firmId, int limit)
@@ -576,6 +584,27 @@ public class PlatformAdminService : IPlatformAdminService
         return firm.Id;
     }
 
+    /// <summary>
+    /// Firm ka dhandha saaf karo. Galat/khali aaye to 'agency' — kyunki abhi
+    /// tak har firm agency hi thi, aur purani firms ka default wahi rehna
+    /// chahiye. DB par bhi CHECK constraint hai; yahan pehle rok isliye ki
+    /// user ko 23514 ki jagah saaf Hinglish message mile.
+    /// </summary>
+    private static string NormalizeBusinessKind(string? kind)
+    {
+        var k = (kind ?? "").Trim().ToLowerInvariant();
+        return k switch
+        {
+            "agency" or "manufacturer" or "transport" or "buyer" or "both" => k,
+            // aam bol-chaal ke naam bhi chalen
+            "supplier" or "mill" or "karkhana" => "manufacturer",
+            "transporter" => "transport",
+            "" => "agency",
+            _ => throw new ArgumentException(
+                     "Firm ka kaam theek se chuniye — Agency / Manufacturer / Transport / Buyer")
+        };
+    }
+
     public async Task<object> CreateFirm(CreateFirmDto dto, Guid byUserId)
     {
         if (string.IsNullOrWhiteSpace(dto.Name)) throw new ArgumentException("Firm naam zaroori hai.");
@@ -609,6 +638,7 @@ public class PlatformAdminService : IPlatformAdminService
                 PanNumber = string.IsNullOrWhiteSpace(dto.Pan) ? null : dto.Pan.Trim().ToUpperInvariant(),
                 City = dto.City, State = dto.State,
                 FirmType = string.IsNullOrWhiteSpace(dto.FirmType) ? "proprietorship" : dto.FirmType.Trim(),
+                BusinessKind = NormalizeBusinessKind(dto.BusinessKind),
                 ContactEmail = dto.ContactEmail.Trim(), ContactPhone = (dto.ContactPhone ?? "").Trim(),
                 BankName = string.IsNullOrWhiteSpace(dto.BankName) ? null : dto.BankName.Trim(),
                 AccountNo = string.IsNullOrWhiteSpace(dto.AccountNo) ? null : dto.AccountNo.Trim(),

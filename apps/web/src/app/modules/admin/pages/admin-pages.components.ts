@@ -91,6 +91,12 @@ const subNav = `
                 <tr class="border-t hover:bg-[#faf5ff]">
                   <td class="px-3 py-2">
                     <a [routerLink]="['/admin/firms', f.id]" class="font-semibold text-[#5c1a8b] hover:underline">{{ f.name }}</a>
+                    <!-- Firm agency hai ya manufacturer — ek nazar me dikhe -->
+                    @if (f.businessKind && f.businessKind !== 'agency') {
+                      <span class="ml-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-[#f3ecfa] text-[#5c1a8b]">
+                        {{ kindLabel(f.businessKind) }}
+                      </span>
+                    }
                     @if (f.city) { <div class="text-xs text-gray-500">{{ f.city }}</div> }
                   </td>
                   <td class="px-3 py-2 font-mono text-xs">{{ f.gst }}</td>
@@ -198,7 +204,25 @@ const subNav = `
             <p class="text-xs text-gray-500 mb-3">Sirf firm + admin login banega. Admin khud login karke users / branches / roles set karega.</p>
             <div class="grid grid-cols-2 gap-3">
               <div class="col-span-2"><label class="fl">Firm Name *</label><input [(ngModel)]="nf.name" class="fi"></div>
-              <div><label class="fl">Firm Type</label>
+
+              <!-- Firm KYA KAAM karti hai — isi se tay hota hai ki login ke baad
+                   kaunsa app khulega. Firm Type se alag baat hai (wo kanooni
+                   dhaancha hai: proprietorship / pvt ltd). -->
+              <div class="col-span-2">
+                <label class="fl">Kaam kya karti hai *</label>
+                <select [(ngModel)]="nf.businessKind" class="fi">
+                  <option value="manufacturer">🏭 MFG — maal banati hai</option>
+                  <option value="buyer">🛍️ BUYER — sirf khareedti hai</option>
+                  <option value="transport">🚛 TRANSPORTER — maal dhoti hai</option>
+                  <option value="agency">🏢 AGENCY — khareedti aur bechti hai</option>
+                  <option value="both">🔄 DONO — banati bhi hai, bechti bhi</option>
+                </select>
+                <p class="text-[11px] text-gray-500 mt-1">
+                  Login ke baad isi hisab se app khulega. Baad me badla ja sakta hai.
+                </p>
+              </div>
+
+              <div><label class="fl">Firm Type (kanooni)</label>
                 <select [(ngModel)]="nf.firmType" class="fi">
                   <option value="proprietorship">Proprietorship</option>
                   <option value="partnership">Partnership</option>
@@ -366,9 +390,21 @@ export class AdminFirmsComponent {
   addErr = signal('');
   nf: CreateFirmReq = this.blankFirm();
 
+  /** Firm ke dhandhe ka chhota nishaan — list me naam ke bagal me. */
+  kindLabel(kind: string): string {
+    switch (kind) {
+      case 'manufacturer': return '🏭 MFG';
+      case 'transport':    return '🚛 TRANSPORT';
+      case 'buyer':        return '🛍️ BUYER';
+      case 'both':         return '🔄 DONO';
+      default:             return '';
+    }
+  }
+
   blankFirm(): CreateFirmReq {
     return { name: '', legalName: '', gst: '', pan: '', city: '', state: '',
              firmType: 'proprietorship',
+             businessKind: 'agency',
              contactEmail: '', contactPhone: '', planId: null,
              bankName: '', accountNo: '', ifsc: '',
              adminFullName: '', adminUsername: '', adminPassword: '', adminMobile: '', adminWhatsapp: '', agentCode: '',
@@ -567,6 +603,31 @@ export class AdminFirmsComponent {
           </div>
         </div>
 
+        <!-- Firm ka KAAM — isse tay hota hai kaunsa app khulega.
+             Firm banate waqt chunte hain, par galti ho jaye ya firm baad me
+             khud maal banane lage to yahan se badal sakte hain. -->
+        <div class="card p-4 mb-4">
+          <h3 class="font-display font-bold text-[#5c1a8b] mb-1">🏭 Kaam kya karti hai</h3>
+          <p class="text-xs text-gray-500 mb-2">
+            Login ke baad isi hisab se app khulega. Badalne par us firm ke logon ko
+            <b>dobara login</b> karna padega.
+          </p>
+          <div class="flex flex-wrap items-center gap-2">
+            <select [(ngModel)]="bizKind" class="input w-64">
+              <option value="manufacturer">🏭 MFG — maal banati hai</option>
+              <option value="buyer">🛍️ BUYER — sirf khareedti hai</option>
+              <option value="transport">🚛 TRANSPORTER — maal dhoti hai</option>
+              <option value="agency">🏢 AGENCY — khareedti aur bechti hai</option>
+              <option value="both">🔄 DONO — banati bhi hai, bechti bhi</option>
+            </select>
+            <button (click)="saveBizKind()" [disabled]="savingKind()" class="btn-primary text-sm">
+              {{ savingKind() ? '...' : 'Save' }}
+            </button>
+            @if (kindMsg()) { <span class="text-xs" [class.text-green-700]="!kindMsg().startsWith('⚠')"
+                                   [class.text-red-600]="kindMsg().startsWith('⚠')">{{ kindMsg() }}</span> }
+          </div>
+        </div>
+
         <!-- Subdomain — firm ka apna pata -->
         <div class="card p-4 mb-4">
           <h3 class="font-display font-bold text-[#5c1a8b] mb-1">🌐 Subdomain</h3>
@@ -684,6 +745,11 @@ export class AdminFirmDetailComponent {
   savingSub = signal(false);
   subMsg = signal('');
 
+  // Firm ka kaam (agency / mfg / …) — banane ke baad bhi badal sakte hain
+  bizKind = 'agency';
+  savingKind = signal(false);
+  kindMsg = signal('');
+
   ngOnInit() {
     const id = this.route.snapshot.paramMap.get('id');
     if (id) this.reload(id);
@@ -693,8 +759,28 @@ export class AdminFirmDetailComponent {
     this.loading.set(true);
     this.firm.set(await firstValueFrom(this.svc.getFirm(id)));
     this.subdomain = (this.firm() as any)?.subdomain || '';
+    this.bizKind = this.firm()?.businessKind || 'agency';
     this.wallet.set(await firstValueFrom(this.svc.firmWalletHistory(id)));
     this.loading.set(false);
+  }
+
+  /** Firm ka kaam badlo. Badalte hi us firm ke logon ko dobara login karna padega. */
+  saveBizKind() {
+    const f = this.firm();
+    if (!f) return;
+    this.savingKind.set(true); this.kindMsg.set('');
+    this.http.put<{ businessKind: string }>(
+      `${environment.apiUrl}/api/admin/firms/${f.id}/business-kind`,
+      { businessKind: this.bizKind }).subscribe({
+        next: () => {
+          this.savingKind.set(false);
+          this.kindMsg.set('✓ save ho gaya — firm ke logon ko dobara login karna hoga');
+        },
+        error: e => {
+          this.savingKind.set(false);
+          this.kindMsg.set('⚠ ' + (e?.error?.error ?? 'save nahi hua'));
+        }
+      });
   }
 
   saveSubdomain() {

@@ -58,6 +58,12 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./modules/stock/items.component').then(m => m.ItemsComponent)
       },
+      {
+        path: 'production/jobslip',
+        canActivate: [requirePermission('production.jobslip.view.place')],
+        loadComponent: () =>
+          import('./modules/production/jobslips.component').then(m => m.JobSlipsComponent)
+      },
       // Baaki screen aage — sidebar me "aage" likha dikhta hai.
       // Anjaan rasta bhi landing par hi jaye, kisi fix screen par nahi.
       { path: '**', pathMatch: 'full', canActivate: [landingRedirect], children: [] }

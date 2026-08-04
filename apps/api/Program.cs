@@ -291,6 +291,10 @@ try
     builder.Services.AddScoped<Namokara.Api.Modules.Accounting.Services.IReportsService,
         Namokara.Api.Modules.Accounting.Services.ReportsService>();
 
+    // Manufacturer module — document number gap-free rakhne wala counter
+    builder.Services.AddScoped<Namokara.Api.Modules.Manufacturer.Services.IMfgCounterService,
+        Namokara.Api.Modules.Manufacturer.Services.MfgCounterService>();
+
     // Trading module
     builder.Services.AddScoped<Namokara.Api.Modules.Trading.Services.IPartyService,
         Namokara.Api.Modules.Trading.Services.PartyService>();

@@ -153,7 +153,7 @@ export class ShellComponent {
       { label: 'Purchase Return',  icon: '↪️', path: '/purchase/return', perm: 'purchase.preturn.view.place',soon: true }
     ]},
     { title: '🏭 Manage Production', items: [
-      { label: 'Job Slips',          icon: '✂️', path: '/production/jobslip', perm: 'production.jobslip.view.place', soon: true },
+      { label: 'Job Slips',          icon: '✂️', path: '/production/jobslip', perm: 'production.jobslip.view.place' },
       { label: 'Karigar Khata Book', icon: '📒', path: '/production/khata',   perm: 'production.khata.view.place',   soon: true },
       { label: 'Track Jobslip Lots', icon: '🔍', path: '/production/lots',    perm: 'production.jobslip.view.place', soon: true }
     ]},

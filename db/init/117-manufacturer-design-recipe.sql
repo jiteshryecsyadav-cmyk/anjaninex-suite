@@ -25,7 +25,8 @@ ALTER TABLE trading.items
   -- aur naya design/material app khud saaf-saaf likhta hai.
   ADD COLUMN IF NOT EXISTS item_kind         TEXT NOT NULL DEFAULT 'other',
   ADD COLUMN IF NOT EXISTS photo_url         TEXT,
-  ADD COLUMN IF NOT EXISTS description       TEXT,
+  -- `description` nahi joda — `notes` pehle se hai aur wahi kaam karta hai.
+  -- Do khaane hote to ek din ek bharta, doosra khali reh jata.
   ADD COLUMN IF NOT EXISTS colour_hint       TEXT,   -- list me gol nishaan
   -- Apna maal khatam hone se PEHLE chetavni
   ADD COLUMN IF NOT EXISTS min_stock_qty     NUMERIC(14,3),

@@ -164,28 +164,27 @@ CREATE TABLE IF NOT EXISTS mfg.colours (
 CREATE UNIQUE INDEX IF NOT EXISTS colours_firm_name_uq ON mfg.colours (firm_id, lower(name));
 
 -- ----------------------------------------------------------------------------
--- 7. Party par manufacturer wale khaane
---    trading.parties pehle se hai — nayi table nahi banayenge
+-- 7. PARTY — yahan JAAN-BOOJH KAR kuch nahi joda
+--
+-- Pehle yahan 8 naye column jodne wala block tha (discount_pct, bill_due_days,
+-- transport_name, udyam_type, udyam_no…). Jaanch me pata chala ki ye sab
+-- PEHLE SE hain, bas naam alag hai:
+--
+--   discount_pct    →  trading.party_profiles.discount_normal
+--                      (aur discount_exhibition / discount_special bhi)
+--   bill_due_days   →  trading.party_profiles.credit_days
+--   transport_name  →  trading.party_profiles.default_transporter_id
+--                      → core.transporters (uska poora record wahan hai)
+--   udyam_type      →  core.contacts.msme_type
+--   udyam_no        →  core.contacts.udyam_no
+--
+-- Dobara jodte to ek hi baat do jagah likhi jaati — aur ek din ek jagah
+-- badalti, doosri nahi. Wahi "bill par 10% lagta hai par master me 8% likha
+-- hai" wali dikkat banti. Manufacturer app inhi maujooda column se padhega.
+--
+-- (Party ki table ka naam bhi `trading.parties` nahi, `trading.party_profiles`
+--  hai — pehle galat likha tha aur migration wahin ruk gayi thi.)
 -- ----------------------------------------------------------------------------
-ALTER TABLE trading.parties
-  ADD COLUMN IF NOT EXISTS discount_pct     NUMERIC(5,2) NOT NULL DEFAULT 0,
-  ADD COLUMN IF NOT EXISTS bill_due_days    SMALLINT,
-  ADD COLUMN IF NOT EXISTS transport_name   TEXT,
-  ADD COLUMN IF NOT EXISTS transport_detail TEXT,
-  ADD COLUMN IF NOT EXISTS apply_tcs        BOOLEAN NOT NULL DEFAULT FALSE,
-  ADD COLUMN IF NOT EXISTS visibility       TEXT NOT NULL DEFAULT 'all',
-  -- MSME supplier ko kanoonan 45 din me paisa dena hai, warna byaj lagta hai.
-  -- Isliye Udyam alag rakha — form par chetavni isi se dikhegi.
-  ADD COLUMN IF NOT EXISTS udyam_type       TEXT,
-  ADD COLUMN IF NOT EXISTS udyam_no         TEXT;
-
-COMMENT ON COLUMN trading.parties.discount_pct IS
-  'Har bill par apne aap lagta hai. Pehle har baar haath se likhna padta tha '
-  'aur ek hi party ko kabhi 8% kabhi 10% lag jata tha.';
-COMMENT ON COLUMN trading.parties.bill_due_days IS
-  'Bill ke kitne din baad paisa. Isse "bakaya kab se atka hai" khud ginta hai.';
-COMMENT ON COLUMN trading.parties.udyam_type IS
-  'Micro / Small / Medium — khali matlab MSME nahi. MSME hai to 45 din ka niyam.';
 
 -- ----------------------------------------------------------------------------
 -- 8. RLS — har nayi table par, bina chhode

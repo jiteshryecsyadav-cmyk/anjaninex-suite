@@ -44,7 +44,7 @@ interface NavLine {
            sidebar apni jagah 224px ghere baitha rehta tha. -->
       <aside class="app-sidebar bg-anjaninex-navy text-white shrink-0 flex flex-col
                     overflow-y-auto overflow-x-hidden transition-all duration-200"
-             [class.w-56]="sideOpen()" [class.w-0]="!sideOpen()"
+             [class.w-48]="sideOpen()" [class.w-0]="!sideOpen()"
              (click)="navDabaya($event)">
 
         <nav class="flex-1 p-2 flex flex-col gap-1">
@@ -52,19 +52,19 @@ interface NavLine {
             @if (l.soon) {
               <!-- Halka rang aur cursor hi bata dete hain ki abhi nahi khulta —
                    "aage" ka thappa bekaar shor tha -->
-              <div class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm
+              <div class="flex items-center gap-2 px-2.5 py-2 rounded-lg text-[13px]
                           font-semibold text-white/30 cursor-not-allowed"
                    title="Ye abhi bana nahi hai">
-                <span class="w-5 text-center">{{ l.icon }}</span>
-                <span class="flex-1">{{ l.title }}</span>
+                <span class="w-5 text-center shrink-0">{{ l.icon }}</span>
+                <span class="truncate">{{ l.title }}</span>
               </div>
             } @else {
               <a [routerLink]="l.path"
                  routerLinkActive="!bg-anjaninex-red !text-white"
-                 class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm
+                 class="flex items-center gap-2 px-2.5 py-2 rounded-lg text-[13px]
                         font-semibold text-white/75 hover:text-white hover:bg-white/10">
-                <span class="w-5 text-center">{{ l.icon }}</span>
-                <span>{{ l.title }}</span>
+                <span class="w-5 text-center shrink-0">{{ l.icon }}</span>
+                <span class="truncate">{{ l.title }}</span>
               </a>
             }
           }

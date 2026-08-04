@@ -310,12 +310,16 @@ public class MfgDashboardController : ControllerBase
     private static (DateOnly from, DateOnly to) Range(string period)
     {
         var aaj = Today();
+        var isMahine = new DateOnly(aaj.Year, aaj.Month, 1);
+
         return period switch
         {
             "week"    => (aaj.AddDays(-6), aaj),
-            "quarter" => (aaj.AddMonths(-2) is var q ? new DateOnly(q.Year, q.Month, 1) : aaj, aaj),
+            // Teen mahine = pichhle do mahine + ye — 1 tareekh se, taaki mahine
+            // adhoore na kate aur mahine-wise milaan sahi baithe
+            "quarter" => (isMahine.AddMonths(-2), aaj),
             "year"    => (FyStart(aaj), aaj),
-            _         => (new DateOnly(aaj.Year, aaj.Month, 1), aaj)
+            _         => (isMahine, aaj)
         };
     }
 

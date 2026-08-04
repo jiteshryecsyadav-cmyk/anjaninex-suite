@@ -57,7 +57,9 @@ public class PartiesController : ControllerBase
     {
         var err = Validate(dto);
         if (err is not null) return BadRequest(new { error = err });
-        return Ok(await _parties.Create(dto, CurrentFirmId, CurrentUserId));
+        // Screen 'customer'/'supplier' bhejti hai, DB 'buyer'/'seller' samajhti hai
+        return Ok(await _parties.Create(dto with { PartyType = ToDbType(dto.PartyType) },
+                                        CurrentFirmId, CurrentUserId));
     }
 
     [HttpPut("{id}")]
@@ -66,24 +68,36 @@ public class PartiesController : ControllerBase
     {
         var err = Validate(dto);
         if (err is not null) return BadRequest(new { error = err });
-        return Ok(await _parties.Update(id, dto));
+        return Ok(await _parties.Update(id, dto with { PartyType = ToDbType(dto.PartyType) }));
     }
 
     // ── madad ──
 
     /// <summary>
-    /// party_type me 'customer' / 'supplier' / 'both' hota hai. 'both' wali
-    /// party dono list me aani chahiye — ek hi firm se kapda bhi lete hain aur
-    /// usi ko maal bhi bechte hain, ye aam baat hai.
+    /// ⚠️ DB me party_type 'buyer' / 'seller' hai — 'customer' / 'supplier'
+    /// NAHI. Manufacturer app ki bhasha me customer/supplier zyada saaf lagta
+    /// hai, isliye yahan tarjuma karte hain. Bina iske list hamesha khali
+    /// aati thi (kind=customer kisi row se match hi nahi karta).
+    /// </summary>
+    private static string ToDbType(string kind) => kind.Trim().ToLowerInvariant() switch
+    {
+        "customer" or "buyer"    => "buyer",
+        "supplier" or "seller"   => "seller",
+        _                        => kind.Trim().ToLowerInvariant()
+    };
+
+    /// <summary>
+    /// 'both' wali party DONO list me aani chahiye — ek hi firm se kapda lena
+    /// aur usi ko maal bechna aam baat hai.
     /// </summary>
     private static IEnumerable<PartyDto> Filter(IEnumerable<PartyDto> all, string? kind)
     {
         if (string.IsNullOrWhiteSpace(kind)) return all;
-        var k = kind.Trim().ToLowerInvariant();
+        var want = ToDbType(kind);
         return all.Where(p =>
         {
             var t = (p.PartyType ?? "").ToLowerInvariant();
-            return t == k || t == "both";
+            return t == want || t == "both";
         });
     }
 

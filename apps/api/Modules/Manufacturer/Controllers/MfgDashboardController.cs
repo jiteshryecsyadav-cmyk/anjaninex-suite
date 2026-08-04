@@ -6,7 +6,13 @@ using Namokara.Api.Infrastructure.Persistence;
 
 namespace Namokara.Api.Modules.Manufacturer.Controllers;
 
-public record KpiDto(string Key, string Label, decimal Value, string? Sub, string Tone);
+/// <summary>
+/// Ek aankda. <c>Spark</c> me pichhle 8 mahine ki asli chaal hoti hai —
+/// jahan wo nikaali ja sakti hai wahin bhari jati hai, warna khali. Banawati
+/// line dikhane se accha hai koi line na dikhe.
+/// </summary>
+public record KpiDto(string Key, string Label, decimal Value, string? Sub, string Tone,
+                     decimal[]? Spark = null, decimal? Delta = null);
 
 /// <summary>Jise abhi haath lagana chahiye — dashboard ka sabse upar wala hissa.</summary>
 public record AlertDto(string Text, string? Link, string Tone);
@@ -69,12 +75,39 @@ public class MfgDashboardController : ControllerBase
                      && g.GrDate >= from && g.GrDate <= to)
             .SumAsync(g => (decimal?)g.TotalReturnAmount) ?? 0m;
 
+        // Pichhle 8 mahine ki asli chaal — card ke neeche wali chhoti line isi se
+        var m8 = LastMonths(8);
+        var sabBill = await _db.Bills.AsNoTracking()
+            .Where(b => b.FirmId == firmId && b.BillType == "sales" && b.DeletedAt == null
+                     && b.BillDate >= m8[0])
+            .Select(b => new { b.BillDate, b.Total, b.PaidAmount })
+            .ToListAsync();
+        var sabGr = await _db.GoodsReturns.AsNoTracking()
+            .Where(g => g.FirmId == firmId && g.DeletedAt == null && g.GrDate >= m8[0])
+            .Select(g => new { g.GrDate, g.TotalReturnAmount })
+            .ToListAsync();
+
+        decimal[] SparkBill(Func<dynamic, decimal> pick) =>
+            m8.Select(m => sabBill.Where(b => b.BillDate.Year == m.Year && b.BillDate.Month == m.Month)
+                                  .Sum(b => pick(b))).ToArray();
+
+        var sparkBikri  = SparkBill(b => (decimal)b.Total);
+        var sparkMila   = SparkBill(b => (decimal)b.PaidAmount);
+        var sparkBakaya = SparkBill(b => (decimal)b.Total - (decimal)b.PaidAmount);
+        var sparkWapas  = m8.Select(m => sabGr.Where(g => g.GrDate.Year == m.Year && g.GrDate.Month == m.Month)
+                                              .Sum(g => g.TotalReturnAmount)).ToArray();
+
         var sales = new List<KpiDto>
         {
-            new("bikri",  "Kul bikri",     kulBikri,   $"{bills.Count} bill",       "navy"),
-            new("mila",   "Paisa aaya",    milaPaisa,  null,                        "green"),
-            new("bakaya", "Bakaya",        bakaya,     bakaya > 0 ? "vasooli baki" : "sab saaf", bakaya > 0 ? "amber" : "green"),
-            new("wapas",  "Maal wapas",    wapasAaya,  null,                        wapasAaya > 0 ? "red" : "slate")
+            new("bikri",  "Total Sales",  kulBikri,   $"{bills.Count} bill", "navy",
+                sparkBikri,  Badhat(sparkBikri)),
+            new("mila",   "Received",     milaPaisa,  null,                  "green",
+                sparkMila,   Badhat(sparkMila)),
+            new("bakaya", "Bakaya",       bakaya,
+                bakaya > 0 ? "vasooli baki" : "sab saaf", bakaya > 0 ? "amber" : "green",
+                sparkBakaya, Badhat(sparkBakaya)),
+            new("wapas",  "Maal wapas",   wapasAaya,  null,
+                wapasAaya > 0 ? "red" : "slate", sparkWapas, Badhat(sparkWapas))
         };
 
         // ── KAAM (production) ──
@@ -321,6 +354,28 @@ public class MfgDashboardController : ControllerBase
             "year"    => (FyStart(aaj), aaj),
             _         => (isMahine, aaj)
         };
+    }
+
+    /// <summary>Pichhle n mahine ki pehli tareekh — purane se naye ke kram me.</summary>
+    private static List<DateOnly> LastMonths(int n)
+    {
+        var aaj = Today();
+        var shuru = new DateOnly(aaj.Year, aaj.Month, 1).AddMonths(-(n - 1));
+        return Enumerable.Range(0, n).Select(i => shuru.AddMonths(i)).ToList();
+    }
+
+    /// <summary>
+    /// Pichhle mahine se is mahine kitna badla — %.
+    /// Pichhla mahina 0 tha to % ka koi matlab nahi (kisi bhi cheez ka
+    /// "anant guna" badhna kehna jhooth hai), isliye khali chhod dete hain.
+    /// </summary>
+    private static decimal? Badhat(decimal[] s)
+    {
+        if (s.Length < 2) return null;
+        var ab = s[^1];
+        var pehle = s[^2];
+        if (pehle <= 0) return null;
+        return Math.Round((ab - pehle) / pehle * 100m, 0);
     }
 
     /// <summary>April se nayi financial year.</summary>

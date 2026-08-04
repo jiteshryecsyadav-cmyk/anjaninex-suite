@@ -36,6 +36,29 @@ const READY = new Set<string>([
   '/sales/order', '/sales/challan', '/sales/invoice', '/sales/return'
 ]);
 
+/**
+ * Sales ke andar ka kram — /sales par aate hi pehla khulne wala pardah.
+ * Salesman ko Order milta hai, Godown wale ko Challan, Munim ko Invoice.
+ */
+const SALES: { perm: string; path: string }[] = [
+  { perm: 'sales.order.view.place',   path: '/sales/order' },
+  { perm: 'sales.challan.view.place', path: '/sales/challan' },
+  { perm: 'sales.invoice.view.place', path: '/sales/invoice' },
+  { perm: 'sales.sreturn.view.place', path: '/sales/return' }
+];
+
+export const salesLanding: CanActivateFn = () => {
+  const auth = inject(AuthService);
+  const router = inject(Router);
+
+  const hit = SALES.find(s => auth.can(s.perm));
+  if (hit) return router.createUrlTree([hit.path]);
+
+  return router.createUrlTree(['/no-access'], {
+    queryParams: { need: 'Sales ka koi bhi hissa — malik se role chalu karwaiye' }
+  });
+};
+
 export const landingRedirect: CanActivateFn = () => {
   const auth = inject(AuthService);
   const router = inject(Router);

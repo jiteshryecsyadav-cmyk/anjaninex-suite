@@ -11,6 +11,8 @@ interface NavItem {
   path?: string;
   /** Ye permission nahi hai to line dikhegi hi nahi. */
   perm?: string;
+  /** Group wali line (jaise Sales) — inme se koi ek bhi ho to dikhegi. */
+  anyPerm?: string[];
   /** Abhi bana nahi — dikhta hai par khulta nahi, taaki roadmap saaf rahe. */
   soon?: boolean;
 }
@@ -141,11 +143,13 @@ export class ShellComponent {
 
   /** Prototype ke sidebar se — wahi 6 group, wahi kram. */
   private groups: NavGroup[] = [
+    // Sales ek hi line — Order/Challan/Invoice/Return andar horizontal patti me
+    // (trading app jaisa). Chaar alag line se sidebar bhar jata tha.
     { title: '🧾 Sales & Delivery', items: [
-      { label: 'Sales Order',      icon: '📄', path: '/sales/order',    perm: 'sales.order.view.place' },
-      { label: 'Delivery Challan', icon: '🚚', path: '/sales/challan',  perm: 'sales.challan.view.place' },
-      { label: 'Tax Invoice',      icon: '🧮', path: '/sales/invoice',  perm: 'sales.invoice.view.place' },
-      { label: 'Sales Return',     icon: '↩️', path: '/sales/return',   perm: 'sales.sreturn.view.place' }
+      { label: 'Sales', icon: '🧾', path: '/sales', anyPerm: [
+        'sales.order.view.place', 'sales.challan.view.place',
+        'sales.invoice.view.place', 'sales.sreturn.view.place'
+      ]}
     ]},
     { title: '🛒 Purchase & Inwards', items: [
       { label: 'Purchase Order',   icon: '🛍️', path: '/purchase/po',     perm: 'purchase.po.view.place' },
@@ -184,7 +188,12 @@ export class ShellComponent {
    */
   visibleGroups = computed<NavGroup[]>(() =>
     this.groups
-      .map(g => ({ ...g, items: g.items.filter(i => !i.perm || this.auth.can(i.perm)) }))
+      .map(g => ({ ...g, items: g.items.filter(i => this.dikhe(i)) }))
       .filter(g => g.items.length > 0)
   );
+
+  private dikhe(i: NavItem): boolean {
+    if (i.anyPerm) return i.anyPerm.some(p => this.auth.can(p));
+    return !i.perm || this.auth.can(i.perm);
+  }
 }

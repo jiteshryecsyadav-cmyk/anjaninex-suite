@@ -1,6 +1,6 @@
 import { Routes } from '@angular/router';
 import { authGuard, requirePermission } from './core/auth.guard';
-import { landingRedirect } from './core/landing.guard';
+import { landingRedirect, salesLanding } from './core/landing.guard';
 
 /**
  * Har screen lazy hai — pehli baar khulne par hi download hoti hai. Manufacturer
@@ -58,29 +58,41 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./modules/stock/items.component').then(m => m.ItemsComponent)
       },
+      // Sales ke chaaron pardah ek khol ke andar — upar horizontal patti wahin
+      // se aati hai (trading app jaisi). Sidebar me sirf ek "Sales" line.
       {
-        path: 'sales/order',
-        canActivate: [requirePermission('sales.order.view.place')],
+        path: 'sales',
         loadComponent: () =>
-          import('./modules/sales/sales-orders.component').then(m => m.SalesOrdersComponent)
-      },
-      {
-        path: 'sales/challan',
-        canActivate: [requirePermission('sales.challan.view.place')],
-        loadComponent: () =>
-          import('./modules/sales/challans.component').then(m => m.ChallansComponent)
-      },
-      {
-        path: 'sales/invoice',
-        canActivate: [requirePermission('sales.invoice.view.place')],
-        loadComponent: () =>
-          import('./modules/sales/invoices.component').then(m => m.InvoicesComponent)
-      },
-      {
-        path: 'sales/return',
-        canActivate: [requirePermission('sales.sreturn.view.place')],
-        loadComponent: () =>
-          import('./modules/sales/sales-returns.component').then(m => m.SalesReturnsComponent)
+          import('./modules/sales/sales-shell.component').then(m => m.SalesShellComponent),
+        children: [
+          // Fix redirect nahi — jiske paas Order ki ijazat nahi wo seedha
+          // rok wale pardah par pahunch jata. Isliye pehla khulne wala chunte hain.
+          { path: '', pathMatch: 'full', canActivate: [salesLanding], children: [] },
+          {
+            path: 'order',
+            canActivate: [requirePermission('sales.order.view.place')],
+            loadComponent: () =>
+              import('./modules/sales/sales-orders.component').then(m => m.SalesOrdersComponent)
+          },
+          {
+            path: 'challan',
+            canActivate: [requirePermission('sales.challan.view.place')],
+            loadComponent: () =>
+              import('./modules/sales/challans.component').then(m => m.ChallansComponent)
+          },
+          {
+            path: 'invoice',
+            canActivate: [requirePermission('sales.invoice.view.place')],
+            loadComponent: () =>
+              import('./modules/sales/invoices.component').then(m => m.InvoicesComponent)
+          },
+          {
+            path: 'return',
+            canActivate: [requirePermission('sales.sreturn.view.place')],
+            loadComponent: () =>
+              import('./modules/sales/sales-returns.component').then(m => m.SalesReturnsComponent)
+          }
+        ]
       },
       {
         path: 'purchase/po',

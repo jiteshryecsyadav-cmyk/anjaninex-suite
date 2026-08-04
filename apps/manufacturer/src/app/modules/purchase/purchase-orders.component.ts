@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { AuthService } from '../../core/auth.service';
 import { environment } from '../../../environments/environment';
+import { todayStr } from '../../core/date.util';
 
 interface PoLine {
   id?: string; itemId: string | null; itemName?: string;
@@ -322,7 +323,7 @@ export class PurchaseOrdersComponent {
     this.form.set({
       partyId: null, agentId: null,
       godownId: this.godowns().find(g => g.isMain)?.id ?? this.godowns()[0]?.id ?? null,
-      orderDate: this.today(), dueAt: null, transport: null, note: null,
+      orderDate: todayStr(), dueAt: null, transport: null, note: null,
       lines: [this.blankLine()]
     });
   }
@@ -386,6 +387,4 @@ export class PurchaseOrdersComponent {
       error: e => this.err.set(e?.error?.error ?? 'Cancel nahi hua')
     });
   }
-
-  private today(): string { return new Date().toISOString().slice(0, 10); }
 }

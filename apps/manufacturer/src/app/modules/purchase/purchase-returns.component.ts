@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { AuthService } from '../../core/auth.service';
 import { environment } from '../../../environments/environment';
+import { todayStr } from '../../core/date.util';
 
 interface PrLine {
   id?: string; itemId: string | null; itemName?: string;
@@ -279,7 +280,7 @@ export class PurchaseReturnsComponent {
     this.form.set({
       partyId: null, inwardId: null,
       godownId: this.godowns().find(g => g.isMain)?.id ?? this.godowns()[0]?.id ?? null,
-      returnDate: this.today(), reason: null, note: null,
+      returnDate: todayStr(), reason: null, note: null,
       lines: [this.blankLine()]
     });
   }
@@ -358,6 +359,4 @@ export class PurchaseReturnsComponent {
       error: e => this.err.set(e?.error?.error ?? 'Nahi hat paya')
     });
   }
-
-  private today(): string { return new Date().toISOString().slice(0, 10); }
 }

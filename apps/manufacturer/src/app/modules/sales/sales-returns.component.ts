@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { AuthService } from '../../core/auth.service';
 import { environment } from '../../../environments/environment';
+import { todayStr, monthStartStr } from '../../core/date.util';
 
 interface GrRow {
   id: string; grNo: string; grDate: string;
@@ -283,8 +284,8 @@ export class SalesReturnsComponent {
 
   loading = signal(true);
   err = signal('');
-  from = this.mahinaShuru();
-  to = this.today();
+  from = monthStartStr();
+  to = todayStr();
 
   form = signal<any | null>(null);
   formErr = signal('');
@@ -318,7 +319,7 @@ export class SalesReturnsComponent {
     this.form.set({
       partyId: null, billId: null,
       godownId: this.godowns().find(g => g.isMain)?.id ?? this.godowns()[0]?.id ?? null,
-      returnDate: this.today(), reason: null, effectMode: 'direct_adjustment',
+      returnDate: todayStr(), reason: null, effectMode: 'direct_adjustment',
       transport: null, lrNo: null, remark: null,
       lines: [this.blankLine()]
     });
@@ -407,11 +408,5 @@ export class SalesReturnsComponent {
       next: () => this.load(),
       error: e => this.err.set(e?.error?.error ?? 'Nahi hata')
     });
-  }
-
-  private today(): string { return new Date().toISOString().slice(0, 10); }
-  private mahinaShuru(): string {
-    const d = new Date();
-    return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().slice(0, 10);
   }
 }

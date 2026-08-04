@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { AuthService } from '../../core/auth.service';
 import { environment } from '../../../environments/environment';
+import { todayStr } from '../../core/date.util';
 
 interface DcLine {
   id?: string; soLineId: string | null; itemId: string | null; itemName?: string;
@@ -322,7 +323,7 @@ export class ChallansComponent {
     this.form.set({
       partyId: null, soId: null,
       godownId: this.godowns().find(g => g.isMain)?.id ?? this.godowns()[0]?.id ?? null,
-      challanDate: this.today(), transport: null, lrNo: null, vehicleNo: null,
+      challanDate: todayStr(), transport: null, lrNo: null, vehicleNo: null,
       packages: null, note: null,
       lines: [this.blankLine()]
     });
@@ -404,6 +405,4 @@ export class ChallansComponent {
       error: e => this.err.set(e?.error?.error ?? 'Nahi hat paya')
     });
   }
-
-  private today(): string { return new Date().toISOString().slice(0, 10); }
 }

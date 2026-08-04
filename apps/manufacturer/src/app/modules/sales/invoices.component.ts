@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { AuthService } from '../../core/auth.service';
 import { environment } from '../../../environments/environment';
+import { todayStr, monthStartStr } from '../../core/date.util';
 
 interface BillRow {
   id: string; billNo: string; billDate: string;
@@ -284,8 +285,8 @@ export class InvoicesComponent {
 
   loading = signal(true);
   err = signal('');
-  from = this.mahinaShuru();
-  to = this.today();
+  from = monthStartStr();
+  to = todayStr();
 
   form = signal<any | null>(null);
   formErr = signal('');
@@ -337,7 +338,7 @@ export class InvoicesComponent {
     this.chuna = {};
     this.dcs.set([]);
     this.form.set({
-      partyId: null, billDate: this.today(),
+      partyId: null, billDate: todayStr(),
       discount: 0, otherCharges: 0, roundOff: 0,
       ewayBillNo: null, ewayBillDate: null, lrNo: null,
       poNumber: null, notes: null
@@ -403,11 +404,5 @@ export class InvoicesComponent {
       next: () => { this.load(); this.loadWaiting(); },
       error: e => this.err.set(e?.error?.error ?? 'Nahi hata')
     });
-  }
-
-  private today(): string { return new Date().toISOString().slice(0, 10); }
-  private mahinaShuru(): string {
-    const d = new Date();
-    return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().slice(0, 10);
   }
 }

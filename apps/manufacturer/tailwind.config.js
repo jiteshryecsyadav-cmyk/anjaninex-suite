@@ -1,28 +1,43 @@
 /** @type {import('tailwindcss').Config}
  *
- *  MANUFACTURER APP — brand palette
- *  Agency app ke saath ek hi parivaar ka rang, par heading ka purple wahi
- *  Vyapaar Setu wala rakha (#5c1a8b) taaki dono app ek hi ghar ke lagen.
+ *  MANUFACTURER APP — wahi rang jo agency app me chal rahe hain.
+ *  Jaan-boojh kar copy kiya: ek hi firm ke do app hain, dono ek jaise dikhne
+ *  chahiye. Alag rang rakhte to aadmi ko lagta ki ye kisi aur company ka
+ *  software hai.
+ *
+ *  Teen thos rang — kabhi mila kar (gradient) mat use karna.
  */
 module.exports = {
   content: ['./src/**/*.{html,ts}'],
   theme: {
     extend: {
       colors: {
+        anjaninex: {
+          red:        '#DC2626',   // pehla kaam / active line
+          'red-dark': '#B91C1C',
+          'red-soft': '#FEE2E2',
+          navy:       '#1B2E5C',   // sidebar aur header
+          'navy-dark':'#0F1E40',
+          'navy-soft':'#E8ECF5',
+          cream:      '#FAF7F0',   // content ka background
+          'cream-2':  '#F5F1E8',
+          white:      '#FFFFFF'    // cards
+        },
         brand: {
-          purple: '#5c1a8b',   // heading
-          muted:  '#6b3fa0',   // halka text
-          navy:   '#1B2E5C',
-          bad:    '#DC2626',
-          warn:   '#a2700d',
-          ok:     '#2f6b3a',
-          line:   '#e8e2f0',
-          bg:     '#f7f4fb'
+          primary: '#1B2E5C',
+          accent:  '#DC2626',
+          light:   '#FAF7F0',
+          dark:    '#0F1E40'
         }
       },
       fontFamily: {
-        sans: ['Inter', 'DM Sans', 'system-ui', 'sans-serif'],
-        mono: ['DM Mono', 'monospace']
+        sans:    ['Inter', 'DM Sans', 'system-ui', 'sans-serif'],
+        display: ['Syne', 'system-ui', 'sans-serif'],
+        mono:    ['DM Mono', 'monospace']
+      },
+      boxShadow: {
+        brand:      '0 2px 20px rgba(27, 46, 92, 0.10)',
+        'brand-lg': '0 8px 40px rgba(27, 46, 92, 0.18)'
       }
     }
   },

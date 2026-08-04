@@ -3,45 +3,72 @@
 @tailwind utilities;
 
 /* ============================================================
-   MANUFACTURER APP — saanjhi class
-   Agency app me jo naam chal rahe hain (btn-primary, input,
-   page-top-bar) wahi yahan bhi — taaki dono par kaam karte waqt
-   dimaag badalna na pade.
+   MANUFACTURER APP — wahi look jo agency app ka hai.
+   Class ke naam bhi wahi (btn-primary, input, card, page-top-bar)
+   taaki dono par kaam karte waqt dimaag badalna na pade.
    ============================================================ */
+:root {
+  --ax-navy:      #1B2E5C;
+  --ax-navy-dark: #0F1E40;
+  --ax-navy-soft: #E8ECF5;
+  --ax-red:       #DC2626;
+  --ax-red-dark:  #B91C1C;
+  --ax-cream:     #FAF7F0;
+  --ax-border:    #E2E0DA;
+  --ax-muted:     #6B7280;
+}
+
+html, body { height: 100%; }
+body {
+  margin: 0;
+  background: var(--ax-cream);
+  color: #1F2937;
+  font-family: Inter, 'DM Sans', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
 @layer components {
+  /* Pehla kaam laal — agency me bhi wahi */
   .btn-primary {
-    @apply bg-brand-purple text-white font-bold rounded-xl px-4 py-2.5
-           text-sm hover:opacity-90 disabled:opacity-50 transition;
+    @apply bg-anjaninex-red text-white font-bold rounded-lg px-4 py-2.5 text-sm
+           border-0 cursor-pointer transition hover:bg-anjaninex-red-dark
+           disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .btn-secondary {
+    @apply bg-anjaninex-navy text-white font-bold rounded-lg px-4 py-2.5 text-sm
+           border-0 cursor-pointer transition hover:bg-anjaninex-navy-dark;
   }
   .btn-line {
-    @apply bg-white text-brand-purple font-bold rounded-xl px-4 py-2.5
-           text-sm border-2 border-brand-purple hover:bg-brand-bg transition;
+    @apply bg-white text-anjaninex-navy font-bold rounded-lg px-4 py-2.5 text-sm
+           border-2 border-anjaninex-navy transition hover:bg-anjaninex-navy-soft;
   }
-  .btn-sm { @apply px-3 py-1.5 text-xs rounded-lg; }
+  .btn-sm { @apply px-3 py-1.5 text-xs; }
 
   .input {
-    @apply w-full border border-brand-line rounded-xl px-3 py-2.5 text-sm
-           bg-white outline-none focus:border-brand-purple transition;
+    @apply w-full px-3.5 py-2.5 text-sm bg-white rounded-lg outline-none
+           border-[1.5px] border-[color:var(--ax-border)]
+           focus:border-anjaninex-navy transition;
   }
   .label {
     @apply block text-[11px] font-extrabold tracking-wide uppercase
-           text-brand-muted mb-1.5;
+           text-[color:var(--ax-muted)] mb-1.5;
   }
 
   .card {
-    @apply bg-white rounded-2xl p-4 shadow-[0_1px_3px_rgba(0,0,0,.06)];
+    @apply bg-white rounded-xl p-4 shadow-[0_2px_20px_rgba(27,46,92,0.08)];
   }
-  .page-top-bar {
-    @apply flex gap-2.5 flex-wrap items-center mb-3.5;
-  }
-  .chip {
-    @apply text-[10px] font-extrabold px-2 py-0.5 rounded-full;
-  }
+  .page-top-bar { @apply flex gap-2.5 flex-wrap items-center mb-3; }
+  .chip { @apply text-[10px] font-extrabold px-2 py-0.5 rounded-full; }
+
+  /* Card ke upar rang ki patti — dashboard wale tiles jaisa */
+  .card-top-red   { @apply border-t-4 border-anjaninex-red; }
+  .card-top-navy  { @apply border-t-4 border-anjaninex-navy; }
+  .card-top-green { @apply border-t-4 border-emerald-600; }
 }
 
 /* Print — sidebar/header hata do, sirf kaagaz chhape.
-   Wahi tarika jo agency app me chal raha hai (visibility, position:absolute)
-   kyunki content kai overflow-hidden layer ke andar band hota hai. */
+   Wahi tarika jo agency app me chal raha hai: content kai overflow-hidden
+   layer me band hota hai, isliye usse ladne ki jagah use bahar nikaal lete hain. */
 @media print {
   body * { visibility: hidden !important; }
   mfg-shell main, mfg-shell main * { visibility: visible !important; }
@@ -56,10 +83,4 @@
   mfg-shell main .no-print,
   mfg-shell main .page-top-bar,
   mfg-shell main button { display: none !important; }
-}
-
-html, body { height: 100%; }
-body {
-  @apply bg-brand-bg text-slate-800 font-sans antialiased;
-  margin: 0;
 }

@@ -16,9 +16,9 @@ const JOB_TYPES = ['Cutting', 'Silai / Stitching', 'Finishing', 'Dyeing / Rangai
     <div class="page-top-bar">
       <input class="input max-w-[280px]" placeholder="🔍 naam ya mobile se dhoondho"
              [(ngModel)]="search" (ngModelChange)="load()">
-      <label class="flex items-center gap-2 text-xs text-brand-muted font-bold">
+      <label class="flex items-center gap-2 text-xs text-gray-500 font-bold">
         <input type="checkbox" [(ngModel)]="showBand" (ngModelChange)="load()"
-               class="w-4 h-4 accent-[#5c1a8b]">
+               class="w-4 h-4 accent-[#1B2E5C]">
         band kiye hue bhi dikhao
       </label>
       @if (auth.can('masters.karigar.create.firm')) {
@@ -27,18 +27,18 @@ const JOB_TYPES = ['Cutting', 'Silai / Stitching', 'Finishing', 'Dyeing / Rangai
     </div>
 
     @if (err()) {
-      <div class="card border-l-4 border-brand-bad text-brand-bad text-sm mb-3">{{ err() }}</div>
+      <div class="card border-l-4 border-anjaninex-red text-anjaninex-red text-sm mb-3">{{ err() }}</div>
     }
 
     @if (loading()) {
-      <div class="text-center text-brand-muted py-10 text-sm">Ruk jaiye…</div>
+      <div class="text-center text-gray-500 py-10 text-sm">Ruk jaiye…</div>
     } @else if (rows().length === 0) {
       <div class="text-center text-slate-400 py-10 text-sm">Koi karigar nahi mila</div>
     } @else {
       <div class="space-y-2">
         @for (k of rows(); track k.id) {
           <div class="card flex gap-3 items-center" [class.opacity-60]="!k.isActive">
-            <div class="w-11 h-11 rounded-xl bg-brand-bg grid place-items-center text-xl">🧑‍🏭</div>
+            <div class="w-11 h-11 rounded-xl bg-anjaninex-navy-soft grid place-items-center text-xl">🧑‍🏭</div>
             <div class="flex-1 min-w-0">
               <div class="font-bold text-sm">
                 {{ k.name }}
@@ -53,15 +53,15 @@ const JOB_TYPES = ['Cutting', 'Silai / Stitching', 'Finishing', 'Dyeing / Rangai
             </div>
             <div class="text-right shrink-0">
               @if (k.majooriBaki > 0) {
-                <div class="font-extrabold text-brand-bad">₹{{ k.majooriBaki | number:'1.0-0' }}</div>
+                <div class="font-extrabold text-anjaninex-red">₹{{ k.majooriBaki | number:'1.0-0' }}</div>
                 <div class="text-[11px] text-slate-500">majoori baki</div>
               } @else {
-                <div class="text-[11px] font-bold text-brand-ok">khata saaf</div>
+                <div class="text-[11px] font-bold text-emerald-700">khata saaf</div>
               }
               @if (auth.can('masters.karigar.edit.firm')) {
                 <div class="flex gap-2 justify-end mt-1.5">
-                  <button class="text-[11px] font-bold text-brand-purple" (click)="openEdit(k)">BADLO</button>
-                  <button class="text-[11px] font-bold text-brand-bad" (click)="toggle(k)">
+                  <button class="text-[11px] font-bold text-anjaninex-navy" (click)="openEdit(k)">BADLO</button>
+                  <button class="text-[11px] font-bold text-anjaninex-red" (click)="toggle(k)">
                     {{ k.isActive ? 'BAND KARO' : 'CHALU KARO' }}</button>
                 </div>
               }
@@ -77,11 +77,11 @@ const JOB_TYPES = ['Cutting', 'Silai / Stitching', 'Finishing', 'Dyeing / Rangai
            (click)="form.set(null)">
         <div class="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-auto p-5"
              (click)="$event.stopPropagation()">
-          <h3 class="font-extrabold text-brand-purple text-lg mb-3">
+          <h3 class="font-extrabold text-anjaninex-navy text-lg mb-3">
             {{ editId() ? 'Karigar badlo' : 'Naya karigar' }}</h3>
 
           @if (formErr()) {
-            <div class="text-brand-bad text-sm font-bold mb-3">{{ formErr() }}</div>
+            <div class="text-anjaninex-red text-sm font-bold mb-3">{{ formErr() }}</div>
           }
 
           <div class="grid grid-cols-2 gap-3">

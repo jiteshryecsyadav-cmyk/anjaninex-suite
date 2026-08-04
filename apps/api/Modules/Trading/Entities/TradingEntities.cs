@@ -81,6 +81,29 @@ public class Item
     public string? Notes { get; set; }
     public bool IsActive { get; set; } = true;
     public DateTimeOffset CreatedAt { get; set; }
+
+    // ── Manufacturer wale khaane (db/init/117) ──
+    // Design aur material ke liye alag table nahi banayi: order/challan/invoice
+    // ki har line isi par tikti hai. Do table hote to har jagah "ye design hai
+    // ya item" ka do rasta rakhna padta aur ek din dono ka stock alag ho jata.
+
+    /// <summary>design = jo hum banate hain · material = kachcha maal · other = purana data</summary>
+    [MaxLength(20)] public string ItemKind { get; set; } = "other";
+
+    public string? PhotoUrl { get; set; }
+    /// <summary>Material ki list me gol nishaan — naam padhne se pehle aankh pehchan le.</summary>
+    [MaxLength(9)] public string? ColourHint { get; set; }
+
+    /// <summary>Stock isse kam ho to chetavni — maal khatam hone se PEHLE.</summary>
+    [Column(TypeName = "numeric(14,3)")] public decimal? MinStockQty { get; set; }
+    /// <summary>Buyer isse kam ka order na de sake (sirf apni online dukan par).</summary>
+    [Column(TypeName = "numeric(14,3)")] public decimal? MinOrderQty { get; set; }
+    /// <summary>Set me bikta hai to ek set me kitne piece.</summary>
+    public short? SetPieces { get; set; }
+    public bool ShowOutOfStock { get; set; }
+
+    [Column(TypeName = "numeric(12,2)")] public decimal? SamplePrice { get; set; }
+    public string? SampleSource { get; set; }
 }
 
 public class Bill

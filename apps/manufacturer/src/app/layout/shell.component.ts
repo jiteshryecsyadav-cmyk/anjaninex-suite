@@ -158,7 +158,7 @@ export class ShellComponent {
       { label: 'Track Jobslip Lots', icon: '🔍', path: '/production/lots',    perm: 'production.jobslip.view.place', soon: true }
     ]},
     { title: '📦 Manage Stock', items: [
-      { label: 'Design / Material', icon: '🎨', path: '/stock/items',    perm: 'stock.design.view.firm', soon: true },
+      { label: 'Design / Material', icon: '🎨', path: '/stock/items',    perm: 'stock.design.view.firm' },
       { label: 'Opening Stock',     icon: '🏁', path: '/stock/opening',  perm: 'stock.design.edit.firm', soon: true },
       { label: 'Stock Transfer',    icon: '🔀', path: '/stock/transfer', perm: 'stock.design.edit.firm', soon: true }
     ]},

@@ -52,6 +52,12 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./modules/masters/parties.component').then(m => m.PartiesComponent)
       },
+      {
+        path: 'stock/items',
+        canActivate: [requirePermission('stock.design.view.firm')],
+        loadComponent: () =>
+          import('./modules/stock/items.component').then(m => m.ItemsComponent)
+      },
       // Baaki screen aage — sidebar me "aage" likha dikhta hai.
       // Anjaan rasta bhi landing par hi jaye, kisi fix screen par nahi.
       { path: '**', pathMatch: 'full', canActivate: [landingRedirect], children: [] }

@@ -30,7 +30,7 @@ const LANDING: { perm: string; path: string }[] = [
  */
 const READY = new Set<string>([
   '/masters/karigars', '/masters/agents', '/masters/godowns',
-  '/masters/customers', '/masters/suppliers'
+  '/masters/customers', '/masters/suppliers', '/stock/items'
 ]);
 
 export const landingRedirect: CanActivateFn = () => {

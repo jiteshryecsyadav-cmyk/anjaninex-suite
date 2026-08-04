@@ -33,7 +33,7 @@ const READY = new Set<string>([
   '/masters/customers', '/masters/suppliers', '/stock/items',
   '/production/jobslip',
   '/purchase/po', '/purchase/inward', '/purchase/return',
-  '/sales/order', '/sales/challan'
+  '/sales/order', '/sales/challan', '/sales/invoice'
 ]);
 
 export const landingRedirect: CanActivateFn = () => {

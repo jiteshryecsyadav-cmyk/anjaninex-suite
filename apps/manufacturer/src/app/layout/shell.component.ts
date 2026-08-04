@@ -144,7 +144,7 @@ export class ShellComponent {
     { title: '🧾 Sales & Delivery', items: [
       { label: 'Sales Order',      icon: '📄', path: '/sales/order',    perm: 'sales.order.view.place' },
       { label: 'Delivery Challan', icon: '🚚', path: '/sales/challan',  perm: 'sales.challan.view.place' },
-      { label: 'Tax Invoice',      icon: '🧮', path: '/sales/invoice',  perm: 'sales.invoice.view.place', soon: true },
+      { label: 'Tax Invoice',      icon: '🧮', path: '/sales/invoice',  perm: 'sales.invoice.view.place' },
       { label: 'Sales Return',     icon: '↩️', path: '/sales/return',   perm: 'sales.sreturn.view.place', soon: true }
     ]},
     { title: '🛒 Purchase & Inwards', items: [

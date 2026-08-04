@@ -71,6 +71,12 @@ export const routes: Routes = [
           import('./modules/sales/challans.component').then(m => m.ChallansComponent)
       },
       {
+        path: 'sales/invoice',
+        canActivate: [requirePermission('sales.invoice.view.place')],
+        loadComponent: () =>
+          import('./modules/sales/invoices.component').then(m => m.InvoicesComponent)
+      },
+      {
         path: 'purchase/po',
         canActivate: [requirePermission('purchase.po.view.place')],
         loadComponent: () =>

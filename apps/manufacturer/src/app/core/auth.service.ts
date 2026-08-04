@@ -17,6 +17,8 @@ interface ApiUserInfo {
   roles: string[];
   permissions: string[];
   agentId: string | null;
+  /** agency | manufacturer | transport | buyer | both */
+  businessKind: string;
 }
 interface ApiFirmChoice { firmId: string; firmName: string; }
 interface ApiLoginResponse {
@@ -37,6 +39,8 @@ export interface Session {
   firmName: string;
   roles: string[];
   permissions: string[];
+  /** agency | manufacturer | transport | buyer | both */
+  businessKind: string;
 }
 
 export interface FirmChoice { firmId: string; firmName: string; }
@@ -91,7 +95,8 @@ export class AuthService {
       // aata hai. Tab tak khali; shell me user ka naam hi kaafi hai.
       firmName: '',
       roles: u.roles ?? [],
-      permissions: u.permissions ?? []
+      permissions: u.permissions ?? [],
+      businessKind: u.businessKind ?? 'agency'
     };
   }
 
@@ -99,6 +104,49 @@ export class AuthService {
     localStorage.setItem(AuthService.TOKEN, s.token);
     localStorage.setItem(AuthService.USER, JSON.stringify(s));
     this.user.set(s);
+    this.sendToOwnApp(s.businessKind);
+  }
+
+  /**
+   * Agency ka aadmi galti se yahan login kar le to usko agency app par bhej do.
+   * Warna wo manufacturer ki screen dekhta rehta — jinme uska koi data hi nahi
+   * hoga — aur samajhta ki app khali hai.
+   */
+  private sendToOwnApp(kind: string): void {
+    if (kind === 'manufacturer' || kind === 'both') return;
+
+    const base = 'vyaparsetu.anjaninex.com';
+    if (!location.hostname.endsWith(base)) return;   // dev/local par kuch mat karo
+
+    const sub: Record<string, string> = { transport: 'transport.', buyer: 'buyer.' };
+    location.replace(`https://${sub[kind] ?? ''}${base}/`);
+  }
+
+  /**
+   * BINA DOBARA LOGIN ke andar aane ki koshish.
+   *
+   * Login sabka ek hi jagah hota hai (vyaparsetu.anjaninex.com). MFG firm ka
+   * aadmi wahan se yahan bheja jata hai — par uska token us domain ki storage
+   * me hai, yahan nahi. Bina iske wo yahan pahunch kar phir se id/password
+   * maangta dikhta, aur usko lagta ki kuch toota hua hai.
+   *
+   * Refresh cookie ".vyaparsetu.anjaninex.com" par lagti hai, isliye yahan bhi
+   * pahunchti hai. Usi se naya token maang lete hain.
+   */
+  trySilentLogin() {
+    return this.http.post<ApiLoginResponse>(
+      `${environment.apiUrl}/api/auth/refresh`, {}, { withCredentials: true }
+    ).pipe(
+      map(r => {
+        if (!r.user) throw new Error('no session');
+        const s = this.toSession(r);
+        // Yahan setSession nahi — wo dobara redirect chala deta
+        localStorage.setItem(AuthService.TOKEN, s.token);
+        localStorage.setItem(AuthService.USER, JSON.stringify(s));
+        this.user.set(s);
+        return s;
+      })
+    );
   }
 
   /** Firm ka naam baad me mile to session me chipka do (shell me dikhta hai). */

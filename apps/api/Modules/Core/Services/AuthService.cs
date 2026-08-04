@@ -34,7 +34,15 @@ public record UserInfoDto(
     bool CanViewAllBranches,
     List<string> Roles,
     List<string> Permissions,
-    Guid? AgentId = null);
+    Guid? AgentId = null,
+    /// <summary>
+    /// Firm ka dhandha: agency | manufacturer | transport | buyer | both.
+    /// Frontend isse tay karta hai ki aadmi sahi app me hai ya nahi — MFG firm
+    /// ka aadmi agency app me ghus jaye to usko manufacturer app par bhej dete
+    /// hain. Iske bina wo agency ki screen dekhta rehta tha aur samajh hi nahi
+    /// aata tha ki uska app kahan hai.
+    /// </summary>
+    string BusinessKind = "agency");
 
 public class AuthFailedException : Exception
 {
@@ -178,7 +186,23 @@ public class AuthService : IAuthService
                 user.CanViewAllBranches,
                 roles,
                 perms.ToList(),
-                user.AgentId));
+                user.AgentId,
+                await GetBusinessKind(user.FirmId)));
+    }
+
+    /// <summary>
+    /// Firm ka dhandha. Iske bina MFG firm ka aadmi agency app me ghus jata hai
+    /// aur usko wahi purani screen dikhti rehti hai — apna app kahan hai, ye
+    /// pata hi nahi chalta.
+    /// </summary>
+    private async Task<string> GetBusinessKind(Guid? firmId)
+    {
+        if (firmId is null) return "agency";   // super admin ki koi firm nahi hoti
+        var kind = await _db.Firms.IgnoreQueryFilters()
+            .Where(f => f.Id == firmId)
+            .Select(f => f.BusinessKind)
+            .FirstOrDefaultAsync();
+        return string.IsNullOrWhiteSpace(kind) ? "agency" : kind;
     }
 
     // Ek hi bande ke (same phone/email/username) alag-alag firms ke ACTIVE logins.
@@ -275,7 +299,8 @@ public class AuthService : IAuthService
             new UserInfoDto(
                 user.Id, user.FirmId, user.Username, user.FullName,
                 user.Email, user.Phone, user.DefaultBranchId,
-                user.CanViewAllBranches, roles, perms.ToList(), user.AgentId));
+                user.CanViewAllBranches, roles, perms.ToList(), user.AgentId,
+                await GetBusinessKind(user.FirmId)));
     }
 
     public async Task Logout(Guid sessionId)
@@ -293,7 +318,8 @@ public class AuthService : IAuthService
         return new UserInfoDto(
             user.Id, user.FirmId, user.Username, user.FullName,
             user.Email, user.Phone, user.DefaultBranchId,
-            user.CanViewAllBranches, roles, perms.ToList(), user.AgentId);
+            user.CanViewAllBranches, roles, perms.ToList(), user.AgentId,
+            await GetBusinessKind(user.FirmId));
     }
 
     private async Task<List<string>> GetUserRoles(Guid userId)

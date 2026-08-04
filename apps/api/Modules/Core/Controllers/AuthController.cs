@@ -34,8 +34,33 @@ public class AuthController : ControllerBase
         SameSite = SameSiteMode.Strict,
         IsEssential = true,
         Path = "/api/auth",
+        Domain = SharedCookieDomain(),
         Expires = remember ? DateTimeOffset.UtcNow.AddDays(days) : null
     };
+
+    /// <summary>
+    /// Cookie ko PAAS wale app tak bhi pahunchana hai.
+    ///
+    /// Login sabka ek hi jagah hota hai (vyaparsetu.anjaninex.com), par MFG firm
+    /// ka aadmi wahan se mfg.vyaparsetu.anjaninex.com par bheja jata hai. Cookie
+    /// par Domain na ho to wo sirf usi host ki rehti hai — aur naye app par
+    /// pahunchte hi aadmi ko DOBARA login karna padta hai.
+    ///
+    /// Isliye ".vyaparsetu.anjaninex.com" par rakhte hain — ek hi ghar ke saare
+    /// app use padh sakte hain. Bahar koi nahi (Domain sirf apne suffix par
+    /// lag sakta hai, kisi aur site par nahi).
+    ///
+    /// localhost / IP par null — wahan Domain lagane se cookie girti hi nahi.
+    /// </summary>
+    private string? SharedCookieDomain()
+    {
+        var host = HttpContext.Request.Host.Host;
+        const string shared = "vyaparsetu.anjaninex.com";
+        if (host.Equals(shared, StringComparison.OrdinalIgnoreCase) ||
+            host.EndsWith("." + shared, StringComparison.OrdinalIgnoreCase))
+            return "." + shared;
+        return null;
+    }
 
     /// Refresh/switch ke waqt bhi "yaad rakho" wali baat pata honi chahiye, warna
     /// pehli hi refresh par cookie session-cookie ban kar wapas gir jati.
@@ -52,10 +77,12 @@ public class AuthController : ControllerBase
                 SameSite = SameSiteMode.Strict,
                 IsEssential = true,
                 Path = "/api/auth",
+                Domain = SharedCookieDomain(),
                 Expires = DateTimeOffset.UtcNow.AddDays(90)
             });
         else
-            Response.Cookies.Delete(RememberCookieName, new CookieOptions { Path = "/api/auth" });
+            Response.Cookies.Delete(RememberCookieName,
+                new CookieOptions { Path = "/api/auth", Domain = SharedCookieDomain() });
     }
 
     /// <summary>
@@ -126,7 +153,11 @@ public class AuthController : ControllerBase
         {
             await _auth.Logout(sessionId);
         }
-        Response.Cookies.Delete(RefreshCookieName, new CookieOptions { Path = "/api/auth" });
+        // Domain wahi dena zaroori hai jispar cookie lagi thi — warna delete
+        // ek doosri (host-only) cookie ko dhoondta hai aur asli wahin padi
+        // reh jati hai. Aadmi "logout" dabata hai par andar hi rehta hai.
+        Response.Cookies.Delete(RefreshCookieName,
+            new CookieOptions { Path = "/api/auth", Domain = SharedCookieDomain() });
         MarkRemembered(false);   // khud logout kiya hai to yaad bhi mat rakho
         return NoContent();
     }

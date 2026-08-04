@@ -1,16 +1,24 @@
 import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
 import { HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
-import { catchError, throwError } from 'rxjs';
+import { catchError, map, of, throwError } from 'rxjs';
 import { AuthService } from './auth.service';
 
-/** Login kiye bina koi screen nahi khulti. */
+/**
+ * Login kiye bina koi screen nahi khulti — PAR pehle chup-chaap koshish
+ * karte hain. Aadmi agency wale login page se yahan bheja gaya hoga aur
+ * uski refresh cookie yahan bhi pahunchti hai. Bina is koshish ke usko
+ * dobara id/password daalna padta.
+ */
 export const authGuard: CanActivateFn = () => {
   const auth = inject(AuthService);
   const router = inject(Router);
   if (auth.isLoggedIn()) return true;
-  router.navigate(['/login']);
-  return false;
+
+  return auth.trySilentLogin().pipe(
+    map(() => true),
+    catchError(() => { router.navigate(['/login']); return of(false); })
+  );
 };
 
 /**

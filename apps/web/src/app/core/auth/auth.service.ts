@@ -16,6 +16,8 @@ export interface User {
   canViewAllBranches: boolean;
   roles: string[];
   permissions: string[];
+  /** agency | manufacturer | transport | buyer | both — firm ka dhandha */
+  businessKind?: string;
 }
 
 export interface FirmChoice { firmId: string; firmName: string; }
@@ -214,6 +216,39 @@ export class AuthService {
     // Refresh token NOT stored in JS — API sets HttpOnly cookie
     // Only the (non-sensitive) user object goes to sessionStorage for UX
     sessionStorage.setItem('user', JSON.stringify(res.user));
+    this.sendToOwnApp(res.user?.businessKind);
+  }
+
+  /**
+   * Galat app me utar gaye to sahi wale par bhej do.
+   *
+   * Manufacturer firm ka aadmi yahan (agency app me) login karta tha to usko
+   * agency ki screen dikhne lagti thi — Core Master, Trading — jinka uske
+   * dhandhe se koi lena-dena nahi. Aur usko pata bhi nahi chalta tha ki uska
+   * apna app kahin aur hai.
+   *
+   * 'both' wali firm dono kar sakti hai, isliye usko yahin rehne dete hain.
+   */
+  private sendToOwnApp(kind?: string): void {
+    if (!kind || kind === 'agency' || kind === 'both') return;
+
+    const host = location.hostname;
+    const target: Record<string, string> = {
+      manufacturer: 'mfg',
+      transport:    'transport',
+      buyer:        'buyer'
+    };
+    const sub = target[kind];
+    if (!sub) return;
+
+    // Pehle se sahi app me hain? (mfg.vyaparsetu… par 'mfg.' se shuru hoga)
+    if (host.startsWith(sub + '.')) return;
+
+    // Sirf apne hi domain ke andar bhejte hain — kisi bahar ki jagah nahi
+    const base = 'vyaparsetu.anjaninex.com';
+    if (!host.endsWith(base)) return;
+
+    location.replace(`https://${sub}.${base}/`);
   }
 
   private clearSession(): void {

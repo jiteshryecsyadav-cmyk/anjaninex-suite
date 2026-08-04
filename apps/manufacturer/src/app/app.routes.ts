@@ -27,6 +27,13 @@ export const routes: Routes = [
       // Warna Godown wala/Salesman app kholte hi rok wale pardah par pahunchte the.
       { path: '', pathMatch: 'full', canActivate: [landingRedirect], children: [] },
 
+      // ── DASHBOARD ── (koi permission nahi — har kisi ko khulta hai)
+      {
+        path: 'dashboard',
+        loadComponent: () =>
+          import('./modules/dashboard/dashboard.component').then(m => m.DashboardComponent)
+      },
+
       // ── SALES ──
       {
         path: 'sales', data: { section: 'sales' }, loadComponent: shell,

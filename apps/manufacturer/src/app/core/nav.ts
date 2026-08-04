@@ -28,6 +28,11 @@ export interface NavSection {
 
 export const SECTIONS: NavSection[] = [
   {
+    // Dashboard ke andar koi tab nahi — patti dikhti hi nahi. Har kisi ko
+    // khulta hai, isliye permission par nahi baandha.
+    key: 'dashboard', title: 'Dashboard', icon: '📊', path: '/dashboard', tabs: []
+  },
+  {
     key: 'sales', title: 'Sales & Delivery', icon: '🧾', path: '/sales',
     tabs: [
       { path: '/sales/order',   icon: '📄', label: 'Sales Order',      perm: 'sales.order.view.place' },

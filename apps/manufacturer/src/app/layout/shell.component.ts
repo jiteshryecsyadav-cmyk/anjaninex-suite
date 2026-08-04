@@ -60,10 +60,14 @@ interface NavLine {
           }
         </nav>
 
-        <button (click)="auth.logout()"
-                class="m-3 text-xs font-bold text-white/70 hover:text-white
-                       hover:bg-white/10 py-2 rounded-lg transition">
-          Log out
+        <!-- ⏻ Logout — agency app wala hi glossy square button -->
+        <button (click)="auth.logout()" class="logout-btn" title="Logout">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none"
+               stroke="white" stroke-width="2.6" stroke-linecap="round">
+            <path d="M12 3v8"/>
+            <path d="M6.2 6.3a8 8 0 1 0 11.6 0"/>
+          </svg>
+          <span class="logout-txt">LOGOUT</span>
         </button>
       </aside>
 
@@ -104,19 +108,72 @@ interface NavLine {
           <router-outlet />
         </main>
 
-        <footer class="bg-white border-t border-[color:var(--ax-border)]
-                       px-4 py-1.5 text-[11px] text-gray-500 flex gap-3 shrink-0">
-          <span class="font-mono">Manufacturer</span>
-          <span class="flex-1"></span>
-          <span>Vyapaar Setu — an Anjaninex product</span>
+        <!-- Footer — agency app jaisa. Version stamp sabse zaroori: deploy ke
+             baad "purana dikh raha hai" ki uljhan yahin se sulajhti hai. -->
+        <footer class="flex justify-between items-center gap-3 px-5 py-2 bg-white
+                       border-t-2 border-anjaninex-navy text-xs text-anjaninex-navy shrink-0">
+          <div class="flex items-center gap-2 flex-wrap">
+            <span class="font-mono bg-anjaninex-navy-soft text-anjaninex-navy px-2 py-0.5 rounded"
+                  title="Is browser me kaunsa build chal raha hai">v{{ version }}</span>
+            <span class="opacity-50">·</span>
+            <span>© 2026 {{ auth.user()?.firmName || 'Anjaninex' }}</span>
+            <span class="opacity-50">·</span>
+            <a href="https://vyaparsetu.anjaninex.com/about.html" target="_blank" rel="noopener"
+               class="hover:text-anjaninex-red">About</a>
+            <a href="https://vyaparsetu.anjaninex.com/contact.html" target="_blank" rel="noopener"
+               class="hover:text-anjaninex-red">Contact</a>
+            <a href="https://vyaparsetu.anjaninex.com/privacy.html" target="_blank" rel="noopener"
+               class="hover:text-anjaninex-red">Privacy</a>
+            <a href="https://vyaparsetu.anjaninex.com/terms.html" target="_blank" rel="noopener"
+               class="hover:text-anjaninex-red">Terms</a>
+            <a href="https://vyaparsetu.anjaninex.com/refund.html" target="_blank" rel="noopener"
+               class="hover:text-anjaninex-red">Refund</a>
+            <span class="opacity-50">·</span>
+            <a href="tel:9511540583"
+               class="hover:text-anjaninex-red font-semibold whitespace-nowrap">📞 9511540583</a>
+          </div>
+          <a [href]="anjaninexUrl" target="_blank" rel="noopener"
+             class="flex items-center gap-2 hover:text-anjaninex-red font-semibold whitespace-nowrap">
+            <strong>Vyapaar Setu</strong> — an Anjaninex product
+          </a>
         </footer>
       </div>
     </div>
-  `
+  `,
+  styles: [`
+    /* Glossy LOGOUT — agency app se hu-ba-hu, taaki dono app ek hi lagen */
+    .logout-btn {
+      position: relative; overflow: hidden;
+      margin: 0 auto 14px; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 1px;
+      width: 48px; height: 48px; border-radius: 11px; border: none; cursor: pointer;
+      background: linear-gradient(180deg, var(--ax-red) 0%, var(--ax-red-dark) 65%, var(--ax-navy-dark) 140%);
+      box-shadow: 0 7px 16px rgba(0,0,0,.45), inset 0 -4px 8px rgba(0,0,0,.3);
+      transition: transform .15s;
+    }
+    /* upar wali shine */
+    .logout-btn::before {
+      content: ''; position: absolute; top: 3px; left: 6px; right: 6px; height: 38%;
+      border-radius: 16px 16px 50% 50%;
+      background: linear-gradient(180deg, rgba(255,255,255,.55), rgba(255,255,255,0));
+      pointer-events: none;
+    }
+    .logout-btn:hover { transform: scale(1.07); }
+    .logout-btn:active { transform: scale(.97); }
+    .logout-btn svg { filter: drop-shadow(0 2px 3px rgba(0,0,0,.45)); }
+    .logout-txt {
+      font-size: 7px; font-weight: 900; color: #fff; letter-spacing: .8px;
+      text-shadow: 0 1px 2px rgba(0,0,0,.45);
+    }
+  `]
 })
 export class ShellComponent {
   auth = inject(AuthService);
   sideOpen = signal(false);
+
+  /** index.html me build ke waqt bhara jata hai (scripts/gen-version.js). */
+  version = (window as any).__APP_VERSION__ ?? '0.0.0';
+  anjaninexUrl = environment.anjaninexUrl;
 
   /** Header ke gol nishaan me pehla akshar — agency app me bhi wahi hai. */
   initial = computed(() =>
@@ -147,6 +204,10 @@ export class ShellComponent {
   lines = computed<NavLine[]>(() =>
     SECTIONS
       .map(s => {
+        // Bina tab wala hissa (Dashboard) — hamesha khulta hai
+        if (s.tabs.length === 0)
+          return { title: s.title, icon: s.icon, path: s.path, soon: false, koiHai: true };
+
         const mile = s.tabs.filter(t => this.auth.can(t.perm));
         return {
           title: s.title, icon: s.icon, path: s.path,

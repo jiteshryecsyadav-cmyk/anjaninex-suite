@@ -59,12 +59,17 @@ export const sectionLanding: CanActivateFn = (route: ActivatedRouteSnapshot) => 
   });
 };
 
+/**
+ * App khulte hi Dashboard — wahi jagah jahan "aaj kya atka hai" ek nazar me
+ * dikh jata hai. Wo har kisi ko khulta hai, isliye LANDING wali chhaanni ab
+ * sirf tab chalti hai jab dashboard hi na khule (aage kabhi band kiya jaye to).
+ */
 export const landingRedirect: CanActivateFn = () => {
   const auth = inject(AuthService);
   const router = inject(Router);
 
   const hit = LANDING.find(l => auth.can(l.perm) && READY.has(l.path));
-  if (hit) return router.createUrlTree([hit.path]);
+  if (hit) return router.createUrlTree(['/dashboard']);
 
   // Kuch bhi nahi khol sakta — saaf batao ki role khali hai
   return router.createUrlTree(['/no-access'], {

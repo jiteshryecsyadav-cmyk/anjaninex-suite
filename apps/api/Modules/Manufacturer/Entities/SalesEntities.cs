@@ -83,6 +83,25 @@ public class DeliveryChallan
     /// <summary>Bill ban chuka to uski id — dobara bill na bane.</summary>
     public Guid? BilledRefId { get; set; }
 
+    // ── Maal nikalne ke BAAD ka hisaab (db/init/128) ──
+
+    /// <summary>
+    /// bheja | raste_me | pahuncha | mila
+    ///
+    /// Chaar hi padaav jaan-boojh kar. Zyada rakhne se koi update hi nahi
+    /// karta aur poora hisaab jhootha ho jata hai.
+    /// </summary>
+    [MaxLength(20)] public string DeliveryStatus { get; set; } = "bheja";
+
+    /// <summary>POD kaagaz ki photo — paisa maangte waqt yahi saboot hai.</summary>
+    public string? PodPhoto { get; set; }
+    [MaxLength(150)] public string? PodReceivedBy { get; set; }
+    public DateOnly? PodAt { get; set; }
+    public string? PodNote { get; set; }
+
+    /// <summary>Transporter ne apni taraf se jo LR diya — hamare LrNo se alag ho sakta hai.</summary>
+    [MaxLength(60)] public string? TransportLr { get; set; }
+
     public Guid? CreatedBy { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 }

@@ -38,7 +38,8 @@ export const SECTIONS: NavSection[] = [
       { path: '/sales/order',   icon: '📄', label: 'Sales Order',      perm: 'sales.order.view.place' },
       { path: '/sales/challan', icon: '🚚', label: 'Delivery Challan', perm: 'sales.challan.view.place' },
       { path: '/sales/invoice', icon: '🧮', label: 'Tax Invoice',      perm: 'sales.invoice.view.place' },
-      { path: '/sales/return',  icon: '↩️', label: 'Sales Return',     perm: 'sales.sreturn.view.place' }
+      { path: '/sales/return',  icon: '↩️', label: 'Sales Return',     perm: 'sales.sreturn.view.place' },
+      { path: '/sales/transport', icon: '🚚', label: 'Logistics', perm: 'sales.challan.view.place' }
     ]
   },
   {

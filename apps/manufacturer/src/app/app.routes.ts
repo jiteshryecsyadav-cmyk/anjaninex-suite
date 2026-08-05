@@ -62,6 +62,12 @@ export const routes: Routes = [
             canActivate: [requirePermission('sales.sreturn.view.place')],
             loadComponent: () =>
               import('./modules/sales/sales-returns.component').then(m => m.SalesReturnsComponent)
+          },
+          {
+            path: 'transport',
+            canActivate: [requirePermission('sales.challan.view.place')],
+            loadComponent: () =>
+              import('./modules/sales/transport.component').then(m => m.TransportComponent)
           }
         ]
       },

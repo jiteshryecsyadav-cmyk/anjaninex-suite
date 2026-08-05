@@ -55,8 +55,8 @@ BEGIN
     PERFORM set_config('app.current_firm_id', '', true);   -- context hai hi nahi
 
     BEGIN
-        INSERT INTO platform.audit_logs (firm_id, action, entity_type)
-        VALUES (NULL, 'jaanch.login', 'test');
+        INSERT INTO platform.audit_logs (firm_id, module, table_name, action)
+        VALUES (NULL, 'core', 'sessions', 'jaanch.login');
         ok := TRUE;
         DELETE FROM platform.audit_logs WHERE action = 'jaanch.login';
     EXCEPTION WHEN insufficient_privilege THEN

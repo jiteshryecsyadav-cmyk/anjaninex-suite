@@ -198,6 +198,7 @@ import { environment } from '../../../environments/environment';
             <!-- ⭐ KEY FEATURES — roz-use na hone wale features EK group me,
                  taaki sidebar saaf rahe. Khula/band localStorage me yaad rehta hai;
                  andar ke kisi page par ho to group khud khula rehta hai. -->
+            <div (mouseenter)="keyFeatHover(true)" (mouseleave)="keyFeatHover(false)">
             <button (click)="toggleKeyFeatures()"
                     class="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-bold text-white/85 hover:text-white hover:bg-white/10">
               <span class="w-5 text-center">⭐</span> Key Features
@@ -240,6 +241,7 @@ import { environment } from '../../../environments/environment';
                 }
               </div>
             }
+            </div>
             }
             <!-- Theme Color picker removed — theme is now fixed per-firm (set by Anjaninex super-admin). -->
           </nav>
@@ -598,9 +600,42 @@ export class ShellComponent {
     localStorage.getItem('ax_keyfeat_open') === '1'
     || ['/plans', '/credil', '/team', '/settings/screen-fields', '/migration', '/complaints']
          .some(p => location.pathname.startsWith(p)));
+  private keyFeatTimer: any = null;
+
   toggleKeyFeatures() {
     this.keyFeaturesOpen.update(v => !v);
     try { localStorage.setItem('ax_keyfeat_open', this.keyFeaturesOpen() ? '1' : '0'); } catch {}
+    this.keyFeatGhadi();
+  }
+
+  /**
+   * Khula group 3 second baad khud band — wahi tareeka jo branch menu me hai.
+   *
+   * Do rok jaan-boojh kar:
+   *   1. Maus group ke upar ho to ghadi ruk jati hai (mouseenter). Warna aadmi
+   *      "Team" par jaate-jaate group band ho jata aur wo chidh jata.
+   *   2. Aadmi already in me se kisi pardah par ho (jaise /team) to band karte
+   *      hi nahi — warna jis line par wo khada hai wahi gayab ho jaye.
+   */
+  private keyFeatGhadi() {
+    if (this.keyFeatTimer) { clearTimeout(this.keyFeatTimer); this.keyFeatTimer = null; }
+    if (!this.keyFeaturesOpen()) return;
+    if (this.keyFeatPardahKhula()) return;
+    this.keyFeatTimer = setTimeout(() => this.keyFeaturesOpen.set(false), 3000);
+  }
+
+  /** Maus upar aaya — ghadi rok do. Hata — dobara chalu. */
+  keyFeatHover(andar: boolean) {
+    if (andar) {
+      if (this.keyFeatTimer) { clearTimeout(this.keyFeatTimer); this.keyFeatTimer = null; }
+    } else {
+      this.keyFeatGhadi();
+    }
+  }
+
+  private keyFeatPardahKhula(): boolean {
+    return ['/plans', '/credil', '/team', '/settings/screen-fields', '/migration', '/complaints']
+      .some(p => location.pathname.startsWith(p));
   }
   // Mobile par sidebar default band (overlay), desktop par khula
   sidebarOpen = signal(window.innerWidth >= 768);
@@ -859,6 +894,10 @@ export class ShellComponent {
   anjaninexUrl = environment.anjaninexUrl;
 
   constructor() {
+    // Page khulte hi group pehle se khula ho (localStorage se yaad) to bhi
+    // ghadi chalu — warna wo hamesha khula pada rehta aur sidebar bhara lagta.
+    this.keyFeatGhadi();
+
     // Day/night dark-mode (user-controlled — unchanged).
     document.body.classList.toggle('dark-mode', this.dark());
 

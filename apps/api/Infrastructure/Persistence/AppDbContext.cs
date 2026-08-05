@@ -174,6 +174,8 @@ public class AppDbContext : DbContext
         => Set<Namokara.Api.Modules.Manufacturer.Entities.StockTransfer>();
     public DbSet<Namokara.Api.Modules.Manufacturer.Entities.StockTransferLine> MfgStockTransferLines
         => Set<Namokara.Api.Modules.Manufacturer.Entities.StockTransferLine>();
+    public DbSet<Namokara.Api.Modules.Manufacturer.Entities.KarigarPayment> MfgKarigarPayments
+        => Set<Namokara.Api.Modules.Manufacturer.Entities.KarigarPayment>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -437,6 +439,8 @@ public class AppDbContext : DbContext
                 .ToTable("stock_transfers", "mfg");
             modelBuilder.Entity<Namokara.Api.Modules.Manufacturer.Entities.StockTransferLine>()
                 .ToTable("stock_transfer_lines", "mfg");
+            modelBuilder.Entity<Namokara.Api.Modules.Manufacturer.Entities.KarigarPayment>()
+                .ToTable("karigar_payments", "mfg");
         }
     }
 }

@@ -78,3 +78,34 @@ public class StockTransferLine
     [Column(TypeName = "numeric(14,3)")] public decimal Qty { get; set; }
     [MaxLength(20)] public string Unit { get; set; } = "Pcs";
 }
+
+/// <summary>
+/// Karigar ko diya hua paisa. Advance bhi yahi — bas <c>IsAdvance</c> sach
+/// hota hai. Alag table ki zarurat nahi: hisaab dono ka ek hi hai, sirf kab
+/// diya wo alag hai.
+/// </summary>
+public class KarigarPayment
+{
+    public Guid Id { get; set; }
+    public Guid FirmId { get; set; }
+    public Guid KarigarId { get; set; }
+    [Required, MaxLength(40)] public string PaymentNo { get; set; } = "";
+
+    public DateOnly PaidOn { get; set; }
+    [Column(TypeName = "numeric(14,2)")] public decimal Amount { get; set; }
+
+    /// <summary>cash | bank | upi | cheque</summary>
+    [MaxLength(20)] public string Mode { get; set; } = "cash";
+    /// <summary>Cheque number / UPI ref / bank ka transaction no.</summary>
+    [MaxLength(60)] public string? RefNo { get; set; }
+
+    /// <summary>Kaam se PEHLE diya paisa.</summary>
+    public bool IsAdvance { get; set; }
+
+    /// <summary>Kis slip ke against — khali bhi chal jata hai (mahine ka hisaab).</summary>
+    public Guid? JobSlipId { get; set; }
+    public string? Note { get; set; }
+
+    public Guid? CreatedBy { get; set; }
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+}

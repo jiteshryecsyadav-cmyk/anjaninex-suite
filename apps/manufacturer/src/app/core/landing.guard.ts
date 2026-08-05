@@ -34,7 +34,8 @@ const READY = new Set<string>([
   '/production/jobslip',
   '/purchase/po', '/purchase/inward', '/purchase/return',
   '/sales/order', '/sales/challan', '/sales/invoice', '/sales/return',
-  '/stock/opening', '/stock/transfer'
+  '/stock/opening', '/stock/transfer',
+  '/production/khata', '/production/lots', '/masters/team'
 ]);
 
 /**

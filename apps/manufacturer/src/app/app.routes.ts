@@ -102,6 +102,18 @@ export const routes: Routes = [
             canActivate: [requirePermission('production.jobslip.view.place')],
             loadComponent: () =>
               import('./modules/production/jobslips.component').then(m => m.JobSlipsComponent)
+          },
+          {
+            path: 'khata',
+            canActivate: [requirePermission('production.khata.view.place')],
+            loadComponent: () =>
+              import('./modules/production/karigar-khata.component').then(m => m.KarigarKhataComponent)
+          },
+          {
+            path: 'lots',
+            canActivate: [requirePermission('production.jobslip.view.place')],
+            loadComponent: () =>
+              import('./modules/production/lots.component').then(m => m.LotsComponent)
           }
         ]
       },
@@ -169,6 +181,12 @@ export const routes: Routes = [
             canActivate: [requirePermission('masters.office.view.firm')],
             loadComponent: () =>
               import('./modules/masters/godowns.component').then(m => m.GodownsComponent)
+          },
+          {
+            path: 'team',
+            canActivate: [requirePermission('masters.team.view.firm')],
+            loadComponent: () =>
+              import('./modules/team/team.component').then(m => m.TeamComponent)
           }
         ]
       },

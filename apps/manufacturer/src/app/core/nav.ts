@@ -53,8 +53,8 @@ export const SECTIONS: NavSection[] = [
     key: 'production', title: 'Manage Production', icon: '🏭', path: '/production',
     tabs: [
       { path: '/production/jobslip', icon: '✂️', label: 'Job Slips',          perm: 'production.jobslip.view.place' },
-      { path: '/production/khata',   icon: '📒', label: 'Karigar Khata Book', perm: 'production.khata.view.place',   soon: true },
-      { path: '/production/lots',    icon: '🔍', label: 'Track Jobslip Lots', perm: 'production.jobslip.view.place', soon: true }
+      { path: '/production/khata',   icon: '📒', label: 'Karigar Khata Book', perm: 'production.khata.view.place' },
+      { path: '/production/lots',    icon: '🔍', label: 'Track Jobslip Lots', perm: 'production.jobslip.view.place' }
     ]
   },
   {
@@ -73,7 +73,7 @@ export const SECTIONS: NavSection[] = [
       { path: '/masters/suppliers', icon: '🚛', label: 'Suppliers',         perm: 'masters.supplier.view.firm' },
       { path: '/masters/agents',    icon: '🤝', label: 'Agents',            perm: 'masters.agent.view.firm' },
       { path: '/masters/godowns',   icon: '🏬', label: 'Offices / Godowns', perm: 'masters.office.view.firm' },
-      { path: '/masters/team',      icon: '🧑‍💼', label: 'Team & Role',       perm: 'masters.team.view.firm', soon: true }
+      { path: '/masters/team',      icon: '🧑‍💼', label: 'Team & Role',       perm: 'masters.team.view.firm' }
     ]
   },
   {

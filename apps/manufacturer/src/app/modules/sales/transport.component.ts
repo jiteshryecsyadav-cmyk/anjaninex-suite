@@ -60,70 +60,73 @@ const HAALAT = [
   imports: [CommonModule, FormsModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <!-- ══ KADAM 1: kis-kis transport ko maal diya ══ -->
+    <!-- KADAM 1: kis-kis logistics ko maal diya -->
     @if (!detail()) {
-      <div class="page-top-bar">
-        <span class="text-xs text-slate-500 font-semibold">
-          Maal kis logistics se gaya, ab kahan hai, aur POD aayi ya nahi
-        </span>
-        @if (kulPodBaki() > 0) {
-          <span class="ml-auto text-sm font-bold text-amber-700">
-            {{ kulPodBaki() }} challan ki POD baki
-          </span>
-        }
-      </div>
+      <div class="max-w-2xl mx-auto">
 
-      @if (err()) {
-        <div class="card border-l-4 border-anjaninex-red text-anjaninex-red text-sm mb-3">{{ err() }}</div>
-      }
-
-      @if (loading()) {
-        <div class="text-center text-gray-500 py-10 text-sm">Ruk jaiye…</div>
-      } @else if (rows().length === 0) {
-        <div class="text-center text-slate-400 py-10 text-sm">
-          Abhi tak koi maal logistics se nahi gaya —
-          Delivery Challan me logistics ka naam likhne se yahan aa jayega
-        </div>
-      } @else {
-        <div class="space-y-2">
-          @for (t of rows(); track t.transport) {
-            <button class="card w-full text-left hover:border-anjaninex-navy transition"
-                    (click)="kholo(t.transport)">
-              <div class="flex gap-3 items-start">
-                <div class="w-11 h-11 rounded-xl bg-amber-50 grid place-items-center text-xl shrink-0">🚚</div>
-                <div class="flex-1 min-w-0">
-                  <div class="font-bold text-sm">{{ t.transport }}</div>
-                  <div class="text-xs text-slate-500">
-                    {{ t.challans }} challan
-                    @if (t.pehla) { · {{ t.pehla | date:'d MMM' }} se }
-                    @if (t.aakhri) { {{ t.aakhri | date:'d MMM y' }} tak }
-                  </div>
-                  <div class="flex gap-3 mt-1.5 flex-wrap text-[11px] font-bold">
-                    @if (t.bheja)    { <span class="text-violet-700">{{ t.bheja }} bheja</span> }
-                    @if (t.rasteMe)  { <span class="text-amber-700">{{ t.rasteMe }} raste me</span> }
-                    @if (t.pahuncha) { <span class="text-sky-700">{{ t.pahuncha }} pahuncha</span> }
-                    @if (t.mila)     { <span class="text-emerald-700">{{ t.mila }} mil gaya</span> }
-                  </div>
-                </div>
-                <div class="text-right shrink-0 text-xs">
-                  <div><b class="text-anjaninex-navy">{{ t.kulMaal | number:'1.0-2' }}</b> maal</div>
-                  <div class="text-slate-500">₹{{ t.kulRakam | number:'1.0-0' }}</div>
-                </div>
-              </div>
-
-              @if (t.podBaki > 0) {
-                <div class="mt-2 px-3 py-1.5 rounded-lg bg-amber-50 text-amber-800 text-xs font-bold">
-                  📸 {{ t.podBaki }} challan ki POD abhi nahi aayi
-                </div>
-              } @else {
-                <div class="mt-2 px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-800 text-xs font-bold">
-                  ✅ Sab maal pahunch gaya, POD bhi aa gayi
-                </div>
-              }
-            </button>
+        <div class="text-center mb-6">
+          <div class="text-2xl font-black text-anjaninex-red">
+            {{ auth.user()?.firmName || 'Manufacturer' }}</div>
+          <p class="text-sm text-slate-500 m-0 mt-1">Logistics chuniye</p>
+          <p class="text-xs text-slate-400 m-0 mt-0.5">
+            Maal kis logistics se gaya, ab kahan hai, aur POD aayi ya nahi
+          </p>
+          @if (kulPodBaki() > 0) {
+            <p class="text-xs font-bold text-amber-700 m-0 mt-2">
+              {{ kulPodBaki() }} challan ki POD abhi baki hai</p>
           }
         </div>
-      }
+
+        @if (err()) {
+          <div class="card border-l-4 border-anjaninex-red text-anjaninex-red text-sm mb-3">{{ err() }}</div>
+        }
+
+        @if (loading()) {
+          <div class="text-center text-gray-500 py-10 text-sm">Ruk jaiye&hellip;</div>
+        } @else if (rows().length === 0) {
+          <div class="bg-white rounded-2xl border border-[color:var(--ax-border)] p-8 text-center">
+            <p class="text-sm text-slate-500 m-0">Abhi tak koi maal logistics se nahi gaya.</p>
+            <p class="text-xs text-slate-400 m-0 mt-1.5">
+              Delivery Challan me logistics ka naam likhte hi wo yahan aa jayega.
+            </p>
+          </div>
+        } @else {
+          <div class="flex flex-col gap-2.5">
+            @for (t of rows(); track t.transport) {
+              <button class="w-full text-left bg-white rounded-xl p-4 transition
+                             border-2 border-[color:var(--ax-border)]
+                             hover:border-anjaninex-navy hover:shadow-md
+                             flex items-center gap-3"
+                      (click)="kholo(t.transport)">
+                <div class="flex-1 min-w-0">
+                  <p class="font-bold text-[15px] text-anjaninex-navy m-0 truncate">
+                    {{ t.transport }}</p>
+                  <p class="text-[11px] text-slate-400 m-0 mt-1">
+                    @if (t.pehla) { {{ t.pehla | date:'d MMM y' }} se }
+                    @if (t.aakhri) { &ndash; {{ t.aakhri | date:'d MMM y' }} }
+                  </p>
+                  <div class="flex gap-3.5 mt-2 flex-wrap text-[11px] font-bold">
+                    <span class="text-emerald-700">
+                      {{ t.challans }} challan</span>
+                    @if (t.rasteMe) {
+                      <span class="text-amber-600">{{ t.rasteMe }} raste me</span>
+                    }
+                    @if (t.mila) {
+                      <span class="text-violet-700">{{ t.mila }} mil gaya</span>
+                    }
+                    @if (t.podBaki) {
+                      <span class="text-anjaninex-red">{{ t.podBaki }} POD baki</span>
+                    }
+                    <span class="text-slate-500">
+                      &#8377;{{ t.kulRakam | number:'1.0-0' }}</span>
+                  </div>
+                </div>
+                <span class="text-slate-300 text-lg shrink-0">&rsaquo;</span>
+              </button>
+            }
+          </div>
+        }
+      </div>
     }
 
     <!-- KADAM 2: ek logistics ka poora hisaab -->

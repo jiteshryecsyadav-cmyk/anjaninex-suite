@@ -55,10 +55,12 @@ BEGIN
     PERFORM set_config('app.current_firm_id', '', true);   -- context hai hi nahi
 
     BEGIN
+        -- `action` varchar(10) hai — lamba naam daala to "value too long"
+        -- se poora migration roll back ho jata hai (ek baar ho chuka)
         INSERT INTO platform.audit_logs (firm_id, module, table_name, action)
-        VALUES (NULL, 'core', 'sessions', 'jaanch.login');
+        VALUES (NULL, 'core', 'sessions', 'jtest');
         ok := TRUE;
-        DELETE FROM platform.audit_logs WHERE action = 'jaanch.login';
+        DELETE FROM platform.audit_logs WHERE action = 'jtest';
     EXCEPTION WHEN insufficient_privilege THEN
         ok := FALSE;
     END;

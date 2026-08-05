@@ -84,3 +84,23 @@ body {
   mfg-shell main .page-top-bar,
   mfg-shell main button { display: none !important; }
 }
+
+/* ---------------------------------------------------------------------------
+   CARET BROWSING (F7) — galti se on ho jaye to app toota hua lagta hai
+   ---------------------------------------------------------------------------
+   Browser ka F7 wala "caret browsing" saade text par bhi blinking cursor daal
+   deta hai — heading par, list par, footer par. Aadmi ko lagta hai kuch bigad
+   gaya, ya wo galti se text badal raha hai.
+
+   Do rok lagayi hain:
+     1. Yahan CSS se — text par caret chhupa do. Jahan SACH ME likhna hota hai
+        (input, textarea, contenteditable) wahan wapas dikha do, warna typing
+        karte waqt cursor hi na dikhe — usse bura kuch nahi.
+     2. app.component.ts me F7 khud rok diya jata hai.
+
+   Jisko sach me caret browsing chahiye (padhne me dikkat wale log) wo browser
+   ki Settings → Accessibility se ab bhi chalu kar sakta hai — hum sirf galti
+   se dabne wali F7 rok rahe hain.
+--------------------------------------------------------------------------- */
+body { caret-color: transparent; }
+input, textarea, select, [contenteditable="true"] { caret-color: auto; }

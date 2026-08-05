@@ -1,4 +1,4 @@
-import { Component, NgZone, OnInit, inject } from '@angular/core';
+import { Component, HostListener, NgZone, OnInit, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { UpdateBannerComponent } from './core/version/update-banner.component';
 import { ToastContainerComponent } from './shared/toast-container.component';
@@ -14,6 +14,21 @@ import { ToastContainerComponent } from './shared/toast-container.component';
   `
 })
 export class AppComponent implements OnInit {
+
+  /**
+   * F7 = browser ka "caret browsing". Galti se dab jaye to saade text par
+   * blinking cursor aa jata hai aur app toota hua lagta hai — aadmi ko lagta
+   * hai wo kuch badal raha hai.
+   *
+   * Ye ek business app hai, koi padhne wali website nahi. Jisko sach me
+   * caret browsing chahiye wo browser ki Settings se chalu kar sakta hai —
+   * hum sirf galti se dabne wali key rok rahe hain.
+   */
+  @HostListener('document:keydown', ['$event'])
+  onKeyDown(e: KeyboardEvent) {
+    if (e.key === 'F7') e.preventDefault();
+  }
+
   // In input TYPES par auto Title-Case NAHI hoga
   private static readonly SKIP_TYPES = new Set([
     'email', 'password', 'number', 'tel', 'url', 'date', 'time',

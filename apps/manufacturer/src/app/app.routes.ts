@@ -194,6 +194,11 @@ export const routes: Routes = [
             path: 'complaints',
             loadComponent: () =>
               import('./modules/complaints/complaint-box.component').then(m => m.ComplaintBoxComponent)
+          },
+          {
+            path: 'screen-fields',
+            loadComponent: () =>
+              import('./modules/settings/screen-fields.component').then(m => m.ScreenFieldsComponent)
           }
         ]
       },

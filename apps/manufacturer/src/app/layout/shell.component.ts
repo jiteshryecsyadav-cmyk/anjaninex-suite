@@ -4,6 +4,7 @@ import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { AuthService } from '../core/auth.service';
 import { SECTIONS, tabKhulta } from '../core/nav';
+import { FieldConfigService } from '../shared/field-config.service';
 import { environment } from '../../environments/environment';
 
 /** Sidebar ki ek line = poora ek hissa. Andar ke pardah patti me khulte hain. */
@@ -206,6 +207,11 @@ export class ShellComponent {
     (this.auth.user()?.fullName ?? '?').trim().charAt(0).toUpperCase());
 
   constructor() {
+    // Firm ne kaunse field on/off kiye hain — ek hi baar, app khulte hi.
+    // Iske bina *fld har field ko default par hi dikhata rahega aur Settings
+    // me kiya hua badlaav asar nahi karega.
+    inject(FieldConfigService).load();
+
     // Firm ka naam login ke jawab me nahi aata (wo sirf user ki baat karta hai).
     // Header me "Manufacturer" likha rehta to aadmi ko pata hi nahi chalta ki
     // wo kis firm me baitha hai — khaas kar jiski do firms hain.

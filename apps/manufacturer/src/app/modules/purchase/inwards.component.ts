@@ -5,6 +5,8 @@ import { HttpClient } from '@angular/common/http';
 import { AuthService } from '../../core/auth.service';
 import { environment } from '../../../environments/environment';
 import { todayStr } from '../../core/date.util';
+import { FldDirective } from '../../shared/fld.directive';
+import { FieldConfigService } from '../../shared/field-config.service';
 
 interface InwardLine {
   id?: string; poLineId: string | null; itemId: string | null; itemName?: string;
@@ -35,7 +37,7 @@ const UNITS = ['Meter', 'Kg', 'Pcs', 'Than', 'Roll'];
 @Component({
   selector: 'mfg-inwards',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, FldDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="page-top-bar">
@@ -120,7 +122,8 @@ const UNITS = ['Meter', 'Kg', 'Pcs', 'Than', 'Roll'];
               </select></div>
 
             <!-- PO chunte hi baki lines khud bhar jati hain — yahi is screen ka dil hai -->
-            <div class="col-span-2"><label class="label">Kis order ka maal hai</label>
+            <div class="col-span-2" *fld="'mfg_inward.po_link'">
+              <label class="label">{{ cfg.label('mfg_inward.po_link') }}</label>
               <select class="input" [(ngModel)]="f.poId" (ngModelChange)="poChuna()"
                       [disabled]="!f.partyId">
                 <option [ngValue]="null">— bina PO ke aaya —</option>
@@ -138,11 +141,14 @@ const UNITS = ['Meter', 'Kg', 'Pcs', 'Than', 'Roll'];
             <div><label class="label">Tareekh</label>
               <input class="input" type="date" [(ngModel)]="f.inwardDate"></div>
 
-            <div><label class="label">Unka challan no.</label>
+            <div *fld="'mfg_inward.supplier_challan'">
+              <label class="label" [style.color]="cfg.required('mfg_inward.supplier_challan') ? '#DC2626' : ''">
+                {{ cfg.label('mfg_inward.supplier_challan') }}
+                @if (cfg.required('mfg_inward.supplier_challan')) { * }</label>
               <input class="input" [(ngModel)]="f.supplierChallanNo"></div>
-            <div><label class="label">LR / builty no.</label>
+            <div *fld="'mfg_inward.lr_no'"><label class="label">{{ cfg.label('mfg_inward.lr_no') }}</label>
               <input class="input" [(ngModel)]="f.lrNo"></div>
-            <div><label class="label">Transport</label>
+            <div *fld="'mfg_inward.transport'"><label class="label">{{ cfg.label('mfg_inward.transport') }}</label>
               <input class="input" [(ngModel)]="f.transport"></div>
           </div>
 
@@ -157,9 +163,11 @@ const UNITS = ['Meter', 'Kg', 'Pcs', 'Than', 'Roll'];
                     <option [ngValue]="null">— chuniye —</option>
                     @for (i of items(); track i.id) { <option [ngValue]="i.id">{{ i.name }}</option> }
                   </select></div>
-                <div class="w-24"><label class="label">Rang</label>
+                <div class="w-24" *fld="'mfg_inward.colour'">
+                  <label class="label">{{ cfg.label('mfg_inward.colour') }}</label>
                   <input class="input" [(ngModel)]="l.colour"></div>
-                <div class="w-20"><label class="label">Size</label>
+                <div class="w-20" *fld="'mfg_inward.size'">
+                  <label class="label">{{ cfg.label('mfg_inward.size') }}</label>
                   <input class="input" [(ngModel)]="l.size"></div>
                 @if (!l.poLineId) {
                   <button class="text-anjaninex-red font-bold pb-2.5"
@@ -175,9 +183,11 @@ const UNITS = ['Meter', 'Kg', 'Pcs', 'Than', 'Roll'];
                   </select></div>
                 <div class="w-28"><label class="label">Rate ₹</label>
                   <input class="input" type="number" step="0.01" [(ngModel)]="l.rate"></div>
-                <div class="w-32"><label class="label">Mill ka code</label>
+                <div class="w-32" *fld="'mfg_inward.dealer_code'">
+                  <label class="label">{{ cfg.label('mfg_inward.dealer_code') }}</label>
                   <input class="input" [(ngModel)]="l.dealerCode"></div>
-                <div class="w-28"><label class="label">Lot</label>
+                <div class="w-28" *fld="'mfg_inward.lot_no'">
+                  <label class="label">{{ cfg.label('mfg_inward.lot_no') }}</label>
                   <input class="input" [(ngModel)]="l.lotNo"></div>
                 <div class="flex-1 text-right pb-2">
                   @if (l.pendingThi != null) {
@@ -252,6 +262,8 @@ export class InwardsComponent {
   private http = inject(HttpClient);
   private base = `${environment.apiUrl}/api/mfg`;
   auth = inject(AuthService);
+  /** Firm ne kaunsa field on/off kiya — template isi se poochta hai. */
+  cfg = inject(FieldConfigService);
 
   units = UNITS;
   rows = signal<Inward[]>([]);
@@ -357,6 +369,18 @@ export class InwardsComponent {
   save() {
     const f = this.form();
     if (!f) return;
+    // Firm ne jo field "zaroori" tick kiye hain wo khali na rahein.
+    // Chhupa hua field kabhi zaroori nahi maana jata — jo dikh hi nahi raha
+    // use bharne ko kehna bemaani hai (ye hisaab service ke andar hai).
+    const missing = this.cfg.missingRequired('mfg_inward', {
+      supplier_challan: f.supplierChallanNo, lr_no: f.lrNo,
+      transport: f.transport, note: f.note
+    });
+    if (missing.length) {
+      this.formErr.set(`Ye bharna zaroori hai: ${missing.join(', ')}`);
+      return;
+    }
+
     this.saving.set(true);
     this.formErr.set('');
 

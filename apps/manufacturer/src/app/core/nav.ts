@@ -95,7 +95,8 @@ export const SECTIONS: NavSection[] = [
       { path: '/firm/plans',      icon: '💼', label: 'Plans',         perm: '' },
       { path: '/firm/credil',     icon: '📈', label: 'CREDIL',        perm: '' },
       { path: '/firm/party-chat', icon: '💬', label: 'Party Chat',    perm: '' },
-      { path: '/firm/complaints', icon: '📢', label: 'Complaint Box', perm: '' }
+      { path: '/firm/complaints', icon: '📢', label: 'Complaint Box', perm: '' },
+      { path: '/firm/screen-fields', icon: '🎛️', label: 'Screen & Fields', perm: '' }
     ]
   },
   // Ye teen apne aap me poore module hain (andar apni hi navigation hai),

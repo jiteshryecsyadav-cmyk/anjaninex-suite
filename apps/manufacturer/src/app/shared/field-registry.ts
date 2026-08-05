@@ -1,16 +1,24 @@
 // =============================================================================
-// FIELD REGISTRY — har screen ke fields ka catalog
+// FIELD REGISTRY — manufacturer ki har screen ke fields ka catalog
 // =============================================================================
-// Har firm ki apni zarurat hoti hai: kisi ko "Incentive %" chahiye, kisi ko
-// nahi; koi "Sub Agent" ko "Dalal" bolta hai. Pehle har farmaish par code
-// badalna + deploy karna padta tha. Ab ye catalog aur firm ki settings mil kar
-// screen banate hain.
+// Har karkhane ki apni aadat hoti hai. Kisi ke yahan "Lot number" jaan hai,
+// kisi ne kabhi likha hi nahi. Koi mill ke code ko "Dealer Code" bolta hai,
+// koi "Article No.". Pehle har farmaish par code badalna + deploy karna padta
+// tha. Ab ye catalog aur firm ki settings mil kar screen banate hain.
 //
 // NAYA FIELD JODNA:
-//   1. Yahan ek line jodo (defaultOff: true rakhna — kisi ki screen achanak
-//      na badle; jisko chahiye wo Settings se on kar lega)
+//   1. Yahan ek line jodo — `defaultOff: true` rakhna, taaki kisi ki chalti
+//      hui screen achanak na badle; jisko chahiye wo Settings se on kar lega
 //   2. Us field ke div par  *fld="'screen.key'"  laga do
-//   Bas. Uska tick har firm ke Settings page me apne aap aa jayega.
+//      aur label ki jagah  {{ cfg.label('screen.key') }}
+//   Bas. Uska tick har firm ke "Screen & Fields" me apne aap aa jayega.
+//
+// ⚠️ `key` DB me jata hai — ek baar bana diya to badalna mat, warna jis firm
+//    ne use band kiya tha wo dobara khul jayega.
+//
+// (Agency app ka registry alag hai — usme bill/order/commission wale fields
+//  hain. Keys alag hain, isliye ek hi firm dono app chalaye to bhi takraav
+//  nahi hota.)
 // =============================================================================
 
 export interface FieldDef {
@@ -33,292 +41,234 @@ export interface ScreenDef {
   key: string;
   /** Settings page me dikhne wala naam */
   name: string;
-  /** poori screen band ho sakti hai ya nahi (Master menu se gayab) */
-  canDisable?: boolean;
+  /** Kis hisse ki screen hai — Settings page me isi se group banta hai */
+  group: string;
   fields: FieldDef[];
 }
 
 export const FIELD_REGISTRY: ScreenDef[] = [
-  // ---------------------------------------------------------------------------
-  // AUTO-FILL NIYAM — field nahi, BEHAVIOUR switches (Order/Bill dono par lagte hain)
-  // Tick ON = supplier select hote hi master ka % apne aap bhar jaye.
-  // Scan ka niyam toggle se AZAAD hai: bill par khud likha ho to popup
-  // "Bhar dun?" — Haan par hi bharta hai.
-  // ---------------------------------------------------------------------------
+  // ───────────────────────── SALES ─────────────────────────
   {
-    key: 'auto_fill',
-    name: 'Auto-Fill Niyam (Order/Bill)',
+    key: 'mfg_sales_order', name: 'Sales Order', group: 'Sales & Delivery',
     fields: [
-      { key: 'normal_disc',     label: 'Normal Disc % master se auto bhare',
-        hint: 'ON = supplier select hote hi Party/Group master ka % lag jata hai' },
-      { key: 'exhibition_disc', label: 'Exhibition Disc % master se auto bhare', defaultOff: true,
-        hint: 'OFF = haath se bharo; scan par bill me likha ho to poochh kar bharta hai' }
+      { key: 'party',      label: 'Customer', locked: true },
+      { key: 'order_date', label: 'Tareekh',  locked: true },
+      { key: 'godown',     label: 'Godown' },
+      { key: 'agent',      label: 'Agent', hint: 'Jo grahak laaya' },
+      { key: 'due_at',     label: 'Kab tak dena hai' },
+      { key: 'buyer_ref',  label: 'Grahak ka order no.',
+        hint: 'Wo isi number se poochta hai, hamare SO se nahi' },
+      { key: 'transport',  label: 'Transport' },
+      { key: 'note',       label: 'Note' },
+      { key: 'ratio_box',  label: 'Ratio se lines banao',
+        hint: '"60 piece, S:1 M:2 L:1" wala hisab. Band karoge to lines haath se bharni padengi' },
+      { key: 'colour',     label: 'Rang (line par)' },
+      { key: 'size',       label: 'Size (line par)' }
     ]
   },
-  // ---------------------------------------------------------------------------
-  // BILL ENTRY — Trading › Bill › New/Edit
-  // Hisaab wale fields (CD, Disc, Fold, TCS...) chhupane par unki value 0 maani
-  // jati hai — NET AMT ka hisaab sahi rehta hai, bas wo kat-kut nahi lagti.
-  // Computed fields (GROSS/TAXABLE/NET) locked hain. % + Amount ki jodi ek tick.
-  // ---------------------------------------------------------------------------
   {
-    key: 'bill_entry',
-    name: 'Bill Entry',
+    key: 'mfg_challan', name: 'Delivery Challan', group: 'Sales & Delivery',
     fields: [
-      { key: 'entry_date',      label: 'Entry Date',        hint: 'Auto — aaj ki date' },
-      { key: 'supplier_info',   label: 'Supplier GSTIN/PAN/Address box', hint: 'Supplier chunne par info box' },
-      { key: 'buyer_info',      label: 'Buyer GSTIN/PAN/Address box' },
-      { key: 'case_parcel',     label: 'Case/Parcel/Bale' },
-      { key: 'cd',              label: 'CD % + Amount' },
-      { key: 'normal_disc',     label: 'Normal Disc % + Amount' },
-      { key: 'exhibition_disc', label: 'Exhibition Disc % + Amount', defaultOff: true },
-      { key: 'packing',         label: 'Packing (+/− toggle)', hint: 'Packing/theli ka kharcha — bill me jode ya ghataye' },
-      { key: 'sweet_ls',        label: 'Sweet / L.S',       defaultOff: true },
-      { key: 'fold',            label: 'Fold Less % + Amount', defaultOff: true, hint: 'Textile — gross se less' },
-      { key: 'bank_charge',     label: 'Bank Charge',       defaultOff: true },
-      { key: 'interest',        label: 'Interest Amt',      defaultOff: true },
-      { key: 'insurance',       label: 'Insurance',         defaultOff: true },
-      { key: 'payment_terms',   label: 'Payment Terms' },
-      { key: 'tcs',             label: 'TCS Amt',           defaultOff: true },
-      { key: 'order_status',    label: 'Order Status' },
-      { key: 'transporter_info',label: 'Transporter GST/Mobile' },
-      { key: 'lr_date',         label: 'LR Date' },
-      { key: 'eway',            label: 'E-Way Bill No + Date' },
-      { key: 'remark',          label: 'Remark' }
+      { key: 'party',     label: 'Customer', locked: true },
+      { key: 'godown',    label: 'Godown',   locked: true, hint: 'Stock yahin se ghatega' },
+      { key: 'so_link',   label: 'Kis order ka maal hai',
+        hint: 'Band karoge to baki lines apne aap nahi bharengi' },
+      { key: 'transport', label: 'Transport' },
+      { key: 'lr_no',     label: 'LR / builty no.' },
+      { key: 'vehicle',   label: 'Gaadi number' },
+      { key: 'packages',  label: 'Kitne gathar', hint: 'Grahak piece nahi, gathar ginta hai' },
+      { key: 'note',      label: 'Note' },
+      { key: 'colour',    label: 'Rang (line par)' },
+      { key: 'size',      label: 'Size (line par)' }
     ]
   },
-  // ---------------------------------------------------------------------------
-  // ORDER ENTRY — Trading › Order › New/Edit
-  // ---------------------------------------------------------------------------
   {
-    key: 'order_entry',
-    name: 'Order Entry',
+    key: 'mfg_invoice', name: 'Tax Invoice', group: 'Sales & Delivery',
     fields: [
-      { key: 'supplier_info',   label: 'Supplier GSTIN/PAN/Address box' },
-      { key: 'case_parcel',     label: 'Case/Parcel/Bale' },
-      { key: 'buyer_info',      label: 'Buyer GSTIN/PAN/Address box' },
-      { key: 'cd',              label: 'CD % + Amount' },
-      { key: 'normal_disc',     label: 'Normal Disc % + Amount' },
-      { key: 'exhibition_disc', label: 'Exhibition Disc % + Amount', defaultOff: true },
-      { key: 'supplier_order_no', label: 'Supplier Order No.' },
-      { key: 'supplier_group',  label: 'Supplier Group',    defaultOff: true, hint: 'Firm pakki na ho to group' },
-      { key: 'transporter',     label: 'Transporter' },
-      { key: 'transporter_info',label: 'Transporter GST/Mobile' },
-      { key: 'order_status',    label: 'Order Status' },
-      { key: 'remark',          label: 'Remark' },
-      { key: 'insurance',       label: 'Insurance',         defaultOff: true }
+      { key: 'party',         label: 'Customer',        locked: true },
+      { key: 'bill_date',     label: 'Bill ki tareekh', locked: true },
+      { key: 'discount',      label: 'Discount' },
+      { key: 'other_charges', label: 'Anya kharcha', hint: 'Packing, bhada waghera' },
+      { key: 'round_off',     label: 'Round off' },
+      { key: 'eway',          label: 'E-Way bill no. + tareekh' },
+      { key: 'lr_no',         label: 'LR / builty no.' },
+      { key: 'po_number',     label: 'Grahak ka PO number' },
+      { key: 'notes',         label: 'Note' }
     ]
   },
-  // ---------------------------------------------------------------------------
-  // PAYMENT / RECEIPT — Trading › Payment › New Receipt (bills wali table ke columns)
-  // Column chhupane par uski value 0 rehti hai — NET AMT ka hisaab sahi banta hai,
-  // bas wo kat-kut lagti nahi. GROSS/TAX/NET/PENDING jaise core columns lock hain
-  // (registry me hain hi nahi, isliye kabhi nahi chhupenge).
-  // ---------------------------------------------------------------------------
   {
-    key: 'payment_receipt',
-    name: 'Payment / Receipt',
+    key: 'mfg_sreturn', name: 'Sales Return', group: 'Sales & Delivery',
     fields: [
-      { key: 'rate_diff', label: 'Rate Diff column' },
-      { key: 'bill_disc', label: 'BILL DISC jhalak', hint: 'Bill me diya disc % — sirf dikhata hai, paisa nahi kaatta' },
-      { key: 'dis',       label: 'DIS% + DIS AMT columns' },
-      { key: 'dis2',      label: 'DISC-2 columns (extra kat-kut)', hint: 'Doosri alag discount — paisa kaatti hai, commission balance me ginti hai' },
-      { key: 'interest',  label: 'Interest column',  defaultOff: true },
-      { key: 'adj_amt',   label: 'ADJ AMT column',   defaultOff: true },
-      { key: 'packing',   label: 'Packing column' },
-      { key: 'other',     label: 'Other column',     defaultOff: true },
-      { key: 'gst_mode',  label: 'Before/After GST toggle', hint: 'Kat-kut GST se pehle ya baad' },
-      { key: 'comm_amt',  label: 'Comm Amt column' },
-      { key: 'timing',    label: 'Pay Terms / Due Date / Early-Late columns', hint: 'Payment LATE aayi ya JALDI wala hisaab' }
+      { key: 'party',     label: 'Customer', locked: true },
+      { key: 'godown',    label: 'Godown',   locked: true, hint: 'Maal yahan wapas chadhega' },
+      { key: 'bill',      label: 'Kis bill ka maal hai' },
+      { key: 'reason',    label: 'Kyon wapas aaya', defaultRequired: true },
+      { key: 'effect',    label: 'Paisa kaise (bill me kate / credit note)' },
+      { key: 'transport', label: 'Transport' },
+      { key: 'remark',    label: 'Note' }
     ]
   },
-  // ---------------------------------------------------------------------------
-  // GR ENTRY — Trading › GR › New (goods return)
-  // ---------------------------------------------------------------------------
+
+  // ───────────────────────── PURCHASE ─────────────────────────
   {
-    key: 'gr_entry',
-    name: 'GR Entry (Goods Return)',
+    key: 'mfg_po', name: 'Purchase Order', group: 'Purchase & Inwards',
     fields: [
-      { key: 'transport',   label: 'Transport Name' },
-      { key: 'lr_no',       label: 'Transport / LR No.' },
-      { key: 'remark',      label: 'Remark / Note' },
-      { key: 'effect_mode', label: 'GR Effect on Bill', hint: 'Direct adjustment ya credit note' }
+      { key: 'party',       label: 'Supplier', locked: true },
+      { key: 'order_date',  label: 'Tareekh',  locked: true },
+      { key: 'godown',      label: 'Godown' },
+      { key: 'agent',       label: 'Agent / dalal' },
+      { key: 'due_at',      label: 'Kab tak' },
+      { key: 'transport',   label: 'Transport' },
+      { key: 'note',        label: 'Note' },
+      { key: 'dealer_code', label: 'Mill ka code',
+        hint: 'Mill ke yahan is maal ka apna number — unse baat karte waqt yahi bolte hain' },
+      { key: 'lot_no',      label: 'Lot number' },
+      { key: 'colour',      label: 'Rang (line par)' },
+      { key: 'size',        label: 'Size (line par)' }
     ]
   },
-  // ---------------------------------------------------------------------------
-  // COMMISSION GENERATE — Trading › Commission › Generate
-  // ---------------------------------------------------------------------------
   {
-    key: 'commission_generate',
-    name: 'Commission Generate',
+    key: 'mfg_inward', name: 'Purchase Inward', group: 'Purchase & Inwards',
     fields: [
-      { key: 'buyer_filter', label: 'Buyer filter', hint: 'Sirf ek buyer ke bills par commission' },
-      { key: 'gst_pct',      label: 'GST %' },
-      { key: 'invoice_date', label: 'Invoice Date' }
+      { key: 'party',   label: 'Supplier', locked: true },
+      { key: 'godown',  label: 'Godown',   locked: true, hint: 'Stock yahin badhega' },
+      { key: 'po_link', label: 'Kis order ka maal hai',
+        hint: 'Band karoge to baki lines apne aap nahi bharengi' },
+      { key: 'supplier_challan', label: 'Unka challan no.',
+        hint: 'Milaan me sabse zyada isi ki zarurat padti hai', defaultRequired: true },
+      { key: 'lr_no',       label: 'LR / builty no.' },
+      { key: 'transport',   label: 'Transport' },
+      { key: 'dealer_code', label: 'Mill ka code' },
+      { key: 'lot_no',      label: 'Lot number' },
+      { key: 'note',        label: 'Note' },
+      { key: 'colour',      label: 'Rang (line par)' },
+      { key: 'size',        label: 'Size (line par)' }
     ]
   },
-  // ---------------------------------------------------------------------------
-  // CHEQUE REGISTER — Trading › Cheque Register (handover form)
-  // ---------------------------------------------------------------------------
   {
-    key: 'cheque_register',
-    name: 'Cheque Register',
+    key: 'mfg_preturn', name: 'Purchase Return', group: 'Purchase & Inwards',
     fields: [
-      { key: 'payment_ref', label: 'Payment/Receipt No' },
-      { key: 'bank',        label: 'Bank' },
-      { key: 'cheque_date', label: 'Cheque Date' },
-      { key: 'commission',  label: 'Commission liya? section' },
-      { key: 'remark',      label: 'Remark' }
+      { key: 'party',       label: 'Supplier', locked: true },
+      { key: 'godown',      label: 'Godown',   locked: true },
+      { key: 'inward_link', label: 'Kis inward ka maal hai',
+        hint: 'Chunoge to "itna hi wapas ja sakta hai" ki rok lag jayegi' },
+      { key: 'reason',      label: 'Kyon wapas ja raha hai', defaultRequired: true },
+      { key: 'note',        label: 'Note' },
+      { key: 'colour',      label: 'Rang (line par)' },
+      { key: 'size',        label: 'Size (line par)' }
     ]
   },
-  // ---------------------------------------------------------------------------
-  // BUYER AGENTS — Trading › Master › Buyer Agents
-  // ---------------------------------------------------------------------------
+
+  // ───────────────────────── PRODUCTION ─────────────────────────
   {
-    key: 'buyer_agents',
-    name: 'Buyer Agents',
+    key: 'mfg_jobslip', name: 'Job Slip', group: 'Manage Production',
     fields: [
-      { key: 'phone',     label: 'Phone' },
-      { key: 'city',      label: 'City' },
-      { key: 'share_pct', label: 'Default Share %' },
-      { key: 'notes',     label: 'Notes' },
-      { key: 'payout_ref',   label: 'Payout — Ref No' },
-      { key: 'payout_notes', label: 'Payout — Notes' }
+      { key: 'karigar',   label: 'Karigar', locked: true },
+      { key: 'job_type',  label: 'Kaam',    locked: true },
+      { key: 'lot_no',    label: 'Lot number' },
+      { key: 'godown',    label: 'Godown', hint: 'Isi se material ghatega' },
+      { key: 'due_at',    label: 'Kab tak' },
+      { key: 'note',      label: 'Note' },
+      { key: 'ratio_box', label: 'Ratio se size batwara' },
+      { key: 'taka',      label: 'Taka ki ginti', defaultOff: true,
+        hint: 'Kapda than/taka me aata ho to on karo' },
+      { key: 'rejected',  label: 'Kharab nikle (maal aane par)',
+        hint: 'Inki majoori nahi banti' }
     ]
   },
-  // ---------------------------------------------------------------------------
-  // ITEM / CATEGORY MASTER — Trading › Master › Items
-  // ---------------------------------------------------------------------------
+
+  // ───────────────────────── MASTERS / STOCK ─────────────────────────
   {
-    key: 'item_master',
-    name: 'Item / Category Master',
+    key: 'mfg_karigar', name: 'Karigar', group: 'Masters',
     fields: [
-      { key: 'hsn',  label: 'HSN / SAC Code' },
-      { key: 'unit', label: 'Unit' }
+      { key: 'name',     label: 'Naam',   locked: true },
+      { key: 'mobile',   label: 'Mobile', locked: true },
+      { key: 'job_type', label: 'Kaam kya karta hai', locked: true },
+      { key: 'agent',    label: 'Kis agent ne dilwaya' },
+      { key: 'address',  label: 'Pata' },
+      { key: 'aadhaar',  label: 'Aadhaar', defaultOff: true },
+      { key: 'bank',     label: 'Bank khata', defaultOff: true,
+        hint: 'Majoori bank se deni ho to on karo' },
+      { key: 'rate',     label: 'Majoori ka rate' }
     ]
   },
-  // ---------------------------------------------------------------------------
-  // TRANSPORTER MASTER — Masters › Transporters
-  // ---------------------------------------------------------------------------
   {
-    key: 'transporter_master',
-    name: 'Transporter Master',
+    key: 'mfg_design', name: 'Design / Material', group: 'Manage Stock',
     fields: [
-      { key: 'contact_person',    label: 'Contact Person' },
-      { key: 'whatsapp',          label: 'WhatsApp' },
-      { key: 'gst_no',            label: 'GST No.' },
-      { key: 'pan',               label: 'PAN',               defaultOff: true },
-      { key: 'pincode',           label: 'Pin Code' },
-      { key: 'email',             label: 'Email',             defaultOff: true },
-      { key: 'address',           label: 'Address' },
-      { key: 'contact_mobile',    label: 'Contact Mobile',    defaultOff: true },
-      { key: 'landline',          label: 'Office / Landline', defaultOff: true },
-      { key: 'avg_delivery_days', label: 'Avg Delivery Days', defaultOff: true },
-      { key: 'damage_rate',       label: 'Damage Rate %',     defaultOff: true },
-      { key: 'rating',            label: 'Rating',            defaultOff: true },
-      { key: 'stars',             label: 'Stars',             defaultOff: true },
-      { key: 'remark',            label: 'Remark / Note' }
+      { key: 'name',        label: 'Naam', locked: true },
+      { key: 'code',        label: 'Code' },
+      { key: 'photo',       label: 'Photo' },
+      { key: 'hsn',         label: 'HSN / SAC' },
+      { key: 'tax',         label: 'GST %' },
+      { key: 'colour_hint', label: 'Rang' },
+      { key: 'min_stock',   label: 'Kam se kam stock', hint: 'Isse neeche jaye to chetavni' },
+      { key: 'min_order',   label: 'Kam se kam order' },
+      { key: 'set_pieces',  label: 'Ek set me kitne piece', defaultOff: true },
+      { key: 'sample',      label: 'Sample ka daam', defaultOff: true },
+      { key: 'tags',        label: 'Tag / chhaanni' }
     ]
   },
-  // ---------------------------------------------------------------------------
-  // PARTY MASTER — Trading › Master › Parties (new/edit form)
-  // Naam/GST/Mobile/City jaise pehchan wale field locked hain — inke bina party
-  // ka record hi adhoora hai. Baaki sab firm apni marzi se on/off kare.
-  // ---------------------------------------------------------------------------
   {
-    key: 'party_master',
-    name: 'Party Master',
+    key: 'mfg_party', name: 'Customer / Supplier', group: 'Masters',
     fields: [
-      { key: 'gstin',           label: 'GSTIN' },
-      { key: 'add_to_bazaar',   label: 'Bazaar Link me bhi jodo (tick)', hint: 'Nayi party save hote hi bazaar buyer/supplier bhi ban jaye' },
-      { key: 'pan',             label: 'PAN Number',        defaultOff: true },
-      { key: 'wa_supplier',     label: 'WhatsApp – Supplier' },
-      { key: 'wa_buyer',        label: 'WhatsApp – Buyer' },
-      { key: 'group',           label: 'Group (Sister Firms)' },
-      { key: 'purchase_disc',   label: 'Purchase Disc %',   hint: 'Supplier ka committed disc' },
-      { key: 'supplier_type',   label: 'Supplier Type' },
-      { key: 'buyer_type',      label: 'Buyer Type' },
-      { key: 'wa_extra_role',   label: 'Extra WA – Role',   defaultOff: true },
-      { key: 'wa_extra',        label: 'WhatsApp – Extra',  defaultOff: true },
-      { key: 'udyam',           label: 'Udyam Aadhaar No',  defaultOff: true },
-      { key: 'msme_type',       label: 'MSME Type',         defaultOff: true },
-      { key: 'buyer_agent',     label: 'Buyer Agent',       defaultOff: true, hint: 'Payment guarantee wala agent' },
-      { key: 'agent_share_pct', label: 'Agent Share %',     defaultOff: true },
-      { key: 'sub_agent',       label: 'Sub Agent',         defaultOff: true },
-      { key: 'sub_agent_pct',   label: 'Sub Agent %',       defaultOff: true },
-      { key: 'incentive_pct',   label: 'Incentive %',       defaultOff: true, hint: 'Kuch firms deti hain, kuch nahi' },
-      { key: 'address',         label: 'Address' },
-      { key: 'pincode',         label: 'Pin Code',          hint: 'City/State apne aap bhar jate hain' },
-      { key: 'email',           label: 'Email',             defaultOff: true },
-      { key: 'branch',          label: 'Branch' },
-      { key: 'contact_person',  label: 'Contact Person',    defaultOff: true },
-      { key: 'contact_mobile',  label: 'Contact Mobile',    defaultOff: true },
-      { key: 'landline',        label: 'Office / Landline', defaultOff: true },
-      { key: 'rating',          label: 'Rating',            defaultOff: true },
-      { key: 'stars',           label: 'Stars (1-5)',       defaultOff: true },
-      { key: 'avg_pay_days',    label: 'Avg Pay Days (Buyer)', defaultOff: true },
-      { key: 'return_rate',     label: 'Return Rate %',     defaultOff: true },
-      { key: 'commission_pct',  label: 'Commission %' },
-      { key: 'flag_note',       label: 'Flag / Special Note', defaultOff: true },
-      { key: 'discounts',       label: 'Discounts % (Normal/Special/Exhibition)' },
-      { key: 'credit_limit',    label: 'Credit Limit (₹)' },
-      { key: 'credit_days',     label: 'Credit Days' },
-      { key: 'opening_balance', label: 'Opening Balance' }
+      { key: 'name',         label: 'Naam', locked: true },
+      { key: 'mobile',       label: 'Mobile' },
+      { key: 'gst',          label: 'GST number' },
+      { key: 'address',      label: 'Pata' },
+      { key: 'credit_limit', label: 'Udhaar ki hadd' },
+      { key: 'credit_days',  label: 'Kitne din ka udhaar' },
+      { key: 'discount',     label: 'Discount %' },
+      { key: 'transporter',  label: 'Roz wala transport', defaultOff: true }
     ]
   },
-  // ---------------------------------------------------------------------------
-  // GROUP MASTER (Sister Firms) — Core Master › Group Master
-  // ---------------------------------------------------------------------------
   {
-    key: 'group_master',
-    name: 'Group Master (Sister Firms)',
-    canDisable: true,
+    key: 'mfg_godown', name: 'Office / Godown', group: 'Masters',
     fields: [
-      { key: 'owner_name',      label: 'Owner Name',      locked: true },
-      { key: 'mobile',          label: 'Mobile No',       locked: true },
-      { key: 'whatsapp',        label: 'WhatsApp No' },
-      { key: 'party_type',      label: 'Party Type',      locked: true },
-      { key: 'buyer_type',      label: 'Buyer Type' },
-      { key: 'address1',        label: 'Address 1' },
-      { key: 'address2',        label: 'Address 2',       defaultOff: true, hint: 'Godown / branch ka pata' },
-      { key: 'pincode',         label: 'Pincode',         hint: 'City/State apne aap bhar jate hain' },
-      { key: 'city',            label: 'City' },
-      { key: 'state',           label: 'State' },
-      { key: 'commission_pct',  label: 'Commission %' },
-      { key: 'payment_terms',   label: 'Payment Terms' },
-      { key: 'purchase_disc',   label: 'Purchase Disc %', hint: 'Supplier ka committed disc' },
-      { key: 'normal_disc',     label: 'Normal Disc %' },
-      { key: 'special_disc',    label: 'Special Disc %',  defaultOff: true },
-      { key: 'exhibition_disc', label: 'Exhibition Disc %', defaultOff: true, hint: 'Mele ke dinon ka alag disc' },
-      { key: 'exhibition_from', label: 'Exhibition From', defaultOff: true },
-      { key: 'exhibition_to',   label: 'Exhibition To',   defaultOff: true },
-      { key: 'credit_limit',    label: 'Credit Limit (₹)' },
-      { key: 'credit_days',     label: 'Credit Days' },
-      { key: 'supplier_type',   label: 'Supplier Type' },
-      { key: 'email',           label: 'Email',           defaultOff: true },
-      { key: 'wa_supplier',     label: 'WhatsApp — Supplier', defaultOff: true },
-      { key: 'wa_buyer',        label: 'WhatsApp — Buyer',    defaultOff: true },
-      { key: 'wa_extra',        label: 'Extra WhatsApp',      defaultOff: true },
-      { key: 'wa_extra_role',   label: 'Extra WA — Role',     defaultOff: true },
-      { key: 'sub_agent',       label: 'Sub Agent',       defaultOff: true, hint: 'Beech ka dalal' },
-      { key: 'sub_agent_pct',   label: 'Sub Agent %',     defaultOff: true },
-      { key: 'incentive_pct',   label: 'Incentive %',     defaultOff: true, hint: 'Kuch firms deti hain, kuch nahi' },
-      { key: 'agent_share_pct', label: 'Agent Share %',   defaultOff: true }
+      { key: 'name',    label: 'Naam',   locked: true },
+      { key: 'mobile',  label: 'Mobile', locked: true },
+      { key: 'address', label: 'Pata' },
+      { key: 'photo',   label: 'Photo', defaultOff: true },
+      { key: 'is_main', label: 'MAIN godown' }
+    ]
+  },
+  {
+    key: 'mfg_agent', name: 'Agent', group: 'Masters',
+    fields: [
+      { key: 'name',       label: 'Naam',   locked: true },
+      { key: 'mobile',     label: 'Mobile', locked: true },
+      { key: 'agency',     label: 'Agency ka naam' },
+      { key: 'kind',       label: 'Karigar dilwata hai ya grahak', locked: true },
+      { key: 'address',    label: 'Pata' },
+      { key: 'gst',        label: 'GST number', defaultOff: true },
+      { key: 'commission', label: 'Commission %' }
     ]
   }
 ];
 
-/** screen key → ScreenDef */
-export const SCREEN_BY_KEY = new Map(FIELD_REGISTRY.map(s => [s.key, s]));
+// ── madad ──
 
-/** 'group_master.incentive_pct' → { screen, field } */
+export const SCREEN_BY_KEY = new Map<string, ScreenDef>(
+  FIELD_REGISTRY.map(s => [s.key, s])
+);
+
+/** 'mfg_sales_order.agent' → { screen: 'mfg_sales_order', field: 'agent' } */
 export function splitFieldPath(path: string): { screen: string; field: string } {
   const i = path.indexOf('.');
-  return i < 0
-    ? { screen: '', field: path }
-    : { screen: path.slice(0, i), field: path.slice(i + 1) };
+  return i < 0 ? { screen: path, field: '' }
+               : { screen: path.slice(0, i), field: path.slice(i + 1) };
 }
 
 export function findField(screen: string, field: string): FieldDef | undefined {
   return SCREEN_BY_KEY.get(screen)?.fields.find(f => f.key === field);
+}
+
+/** Settings page ke liye — hisse ke hisaab se screens. */
+export function screensByGroup(): { group: string; screens: ScreenDef[] }[] {
+  const out: { group: string; screens: ScreenDef[] }[] = [];
+  for (const s of FIELD_REGISTRY) {
+    let g = out.find(x => x.group === s.group);
+    if (!g) { g = { group: s.group, screens: [] }; out.push(g); }
+    g.screens.push(s);
+  }
+  return out;
 }

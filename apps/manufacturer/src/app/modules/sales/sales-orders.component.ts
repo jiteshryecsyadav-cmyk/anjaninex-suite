@@ -5,6 +5,8 @@ import { HttpClient } from '@angular/common/http';
 import { AuthService } from '../../core/auth.service';
 import { environment } from '../../../environments/environment';
 import { todayStr } from '../../core/date.util';
+import { FldDirective } from '../../shared/fld.directive';
+import { FieldConfigService } from '../../shared/field-config.service';
 
 interface SoLine {
   id?: string; itemId: string | null; itemName?: string;
@@ -34,7 +36,7 @@ const UNITS = ['Pcs', 'Set', 'Meter', 'Kg', 'Than'];
 @Component({
   selector: 'mfg-sales-orders',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, FldDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="flex gap-1 mb-3 text-sm font-bold">
@@ -143,29 +145,30 @@ const UNITS = ['Pcs', 'Set', 'Meter', 'Kg', 'Than'];
               </select></div>
             <div><label class="label">Tareekh</label>
               <input class="input" type="date" [(ngModel)]="f.orderDate"></div>
-            <div><label class="label">Godown</label>
+            <div *fld="'mfg_sales_order.godown'"><label class="label">{{ cfg.label('mfg_sales_order.godown') }}</label>
               <select class="input" [(ngModel)]="f.godownId">
                 <option [ngValue]="null">— koi nahi —</option>
                 @for (g of godowns(); track g.id) { <option [ngValue]="g.id">{{ g.name }}</option> }
               </select></div>
-            <div><label class="label">Agent</label>
+            <div *fld="'mfg_sales_order.agent'"><label class="label">{{ cfg.label('mfg_sales_order.agent') }}</label>
               <select class="input" [(ngModel)]="f.agentId">
                 <option [ngValue]="null">— koi nahi —</option>
                 @for (a of agents(); track a.id) { <option [ngValue]="a.id">{{ a.name }}</option> }
               </select></div>
-            <div><label class="label">Kab tak dena hai</label>
+            <div *fld="'mfg_sales_order.due_at'"><label class="label">{{ cfg.label('mfg_sales_order.due_at') }}</label>
               <input class="input" type="date" [(ngModel)]="f.dueAt"></div>
-            <div><label class="label">Grahak ka order no.</label>
+            <div *fld="'mfg_sales_order.buyer_ref'"><label class="label">{{ cfg.label('mfg_sales_order.buyer_ref') }}</label>
               <input class="input" [(ngModel)]="f.buyerRef">
               <p class="text-[10.5px] text-gray-500 mt-1">Wo isi se poochta hai</p></div>
-            <div><label class="label">Transport</label>
+            <div *fld="'mfg_sales_order.transport'"><label class="label">{{ cfg.label('mfg_sales_order.transport') }}</label>
               <input class="input" [(ngModel)]="f.transport"></div>
-            <div><label class="label">Note</label>
+            <div *fld="'mfg_sales_order.note'"><label class="label">{{ cfg.label('mfg_sales_order.note') }}</label>
               <input class="input" [(ngModel)]="f.note"></div>
           </div>
 
           <!-- ── RATIO se lines banane wali madad ── -->
-          <div class="border border-dashed border-[color:var(--ax-border)] rounded-xl p-3 mb-3">
+          <div *fld="'mfg_sales_order.ratio_box'"
+               class="border border-dashed border-[color:var(--ax-border)] rounded-xl p-3 mb-3">
             <div class="font-extrabold text-xs text-anjaninex-navy mb-2">
               Ratio se bharo — "60 piece, S:1 M:2 L:1" wala hisab
             </div>
@@ -198,9 +201,11 @@ const UNITS = ['Pcs', 'Set', 'Meter', 'Kg', 'Than'];
                   <option [ngValue]="null">— chuniye —</option>
                   @for (i of items(); track i.id) { <option [ngValue]="i.id">{{ i.name }}</option> }
                 </select></div>
-              <div class="w-24"><label class="label">Rang</label>
+              <div class="w-24" *fld="'mfg_sales_order.colour'">
+                <label class="label">{{ cfg.label('mfg_sales_order.colour') }}</label>
                 <input class="input" [(ngModel)]="l.colour"></div>
-              <div class="w-20"><label class="label">Size</label>
+              <div class="w-20" *fld="'mfg_sales_order.size'">
+                <label class="label">{{ cfg.label('mfg_sales_order.size') }}</label>
                 <input class="input" [(ngModel)]="l.size"></div>
               <div class="w-24"><label class="label">Qty</label>
                 <input class="input" type="number" step="0.01" [(ngModel)]="l.qty"></div>
@@ -285,6 +290,8 @@ export class SalesOrdersComponent {
   private http = inject(HttpClient);
   private base = `${environment.apiUrl}/api/mfg`;
   auth = inject(AuthService);
+  /** Firm ne kaunsa field on/off kiya — template isi se poochta hai. */
+  cfg = inject(FieldConfigService);
 
   tabs = [
     { key: '',          label: 'Chal rahe' },

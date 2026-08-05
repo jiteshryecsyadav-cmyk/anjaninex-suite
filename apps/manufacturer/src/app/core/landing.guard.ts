@@ -36,7 +36,7 @@ const READY = new Set<string>([
   '/sales/order', '/sales/challan', '/sales/invoice', '/sales/return',
   '/stock/opening', '/stock/transfer',
   '/production/khata', '/production/lots', '/masters/team',
-  '/sales/transport'
+  '/logistics'
 ]);
 
 /**

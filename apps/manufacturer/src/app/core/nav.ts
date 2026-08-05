@@ -38,8 +38,7 @@ export const SECTIONS: NavSection[] = [
       { path: '/sales/order',   icon: '📄', label: 'Sales Order',      perm: 'sales.order.view.place' },
       { path: '/sales/challan', icon: '🚚', label: 'Delivery Challan', perm: 'sales.challan.view.place' },
       { path: '/sales/invoice', icon: '🧮', label: 'Tax Invoice',      perm: 'sales.invoice.view.place' },
-      { path: '/sales/return',  icon: '↩️', label: 'Sales Return',     perm: 'sales.sreturn.view.place' },
-      { path: '/sales/transport', icon: '🚚', label: 'Logistics', perm: 'sales.challan.view.place' }
+      { path: '/sales/return',  icon: '↩️', label: 'Sales Return',     perm: 'sales.sreturn.view.place' }
     ]
   },
   {
@@ -102,6 +101,14 @@ export const SECTIONS: NavSection[] = [
   },
   // Ye teen apne aap me poore module hain (andar apni hi navigation hai),
   // isliye sidebar me seedhi line — patti ke andar nahi thoosa.
+  {
+    // Logistics ki apni line — maal challan par nikal jaane ke BAAD ka hisaab
+    // hai (kahan pahuncha, POD aayi ya nahi). Sales ki patti me tha to wo
+    // "banane" wale pardon me chhup jata tha; ye roz dekhne wali cheez hai.
+    key: 'logistics', title: 'Logistics', icon: '🚚', path: '/logistics',
+    tabs: [{ path: '/logistics', icon: '🚚', label: 'Logistics',
+             perm: 'sales.challan.view.place' }]
+  },
   {
     key: 'hr', title: 'HR / Staff', icon: '👨‍💼', path: '/hr',
     tabs: [{ path: '/hr', icon: '👨‍💼', label: 'HR', perm: 'hr.attendance.viewown.self' }]

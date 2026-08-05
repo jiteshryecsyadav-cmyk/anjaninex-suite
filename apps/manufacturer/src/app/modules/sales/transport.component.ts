@@ -126,119 +126,263 @@ const HAALAT = [
       }
     }
 
-    <!-- ══ KADAM 2: ek transport ka poora hisaab ══ -->
+    <!-- KADAM 2: ek logistics ka poora hisaab -->
     @if (detail(); as d) {
-      <!-- Header — prototype jaisa gehra band -->
       <div class="rounded-2xl text-white px-5 py-4 mb-4 flex items-center gap-4"
            style="background:linear-gradient(135deg,#1e293b,#0f172a)">
         <div class="min-w-0">
-          <p class="text-xs opacity-70 m-0">Logistics</p>
+          <p class="text-xs opacity-70 m-0">Welcome,</p>
           <p class="text-xl font-black leading-tight truncate">{{ d.transport }}</p>
           <p class="text-[11px] opacity-70 m-0">
-            {{ d.challans }} challan · {{ d.kulMaal | number:'1.0-2' }} maal ·
-            ₹{{ d.kulRakam | number:'1.0-0' }}
+            {{ d.challans }} challan &middot; {{ d.kulMaal | number:'1.0-2' }} maal &middot;
+            &#8377;{{ d.kulRakam | number:'1.0-0' }}
           </p>
         </div>
         <button class="ml-auto px-4 py-2 rounded-lg text-xs font-bold shrink-0"
                 style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3)"
-                (click)="wapas()">↔ Doosra logistics</button>
+                (click)="wapas()">&#8596; Doosra logistics</button>
       </div>
 
-      <!-- Chaar halat — ek nazar me -->
-      <div class="grid gap-3 mb-4" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">
-        @for (h of haalat; track h.key) {
-          <button class="bg-white rounded-2xl border border-[color:var(--ax-border)] p-4 text-left
-                         border-t-4 transition hover:shadow-md"
-                  [style.border-top-color]="h.rang"
-                  [class.ring-2]="filter() === h.key"
-                  (click)="chhaano(h.key)">
-            <div class="text-[10.5px] font-extrabold uppercase tracking-wider text-slate-400">
-              {{ h.icon }} {{ h.label }}</div>
-            <div class="text-2xl font-black mt-1" [style.color]="h.rang">{{ ginti(d, h.key) }}</div>
+      <!-- Tab patti -->
+      <div class="bg-white rounded-xl border border-[color:var(--ax-border)] p-1.5 mb-4
+                  flex gap-1 flex-wrap">
+        @for (t of tabs; track t.key) {
+          <button (click)="tab.set(t.key)"
+                  class="flex-1 min-w-[92px] px-3 py-2.5 rounded-lg text-[12.5px] font-bold transition"
+                  [class]="tab() === t.key ? 'bg-anjaninex-red text-white'
+                                           : 'text-[#4A5878] hover:bg-anjaninex-cream'">
+            {{ t.icon }} {{ t.label }}
           </button>
         }
       </div>
 
-      @if (filter()) {
-        <button class="btn-line btn-sm mb-3" (click)="chhaano(filter())">✕ chhaanni hatao</button>
-      }
+      <!-- TAB: MAAL -->
+      @if (tab() === 'maal') {
+        <div class="grid gap-3 mb-4" style="grid-template-columns:repeat(auto-fit,minmax(190px,1fr))">
+          @for (h of haalat; track h.key) {
+            <div class="bg-white rounded-2xl border border-[color:var(--ax-border)] p-4 border-l-4"
+                 [style.border-left-color]="h.rang">
+              <p class="text-[11px] font-bold text-slate-400 m-0">{{ h.icon }} {{ h.label }}</p>
+              <p class="text-2xl font-black m-0 mt-1" [style.color]="h.rang">{{ ginti(d, h.key) }}</p>
+            </div>
+          }
+        </div>
 
-      <!-- Har challan -->
-      @if (d.ships.length === 0) {
-        <div class="text-center text-slate-400 py-10 text-sm">Is halat me koi challan nahi</div>
-      } @else {
-        <div class="space-y-2">
-          @for (s of d.ships; track s.id) {
-            <div class="card">
-              <div class="flex gap-3 items-start">
-                <div class="w-11 h-11 rounded-xl grid place-items-center text-xl shrink-0"
-                     [style.background]="rangKa(s.deliveryStatus) + '22'">
-                  {{ iconKa(s.deliveryStatus) }}</div>
-                <div class="flex-1 min-w-0">
-                  <div class="font-bold text-sm">
-                    {{ s.dcNo }}
-                    <span class="chip ml-1" [style.background]="rangKa(s.deliveryStatus) + '22'"
+        <div class="bg-white rounded-2xl border border-[color:var(--ax-border)] p-5 mb-4">
+          <h3 class="text-sm font-extrabold text-anjaninex-navy m-0 mb-4">Maal kahan-kahan hai</h3>
+          <div class="grid gap-3" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr))">
+            @for (h of haalat; track h.key) {
+              <div>
+                <div class="flex justify-between mb-1.5">
+                  <span class="text-xs text-slate-500">{{ h.label }}</span>
+                  <span class="text-sm font-bold" [style.color]="h.rang">{{ ginti(d, h.key) }}</span>
+                </div>
+                <div class="h-2 bg-slate-100 rounded-full overflow-hidden">
+                  <div class="h-full rounded-full" [style.background]="h.rang"
+                       [style.width.%]="hissa(d, h.key)"></div>
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-[color:var(--ax-border)] p-5">
+          <h3 class="text-sm font-extrabold text-anjaninex-navy m-0 mb-3">Haal ke challan</h3>
+          @if (d.ships.length === 0) {
+            <p class="text-center text-slate-400 py-6 text-sm m-0">Koi challan nahi</p>
+          } @else {
+            <div class="space-y-2">
+              @for (s of d.ships; track s.id) {
+                <div class="p-3.5 rounded-xl border border-[color:var(--ax-border)] bg-slate-50">
+                  <div class="flex justify-between items-start mb-2 gap-3">
+                    <div class="min-w-0">
+                      <p class="font-bold text-sm m-0">{{ s.dcNo }}</p>
+                      <p class="text-[11px] text-slate-500 m-0 mt-0.5">
+                        {{ s.partyName }} &middot; {{ s.godownName }} se</p>
+                      <p class="text-[10.5px] text-slate-500 m-0">
+                        {{ s.challanDate | date:'d MMM y' }}
+                        @if (s.packages) { &middot; {{ s.packages }} gathar }
+                        &middot; {{ s.totalQty | number:'1.0-2' }} maal
+                        &middot; &#8377;{{ s.totalAmount | number:'1.0-0' }}
+                      </p>
+                    </div>
+                    <span class="chip shrink-0" [style.background]="rangKa(s.deliveryStatus) + '22'"
                           [style.color]="rangKa(s.deliveryStatus)">{{ labelKa(s.deliveryStatus) }}</span>
-                    @if (s.billed) {
-                      <span class="chip ml-1 bg-emerald-50 text-emerald-700">BILL BAN GAYA</span>
+                  </div>
+                  <div class="grid gap-1.5" style="grid-template-columns:repeat(auto-fit,minmax(96px,1fr))">
+                    <button class="btn-line btn-sm !text-[10.5px] !py-1.5" (click)="grKholo(s)">GR dekho</button>
+                    @if (auth.can('sales.challan.edit.place')) {
+                      <button class="btn-line btn-sm !text-[10.5px] !py-1.5" (click)="openStatus(s)">Halat badlo</button>
+                    }
+                    @if (s.podHai) {
+                      <button class="btn-line btn-sm !text-[10.5px] !py-1.5" (click)="podPhoto(s)">POD photo</button>
+                    } @else if (auth.can('sales.challan.edit.place')) {
+                      <button class="btn-line btn-sm !text-[10.5px] !py-1.5" (click)="openPod(s)">POD bharo</button>
                     }
                   </div>
-                  <div class="text-xs text-slate-500">{{ s.partyName }}</div>
-                  <div class="text-xs text-slate-500">
-                    {{ s.challanDate | date:'d MMM y' }}
-                    @if (s.packages) { · {{ s.packages }} gathar }
-                    @if (s.lrNo) { · LR {{ s.lrNo }} }
-                    @if (s.transportLr) { · logistics LR {{ s.transportLr }} }
-                    @if (s.vehicleNo) { · {{ s.vehicleNo }} }
-                  </div>
-                </div>
-                <div class="text-right shrink-0 text-xs">
-                  <div><b class="text-anjaninex-navy">{{ s.totalQty | number:'1.0-2' }}</b></div>
-                  <div class="text-slate-500">₹{{ s.totalAmount | number:'1.0-0' }}</div>
-                </div>
-              </div>
-
-              <!-- Track — chaar kadam ki patti -->
-              <div class="flex items-center gap-1 mt-3">
-                @for (h of haalat; track h.key; let i = $index) {
-                  <div class="flex-1 text-center">
-                    <div class="w-6 h-6 rounded-full mx-auto grid place-items-center text-[11px] text-white"
-                         [style.background]="i <= kadam(s) ? h.rang : '#e5e7eb'">
-                      {{ i <= kadam(s) ? '✓' : i + 1 }}</div>
-                    <p class="text-[9.5px] mt-1 m-0 font-semibold"
-                       [style.color]="i <= kadam(s) ? h.rang : '#94a3b8'">{{ h.label }}</p>
-                  </div>
-                  @if (i < 3) {
-                    <div class="flex-1 h-0.5" [style.background]="i < kadam(s) ? h.rang : '#e5e7eb'"></div>
-                  }
-                }
-              </div>
-
-              @if (s.podReceivedBy) {
-                <div class="mt-2 px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-800 text-xs font-bold">
-                  📸 {{ s.podReceivedBy }} ne liya
-                  @if (s.podAt) { · {{ s.podAt | date:'d MMM y' }} }
-                  @if (s.podNote) { · {{ s.podNote }} }
                 </div>
               }
+            </div>
+          }
+        </div>
+      }
 
-              <div class="flex gap-3 mt-2 justify-end flex-wrap">
-                <button class="text-[11px] font-bold text-anjaninex-navy" (click)="grKholo(s)">
-                  📋 GR DEKHO</button>
-                @if (s.podHai) {
-                  <button class="text-[11px] font-bold text-emerald-700" (click)="podPhoto(s)">
-                    📸 POD PHOTO</button>
-                }
-                @if (auth.can('sales.challan.edit.place')) {
-                  <button class="text-[11px] font-bold text-anjaninex-navy" (click)="openStatus(s)">
-                    📍 HALAT BADLO</button>
-                  @if (!s.podReceivedBy) {
-                    <button class="text-[11px] font-bold text-anjaninex-red" (click)="openPod(s)">
-                      ✓ POD BHARO</button>
+      <!-- TAB: GR -->
+      @if (tab() === 'gr') {
+        <div class="bg-white rounded-2xl border border-[color:var(--ax-border)] p-5">
+          @if (d.ships.length === 0) {
+            <p class="text-center text-slate-400 py-6 text-sm m-0">Koi GR nahi</p>
+          } @else {
+            <div class="space-y-2">
+              @for (s of d.ships; track s.id) {
+                <div class="flex justify-between items-center gap-3 p-3.5 rounded-xl
+                            border border-[color:var(--ax-border)] bg-slate-50">
+                  <div class="min-w-0">
+                    <p class="font-bold text-sm m-0">{{ s.dcNo }}</p>
+                    <p class="text-[11px] text-slate-500 m-0 mt-0.5">
+                      {{ s.partyName }} &middot; {{ s.challanDate | date:'d MMM y' }}
+                      @if (s.lrNo) { &middot; LR {{ s.lrNo }} }
+                      @if (s.transportLr) { &middot; logistics LR {{ s.transportLr }} }
+                    </p>
+                  </div>
+                  <button class="btn-line btn-sm !text-[11px] shrink-0"
+                          (click)="grKholo(s)">Dekho / Download</button>
+                </div>
+              }
+            </div>
+          }
+        </div>
+      }
+
+      <!-- TAB: TRACK -->
+      @if (tab() === 'track') {
+        <div class="bg-white rounded-2xl border border-[color:var(--ax-border)] p-5">
+          @if (d.ships.length === 0) {
+            <p class="text-center text-slate-400 py-6 text-sm m-0">Track karne ko kuch nahi</p>
+          } @else {
+            <div class="space-y-3">
+              @for (s of d.ships; track s.id) {
+                <div class="p-4 rounded-xl border border-[color:var(--ax-border)]">
+                  <div class="flex justify-between mb-3 gap-3">
+                    <b class="text-sm">{{ s.dcNo }}</b>
+                    <span class="text-[11px] text-slate-500 truncate">
+                      {{ s.godownName }} &rarr; {{ s.partyName }}</span>
+                  </div>
+                  <div class="flex items-center gap-1">
+                    @for (h of haalat; track h.key; let i = $index) {
+                      <div class="flex-1 text-center">
+                        <div class="w-6 h-6 rounded-full mx-auto grid place-items-center text-[11px] text-white"
+                             [style.background]="i <= kadam(s) ? h.rang : '#e5e7eb'">
+                          {{ i <= kadam(s) ? '&#10003;' : i + 1 }}</div>
+                        <p class="text-[9.5px] mt-1 m-0 font-semibold"
+                           [style.color]="i <= kadam(s) ? h.rang : '#94a3b8'">{{ h.label }}</p>
+                      </div>
+                      @if (i < 3) {
+                        <div class="flex-1 h-0.5" [style.background]="i < kadam(s) ? h.rang : '#e5e7eb'"></div>
+                      }
+                    }
+                  </div>
+                  @if (auth.can('sales.challan.edit.place')) {
+                    <div class="flex justify-end mt-2">
+                      <button class="text-[11px] font-bold text-anjaninex-navy"
+                              (click)="openStatus(s)">Halat badlo</button>
+                    </div>
                   }
+                </div>
+              }
+            </div>
+          }
+        </div>
+      }
+
+      <!-- TAB: POD -->
+      @if (tab() === 'pod') {
+        <div class="bg-white rounded-2xl border border-[color:var(--ax-border)] p-5">
+          @if (podWale(d).length === 0) {
+            <p class="text-center text-slate-400 py-6 text-sm m-0">
+              Abhi kisi challan ki POD nahi aayi</p>
+          } @else {
+            <div class="space-y-2">
+              @for (s of podWale(d); track s.id) {
+                <div class="flex justify-between items-center gap-3 p-3.5 rounded-xl
+                            border border-[color:var(--ax-border)] bg-emerald-50">
+                  <div class="min-w-0">
+                    <p class="font-bold text-sm m-0">{{ s.dcNo }}</p>
+                    <p class="text-[11px] text-emerald-700 m-0 mt-0.5 font-bold">
+                      {{ s.podReceivedBy }} ne liya
+                      @if (s.podAt) { &middot; {{ s.podAt | date:'d MMM y' }} }</p>
+                    @if (s.podNote) {
+                      <p class="text-[10.5px] text-slate-500 m-0">{{ s.podNote }}</p>
+                    }
+                  </div>
+                  @if (s.podHai) {
+                    <button class="btn-line btn-sm !text-[11px] shrink-0"
+                            (click)="podPhoto(s)">Photo dekho</button>
+                  }
+                </div>
+              }
+            </div>
+          }
+
+          @if (podBakiWale(d).length > 0) {
+            <div class="mt-4 pt-4 border-t border-[color:var(--ax-border)]">
+              <p class="text-xs font-bold text-amber-700 mb-2">
+                {{ podBakiWale(d).length }} challan ki POD abhi baki</p>
+              <div class="space-y-2">
+                @for (s of podBakiWale(d); track s.id) {
+                  <div class="flex justify-between items-center gap-3 p-3 rounded-xl
+                              border border-[color:var(--ax-border)]">
+                    <div class="min-w-0">
+                      <p class="font-bold text-sm m-0">{{ s.dcNo }}</p>
+                      <p class="text-[11px] text-slate-500 m-0">
+                        {{ s.partyName }} &middot; {{ s.challanDate | date:'d MMM' }}</p>
+                    </div>
+                    @if (auth.can('sales.challan.edit.place')) {
+                      <button class="btn-line btn-sm !text-[11px] shrink-0"
+                              (click)="openPod(s)">POD bharo</button>
+                    }
+                  </div>
                 }
               </div>
             </div>
+          }
+        </div>
+      }
+
+      <!-- TAB: BILL -->
+      @if (tab() === 'bill') {
+        <div class="bg-white rounded-2xl border border-[color:var(--ax-border)] p-5">
+          @if (binaBill(d).length > 0) {
+            <div class="px-4 py-2.5 rounded-xl bg-amber-50 text-amber-800 text-xs font-bold mb-3">
+              {{ binaBill(d).length }} challan ka bill abhi nahi bana &mdash;
+              &#8377;{{ binaBillRakam(d) | number:'1.0-0' }} ka maal ja chuka
+            </div>
+          }
+          @if (d.ships.length === 0) {
+            <p class="text-center text-slate-400 py-6 text-sm m-0">Koi challan nahi</p>
+          } @else {
+            <table class="w-full text-xs">
+              <tr class="text-gray-500 text-left">
+                <th class="font-semibold pb-1">Challan</th>
+                <th class="font-semibold pb-1">Grahak</th>
+                <th class="font-semibold pb-1 text-right">Rakam</th>
+                <th class="font-semibold pb-1 text-right">Bill</th>
+              </tr>
+              @for (s of d.ships; track s.id) {
+                <tr class="border-t border-[color:var(--ax-border)]">
+                  <td class="py-1.5 font-bold">{{ s.dcNo }}</td>
+                  <td class="py-1.5 text-slate-500">{{ s.partyName }}</td>
+                  <td class="py-1.5 text-right">&#8377;{{ s.totalAmount | number:'1.0-0' }}</td>
+                  <td class="py-1.5 text-right">
+                    @if (s.billed) {
+                      <span class="chip bg-emerald-50 text-emerald-700">BAN GAYA</span>
+                    } @else {
+                      <span class="chip bg-amber-50 text-amber-700">BAKI</span>
+                    }
+                  </td>
+                </tr>
+              }
+            </table>
           }
         </div>
       }
@@ -413,6 +557,16 @@ export class TransportComponent {
 
   haalat = HAALAT;
 
+  /** Screen 2 ke tab — prototype jaise, par manufacturer ki bhasha me. */
+  tabs = [
+    { key: 'maal',  icon: '\u{1F4E6}', label: 'Maal' },
+    { key: 'gr',    icon: '\u{1F4C4}', label: 'GR' },
+    { key: 'track', icon: '\u{1F69A}', label: 'Track' },
+    { key: 'pod',   icon: '\u{1F4F8}', label: 'POD' },
+    { key: 'bill',  icon: '\u{1F9FE}', label: 'Bill' }
+  ];
+  tab = signal('maal');
+
   rows = signal<TransportRow[]>([]);
   detail = signal<Detail | null>(null);
   filter = signal('');
@@ -455,7 +609,7 @@ export class TransportComponent {
         error: e => this.err.set(e?.error?.error ?? 'Nahi khula')
       });
   }
-  wapas() { this.detail.set(null); this.filter.set(''); this.load(); }
+  wapas() { this.detail.set(null); this.filter.set(''); this.tab.set('maal'); this.load(); }
 
   /** Halat par click — wahi dobara dabao to chhaanni hat jati hai. */
   chhaano(key: string) {
@@ -472,6 +626,17 @@ export class TransportComponent {
   kadam(s: Ship): number {
     return HAALAT.findIndex(h => h.key === s.deliveryStatus);
   }
+  /** Halat ki patti kitni bhari — us halat ke challan / kul challan. */
+  hissa(d: Detail, key: string): number {
+    return d.challans > 0 ? (this.ginti(d, key) / d.challans) * 100 : 0;
+  }
+  podWale(d: Detail): Ship[] { return d.ships.filter(s => !!s.podReceivedBy); }
+  podBakiWale(d: Detail): Ship[] { return d.ships.filter(s => !s.podReceivedBy); }
+  binaBill(d: Detail): Ship[] { return d.ships.filter(s => !s.billed); }
+  binaBillRakam(d: Detail): number {
+    return this.binaBill(d).reduce((a, s) => a + s.totalAmount, 0);
+  }
+
   rangKa(k: string)  { return HAALAT.find(h => h.key === k)?.rang  ?? '#8b5cf6'; }
   iconKa(k: string)  { return HAALAT.find(h => h.key === k)?.icon  ?? '📦'; }
   labelKa(k: string) { return HAALAT.find(h => h.key === k)?.label ?? k; }

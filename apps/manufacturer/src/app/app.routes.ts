@@ -62,12 +62,6 @@ export const routes: Routes = [
             canActivate: [requirePermission('sales.sreturn.view.place')],
             loadComponent: () =>
               import('./modules/sales/sales-returns.component').then(m => m.SalesReturnsComponent)
-          },
-          {
-            path: 'transport',
-            canActivate: [requirePermission('sales.challan.view.place')],
-            loadComponent: () =>
-              import('./modules/sales/transport.component').then(m => m.TransportComponent)
           }
         ]
       },
@@ -237,6 +231,17 @@ export const routes: Routes = [
               import('./modules/settings/screen-fields.component').then(m => m.ScreenFieldsComponent)
           }
         ]
+      },
+
+      // ── LOGISTICS ──
+      // Apna rasta, SectionShell ke bina — iske andar khud do kadam hain
+      // (transport ki list → us transport ka poora hisaab), upar ek aur
+      // patti lagane se do patti ek saath ulti lagti.
+      {
+        path: 'logistics',
+        canActivate: [requirePermission('sales.challan.view.place')],
+        loadComponent: () =>
+          import('./modules/sales/transport.component').then(m => m.TransportComponent)
       },
 
       // ── HR · BAZAAR LINK · ONLINE DUKAN ──

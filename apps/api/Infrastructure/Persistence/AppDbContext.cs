@@ -166,6 +166,14 @@ public class AppDbContext : DbContext
         => Set<Namokara.Api.Modules.Manufacturer.Entities.DeliveryChallan>();
     public DbSet<Namokara.Api.Modules.Manufacturer.Entities.DeliveryChallanLine> MfgDeliveryChallanLines
         => Set<Namokara.Api.Modules.Manufacturer.Entities.DeliveryChallanLine>();
+    public DbSet<Namokara.Api.Modules.Manufacturer.Entities.OpeningStock> MfgOpeningStocks
+        => Set<Namokara.Api.Modules.Manufacturer.Entities.OpeningStock>();
+    public DbSet<Namokara.Api.Modules.Manufacturer.Entities.OpeningStockLine> MfgOpeningStockLines
+        => Set<Namokara.Api.Modules.Manufacturer.Entities.OpeningStockLine>();
+    public DbSet<Namokara.Api.Modules.Manufacturer.Entities.StockTransfer> MfgStockTransfers
+        => Set<Namokara.Api.Modules.Manufacturer.Entities.StockTransfer>();
+    public DbSet<Namokara.Api.Modules.Manufacturer.Entities.StockTransferLine> MfgStockTransferLines
+        => Set<Namokara.Api.Modules.Manufacturer.Entities.StockTransferLine>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -419,6 +427,16 @@ public class AppDbContext : DbContext
                 .ToTable("delivery_challans", "mfg");
             modelBuilder.Entity<Namokara.Api.Modules.Manufacturer.Entities.DeliveryChallanLine>()
                 .ToTable("delivery_challan_lines", "mfg");
+
+            // ── Opening Stock + Stock Transfer — db/init/125 ──
+            modelBuilder.Entity<Namokara.Api.Modules.Manufacturer.Entities.OpeningStock>()
+                .ToTable("opening_stocks", "mfg");
+            modelBuilder.Entity<Namokara.Api.Modules.Manufacturer.Entities.OpeningStockLine>()
+                .ToTable("opening_stock_lines", "mfg");
+            modelBuilder.Entity<Namokara.Api.Modules.Manufacturer.Entities.StockTransfer>()
+                .ToTable("stock_transfers", "mfg");
+            modelBuilder.Entity<Namokara.Api.Modules.Manufacturer.Entities.StockTransferLine>()
+                .ToTable("stock_transfer_lines", "mfg");
         }
     }
 }

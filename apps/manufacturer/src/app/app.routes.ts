@@ -116,6 +116,18 @@ export const routes: Routes = [
             canActivate: [requirePermission('stock.design.view.firm')],
             loadComponent: () =>
               import('./modules/stock/items.component').then(m => m.ItemsComponent)
+          },
+          {
+            path: 'opening',
+            canActivate: [requirePermission('stock.design.edit.firm')],
+            loadComponent: () =>
+              import('./modules/stock/opening-stock.component').then(m => m.OpeningStockComponent)
+          },
+          {
+            path: 'transfer',
+            canActivate: [requirePermission('stock.design.edit.firm')],
+            loadComponent: () =>
+              import('./modules/stock/stock-transfer.component').then(m => m.StockTransferComponent)
           }
         ]
       },

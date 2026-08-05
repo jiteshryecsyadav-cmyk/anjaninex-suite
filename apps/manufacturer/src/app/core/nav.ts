@@ -61,8 +61,8 @@ export const SECTIONS: NavSection[] = [
     key: 'stock', title: 'Manage Stock', icon: '📦', path: '/stock',
     tabs: [
       { path: '/stock/items',    icon: '🎨', label: 'Design / Material', perm: 'stock.design.view.firm' },
-      { path: '/stock/opening',  icon: '🏁', label: 'Opening Stock',     perm: 'stock.design.edit.firm', soon: true },
-      { path: '/stock/transfer', icon: '🔀', label: 'Stock Transfer',    perm: 'stock.design.edit.firm', soon: true }
+      { path: '/stock/opening',  icon: '🏁', label: 'Opening Stock',     perm: 'stock.design.edit.firm' },
+      { path: '/stock/transfer', icon: '🔀', label: 'Stock Transfer',    perm: 'stock.design.edit.firm' }
     ]
   },
   {

@@ -3,6 +3,8 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { AuthService } from '../../core/auth.service';
+import { FldDirective } from '../../shared/fld.directive';
+import { FieldConfigService } from '../../shared/field-config.service';
 import { environment } from '../../../environments/environment';
 
 export interface Godown {
@@ -19,7 +21,7 @@ type SaveGodown = Omit<Godown, 'id'>;
 @Component({
   selector: 'mfg-godowns',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, FldDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="page-top-bar">
@@ -94,13 +96,13 @@ type SaveGodown = Omit<Godown, 'id'>;
               <label class="label" style="color:#DC2626">Mobile *</label>
               <input class="input" [(ngModel)]="form()!.mobile" inputmode="numeric" placeholder="10 ank">
             </div>
-            <div><label class="label">Pincode</label>
+            <div *fld="'mfg_godown.pincode'"><label class="label">{{ cfg.label('mfg_godown.pincode') }}</label>
               <input class="input" [(ngModel)]="form()!.pincode"></div>
-            <div><label class="label">Shehar</label>
+            <div *fld="'mfg_godown.city'"><label class="label">{{ cfg.label('mfg_godown.city') }}</label>
               <input class="input" [(ngModel)]="form()!.city"></div>
-            <div><label class="label">Rajya</label>
+            <div *fld="'mfg_godown.state'"><label class="label">{{ cfg.label('mfg_godown.state') }}</label>
               <input class="input" [(ngModel)]="form()!.state"></div>
-            <div class="col-span-2"><label class="label">Pata</label>
+            <div class="col-span-2" *fld="'mfg_godown.address'"><label class="label">{{ cfg.label('mfg_godown.address') }}</label>
               <textarea class="input" rows="2" [(ngModel)]="form()!.address"></textarea></div>
           </div>
 
@@ -130,6 +132,8 @@ export class GodownsComponent {
   private http = inject(HttpClient);
   private base = `${environment.apiUrl}/api/mfg/godowns`;
   auth = inject(AuthService);
+  /** Firm ne kaunsa field on/off kiya — template isi se poochta hai. */
+  cfg = inject(FieldConfigService);
 
   rows = signal<Godown[]>([]);
   loading = signal(true);

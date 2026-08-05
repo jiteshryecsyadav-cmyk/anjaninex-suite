@@ -3,6 +3,8 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { AuthService } from '../../core/auth.service';
+import { FldDirective } from '../../shared/fld.directive';
+import { FieldConfigService } from '../../shared/field-config.service';
 import { environment } from '../../../environments/environment';
 
 export interface Party {
@@ -33,7 +35,7 @@ export interface Party {
 @Component({
   selector: 'mfg-parties',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, FldDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="page-top-bar">
@@ -119,37 +121,37 @@ export interface Party {
               <label class="label" style="color:#DC2626">{{ word().naam }} *</label>
               <input class="input" [(ngModel)]="form()!.displayName">
             </div>
-            <div><label class="label">Baat kisse karni hai</label>
+            <div *fld="'mfg_party.contact'"><label class="label">{{ cfg.label('mfg_party.contact') }}</label>
               <input class="input" [(ngModel)]="form()!.contactPerson"></div>
-            <div><label class="label">Mobile</label>
+            <div *fld="'mfg_party.mobile'"><label class="label">{{ cfg.label('mfg_party.mobile') }}</label>
               <input class="input" [(ngModel)]="form()!.phone" inputmode="numeric"></div>
-            <div><label class="label">GST</label>
+            <div *fld="'mfg_party.gst'"><label class="label">{{ cfg.label('mfg_party.gst') }}</label>
               <input class="input font-mono uppercase" [(ngModel)]="form()!.gst" maxlength="15"></div>
-            <div><label class="label">PAN</label>
+            <div *fld="'mfg_party.pan'"><label class="label">{{ cfg.label('mfg_party.pan') }}</label>
               <input class="input font-mono uppercase" [(ngModel)]="form()!.pan" maxlength="10"></div>
-            <div><label class="label">Shehar</label>
+            <div *fld="'mfg_party.city'"><label class="label">{{ cfg.label('mfg_party.city') }}</label>
               <input class="input" [(ngModel)]="form()!.city"></div>
-            <div><label class="label">Rajya</label>
+            <div *fld="'mfg_party.state'"><label class="label">{{ cfg.label('mfg_party.state') }}</label>
               <input class="input" [(ngModel)]="form()!.state"></div>
-            <div class="col-span-2"><label class="label">Pata</label>
+            <div class="col-span-2" *fld="'mfg_party.address'"><label class="label">{{ cfg.label('mfg_party.address') }}</label>
               <textarea class="input" rows="2" [(ngModel)]="form()!.address"></textarea></div>
 
             <!-- Ye do khaane har bill par apne aap lagte hain — pehle har baar
                  haath se likhne padte the aur ek hi party ko kabhi 8% kabhi 10% -->
-            <div><label class="label">Chhoot %</label>
+            <div *fld="'mfg_party.discount'"><label class="label">{{ cfg.label('mfg_party.discount') }}</label>
               <input class="input" type="number" [(ngModel)]="form()!.discountNormal"></div>
-            <div><label class="label">Kitne din ka udhaar</label>
+            <div *fld="'mfg_party.credit_days'"><label class="label">{{ cfg.label('mfg_party.credit_days') }}</label>
               <input class="input" type="number" [(ngModel)]="form()!.creditDays"></div>
 
             @if (kind() === 'supplier') {
-              <div><label class="label">Udyam type</label>
+              <div *fld="'mfg_party.udyam_type'"><label class="label">{{ cfg.label('mfg_party.udyam_type') }}</label>
                 <select class="input" [(ngModel)]="form()!.msmeType">
                   <option [ngValue]="null">— MSME nahi hai —</option>
                   <option value="micro">Micro</option>
                   <option value="small">Small</option>
                   <option value="medium">Medium</option>
                 </select></div>
-              <div><label class="label">Udyam number</label>
+              <div *fld="'mfg_party.udyam_no'"><label class="label">{{ cfg.label('mfg_party.udyam_no') }}</label>
                 <input class="input font-mono" [(ngModel)]="form()!.udyamNo"
                        placeholder="UDYAM-RJ-24-0050711"></div>
               @if (form()!.msmeType) {
@@ -178,6 +180,8 @@ export class PartiesComponent {
   private http = inject(HttpClient);
   private base = `${environment.apiUrl}/api/mfg/parties`;
   auth = inject(AuthService);
+  /** Firm ne kaunsa field on/off kiya — template isi se poochta hai. */
+  cfg = inject(FieldConfigService);
 
   /** Dono ke liye shabd alag — kaam ek. */
   word = computed(() => this.kind() === 'supplier'

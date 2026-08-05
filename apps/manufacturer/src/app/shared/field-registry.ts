@@ -169,9 +169,6 @@ export const FIELD_REGISTRY: ScreenDef[] = [
       { key: 'godown',    label: 'Godown', hint: 'Isi se material ghatega' },
       { key: 'due_at',    label: 'Kab tak' },
       { key: 'note',      label: 'Note' },
-      { key: 'ratio_box', label: 'Ratio se size batwara' },
-      { key: 'taka',      label: 'Taka ki ginti', defaultOff: true,
-        hint: 'Kapda than/taka me aata ho to on karo' },
       { key: 'rejected',  label: 'Kharab nikle (maal aane par)',
         hint: 'Inki majoori nahi banti' }
     ]
@@ -181,15 +178,15 @@ export const FIELD_REGISTRY: ScreenDef[] = [
   {
     key: 'mfg_karigar', name: 'Karigar', group: 'Masters',
     fields: [
-      { key: 'name',     label: 'Naam',   locked: true },
-      { key: 'mobile',   label: 'Mobile', locked: true },
-      { key: 'job_type', label: 'Kaam kya karta hai', locked: true },
-      { key: 'agent',    label: 'Kis agent ne dilwaya' },
-      { key: 'address',  label: 'Pata' },
-      { key: 'aadhaar',  label: 'Aadhaar', defaultOff: true },
-      { key: 'bank',     label: 'Bank khata', defaultOff: true,
-        hint: 'Majoori bank se deni ho to on karo' },
-      { key: 'rate',     label: 'Majoori ka rate' }
+      { key: 'name',      label: 'Poora naam', locked: true },
+      { key: 'mobile',    label: 'Mobile',     locked: true },
+      { key: 'job_type',  label: 'Kaam kaunsa karta hai', locked: true },
+      { key: 'firm_name', label: 'Firm ka naam' },
+      { key: 'city',      label: 'Shehar' },
+      { key: 'state',     label: 'Rajya' },
+      { key: 'address',   label: 'Pata' },
+      { key: 'gst',       label: 'GST', defaultOff: true },
+      { key: 'pan',       label: 'PAN', defaultOff: true }
     ]
   },
   {
@@ -197,50 +194,57 @@ export const FIELD_REGISTRY: ScreenDef[] = [
     fields: [
       { key: 'name',        label: 'Naam', locked: true },
       { key: 'code',        label: 'Code' },
-      { key: 'photo',       label: 'Photo' },
-      { key: 'hsn',         label: 'HSN / SAC' },
+      { key: 'unit',        label: 'Unit' },
+      { key: 'rate',        label: 'Rate' },
+      { key: 'hsn',         label: 'HSN' },
       { key: 'tax',         label: 'GST %' },
-      { key: 'colour_hint', label: 'Rang' },
-      { key: 'min_stock',   label: 'Kam se kam stock', hint: 'Isse neeche jaye to chetavni' },
-      { key: 'min_order',   label: 'Kam se kam order' },
-      { key: 'set_pieces',  label: 'Ek set me kitne piece', defaultOff: true },
-      { key: 'sample',      label: 'Sample ka daam', defaultOff: true },
-      { key: 'tags',        label: 'Tag / chhaanni' }
+      { key: 'min_stock',   label: 'Stock itne se kam ho to batao',
+        hint: 'Isse neeche jaye to Dashboard par chetavni' },
+      { key: 'colour_hint', label: 'Rang ka nishaan' },
+      { key: 'set_pieces',  label: 'Set me kitne piece' },
+      { key: 'min_order',   label: 'Kam se kam order (MOQ)' },
+      { key: 'tags',        label: 'Tag' },
+      { key: 'note',        label: 'Note' }
     ]
   },
   {
     key: 'mfg_party', name: 'Customer / Supplier', group: 'Masters',
     fields: [
-      { key: 'name',         label: 'Naam', locked: true },
-      { key: 'mobile',       label: 'Mobile' },
-      { key: 'gst',          label: 'GST number' },
-      { key: 'address',      label: 'Pata' },
-      { key: 'credit_limit', label: 'Udhaar ki hadd' },
-      { key: 'credit_days',  label: 'Kitne din ka udhaar' },
-      { key: 'discount',     label: 'Discount %' },
-      { key: 'transporter',  label: 'Roz wala transport', defaultOff: true }
+      { key: 'name',        label: 'Naam', locked: true },
+      { key: 'contact',     label: 'Baat kisse karni hai' },
+      { key: 'mobile',      label: 'Mobile' },
+      { key: 'gst',         label: 'GST' },
+      { key: 'pan',         label: 'PAN' },
+      { key: 'city',        label: 'Shehar' },
+      { key: 'state',       label: 'Rajya' },
+      { key: 'address',     label: 'Pata' },
+      { key: 'discount',    label: 'Chhoot %' },
+      { key: 'credit_days', label: 'Kitne din ka udhaar' },
+      { key: 'udyam_type',  label: 'Udyam type', defaultOff: true },
+      { key: 'udyam_no',    label: 'Udyam number', defaultOff: true }
     ]
   },
   {
     key: 'mfg_godown', name: 'Office / Godown', group: 'Masters',
     fields: [
-      { key: 'name',    label: 'Naam',   locked: true },
-      { key: 'mobile',  label: 'Mobile', locked: true },
-      { key: 'address', label: 'Pata' },
-      { key: 'photo',   label: 'Photo', defaultOff: true },
-      { key: 'is_main', label: 'MAIN godown' }
+      { key: 'name',    label: 'Jagah ka naam', locked: true },
+      { key: 'mobile',  label: 'Mobile',        locked: true },
+      { key: 'pincode', label: 'Pincode' },
+      { key: 'city',    label: 'Shehar' },
+      { key: 'state',   label: 'Rajya' },
+      { key: 'address', label: 'Pata' }
     ]
   },
   {
     key: 'mfg_agent', name: 'Agent', group: 'Masters',
     fields: [
-      { key: 'name',       label: 'Naam',   locked: true },
-      { key: 'mobile',     label: 'Mobile', locked: true },
-      { key: 'agency',     label: 'Agency ka naam' },
-      { key: 'kind',       label: 'Karigar dilwata hai ya grahak', locked: true },
-      { key: 'address',    label: 'Pata' },
-      { key: 'gst',        label: 'GST number', defaultOff: true },
-      { key: 'commission', label: 'Commission %' }
+      { key: 'name',   label: 'Agent ka naam', locked: true },
+      { key: 'mobile', label: 'Mobile',        locked: true },
+      { key: 'agency', label: 'Agency ka naam' },
+      { key: 'city',   label: 'Shehar' },
+      { key: 'state',  label: 'Rajya' },
+      { key: 'gst',    label: 'GST', defaultOff: true },
+      { key: 'pan',    label: 'PAN', defaultOff: true }
     ]
   }
 ];

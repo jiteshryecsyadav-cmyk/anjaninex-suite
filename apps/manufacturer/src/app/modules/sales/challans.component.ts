@@ -4,6 +4,8 @@ import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { AuthService } from '../../core/auth.service';
 import { environment } from '../../../environments/environment';
+import { FldDirective } from '../../shared/fld.directive';
+import { FieldConfigService } from '../../shared/field-config.service';
 import { todayStr } from '../../core/date.util';
 
 interface DcLine {
@@ -33,7 +35,7 @@ const UNITS = ['Pcs', 'Set', 'Meter', 'Kg', 'Than'];
 @Component({
   selector: 'mfg-challans',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, FldDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="flex gap-1 mb-3 text-sm font-bold">
@@ -137,7 +139,7 @@ const UNITS = ['Pcs', 'Set', 'Meter', 'Kg', 'Than'];
                 @for (g of godowns(); track g.id) { <option [ngValue]="g.id">{{ g.name }}</option> }
               </select></div>
 
-            <div class="col-span-2"><label class="label">Kis order ka maal hai</label>
+            <div class="col-span-2" *fld="'mfg_challan.so_link'"><label class="label">{{ cfg.label('mfg_challan.so_link') }}</label>
               <select class="input" [(ngModel)]="f.soId" (ngModelChange)="soChuna()"
                       [disabled]="!f.partyId">
                 <option [ngValue]="null">— bina order ke ja raha —</option>
@@ -155,16 +157,16 @@ const UNITS = ['Pcs', 'Set', 'Meter', 'Kg', 'Than'];
             <div><label class="label">Tareekh</label>
               <input class="input" type="date" [(ngModel)]="f.challanDate"></div>
 
-            <div><label class="label">Transport</label>
+            <div *fld="'mfg_challan.transport'"><label class="label">{{ cfg.label('mfg_challan.transport') }}</label>
               <input class="input" [(ngModel)]="f.transport"></div>
-            <div><label class="label">LR / builty no.</label>
+            <div *fld="'mfg_challan.lr_no'"><label class="label">{{ cfg.label('mfg_challan.lr_no') }}</label>
               <input class="input" [(ngModel)]="f.lrNo"></div>
-            <div><label class="label">Gaadi number</label>
+            <div *fld="'mfg_challan.vehicle'"><label class="label">{{ cfg.label('mfg_challan.vehicle') }}</label>
               <input class="input" [(ngModel)]="f.vehicleNo"></div>
-            <div><label class="label">Kitne gathar</label>
+            <div *fld="'mfg_challan.packages'"><label class="label">{{ cfg.label('mfg_challan.packages') }}</label>
               <input class="input" type="number" [(ngModel)]="f.packages">
               <p class="text-[10.5px] text-gray-500 mt-1">Grahak yahi ginta hai</p></div>
-            <div class="col-span-2"><label class="label">Note</label>
+            <div class="col-span-2" *fld="'mfg_challan.note'"><label class="label">{{ cfg.label('mfg_challan.note') }}</label>
               <input class="input" [(ngModel)]="f.note"></div>
           </div>
 
@@ -177,9 +179,11 @@ const UNITS = ['Pcs', 'Set', 'Meter', 'Kg', 'Than'];
                   <option [ngValue]="null">— chuniye —</option>
                   @for (i of items(); track i.id) { <option [ngValue]="i.id">{{ i.name }}</option> }
                 </select></div>
-              <div class="w-24"><label class="label">Rang</label>
+              <div class="w-24" *fld="'mfg_challan.colour'">
+                <label class="label">{{ cfg.label('mfg_challan.colour') }}</label>
                 <input class="input" [(ngModel)]="l.colour"></div>
-              <div class="w-20"><label class="label">Size</label>
+              <div class="w-20" *fld="'mfg_challan.size'">
+                <label class="label">{{ cfg.label('mfg_challan.size') }}</label>
                 <input class="input" [(ngModel)]="l.size"></div>
               <div class="w-24"><label class="label">Qty</label>
                 <input class="input" type="number" step="0.01" [(ngModel)]="l.qty">
@@ -272,6 +276,8 @@ export class ChallansComponent {
   private http = inject(HttpClient);
   private base = `${environment.apiUrl}/api/mfg`;
   auth = inject(AuthService);
+  /** Firm ne kaunsa field on/off kiya — template isi se poochta hai. */
+  cfg = inject(FieldConfigService);
 
   tabs = [
     { key: 'unbilled', label: 'Bill baki' },

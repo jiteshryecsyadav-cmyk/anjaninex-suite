@@ -4,13 +4,15 @@ import { FormsModule } from '@angular/forms';
 import { Karigar, KarigarService, SaveKarigar } from './karigar.service';
 import { AuthService } from '../../core/auth.service';
 
+import { FldDirective } from '../../shared/fld.directive';
+import { FieldConfigService } from '../../shared/field-config.service';
 const JOB_TYPES = ['Cutting', 'Silai / Stitching', 'Finishing', 'Dyeing / Rangai',
                    'Printing', 'Embroidery / Kaam', 'Washing', 'Packing'];
 
 @Component({
   selector: 'mfg-karigars',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, FldDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="page-top-bar">
@@ -93,8 +95,8 @@ const JOB_TYPES = ['Cutting', 'Silai / Stitching', 'Finishing', 'Dyeing / Rangai
               <label class="label" style="color:#DC2626">Mobile *</label>
               <input class="input" [(ngModel)]="form()!.mobile" inputmode="numeric" placeholder="10 ank">
             </div>
-            <div>
-              <label class="label">Firm ka naam</label>
+            <div *fld="'mfg_karigar.firm_name'">
+              <label class="label">{{ cfg.label('mfg_karigar.firm_name') }}</label>
               <input class="input" [(ngModel)]="form()!.firmName" placeholder="Chintan Tailors">
             </div>
             <div class="col-span-2">
@@ -104,15 +106,15 @@ const JOB_TYPES = ['Cutting', 'Silai / Stitching', 'Finishing', 'Dyeing / Rangai
                 @for (j of jobTypes; track j) { <option [value]="j">{{ j }}</option> }
               </select>
             </div>
-            <div><label class="label">Shehar</label>
+            <div *fld="'mfg_karigar.city'"><label class="label">{{ cfg.label('mfg_karigar.city') }}</label>
               <input class="input" [(ngModel)]="form()!.city"></div>
-            <div><label class="label">Rajya</label>
+            <div *fld="'mfg_karigar.state'"><label class="label">{{ cfg.label('mfg_karigar.state') }}</label>
               <input class="input" [(ngModel)]="form()!.state"></div>
-            <div class="col-span-2"><label class="label">Pata</label>
+            <div class="col-span-2" *fld="'mfg_karigar.address'"><label class="label">{{ cfg.label('mfg_karigar.address') }}</label>
               <input class="input" [(ngModel)]="form()!.address"></div>
-            <div><label class="label">GST</label>
+            <div *fld="'mfg_karigar.gst'"><label class="label">{{ cfg.label('mfg_karigar.gst') }}</label>
               <input class="input font-mono uppercase" [(ngModel)]="form()!.gstin"></div>
-            <div><label class="label">PAN</label>
+            <div *fld="'mfg_karigar.pan'"><label class="label">{{ cfg.label('mfg_karigar.pan') }}</label>
               <input class="input font-mono uppercase" [(ngModel)]="form()!.pan"></div>
           </div>
 
@@ -129,6 +131,8 @@ const JOB_TYPES = ['Cutting', 'Silai / Stitching', 'Finishing', 'Dyeing / Rangai
 export class KarigarsComponent {
   private svc = inject(KarigarService);
   auth = inject(AuthService);
+  /** Firm ne kaunsa field on/off kiya — template isi se poochta hai. */
+  cfg = inject(FieldConfigService);
 
   jobTypes = JOB_TYPES;
 

@@ -4,6 +4,8 @@ import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { AuthService } from '../../core/auth.service';
 import { environment } from '../../../environments/environment';
+import { FldDirective } from '../../shared/fld.directive';
+import { FieldConfigService } from '../../shared/field-config.service';
 import { todayStr } from '../../core/date.util';
 
 interface PoLine {
@@ -33,7 +35,7 @@ const UNITS = ['Meter', 'Kg', 'Pcs', 'Than', 'Roll'];
 @Component({
   selector: 'mfg-purchase-orders',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, FldDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="flex gap-1 mb-3 text-sm font-bold">
@@ -141,21 +143,21 @@ const UNITS = ['Meter', 'Kg', 'Pcs', 'Than', 'Roll'];
               </select></div>
             <div><label class="label">Tareekh</label>
               <input class="input" type="date" [(ngModel)]="f.orderDate"></div>
-            <div><label class="label">Godown</label>
+            <div *fld="'mfg_po.godown'"><label class="label">{{ cfg.label('mfg_po.godown') }}</label>
               <select class="input" [(ngModel)]="f.godownId">
                 <option [ngValue]="null">— koi nahi —</option>
                 @for (g of godowns(); track g.id) { <option [ngValue]="g.id">{{ g.name }}</option> }
               </select></div>
-            <div><label class="label">Agent</label>
+            <div *fld="'mfg_po.agent'"><label class="label">{{ cfg.label('mfg_po.agent') }}</label>
               <select class="input" [(ngModel)]="f.agentId">
                 <option [ngValue]="null">— koi nahi —</option>
                 @for (a of agents(); track a.id) { <option [ngValue]="a.id">{{ a.name }}</option> }
               </select></div>
-            <div><label class="label">Kab tak</label>
+            <div *fld="'mfg_po.due_at'"><label class="label">{{ cfg.label('mfg_po.due_at') }}</label>
               <input class="input" type="date" [(ngModel)]="f.dueAt"></div>
-            <div><label class="label">Transport</label>
+            <div *fld="'mfg_po.transport'"><label class="label">{{ cfg.label('mfg_po.transport') }}</label>
               <input class="input" [(ngModel)]="f.transport"></div>
-            <div class="col-span-2"><label class="label">Note</label>
+            <div class="col-span-2" *fld="'mfg_po.note'"><label class="label">{{ cfg.label('mfg_po.note') }}</label>
               <input class="input" [(ngModel)]="f.note"></div>
           </div>
 
@@ -170,9 +172,11 @@ const UNITS = ['Meter', 'Kg', 'Pcs', 'Than', 'Roll'];
                       <option [ngValue]="i.id">{{ i.name }}</option>
                     }
                   </select></div>
-                <div class="w-24"><label class="label">Rang</label>
+                <div class="w-24" *fld="'mfg_po.colour'">
+                  <label class="label">{{ cfg.label('mfg_po.colour') }}</label>
                   <input class="input" [(ngModel)]="l.colour"></div>
-                <div class="w-20"><label class="label">Size</label>
+                <div class="w-20" *fld="'mfg_po.size'">
+                  <label class="label">{{ cfg.label('mfg_po.size') }}</label>
                   <input class="input" [(ngModel)]="l.size"></div>
                 <button class="text-anjaninex-red font-bold pb-2.5"
                         (click)="f.lines.splice($index,1); touch()">✕</button>
@@ -186,9 +190,11 @@ const UNITS = ['Meter', 'Kg', 'Pcs', 'Than', 'Roll'];
                   </select></div>
                 <div class="w-28"><label class="label">Rate ₹</label>
                   <input class="input" type="number" step="0.01" [(ngModel)]="l.rate"></div>
-                <div class="w-32"><label class="label">Mill ka code</label>
+                <div class="w-32" *fld="'mfg_po.dealer_code'">
+                  <label class="label">{{ cfg.label('mfg_po.dealer_code') }}</label>
                   <input class="input" [(ngModel)]="l.dealerCode"></div>
-                <div class="w-28"><label class="label">Lot</label>
+                <div class="w-28" *fld="'mfg_po.lot_no'">
+                  <label class="label">{{ cfg.label('mfg_po.lot_no') }}</label>
                   <input class="input" [(ngModel)]="l.lotNo"></div>
                 <div class="flex-1 text-right text-sm font-bold text-anjaninex-navy pb-2">
                   ₹{{ (l.qty || 0) * (l.rate || 0) | number:'1.0-2' }}
@@ -262,6 +268,8 @@ export class PurchaseOrdersComponent {
   private http = inject(HttpClient);
   private base = `${environment.apiUrl}/api/mfg`;
   auth = inject(AuthService);
+  /** Firm ne kaunsa field on/off kiya — template isi se poochta hai. */
+  cfg = inject(FieldConfigService);
 
   tabs = [
     { key: '',          label: 'Chal rahe' },

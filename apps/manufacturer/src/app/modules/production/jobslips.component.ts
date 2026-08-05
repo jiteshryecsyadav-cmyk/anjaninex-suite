@@ -3,6 +3,8 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { AuthService } from '../../core/auth.service';
+import { FldDirective } from '../../shared/fld.directive';
+import { FieldConfigService } from '../../shared/field-config.service';
 import { environment } from '../../../environments/environment';
 
 interface Ratio  { id?: string; size: string; ratio: number; banenge?: number; }
@@ -31,7 +33,7 @@ const PARTS = ['Top', 'Bottom', 'Dupatta', 'Blouse', 'Lining', 'Full Set'];
 @Component({
   selector: 'mfg-jobslips',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, FldDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="flex gap-1 mb-3 text-sm font-bold">
@@ -142,17 +144,17 @@ const PARTS = ['Top', 'Bottom', 'Dupatta', 'Blouse', 'Lining', 'Full Set'];
               <select class="input" [(ngModel)]="f.jobType">
                 @for (j of jobTypes; track j) { <option [value]="j">{{ j }}</option> }
               </select></div>
-            <div><label class="label">Lot number</label>
+            <div *fld="'mfg_jobslip.lot_no'"><label class="label">{{ cfg.label('mfg_jobslip.lot_no') }}</label>
               <input class="input" [(ngModel)]="f.lotNo"></div>
-            <div><label class="label">Godown</label>
+            <div *fld="'mfg_jobslip.godown'"><label class="label">{{ cfg.label('mfg_jobslip.godown') }}</label>
               <select class="input" [(ngModel)]="f.godownId">
                 <option [ngValue]="null">— koi nahi —</option>
                 @for (g of godowns(); track g.id) { <option [ngValue]="g.id">{{ g.name }}</option> }
               </select>
               <p class="text-[10.5px] text-gray-500 mt-1">Isi se material ghatega</p></div>
-            <div><label class="label">Kab tak</label>
+            <div *fld="'mfg_jobslip.due_at'"><label class="label">{{ cfg.label('mfg_jobslip.due_at') }}</label>
               <input class="input" type="date" [(ngModel)]="f.dueAt"></div>
-            <div><label class="label">Note</label>
+            <div *fld="'mfg_jobslip.note'"><label class="label">{{ cfg.label('mfg_jobslip.note') }}</label>
               <input class="input" [(ngModel)]="f.note"></div>
           </div>
 
@@ -261,7 +263,7 @@ const PARTS = ['Top', 'Bottom', 'Dupatta', 'Blouse', 'Lining', 'Full Set'];
             <div><label class="label">Rang</label><input class="input" [(ngModel)]="rc.colour"></div>
             <div><label class="label" style="color:#DC2626">Kitne aaye *</label>
               <input class="input" type="number" [(ngModel)]="rc.qty"></div>
-            <div><label class="label">Kharab nikle</label>
+            <div *fld="'mfg_jobslip.rejected'"><label class="label">{{ cfg.label('mfg_jobslip.rejected') }}</label>
               <input class="input" type="number" [(ngModel)]="rc.rejectedQty">
               <p class="text-[10.5px] text-gray-500 mt-1">Inki majoori nahi banti</p></div>
             <div class="col-span-2"><label class="label">Note</label>
@@ -338,6 +340,8 @@ export class JobSlipsComponent {
   private http = inject(HttpClient);
   private base = `${environment.apiUrl}/api/mfg`;
   auth = inject(AuthService);
+  /** Firm ne kaunsa field on/off kiya — template isi se poochta hai. */
+  cfg = inject(FieldConfigService);
 
   tabs = [
     { key: '',     label: 'Chal rahe' },

@@ -4,6 +4,8 @@ import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { AuthService } from '../../core/auth.service';
 import { environment } from '../../../environments/environment';
+import { FldDirective } from '../../shared/fld.directive';
+import { FieldConfigService } from '../../shared/field-config.service';
 import { todayStr } from '../../core/date.util';
 
 interface PrLine {
@@ -33,7 +35,7 @@ const REASONS = ['Kapda kharab nikla', 'Rang match nahi hua', 'Kam maal aaya',
 @Component({
   selector: 'mfg-purchase-returns',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, FldDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="page-top-bar">
@@ -114,7 +116,7 @@ const REASONS = ['Kapda kharab nikla', 'Rang match nahi hua', 'Kam maal aaya',
                 @for (g of godowns(); track g.id) { <option [ngValue]="g.id">{{ g.name }}</option> }
               </select></div>
 
-            <div class="col-span-2"><label class="label">Kis inward ka maal hai</label>
+            <div class="col-span-2" *fld="'mfg_preturn.inward_link'"><label class="label">{{ cfg.label('mfg_preturn.inward_link') }}</label>
               <select class="input" [(ngModel)]="f.inwardId" (ngModelChange)="inwardChuna()"
                       [disabled]="!f.partyId">
                 <option [ngValue]="null">— bataana nahi hai —</option>
@@ -130,12 +132,14 @@ const REASONS = ['Kapda kharab nikla', 'Rang match nahi hua', 'Kam maal aaya',
             <div><label class="label">Tareekh</label>
               <input class="input" type="date" [(ngModel)]="f.returnDate"></div>
 
-            <div class="col-span-2"><label class="label">Kyon wapas ja raha hai</label>
+            <div class="col-span-2" *fld="'mfg_preturn.reason'">
+              <label class="label" [style.color]="cfg.required('mfg_preturn.reason') ? '#DC2626' : ''">
+                {{ cfg.label('mfg_preturn.reason') }}@if (cfg.required('mfg_preturn.reason')) { * }</label>
               <select class="input" [(ngModel)]="f.reason">
                 <option [ngValue]="null">— chuniye —</option>
                 @for (r of reasons; track r) { <option [value]="r">{{ r }}</option> }
               </select></div>
-            <div><label class="label">Note</label>
+            <div *fld="'mfg_preturn.note'"><label class="label">{{ cfg.label('mfg_preturn.note') }}</label>
               <input class="input" [(ngModel)]="f.note"></div>
           </div>
 
@@ -147,9 +151,11 @@ const REASONS = ['Kapda kharab nikla', 'Rang match nahi hua', 'Kam maal aaya',
                   <option [ngValue]="null">— chuniye —</option>
                   @for (i of items(); track i.id) { <option [ngValue]="i.id">{{ i.name }}</option> }
                 </select></div>
-              <div class="w-24"><label class="label">Rang</label>
+              <div class="w-24" *fld="'mfg_preturn.colour'">
+                <label class="label">{{ cfg.label('mfg_preturn.colour') }}</label>
                 <input class="input" [(ngModel)]="l.colour"></div>
-              <div class="w-20"><label class="label">Size</label>
+              <div class="w-20" *fld="'mfg_preturn.size'">
+                <label class="label">{{ cfg.label('mfg_preturn.size') }}</label>
                 <input class="input" [(ngModel)]="l.size"></div>
               <div class="w-24"><label class="label">Qty</label>
                 <input class="input" type="number" step="0.01" [(ngModel)]="l.qty">
@@ -234,6 +240,8 @@ export class PurchaseReturnsComponent {
   private http = inject(HttpClient);
   private base = `${environment.apiUrl}/api/mfg`;
   auth = inject(AuthService);
+  /** Firm ne kaunsa field on/off kiya — template isi se poochta hai. */
+  cfg = inject(FieldConfigService);
 
   units = UNITS;
   reasons = REASONS;

@@ -3,6 +3,8 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { AuthService } from '../../core/auth.service';
+import { FldDirective } from '../../shared/fld.directive';
+import { FieldConfigService } from '../../shared/field-config.service';
 import { environment } from '../../../environments/environment';
 import { RecipeBoxComponent } from './recipe-box.component';
 
@@ -36,7 +38,7 @@ const UNITS = ['PCS', 'Meter', 'Kg', 'Than', 'Set'];
 @Component({
   selector: 'mfg-items',
   standalone: true,
-  imports: [CommonModule, FormsModule, RecipeBoxComponent],
+  imports: [CommonModule, FormsModule, RecipeBoxComponent, FldDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="flex gap-1 mb-3 text-sm font-bold">
@@ -158,42 +160,42 @@ const UNITS = ['PCS', 'Meter', 'Kg', 'Than', 'Set'];
               <input class="input" [(ngModel)]="form()!.name"
                      [placeholder]="form()!.itemKind === 'material' ? 'Rayon 14kg' : 'DES-7234'">
             </div>
-            <div><label class="label">Code</label>
+            <div *fld="'mfg_design.code'"><label class="label">{{ cfg.label('mfg_design.code') }}</label>
               <input class="input font-mono" [(ngModel)]="form()!.code"></div>
-            <div><label class="label">Unit</label>
+            <div *fld="'mfg_design.unit'"><label class="label">{{ cfg.label('mfg_design.unit') }}</label>
               <select class="input" [(ngModel)]="form()!.unit">
                 @for (u of units; track u) { <option [value]="u">{{ u }}</option> }
               </select></div>
-            <div><label class="label">Rate ₹</label>
+            <div *fld="'mfg_design.rate'"><label class="label">{{ cfg.label('mfg_design.rate') }}</label>
               <input class="input" type="number" [(ngModel)]="form()!.defaultRate"></div>
-            <div><label class="label">HSN</label>
+            <div *fld="'mfg_design.hsn'"><label class="label">{{ cfg.label('mfg_design.hsn') }}</label>
               <input class="input font-mono" [(ngModel)]="form()!.hsnSac"></div>
-            <div><label class="label">GST %</label>
+            <div *fld="'mfg_design.tax'"><label class="label">{{ cfg.label('mfg_design.tax') }}</label>
               <select class="input" [(ngModel)]="form()!.taxRate">
                 @for (g of [0,5,12,18,28]; track g) { <option [ngValue]="g">{{ g }}%</option> }
               </select></div>
-            <div>
-              <label class="label">Stock itne se kam ho to batao</label>
+            <div *fld="'mfg_design.min_stock'">
+              <label class="label">{{ cfg.label('mfg_design.min_stock') }}</label>
               <input class="input" type="number" [(ngModel)]="form()!.minStockQty">
             </div>
 
             @if (form()!.itemKind === 'material') {
-              <div class="col-span-2"><label class="label">Rang ka nishaan</label>
+              <div class="col-span-2" *fld="'mfg_design.colour_hint'"><label class="label">{{ cfg.label('mfg_design.colour_hint') }}</label>
                 <input class="input h-10 p-1" type="color" [(ngModel)]="form()!.colourHint">
                 <p class="text-[11px] text-gray-500 mt-1">
                   List me gol nishaan banega — naam padhne se pehle pehchan aa jati hai</p>
               </div>
             } @else {
-              <div><label class="label">Set me kitne piece</label>
+              <div *fld="'mfg_design.set_pieces'"><label class="label">{{ cfg.label('mfg_design.set_pieces') }}</label>
                 <input class="input" type="number" [(ngModel)]="form()!.setPieces"></div>
-              <div><label class="label">Kam se kam order (MOQ)</label>
+              <div *fld="'mfg_design.min_order'"><label class="label">{{ cfg.label('mfg_design.min_order') }}</label>
                 <input class="input" type="number" [(ngModel)]="form()!.minOrderQty"></div>
-              <div class="col-span-2"><label class="label">Tag (comma se)</label>
+              <div class="col-span-2" *fld="'mfg_design.tags'"><label class="label">{{ cfg.label('mfg_design.tags') }}</label>
                 <input class="input" [(ngModel)]="tagText"
                        placeholder="cotton, party wear, silk"></div>
             }
 
-            <div class="col-span-2"><label class="label">Note</label>
+            <div class="col-span-2" *fld="'mfg_design.note'"><label class="label">{{ cfg.label('mfg_design.note') }}</label>
               <input class="input" [(ngModel)]="form()!.notes"></div>
           </div>
 
@@ -216,6 +218,8 @@ export class ItemsComponent {
   private http = inject(HttpClient);
   private base = `${environment.apiUrl}/api/mfg/items`;
   auth = inject(AuthService);
+  /** Firm ne kaunsa field on/off kiya — template isi se poochta hai. */
+  cfg = inject(FieldConfigService);
 
   tabs: { key: 'design' | 'material'; label: string }[] = [
     { key: 'design',   label: '🥻 Design' },

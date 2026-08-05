@@ -3,6 +3,8 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { AuthService } from '../../core/auth.service';
+import { FldDirective } from '../../shared/fld.directive';
+import { FieldConfigService } from '../../shared/field-config.service';
 import { environment } from '../../../environments/environment';
 
 export interface Agent {
@@ -23,7 +25,7 @@ type SaveAgent = Omit<Agent, 'id' | 'karigarCount'>;
 @Component({
   selector: 'mfg-agents',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, FldDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <!-- Do tarah ke agent — alag-alag dekhna sabse zaroori kaam hai -->
@@ -117,17 +119,17 @@ type SaveAgent = Omit<Agent, 'id' | 'karigarCount'>;
               <label class="label" style="color:#DC2626">Mobile *</label>
               <input class="input" [(ngModel)]="form()!.mobile" inputmode="numeric" placeholder="10 ank">
             </div>
-            <div>
-              <label class="label">Agency ka naam</label>
+            <div *fld="'mfg_agent.agency'">
+              <label class="label">{{ cfg.label('mfg_agent.agency') }}</label>
               <input class="input" [(ngModel)]="form()!.agencyName" placeholder="Pandey Agency">
             </div>
-            <div><label class="label">Shehar</label>
+            <div *fld="'mfg_agent.city'"><label class="label">{{ cfg.label('mfg_agent.city') }}</label>
               <input class="input" [(ngModel)]="form()!.city"></div>
-            <div><label class="label">Rajya</label>
+            <div *fld="'mfg_agent.state'"><label class="label">{{ cfg.label('mfg_agent.state') }}</label>
               <input class="input" [(ngModel)]="form()!.state"></div>
-            <div><label class="label">GST</label>
+            <div *fld="'mfg_agent.gst'"><label class="label">{{ cfg.label('mfg_agent.gst') }}</label>
               <input class="input font-mono uppercase" [(ngModel)]="form()!.gstin"></div>
-            <div><label class="label">PAN</label>
+            <div *fld="'mfg_agent.pan'"><label class="label">{{ cfg.label('mfg_agent.pan') }}</label>
               <input class="input font-mono uppercase" [(ngModel)]="form()!.pan"></div>
           </div>
 
@@ -158,6 +160,8 @@ export class AgentsComponent {
   private http = inject(HttpClient);
   private base = `${environment.apiUrl}/api/mfg/agents`;
   auth = inject(AuthService);
+  /** Firm ne kaunsa field on/off kiya — template isi se poochta hai. */
+  cfg = inject(FieldConfigService);
 
   tabs = [
     { key: '',        label: 'Sab' },

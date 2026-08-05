@@ -4,6 +4,8 @@ import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { AuthService } from '../../core/auth.service';
 import { environment } from '../../../environments/environment';
+import { FldDirective } from '../../shared/fld.directive';
+import { FieldConfigService } from '../../shared/field-config.service';
 import { todayStr, monthStartStr } from '../../core/date.util';
 
 interface GrRow {
@@ -34,7 +36,7 @@ const REASONS = ['Kapda kharab nikla', 'Rang match nahi hua', 'Size galat tha',
 @Component({
   selector: 'mfg-sales-returns',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, FldDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="page-top-bar">
@@ -119,7 +121,7 @@ const REASONS = ['Kapda kharab nikla', 'Rang match nahi hua', 'Size galat tha',
               </select>
               <p class="text-[10.5px] text-gray-500 mt-1">Maal yahan chadhega</p></div>
 
-            <div class="col-span-2"><label class="label">Kis bill ka maal hai</label>
+            <div class="col-span-2" *fld="'mfg_sreturn.bill'"><label class="label">{{ cfg.label('mfg_sreturn.bill') }}</label>
               <select class="input" [(ngModel)]="f.billId" (ngModelChange)="billChuna()"
                       [disabled]="!f.partyId">
                 <option [ngValue]="null">— bataana nahi hai —</option>
@@ -137,20 +139,22 @@ const REASONS = ['Kapda kharab nikla', 'Rang match nahi hua', 'Size galat tha',
             <div><label class="label">Tareekh</label>
               <input class="input" type="date" [(ngModel)]="f.returnDate"></div>
 
-            <div class="col-span-2"><label class="label">Kyon wapas aaya</label>
+            <div class="col-span-2" *fld="'mfg_sreturn.reason'">
+              <label class="label" [style.color]="cfg.required('mfg_sreturn.reason') ? '#DC2626' : ''">
+                {{ cfg.label('mfg_sreturn.reason') }}@if (cfg.required('mfg_sreturn.reason')) { * }</label>
               <select class="input" [(ngModel)]="f.reason">
                 <option [ngValue]="null">— chuniye —</option>
                 @for (r of reasons; track r) { <option [value]="r">{{ r }}</option> }
               </select></div>
-            <div><label class="label">Paisa kaise</label>
+            <div *fld="'mfg_sreturn.effect'"><label class="label">{{ cfg.label('mfg_sreturn.effect') }}</label>
               <select class="input" [(ngModel)]="f.effectMode">
                 <option value="direct_adjustment">Bill me hi kat jaye</option>
                 <option value="credit_note">Credit note bane</option>
               </select></div>
 
-            <div><label class="label">Transport</label>
+            <div *fld="'mfg_sreturn.transport'"><label class="label">{{ cfg.label('mfg_sreturn.transport') }}</label>
               <input class="input" [(ngModel)]="f.transport"></div>
-            <div class="col-span-2"><label class="label">Note</label>
+            <div class="col-span-2" *fld="'mfg_sreturn.remark'"><label class="label">{{ cfg.label('mfg_sreturn.remark') }}</label>
               <input class="input" [(ngModel)]="f.remark"></div>
           </div>
 
@@ -272,6 +276,8 @@ export class SalesReturnsComponent {
   private http = inject(HttpClient);
   private base = `${environment.apiUrl}/api/mfg`;
   auth = inject(AuthService);
+  /** Firm ne kaunsa field on/off kiya — template isi se poochta hai. */
+  cfg = inject(FieldConfigService);
 
   reasons = REASONS;
 

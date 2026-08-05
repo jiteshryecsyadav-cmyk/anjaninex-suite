@@ -4,6 +4,8 @@ import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { AuthService } from '../../core/auth.service';
 import { environment } from '../../../environments/environment';
+import { FldDirective } from '../../shared/fld.directive';
+import { FieldConfigService } from '../../shared/field-config.service';
 import { todayStr, monthStartStr } from '../../core/date.util';
 
 interface BillRow {
@@ -31,7 +33,7 @@ interface PendingDc {
 @Component({
   selector: 'mfg-invoices',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, FldDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="page-top-bar">
@@ -166,24 +168,25 @@ interface PendingDc {
           }
 
           <div class="grid grid-cols-3 gap-3 mb-4">
-            <div><label class="label">Discount ₹</label>
+            <div *fld="'mfg_invoice.discount'"><label class="label">{{ cfg.label('mfg_invoice.discount') }}</label>
               <input class="input" type="number" step="0.01" [(ngModel)]="f.discount"></div>
-            <div><label class="label">Anya kharcha ₹</label>
+            <div *fld="'mfg_invoice.other_charges'"><label class="label">{{ cfg.label('mfg_invoice.other_charges') }}</label>
               <input class="input" type="number" step="0.01" [(ngModel)]="f.otherCharges">
               <p class="text-[10.5px] text-gray-500 mt-1">Packing, bhada waghera</p></div>
-            <div><label class="label">Round off ₹</label>
+            <div *fld="'mfg_invoice.round_off'"><label class="label">{{ cfg.label('mfg_invoice.round_off') }}</label>
               <input class="input" type="number" step="0.01" [(ngModel)]="f.roundOff"></div>
 
-            <div><label class="label">E-Way bill no.</label>
+            <div *fld="'mfg_invoice.eway'">
+              <label class="label">{{ cfg.label('mfg_invoice.eway') }}</label>
               <input class="input" [(ngModel)]="f.ewayBillNo"></div>
-            <div><label class="label">E-Way tareekh</label>
+            <div *fld="'mfg_invoice.eway'"><label class="label">E-Way tareekh</label>
               <input class="input" type="date" [(ngModel)]="f.ewayBillDate"></div>
-            <div><label class="label">LR / builty no.</label>
+            <div *fld="'mfg_invoice.lr_no'"><label class="label">{{ cfg.label('mfg_invoice.lr_no') }}</label>
               <input class="input" [(ngModel)]="f.lrNo"></div>
 
-            <div class="col-span-2"><label class="label">Grahak ka PO number</label>
+            <div class="col-span-2" *fld="'mfg_invoice.po_number'"><label class="label">{{ cfg.label('mfg_invoice.po_number') }}</label>
               <input class="input" [(ngModel)]="f.poNumber"></div>
-            <div><label class="label">Note</label>
+            <div *fld="'mfg_invoice.notes'"><label class="label">{{ cfg.label('mfg_invoice.notes') }}</label>
               <input class="input" [(ngModel)]="f.notes"></div>
           </div>
 
@@ -275,6 +278,8 @@ export class InvoicesComponent {
   private http = inject(HttpClient);
   private base = `${environment.apiUrl}/api/mfg`;
   auth = inject(AuthService);
+  /** Firm ne kaunsa field on/off kiya — template isi se poochta hai. */
+  cfg = inject(FieldConfigService);
 
   rows = signal<BillRow[]>([]);
   customers = signal<any[]>([]);

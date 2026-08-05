@@ -1,7 +1,7 @@
 {
   "name": "namokara-suite",
   "version": "1.0.0",
-  "description": "Multi-tenant B2B SaaS platform — Trading, Accounting, Suppliers, HR. Built by Anjaninex.",
+  "description": "Multi-tenant B2B SaaS platform \u2014 Trading, Accounting, Suppliers, HR. Built by Anjaninex.",
   "private": true,
   "author": "Anjaninex",
   "license": "UNLICENSED",
@@ -19,7 +19,8 @@
     "web:dev": "cd apps/web && npm run start",
     "api:dev": "cd apps/api && dotnet watch run",
     "test": "npm run test --workspaces && cd apps/api && dotnet test",
-    "build": "npm run build --workspaces && cd apps/api && dotnet publish -c Release"
+    "build": "npm run build --workspaces && cd apps/api && dotnet publish -c Release",
+    "check:shared": "node tools/check-shared-drift.js"
   },
   "repository": {
     "type": "git",

@@ -626,7 +626,9 @@ public class PlatformAdminService : IPlatformAdminService
             // firm me HR/Bazaar/Dukan khulte hi 403 aata (db/init/124).
             ["hr"]               = true,
             ["active_directory"] = true,
-            ["online_dukan"]     = true
+            ["online_dukan"]     = true,
+            // Transport firm ka apna app — db/init/131
+            ["logistics"]        = kind is "transport" or "both"
         });
     }
 

@@ -41,10 +41,11 @@ BEGIN
                              WHEN 'create' THEN 'banana'
                              WHEN 'edit'   THEN 'badalna'
                              ELSE 'hatana' END;
-            INSERT INTO core.permissions (code, module, name, description)
+            -- Table me `name` nahi hai — code/module/resource/action/scope alag
+            -- khaano me jaate hain (jaisa migration 119 me tha)
+            INSERT INTO core.permissions (code, module, resource, action, scope, description)
             VALUES ('logistics.' || r.res || '.' || a || '.branch',
-                    'logistics',
-                    r.label || ' — ' || act_hi,
+                    'logistics', r.res, a, 'branch',
                     r.label || ' ' || act_hi || ' (apni branch ka)')
             ON CONFLICT (code) DO NOTHING;
         END LOOP;

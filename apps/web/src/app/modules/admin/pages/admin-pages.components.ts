@@ -213,7 +213,7 @@ const subNav = `
                 <select [(ngModel)]="nf.businessKind" class="fi">
                   <option value="manufacturer">🏭 MFG — maal banati hai</option>
                   <option value="buyer">🛍️ BUYER — sirf khareedti hai</option>
-                  <option value="transport">🚛 TRANSPORTER — maal dhoti hai</option>
+                  <option value="transport">🚛 LOGISTIC — maal dhoti hai</option>
                   <option value="agency">🏢 AGENCY — khareedti aur bechti hai</option>
                   <option value="both">🔄 DONO — banati bhi hai, bechti bhi</option>
                 </select>
@@ -394,7 +394,7 @@ export class AdminFirmsComponent {
   kindLabel(kind: string): string {
     switch (kind) {
       case 'manufacturer': return '🏭 MFG';
-      case 'transport':    return '🚛 TRANSPORT';
+      case 'transport':    return '🚛 LOGISTIC';
       case 'buyer':        return '🛍️ BUYER';
       case 'both':         return '🔄 DONO';
       default:             return '';
@@ -616,7 +616,7 @@ export class AdminFirmsComponent {
             <select [(ngModel)]="bizKind" class="input w-64">
               <option value="manufacturer">🏭 MFG — maal banati hai</option>
               <option value="buyer">🛍️ BUYER — sirf khareedti hai</option>
-              <option value="transport">🚛 TRANSPORTER — maal dhoti hai</option>
+              <option value="transport">🚛 LOGISTIC — maal dhoti hai</option>
               <option value="agency">🏢 AGENCY — khareedti aur bechti hai</option>
               <option value="both">🔄 DONO — banati bhi hai, bechti bhi</option>
             </select>

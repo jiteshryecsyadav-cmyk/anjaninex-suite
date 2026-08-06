@@ -177,6 +177,18 @@ public class AppDbContext : DbContext
     public DbSet<Namokara.Api.Modules.Manufacturer.Entities.KarigarPayment> MfgKarigarPayments
         => Set<Namokara.Api.Modules.Manufacturer.Entities.KarigarPayment>();
 
+    // Logistics schema — transport company ka app (db/init/130)
+    public DbSet<Namokara.Api.Modules.Logistics.Entities.Vehicle> LogVehicles
+        => Set<Namokara.Api.Modules.Logistics.Entities.Vehicle>();
+    public DbSet<Namokara.Api.Modules.Logistics.Entities.Driver> LogDrivers
+        => Set<Namokara.Api.Modules.Logistics.Entities.Driver>();
+    public DbSet<Namokara.Api.Modules.Logistics.Entities.Gr> Grs
+        => Set<Namokara.Api.Modules.Logistics.Entities.Gr>();
+    public DbSet<Namokara.Api.Modules.Logistics.Entities.GrLine> GrLines
+        => Set<Namokara.Api.Modules.Logistics.Entities.GrLine>();
+    public DbSet<Namokara.Api.Modules.Logistics.Entities.GrEvent> GrEvents
+        => Set<Namokara.Api.Modules.Logistics.Entities.GrEvent>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -442,5 +454,23 @@ public class AppDbContext : DbContext
             modelBuilder.Entity<Namokara.Api.Modules.Manufacturer.Entities.KarigarPayment>()
                 .ToTable("karigar_payments", "mfg");
         }
+        // -- Logistics (logistics) -- db/init/130 --
+        {
+            modelBuilder.Entity<Namokara.Api.Modules.Logistics.Entities.Vehicle>()
+                .ToTable("vehicles", "logistics");
+            modelBuilder.Entity<Namokara.Api.Modules.Logistics.Entities.Driver>()
+                .ToTable("drivers", "logistics");
+            modelBuilder.Entity<Namokara.Api.Modules.Logistics.Entities.Gr>()
+                .ToTable("grs", "logistics");
+            modelBuilder.Entity<Namokara.Api.Modules.Logistics.Entities.GrLine>()
+                .ToTable("gr_lines", "logistics");
+            // BIGSERIAL -- DB khud number deti hai
+            modelBuilder.Entity<Namokara.Api.Modules.Logistics.Entities.GrEvent>(e =>
+            {
+                e.ToTable("gr_events", "logistics");
+                e.Property(x => x.Id).ValueGeneratedOnAdd();
+            });
+        }
+
     }
 }
